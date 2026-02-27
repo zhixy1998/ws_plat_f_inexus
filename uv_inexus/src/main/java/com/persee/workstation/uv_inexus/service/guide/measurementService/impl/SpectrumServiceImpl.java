@@ -91,6 +91,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -104,7 +105,6 @@ import static java.lang.Double.valueOf;
 @Slf4j
 @Service("spectrumService")
 public class SpectrumServiceImpl implements SpectrumService {
-
 
 
     @Autowired
@@ -182,6 +182,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 查询项目任务方法
+     *
      * @param updateBy
      * @param measureType
      * @return
@@ -245,11 +246,11 @@ public class SpectrumServiceImpl implements SpectrumService {
             TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
             vo.setMethodId(method.getId());
             vo.setMethodName(method.getMethodName());
-            if (measureTask!=null){
+            if (measureTask != null) {
                 vo.setTaskId(measureTask.getId());
                 vo.setTaskName(measureTask.getTaskName());
                 vo.setTaskStatus(measureTask.getTaskStatus());
-            }else{
+            } else {
                 vo.setTaskId(null);
                 vo.setTaskName(null);
                 vo.setTaskStatus(null);
@@ -267,11 +268,11 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         // 根据方法id和项目id查询方法和项目
         TMeasureProject byId = tMeasureProjectService.getById(defaultTask.getProjectItemKey());
-        if (byId == null){
+        if (byId == null) {
             return Result.fail(YamlMessageSource.getMessageStatic("00301010"));
         }
         TMeasureMethod method1 = tMeasureMethodService.getById(defaultTask.getMethodKey());
-        if (method1 == null){
+        if (method1 == null) {
             return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
         }
         vo.setMethodId(method1.getId());
@@ -286,6 +287,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 查询项目下所有方法
+     *
      * @param projectId
      * @param measureForm
      * @return
@@ -293,7 +295,7 @@ public class SpectrumServiceImpl implements SpectrumService {
     @Override
     public Result queryProjectAllMethods(String projectId, String measureForm, String updateBy) {
         // 参数校验
-        if (StringUtils.isEmpty(projectId)|| StringUtils.isEmpty(measureForm)|| StringUtils.isEmpty(updateBy)) {
+        if (StringUtils.isEmpty(projectId) || StringUtils.isEmpty(measureForm) || StringUtils.isEmpty(updateBy)) {
             return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
         }
         List<TMeasureMethod> methods = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", measureForm).eq("method_creator", updateBy));
@@ -341,6 +343,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 创建方法接口
+     *
      * @param methodDto
      * @param updateBy
      * @param spectrumParameter
@@ -353,7 +356,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (methodDto.getPretreatmentIds() != null) {
             tMeasureMethod.setPreprocessKey(JSON.toJSONString(methodDto.getPretreatmentIds()));
         }
-        if (spectrumParameter.getLadderCorrection()==null){
+        if (spectrumParameter.getLadderCorrection() == null) {
             spectrumParameter.setLadderCorrection(false);
         }
         tMeasureMethod.setProjectItemKey(methodDto.getProjectId());
@@ -484,6 +487,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 查询测量参数接口
+     *
      * @param taskId
      * @return
      */
@@ -545,13 +549,14 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 设置参数接口
+     *
      * @param methodId
      * @param deviceSerialNumber
      * @return
      */
     @Override
     public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
-        if (methodId == null || methodId.equals("")){
+        if (methodId == null || methodId.equals("")) {
             return Result.fail(YamlMessageSource.getMessageStatic("00000008"));
         }
         // 根据methodId去方法表中查询数据
@@ -581,7 +586,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 4. 扫描间隔
         setParam.setScanWlInterval(Double.valueOf(spectrumParam.getWaveLengthInterval()));
         // 5. 光谱带宽
-        if (StringUtils.hasText(spectrumParam.getSpectralBandwidth())&&deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+        if (StringUtils.hasText(spectrumParam.getSpectralBandwidth()) && deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
             setParam.setSlit1(Double.valueOf(spectrumParam.getSpectralBandwidth()));
         }
         // 6. 扫描速度
@@ -607,6 +612,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 保存数据接口
+     *
      * @param taskId
      * @return
      */
@@ -630,6 +636,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 获取样本输入表头接口
+     *
      * @param taskId
      * @return
      */
@@ -724,14 +731,14 @@ public class SpectrumServiceImpl implements SpectrumService {
             //表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000013"));
         }
-        if (dto.getNewSamples()!=null&&!dto.getNewSamples().isEmpty()) {
+        if (dto.getNewSamples() != null && !dto.getNewSamples().isEmpty()) {
             for (Map<String, String> map : dto.getNewSamples()) {
                 String jsonString = JSON.toJSONString(map);
                 SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
-                if (sample.getSampleNumber()!=null&&sample.getSampleNumber().length()>256){
+                if (sample.getSampleNumber() != null && sample.getSampleNumber().length() > 256) {
                     return Result.fail("新增样品编号超出限制");
                 }
-                if (sample.getSampleName()!=null&&sample.getSampleName().length()>256){
+                if (sample.getSampleName() != null && sample.getSampleName().length() > 256) {
                     return Result.fail("新增样品名称超出限制");
                 }
 
@@ -949,6 +956,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 获取样本列表接口
+     *
      * @param taskId
      * @param type
      * @return
@@ -1190,6 +1198,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 获取变换列表接口
+     *
      * @param taskId
      * @param type
      * @return
@@ -1357,6 +1366,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 更新数据颜色接口
+     *
      * @param paramDto
      * @return
      */
@@ -1395,6 +1405,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 获取分析标记点接口
+     *
      * @param analysisId
      * @return
      */
@@ -1406,7 +1417,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         List<String> list = new ArrayList<>();
         try {
 
-            list =JSON.parseObject(byId.getGaugePoint(), List.class);
+            list = JSON.parseObject(byId.getGaugePoint(), List.class);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -1415,6 +1426,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 添加分析标记点接口
+     *
      * @param paramDto
      * @return
      */
@@ -1429,7 +1441,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 将标记点转换成List
         List<String> list;
         try {
-            list     =  JSON.parseObject(byId.getGaugePoint(), List.class);
+            list = JSON.parseObject(byId.getGaugePoint(), List.class);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -1478,6 +1490,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 寻峰寻谷接口
+     *
      * @param paramDto
      * @return
      */
@@ -1530,7 +1543,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> resultMap;
         try {
             resultMap = restTemplate.postForEntity(pythonPathConstant.getPeakSearchingAndValleySearching(), request, Map.class).getBody();
-        } catch (Exception e){
+        } catch (Exception e) {
             return Result.fail("算法调用失败,请联系管理员");
         }
 
@@ -1573,6 +1586,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 添加峰谷备注接口
+     *
      * @param paramDto
      * @return
      */
@@ -1617,6 +1631,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 获取标记点接口
+     *
      * @param dataId
      * @param digit
      * @return
@@ -1718,6 +1733,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 添加标记点备注接口
+     *
      * @param paramDto
      * @return
      */
@@ -1752,6 +1768,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 查询运算源数据接口
+     *
      * @param taskId
      * @return
      */
@@ -1818,6 +1835,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 四则运算接口
+     *
      * @param paramDto
      * @return
      */
@@ -1984,6 +2002,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 高级运算接口
+     *
      * @param paramDto
      * @return
      */
@@ -2139,11 +2158,12 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 平滑度接口
+     *
      * @param paramDto
      * @return
      */
     @Override
-    public Result   smoothnessPort(SmoothnessDto paramDto) {
+    public Result smoothnessPort(SmoothnessDto paramDto) {
         if (paramDto.getAnalysisDataName() == null || paramDto.getAnalysisDataName().equals("")) {
             //请输入变换名称
             return Result.fail(YamlMessageSource.getMessageStatic("0000002C"));
@@ -2281,6 +2301,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 微分接口
+     *
      * @param paramDto
      * @return
      */
@@ -2427,6 +2448,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 光度模式转换
+     *
      * @param paramDto
      * @return
      */
@@ -2589,6 +2611,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 图片上传
+     *
      * @param upload
      * @return
      */
@@ -2648,6 +2671,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 获取任务图片接口
+     *
      * @param id
      * @param type
      * @return
@@ -2678,6 +2702,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 查询预处理操作接口
+     *
      * @param methodId
      * @return
      */
@@ -2700,6 +2725,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 获取基线接口
+     *
      * @param methodId
      * @param deviceSerialNumber
      * @return
@@ -2763,6 +2789,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 导出word接口
+     *
      * @param taskId
      * @param response
      * @throws Exception
@@ -2798,6 +2825,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 测试对比接口
+     *
      * @param taskId
      * @param spectrumParameter
      * @return
@@ -2818,6 +2846,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 多格式文件下载接口（支持word/excel/txt）
+     *
      * @param taskId     任务ID
      * @param allDisplay 是否显示全部数据
      * @param fileType   导出格式（word/txt/xlsx）
@@ -2959,8 +2988,38 @@ public class SpectrumServiceImpl implements SpectrumService {
                     String x = (xObj != null) ? xObj.toString() : "-";
 
                     // 明确从data中获取"y"字段作为数值
+//                    Object yObj = data.get("y");
+//                    String y = (yObj != null) ? yObj.toString() : "-";
+                    // 修改第2959-2961行
+                    // 明确从data中获取"y"字段作为数值
+                    // 明确从data中获取"y"字段作为数值
                     Object yObj = data.get("y");
-                    String y = (yObj != null) ? yObj.toString() : "-";
+                    String y;
+                    if (yObj != null && digit != null && digit >= 0) {
+                        try {
+                            // 对数值进行修约处理
+                            double yValue = Double.parseDouble(yObj.toString());
+
+                            // 构造格式字符串（兼容旧版本Java）
+                            StringBuilder zeros = new StringBuilder();
+                            for (int i = 0; i < digit; i++) {
+                                zeros.append("0");
+                            }
+                            DecimalFormat df = new DecimalFormat("#." + zeros.toString());
+                            df.setRoundingMode(RoundingMode.HALF_UP); // 四舍五入
+                            y = df.format(yValue);
+
+                            log.debug("Y值修约: 原始={} 修约后={} 小数位数={}", yObj, y, digit);
+                        } catch (NumberFormatException e) {
+                            log.warn("Y值转换失败: {}, 使用原始值", yObj);
+                            y = yObj.toString();
+                        }
+                    } else {
+                        y = (yObj != null) ? yObj.toString() : "-";
+                    }
+
+                    log.debug("修约前y值: {}, digit: {}, 修约后y值: {}", yObj, digit, y);
+
 
                     // 记录日志，确认x和y的取值
                     // log.debug("【步骤3/5】样品{}: x={}, y={}", title, x, y);
@@ -3084,7 +3143,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 // log.info("【步骤5/5】删除异常文件: {}", deleted ? "成功" : "失败");
             }
             //"文件生成失败：" + e.getMessage()
-            return R.fail(YamlMessageSource.getMessageStatic("00302006",e.getMessage()));
+            return R.fail(YamlMessageSource.getMessageStatic("00302006", e.getMessage()));
         } finally {
             // log.info("===== 导出流程结束 =====");
         }
@@ -3092,6 +3151,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * (实验测试)方法参数修改接口
+     *
      * @param paramDto
      * @return
      */
@@ -3129,7 +3189,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
 
         // 使用isEmpty判断，如果为空，则返回失败
-        if (paramDto.getUpdateBy().isEmpty()){
+        if (paramDto.getUpdateBy().isEmpty()) {
             return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
         }
         SysUserPO sysUserPO = systemUserManageDAO.selectByUsername(paramDto.getUpdateBy());
@@ -3160,7 +3220,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
 
         if (task.getTaskStatus().equals(TaskStatusEnum.UNTESTED.getCode())) {
-            TMeasureMethod newMethod = createNewMethod(paramDto , methodBoolean);
+            TMeasureMethod newMethod = createNewMethod(paramDto, methodBoolean);
             if (newMethod == null) {
                 //新建方法失败
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
@@ -3168,15 +3228,15 @@ public class SpectrumServiceImpl implements SpectrumService {
             task.setMethodKey(newMethod.getId());
             task.setCreateTime(LocalDateTime.now());
             boolean update = tMeasureTaskService.updateById(task);
-            return update?Result.ok():Result.fail(YamlMessageSource.getMessageStatic("00000048"));
-        }else{
-            TMeasureMethod newMethod = createNewMethod(paramDto , methodBoolean);
+            return update ? Result.ok() : Result.fail(YamlMessageSource.getMessageStatic("00000048"));
+        } else {
+            TMeasureMethod newMethod = createNewMethod(paramDto, methodBoolean);
             if (newMethod == null) {
                 //新建方法失败
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
             }
             TMeasureTask newTask = createNewTask(paramDto, newMethod.getId(), task, sysUserPO.getId());
-            if (newTask == null){
+            if (newTask == null) {
                 return Result.fail(YamlMessageSource.getMessageStatic("00000010"));
             }
             return Result.ok();
@@ -3185,6 +3245,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * (实验测试)查询表格头
+     *
      * @param taskId
      * @param methodId
      * @param analysisIds
@@ -3475,7 +3536,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 map.put("x", split[0]);
                 map.put("y", DataCountUtil.addZero(valueOf(split[1]), 8));
             }
-            if (gauges != null && peaks!= null) {
+            if (gauges != null && peaks != null) {
                 for (PeakValleyMarking gauge : gauges) {
                     if (split[0].equals(gauge.getX())) {
                         map.put("marked", "1");
@@ -3722,6 +3783,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 添加文本
+     *
      * @param paragraph
      * @param text
      * @param fontSize
@@ -3751,6 +3813,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 保留原有的downloadWord方法，并适配新参数
+     *
      * @param taskId
      * @param allDisplay
      * @param analysisIds
@@ -4061,8 +4124,10 @@ public class SpectrumServiceImpl implements SpectrumService {
                 System.out.println("无效的光度模式: " + mode);
         }
     }
+
     /**
      * 验证参数
+     *
      * @param parameter
      * @return
      */
@@ -4104,6 +4169,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 设置方法参数
+     *
      * @param deviceSerialNumber
      * @param setParam
      * @return
@@ -4138,7 +4204,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
         if (r.getSuccess()) {
             return Result.ok();
-        }else{
+        } else {
             return Result.fail(r.getMessage());
         }
     }
@@ -4162,10 +4228,10 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     private TMeasureMethod createNewMethod(SpectralMethodParameterDto paramDto, Boolean isCopy) {
         TMeasureMethod fMeasureMethod = new TMeasureMethod();
-        if (isCopy){
+        if (isCopy) {
             fMeasureMethod.setMethodName(paramDto.getMethodName());
-        }else{
-            fMeasureMethod.setMethodName(paramDto.getMethodName()+"- 副本");
+        } else {
+            fMeasureMethod.setMethodName(paramDto.getMethodName() + "- 副本");
         }
 
         SpectrumParameter parameter = new SpectrumParameter();
@@ -4193,9 +4259,9 @@ public class SpectrumServiceImpl implements SpectrumService {
     private TMeasureTask createNewTask(SpectralMethodParameterDto paramDto, String methodId, TMeasureTask task, String userId) {
         TMeasureTask newTask = new TMeasureTask();
         newTask.setUserId(userId);
-        if(task.getTaskName().equals(paramDto.getTaskName())||paramDto.getTaskName()==null|| paramDto.getTaskName().isEmpty()){
-            newTask.setTaskName(task.getTaskName()+"- 副本");
-        }else{
+        if (task.getTaskName().equals(paramDto.getTaskName()) || paramDto.getTaskName() == null || paramDto.getTaskName().isEmpty()) {
+            newTask.setTaskName(task.getTaskName() + "- 副本");
+        } else {
             newTask.setTaskName(paramDto.getTaskName());
         }
         newTask.setCreateTime(LocalDateTime.now());
@@ -4371,6 +4437,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 调用Python服务
+     *
      * @param url
      * @param requestBody
      * @return

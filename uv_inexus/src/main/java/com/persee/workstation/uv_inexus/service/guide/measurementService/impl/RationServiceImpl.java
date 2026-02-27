@@ -161,7 +161,7 @@ public class RationServiceImpl implements RationService {
 
     @Override
     public Result updateMethodParameter(MethodParamsDto methodDto) {
-        if (!StringUtils.hasText(methodDto.getCurrentMethodId())){
+        if (!StringUtils.hasText(methodDto.getCurrentMethodId())) {
             //方法id不能为空,请创建方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000021"));
         }
@@ -312,10 +312,10 @@ public class RationServiceImpl implements RationService {
         tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         tMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
         boolean save = tMeasureMethodService.save(tMeasureMethod);
-        if ( save){
+        if (save) {
             //创建成功
             return Result.ok(YamlMessageSource.getMessageStatic("0000000F"));
-        }else {
+        } else {
             //创建失败
             return Result.fail(YamlMessageSource.getMessageStatic("00000010"));
         }
@@ -440,7 +440,7 @@ public class RationServiceImpl implements RationService {
 
         TMeasureMethod method = tMeasureMethodService.getById(methodDto.getCurrentMethodId());
         TMeasureMethod newMethod = new TMeasureMethod();
-        newMethod.setMethodName(StringUtils.hasText(methodDto.getMethodName())? methodDto.getMethodName() : method.getMethodName() + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        newMethod.setMethodName(StringUtils.hasText(methodDto.getMethodName()) ? methodDto.getMethodName() : method.getMethodName() + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         newMethod.setMethodCreator(methodDto.getUpdateBy());
         newMethod.setMethodCreateTime(LocalDateTime.now());
         newMethod.setIsDelete(createType);
@@ -517,7 +517,7 @@ public class RationServiceImpl implements RationService {
                     return Result.ok(vo);
                 }
 
-                if ( RationChangeMethodTypeEnums.curve.getIdentity().equals(clearDataRange) && methodDto.getIsApplyToCurrent()) {
+                if (RationChangeMethodTypeEnums.curve.getIdentity().equals(clearDataRange) && methodDto.getIsApplyToCurrent()) {
                     task.setMethodKey(newMethod.getId());
                     task.setCreateTime(LocalDateTime.now());
                     tMeasureTaskService.updateById(task);
@@ -531,7 +531,7 @@ public class RationServiceImpl implements RationService {
                         fittingInfo = JSONObject.toJSONString(curveInfo);
                     }
 
-                    if (StringUtils.hasText(fittingInfo)){
+                    if (StringUtils.hasText(fittingInfo)) {
                         task.setFittingParam(fittingInfo);
                         tMeasureTaskService.updateById(task);
                         changeUnknowSampleDigit(task.getId(), digit);
@@ -565,7 +565,7 @@ public class RationServiceImpl implements RationService {
         newTask.setProjectItemKey(newMethod.getProjectItemKey());
         newTask.setTaskStatus(TaskStatusEnum.UNTESTED.getCode());
         newTask.setMeasureType(newMethod.getMeasurementType());
-        newTask.setTableInfo(StringUtils.hasText(task.getTableInfo())?task.getTableInfo() : null);
+        newTask.setTableInfo(StringUtils.hasText(task.getTableInfo()) ? task.getTableInfo() : null);
         tMeasureTaskService.save(newTask);
         generateTableInfo(newTask.getId(), newMethod.getId(), true);
         vo.setTaskId(newTask.getId());
@@ -575,7 +575,7 @@ public class RationServiceImpl implements RationService {
     }
 
     /**
-     *  生成表头和映射信息
+     * 生成表头和映射信息
      */
     private R<Boolean> generateTableInfo(String taskId, String methodId, Boolean clearOld) {
 
@@ -825,18 +825,18 @@ public class RationServiceImpl implements RationService {
             return false;
         }
 
-        return Objects.equals( oldParam.getSpectralBandwidth(), newParam.getSpectralBandwidth())&&
+        return Objects.equals(oldParam.getSpectralBandwidth(), newParam.getSpectralBandwidth()) &&
                 Objects.equals(oldParam.getResponseTime(), newParam.getResponseTime()) &&
-                Objects.equals(oldParam.getChangeLampWaveLength(),newParam.getChangeLampWaveLength()) &&
-                Objects.equals(oldParam.getTimeInterval(),newParam.getTimeInterval())&&
+                Objects.equals(oldParam.getChangeLampWaveLength(), newParam.getChangeLampWaveLength()) &&
+                Objects.equals(oldParam.getTimeInterval(), newParam.getTimeInterval()) &&
                 Objects.equals(oldParam.getRepeatMode(), newParam.getRepeatMode()) &&
-                Objects.equals(oldParam.getRepeatCount(), newParam.getRepeatCount()) ;
+                Objects.equals(oldParam.getRepeatCount(), newParam.getRepeatCount());
     }
 
     //检查参数是否改变，true--未改变，false--改变了
     private boolean checkAnalyzeParam(RationParameter oldParam, RationParameter newParam) {
 
-        return Objects.equals(oldParam.getSampleInputParams(),newParam.getSampleInputParams()) &&
+        return Objects.equals(oldParam.getSampleInputParams(), newParam.getSampleInputParams()) &&
                 Objects.equals(oldParam.getQcParams(), newParam.getQcParams()) &&
                 Objects.equals(oldParam.getCurveCoefficient(), newParam.getCurveCoefficient()) &&
                 Objects.equals(oldParam.getUnit(), newParam.getUnit()) &&
@@ -895,7 +895,7 @@ public class RationServiceImpl implements RationService {
             //"波长值最多支持3个，当前数量：" + waveLengths.size()
             return R.fail(YamlMessageSource.getMessageStatic("00102004", waveLengths.size()));
         }
-        if(!StringUtils.hasText(parameter.getChangeLampWaveLength())){
+        if (!StringUtils.hasText(parameter.getChangeLampWaveLength())) {
             return R.fail("换灯波长不能为空");
         }
 
@@ -903,7 +903,7 @@ public class RationServiceImpl implements RationService {
             double v = Double.parseDouble(parameter.getChangeLampWaveLength());
             if (v < 330 || v > 390) {
                 //"换灯波长要在（330-390）之间，当前值：" + v
-                return R.fail(YamlMessageSource.getMessageStatic("0010202A",v));
+                return R.fail(YamlMessageSource.getMessageStatic("0010202A", v));
             }
 
             if (waveLengths.contains(parameter.getChangeLampWaveLength())) {
@@ -920,11 +920,11 @@ public class RationServiceImpl implements RationService {
         }
         if (waveLengthParams.size() != waveLengths.size()) {
             //"波长参数数量需与波长值一致（当前参数数：" + waveLengthParams.size() + "，波长数：" + waveLengths.size() + "）"
-            return R.fail(YamlMessageSource.getMessageStatic("00102009",waveLengthParams.size(), waveLengths.size()));
+            return R.fail(YamlMessageSource.getMessageStatic("00102009", waveLengthParams.size(), waveLengths.size()));
         }
         for (int i = 0; i < waveLengthParams.size(); i++) {
             if (isBlank(waveLengthParams.get(i))) {
-                return R.fail(YamlMessageSource.getMessageStatic("0010200A" , (i + 1)));
+                return R.fail(YamlMessageSource.getMessageStatic("0010200A", (i + 1)));
             }
         }
 
@@ -977,30 +977,30 @@ public class RationServiceImpl implements RationService {
             }
             if (coefficientParams.size() > 10) {
                 //"系数参数最多支持10个，当前数量：" + coefficientParams.size()
-                return R.fail(YamlMessageSource.getMessageStatic("00102010",coefficientParams.size()));
+                return R.fail(YamlMessageSource.getMessageStatic("00102010", coefficientParams.size()));
             }
 
             int curveType = Integer.parseInt(parameter.getCurveType());
             if (coefficientParams.size() < curveType + 1) {
                 //"系数参数数量不足，当前数量：" + coefficientParams.size() + "，所需数量：" + (curveType + 1)
-                return R.fail(YamlMessageSource.getMessageStatic("00102011",coefficientParams.size(),(curveType + 1)));
+                return R.fail(YamlMessageSource.getMessageStatic("00102011", coefficientParams.size(), (curveType + 1)));
             }
 
             for (int i = 0; i < coefficientParams.size(); i++) {
                 String coeffStr = coefficientParams.get(i);
                 if (isBlank(coeffStr)) {
                     //"第" + (i + 1) + "个系数参数不能为空字符串"
-                    return R.fail(YamlMessageSource.getMessageStatic("00102012",(i + 1)));
+                    return R.fail(YamlMessageSource.getMessageStatic("00102012", (i + 1)));
                 }
                 try {
                     Double.parseDouble(coeffStr);
                     if (coeffStr.contains(".") && coeffStr.split("\\.")[1].length() > 10) {
                         //"第" + (i + 1) + "个系数参数小数位数不能超过10位，当前值：" + coeffStr
-                        return R.fail(YamlMessageSource.getMessageStatic("00102013",(i + 1),coeffStr));
+                        return R.fail(YamlMessageSource.getMessageStatic("00102013", (i + 1), coeffStr));
                     }
                 } catch (NumberFormatException e) {
                     //"第" + (i + 1) + "个系数参数格式错误（需为数字），当前值：" + coeffStr
-                    return R.fail(YamlMessageSource.getMessageStatic("00102014",(i + 1),coeffStr));
+                    return R.fail(YamlMessageSource.getMessageStatic("00102014", (i + 1), coeffStr));
                 }
             }
         }
@@ -1030,7 +1030,7 @@ public class RationServiceImpl implements RationService {
 
         if (RationCurveParamEnums.getName(repeatMode) == null) {
             //重复模式不合法
-            return R.fail(YamlMessageSource.getMessageStatic("00102016" ));
+            return R.fail(YamlMessageSource.getMessageStatic("00102016"));
         }
 
         // 4.2 单池重复（rmCR）时的关联校验
@@ -1045,11 +1045,11 @@ public class RationServiceImpl implements RationService {
                 int repeatCount = Integer.parseInt(repeatCountStr);
                 if (repeatCount < 2 || repeatCount > 10) {
                     //重复次数需在2-10范围内，当前值：repeatCount
-                    return R.fail(YamlMessageSource.getMessageStatic("00102018" ,repeatCount));
+                    return R.fail(YamlMessageSource.getMessageStatic("00102018", repeatCount));
                 }
             } catch (NumberFormatException e) {
                 //"重复次数格式错误（需为整数），当前值：" + repeatCountStr
-                return R.fail(YamlMessageSource.getMessageStatic("00102019",repeatCountStr));
+                return R.fail(YamlMessageSource.getMessageStatic("00102019", repeatCountStr));
             }
 
             // 时间间隔：0-60秒，保留1位小数
@@ -1062,15 +1062,15 @@ public class RationServiceImpl implements RationService {
                 double timeInterval = Double.parseDouble(timeIntervalStr);
                 if (timeInterval < 0 || timeInterval > 60) {
                     //"时间间隔需在0-60秒范围内，当前值：" + timeInterval
-                    return R.fail(YamlMessageSource.getMessageStatic("0010201B",timeInterval));
+                    return R.fail(YamlMessageSource.getMessageStatic("0010201B", timeInterval));
                 }
                 if (timeIntervalStr.contains(".") && timeIntervalStr.split("\\.")[1].length() > 1) {
                     //"时间间隔小数位数不能超过1位，当前值：" + timeIntervalStr
-                    return R.fail(YamlMessageSource.getMessageStatic("0010201C",timeIntervalStr));
+                    return R.fail(YamlMessageSource.getMessageStatic("0010201C", timeIntervalStr));
                 }
             } catch (NumberFormatException e) {
                 //"时间间隔格式错误（需为数字），当前值：" + timeIntervalStr
-                return R.fail(YamlMessageSource.getMessageStatic("0010201D",timeIntervalStr));
+                return R.fail(YamlMessageSource.getMessageStatic("0010201D", timeIntervalStr));
             }
         }
 
@@ -1081,13 +1081,13 @@ public class RationServiceImpl implements RationService {
         if (sampleInputParams != null && !sampleInputParams.isEmpty()) {
             if (sampleInputParams.size() > 10) {
                 //"样品输入参数最多支持10个，当前数量：" + sampleInputParams.size()
-                return R.fail(YamlMessageSource.getMessageStatic("0010201E",sampleInputParams.size()));
+                return R.fail(YamlMessageSource.getMessageStatic("0010201E", sampleInputParams.size()));
             }
             for (int i = 0; i < sampleInputParams.size(); i++) {
                 InputParam inputParam = sampleInputParams.get(i);
                 if (inputParam == null || isBlank(inputParam.getParamName())) {
                     //"第" + (i + 1) + "个样品输入参数标题不能为空"
-                    return R.fail(YamlMessageSource.getMessageStatic("0010201F",(i+1)));
+                    return R.fail(YamlMessageSource.getMessageStatic("0010201F", (i + 1)));
                 }
             }
         }
@@ -1096,13 +1096,13 @@ public class RationServiceImpl implements RationService {
         List<PreCountResultParam> resultParams = parameter.getResultParams();
         if (resultParams != null && !resultParams.isEmpty()) {
             if (resultParams.size() > 5) {
-                return R.fail(YamlMessageSource.getMessageStatic("00102020",resultParams.size()));
+                return R.fail(YamlMessageSource.getMessageStatic("00102020", resultParams.size()));
             }
             for (int i = 0; i < resultParams.size(); i++) {
                 PreCountResultParam resultParam = resultParams.get(i);
                 if (resultParam == null || isBlank(resultParam.getResultName()) || isBlank(resultParam.getFormulaText())) {
                     //"第" + (i + 1) + "个待计算结果参数标题或公式不能为空"
-                    return R.fail(YamlMessageSource.getMessageStatic("00102021",(i + 1)));
+                    return R.fail(YamlMessageSource.getMessageStatic("00102021", (i + 1)));
                 }
             }
         }
@@ -1113,17 +1113,17 @@ public class RationServiceImpl implements RationService {
 
             if (approxParams.size() > 10) {
                 //"最多支持修约10个变量" + approxParams.size()
-                return R.fail(YamlMessageSource.getMessageStatic("00103010",approxParams.size()));
+                return R.fail(YamlMessageSource.getMessageStatic("00103010", approxParams.size()));
             }
             for (RoundingVO approxParam : approxParams) {
 
                 if (approxParam.getRoundingParams() == null || approxParam.getRoundingParams().isEmpty()) {
                     //"修约设置" + approxParam.getResultIdentity() + "的修约条件不能为空"
-                    return R.fail(YamlMessageSource.getMessageStatic("00103011",approxParam.getResultIdentity()));
+                    return R.fail(YamlMessageSource.getMessageStatic("00103011", approxParam.getResultIdentity()));
                 }
                 if (approxParam.getRoundingParams().size() > 10) {
                     //"修约设置" + approxParam.getResultIdentity() + "的修约条件数量不能超过10个"
-                    return R.fail(YamlMessageSource.getMessageStatic("00103012",approxParam.getResultIdentity()));
+                    return R.fail(YamlMessageSource.getMessageStatic("00103012", approxParam.getResultIdentity()));
                 }
 
                 R<Boolean> r = guidePublicUtilService.checkApproximateRange(approxParam);
@@ -1138,7 +1138,7 @@ public class RationServiceImpl implements RationService {
         List<QualityConfVO> qcParams = parameter.getQcParams();
         if (qcParams != null && !qcParams.isEmpty() && qcParams.size() > 10) {
             //"质控设置最多支持10个规则，当前数量：" + qcParams.size()
-            return R.fail(YamlMessageSource.getMessageStatic("00102022",qcParams.size()));
+            return R.fail(YamlMessageSource.getMessageStatic("00102022", qcParams.size()));
         }
 
         // 7. 继承参数校验（方法名称等长度限制）
@@ -1233,7 +1233,7 @@ public class RationServiceImpl implements RationService {
             TMeasureMethod method = tMeasureMethodService.getById(methodKey);
             if (method != null && StringUtils.hasText(method.getMeasurementParamInfo())) {
                 RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
-                if(parameter != null && Objects.equals(parameter.getSamplePoolWay(), RationWeightEnum.WEIGHT.getIdentity())) {
+                if (parameter != null && Objects.equals(parameter.getSamplePoolWay(), RationWeightEnum.WEIGHT.getIdentity())) {
                     isWeight = true;
                 }
             }
@@ -1258,7 +1258,7 @@ public class RationServiceImpl implements RationService {
             RationTaskHeadSnapShot snapShot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
             if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
                 TaskHeadSnapshot standHead = snapShot.getStandHead();
-                if (standHead != null && standHead.getSampleHeads()!=null && !standHead.getSampleHeads().isEmpty()) {
+                if (standHead != null && standHead.getSampleHeads() != null && !standHead.getSampleHeads().isEmpty()) {
                     ans.addAll(standHead.getSampleHeads());
                 } else {
                     List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), sampleKind);
@@ -1266,7 +1266,7 @@ public class RationServiceImpl implements RationService {
                 }
             } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
                 TaskHeadSnapshot unknownHead = snapShot.getUnknownHead();
-                if (unknownHead != null && unknownHead.getSampleHeads()!=null && !unknownHead.getSampleHeads().isEmpty()) {
+                if (unknownHead != null && unknownHead.getSampleHeads() != null && !unknownHead.getSampleHeads().isEmpty()) {
                     ans.addAll(unknownHead.getSampleHeads());
                 } else {
                     List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), sampleKind);
@@ -1306,7 +1306,7 @@ public class RationServiceImpl implements RationService {
             //没有方法！
             return Result.fail(YamlMessageSource.getMessageStatic("00000025"));
         }
-        
+
         if (dto.getStandHeads().size() > 10) {
             //标准样品表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000028"));
@@ -1319,10 +1319,10 @@ public class RationServiceImpl implements RationService {
         for (Map<String, String> map : dto.getNewStandSamples()) {
             String jsonString = JSON.toJSONString(map);
             FSampleVO sampleDto = JSON.parseObject(jsonString, FSampleVO.class);
-            if (sampleDto.getSampleNumber()!=null&&sampleDto.getSampleNumber().length()>256){
+            if (sampleDto.getSampleNumber() != null && sampleDto.getSampleNumber().length() > 256) {
                 return Result.fail("新增标准样品编号超出限制");
             }
-            if (sampleDto.getSampleName()!=null&&sampleDto.getSampleName().length()>256){
+            if (sampleDto.getSampleName() != null && sampleDto.getSampleName().length() > 256) {
                 return Result.fail("新增标准样品名称超出限制");
             }
         }
@@ -1330,10 +1330,10 @@ public class RationServiceImpl implements RationService {
         for (Map<String, String> map : dto.getNewUnknowSamples()) {
             String jsonString = JSON.toJSONString(map);
             FSampleVO sampleDto = JSON.parseObject(jsonString, FSampleVO.class);
-            if (sampleDto.getSampleNumber()!=null&&sampleDto.getSampleNumber().length()>256){
+            if (sampleDto.getSampleNumber() != null && sampleDto.getSampleNumber().length() > 256) {
                 return Result.fail("新增未知样品编号超出限制");
             }
-            if (sampleDto.getSampleName()!=null&&sampleDto.getSampleName().length()>256){
+            if (sampleDto.getSampleName() != null && sampleDto.getSampleName().length() > 256) {
                 return Result.fail("新增未知样品名称超出限制");
             }
         }
@@ -1394,7 +1394,7 @@ public class RationServiceImpl implements RationService {
             //未知样品编号重复
             return Result.fail(YamlMessageSource.getMessageStatic("00102002"));
         }
-        
+
 
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
@@ -1483,7 +1483,6 @@ public class RationServiceImpl implements RationService {
                 taskHeadSnapShot.setStandHead(standHead);
             }
         }
-
 
 
         if (dto.getUnknowHeads() != null && !dto.getUnknowHeads().isEmpty()) {
@@ -1765,7 +1764,7 @@ public class RationServiceImpl implements RationService {
                 continue;
             }
             TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-            if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
+            if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())) {
                 sampleNumList.add(measureSample.getSampleNumber());
             }
 
@@ -1783,7 +1782,7 @@ public class RationServiceImpl implements RationService {
             //方法id不能为空,请创建方法或选择方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000021"));
         }
-        if(methodId.length() != 32){
+        if (methodId.length() != 32) {
             //方法ID格式应为32位
             return Result.fail(YamlMessageSource.getMessageStatic("0030300B"));
         }
@@ -1817,7 +1816,7 @@ public class RationServiceImpl implements RationService {
             //请选择任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
         }
-        if (!StringUtils.hasText(methodId)){
+        if (!StringUtils.hasText(methodId)) {
             //请选择方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000002"));
         }
@@ -1867,11 +1866,11 @@ public class RationServiceImpl implements RationService {
                 TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
 
                 if (StringUtils.hasText(sample.getSampleType())) {
-                    if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())){
+                    if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
                         empty = true;
                     }
                 }
-                if (StringUtils.hasText(sample.getHeads())){
+                if (StringUtils.hasText(sample.getHeads())) {
                     List<HeadVO> heads = JSON.parseArray(sample.getHeads(), HeadVO.class);
                     if (heads != null && !heads.isEmpty()) {
                         ans.addAll(heads);
@@ -1911,10 +1910,10 @@ public class RationServiceImpl implements RationService {
         List<HeadVO> allMeasureHeads = new ArrayList<>();
 
         for (String s : waveLength) {
-            String absIdentity = s + "-"+ WaveLengthEnum.abs.getCode();
-            String tPercentIdentity = s + "-"+ WaveLengthEnum.tPercent.getCode();
-            String absName = WaveLengthEnum.abs.getName() +  "[" + s + "nm]";
-            String tPercentName = WaveLengthEnum.tPercent.getName() +  "[" + s + "nm]";
+            String absIdentity = s + "-" + WaveLengthEnum.abs.getCode();
+            String tPercentIdentity = s + "-" + WaveLengthEnum.tPercent.getCode();
+            String absName = WaveLengthEnum.abs.getName() + "[" + s + "nm]";
+            String tPercentName = WaveLengthEnum.tPercent.getName() + "[" + s + "nm]";
 
             HeadVO absHead = new HeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
             HeadVO tPercentHead = new HeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
@@ -1951,7 +1950,7 @@ public class RationServiceImpl implements RationService {
         }
         List<HeadVO> ans = new ArrayList<>();
         List<HeadVO> systemHeads = headsMap.get(TableHeadILocateEnums.system.getIdentity());
-        if (systemHeads !=null) {
+        if (systemHeads != null) {
             ans.addAll(systemHeads);
         }
         for (HeadVO an : ans) {
@@ -1977,7 +1976,7 @@ public class RationServiceImpl implements RationService {
             R<FSamplePoolInfoVO> poolInfo = tSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
             if (poolInfo.getSuccess()) {
                 FSamplePoolInfoVO data = poolInfo.getData();
-                if (data.getIsAutoChangePool() ) {
+                if (data.getIsAutoChangePool()) {
                     String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
                     String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
                     HeadVO sampleLocation = new HeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
@@ -1987,12 +1986,12 @@ public class RationServiceImpl implements RationService {
         }
 
         List<HeadVO> sampleHeads = headsMap.get(TableHeadILocateEnums.sample.getIdentity());
-        if (sampleHeads !=null) {
+        if (sampleHeads != null) {
             ans.addAll(sampleHeads);
         }
         ans.addAll(allMeasureHeads);
         List<HeadVO> taskHeads = headsMap.get(TableHeadILocateEnums.data.getIdentity());
-        if (taskHeads !=null) {
+        if (taskHeads != null) {
             ans.addAll(taskHeads);
         }
 
@@ -2060,13 +2059,13 @@ public class RationServiceImpl implements RationService {
 
     //未知样品表头
     @Override
-    public Result<List<HeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay,String deviceSerialNumber) {
+    public Result<List<HeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber) {
 
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
         }
-        if ( !StringUtils.hasText(methodId)){
+        if (!StringUtils.hasText(methodId)) {
             //请选择方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000002"));
         }
@@ -2100,7 +2099,7 @@ public class RationServiceImpl implements RationService {
                     ans.addAll(shot.getUnknownHead().getSampleHeads());
                 }
             }
-        }else {
+        } else {
             List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_unknown.getIdentity());
             ans.addAll(preHead);
         }
@@ -2111,16 +2110,16 @@ public class RationServiceImpl implements RationService {
             for (TaskSpecimen specimen : taskSpecimen) {
                 TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
 
-                if(sample == null || !SampleTypeEnum.kind_unknown.getIdentity().equals(sample.getSampleKind())) {
+                if (sample == null || !SampleTypeEnum.kind_unknown.getIdentity().equals(sample.getSampleKind())) {
                     log.info("跳过该样品");
                     continue;
                 }
                 if (StringUtils.hasText(sample.getSampleType())) {
-                    if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())){
+                    if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
                         empty = true;
                     }
                 }
-                if (StringUtils.hasText(sample.getHeads())){
+                if (StringUtils.hasText(sample.getHeads())) {
                     List<HeadVO> heads = JSON.parseArray(sample.getHeads(), HeadVO.class);
                     if (heads != null && !heads.isEmpty()) {
                         ans.addAll(heads);
@@ -2131,7 +2130,7 @@ public class RationServiceImpl implements RationService {
 
         List<HeadVO> m = new ArrayList<>();
         for (HeadVO an : ans) {
-            if (!an.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())){
+            if (!an.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
                 m.add(an);
             }
         }
@@ -2332,7 +2331,7 @@ public class RationServiceImpl implements RationService {
     }
 
     @Override
-    public R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, RationParameter parameter, Integer  digit) {
+    public R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, RationParameter parameter, Integer digit) {
 
         List<String> waveLength = parameter.getWaveLength();
         List<String> lengthParams = parameter.getWaveLengthParams();
@@ -2439,12 +2438,13 @@ public class RationServiceImpl implements RationService {
             map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
             map.put(SampleTableEnum.SAMPLE_KIND.getIdentity(), sample.getSampleKind());
             map.put(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity(), sample.getNormalConcentration());
-            map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+ sample.getSampleLocation());
+            map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池" + sample.getSampleLocation());
             map.put(SampleTableEnum.DILUTION_RATIO.getIdentity(), sample.getDilutionRatio());
             map.put(SampleTableEnum.AMOUNT.getIdentity(), sample.getSampleVolume());
 
-            if (StringUtils.hasText(sample.getNewColData())){
-                Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
+            if (StringUtils.hasText(sample.getNewColData())) {
+                Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {
+                });
 
                 map.putAll(object);
             }
@@ -2459,7 +2459,7 @@ public class RationServiceImpl implements RationService {
                 if (data != null) {
                     map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
                     map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
-                    if (StringUtils.hasText(data.getOriginalCalculationData())){
+                    if (StringUtils.hasText(data.getOriginalCalculationData())) {
                         List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
                         for (RationWavelengthDataInfo dataInfo : list) {
                             map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), dataInfo.getAbsValue());
@@ -2492,7 +2492,7 @@ public class RationServiceImpl implements RationService {
                 if (data != null) {
                     map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
                     map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
-                    if (StringUtils.hasText(data.getOriginalCalculationData())){
+                    if (StringUtils.hasText(data.getOriginalCalculationData())) {
                         Map<String, Map<String, String>> childrenList = new HashMap<>();
                         List<Map<String, String>> middle = new ArrayList<>();
                         List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
@@ -2558,7 +2558,7 @@ public class RationServiceImpl implements RationService {
             queryDataDTO.setDigit(digit);
         }
 
-        if(queryDataDTO.getAllDisplay() == null) {
+        if (queryDataDTO.getAllDisplay() == null) {
             allDisplay = false;
         }
         queryDataDTO.setAllDisplay(allDisplay);
@@ -2659,7 +2659,7 @@ public class RationServiceImpl implements RationService {
                         if (poolInfo.getSuccess()) {
                             FSamplePoolInfoVO data = poolInfo.getData();
                             if (data.getIsAutoChangePool()) {
-                                singleSampleData.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
+                                singleSampleData.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池" + sample.getSampleLocation());
                             }
                         }
                     }
@@ -2679,7 +2679,7 @@ public class RationServiceImpl implements RationService {
                         if (poolInfo.getSuccess()) {
                             FSamplePoolInfoVO data = poolInfo.getData();
                             if (data.getIsAutoChangePool()) {
-                                sampleData.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
+                                sampleData.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池" + sample.getSampleLocation());
                             }
                         }
                     }
@@ -2714,7 +2714,7 @@ public class RationServiceImpl implements RationService {
                     children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
 
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue());
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(),wlData.getTPercentValue());
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), wlData.getTPercentValue());
                     ans.putIfAbsent(pre + DataIdentityEnums.avg.getIdentity(), children);
                 }
                 if (DataIdentityEnums.sd.getIdentity().equals(s)) {
@@ -2816,7 +2816,8 @@ public class RationServiceImpl implements RationService {
                                 Object object = map.get(SampleTableEnum.QUALITY.getIdentity());
                                 if (object != null) {
                                     Map<String, String> quality = new ObjectMapper().convertValue(object,
-                                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {});
+                                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {
+                                            });
                                     qcAns.putAll(quality);
                                 }
                                 map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
@@ -2947,7 +2948,8 @@ public class RationServiceImpl implements RationService {
                         Object object = map.get(SampleTableEnum.QUALITY.getIdentity());
                         if (object != null) {
                             Map<String, String> quality = new ObjectMapper().convertValue(object,
-                                    new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {});
+                                    new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {
+                                    });
                             qcAns.putAll(quality);
                         }
                         map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
@@ -2957,7 +2959,8 @@ public class RationServiceImpl implements RationService {
         }
         if (one != null && StringUtils.hasText(one.getAnalysisParam())) {
             Map<String, String> jsonObject;
-            jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>(){});
+            jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>() {
+            });
 
             map.putAll(jsonObject);
         }
@@ -2970,7 +2973,6 @@ public class RationServiceImpl implements RationService {
         }
         return str.matches("-?\\d+");
     }
-
 
 
     @Override
@@ -3017,10 +3019,11 @@ public class RationServiceImpl implements RationService {
             map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
             map.put(SampleTableEnum.SAMPLE_KIND.getIdentity(), sample.getSampleKind());
             map.put(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity(), sample.getNormalConcentration());
-            map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
+            map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池" + sample.getSampleLocation());
 
-            if (StringUtils.hasText(sample.getNewColData())){
-                Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
+            if (StringUtils.hasText(sample.getNewColData())) {
+                Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {
+                });
 
                 map.putAll(object);
             }
@@ -3034,7 +3037,7 @@ public class RationServiceImpl implements RationService {
                 TMeasureData data = tMeasureDataService.getOne(queryWrapper);
                 if (data != null) {
 
-                    if (StringUtils.hasText(data.getOriginalCalculationData())){
+                    if (StringUtils.hasText(data.getOriginalCalculationData())) {
                         List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
                         for (RationWavelengthDataInfo dataInfo : list) {
                             map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), dataInfo.getAbsValue());
@@ -3069,7 +3072,7 @@ public class RationServiceImpl implements RationService {
                 if (data != null) {
                     map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
                     map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
-                    if (StringUtils.hasText(data.getOriginalCalculationData())){
+                    if (StringUtils.hasText(data.getOriginalCalculationData())) {
                         Map<String, Map<String, String>> childrenList = new HashMap<>();
                         List<Map<String, String>> middle = new ArrayList<>();
                         List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
@@ -3116,7 +3119,7 @@ public class RationServiceImpl implements RationService {
     @Override
     public R<Boolean> checkStandAllSampleTest(String taskId) {
 
-         TMeasureTask task = tMeasureTaskService.getById(taskId);
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
             return R.fail(YamlMessageSource.getMessageStatic("00000004"));
@@ -3130,7 +3133,7 @@ public class RationServiceImpl implements RationService {
         }
         boolean allTested = true;
         for (TaskSpecimen specimen : taskSpecimen) {
-            if(specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+            if (specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
                 if (specimen.getIsTested().equals(noTested) && specimen.getDeleteType().equals(createType)) {
                     allTested = false;
                     break;
@@ -3153,7 +3156,7 @@ public class RationServiceImpl implements RationService {
         String updateBy = dto.getUpdateBy();
         String deviceSerialNumber = dto.getDeviceSerialNumber();
 
-         TMeasureTask task = tMeasureTaskService.getById(taskId);
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
 
         if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
 
@@ -3184,7 +3187,7 @@ public class RationServiceImpl implements RationService {
             taskSpecimen = new ArrayList<>();
         }
         Result<List<HeadVO>> listResult = querySampleHeads(taskId, sampleKind);
-        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())){
+        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
             return R.fail(listResult.getMessage());
         }
         Integer sampleAutoNum = task.getSampleAutoNum();
@@ -3199,7 +3202,7 @@ public class RationServiceImpl implements RationService {
         //动态表头
         List<HeadVO> dynamicHeads = new ArrayList<>();
         heads.forEach(head -> {
-            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())){
+            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())) {
                 dynamicHeads.add(head);
             }
         });
@@ -3213,7 +3216,7 @@ public class RationServiceImpl implements RationService {
         }
 
         if (taskSpecimen.isEmpty()) {
-            TMeasureSample newSample = new  TMeasureSample();
+            TMeasureSample newSample = new TMeasureSample();
 
             sampleAutoNum = 1;
             String namePrefix = "样品";
@@ -3284,11 +3287,11 @@ public class RationServiceImpl implements RationService {
                     break;
                 }
                 TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                if (measureSample != null && StringUtils.hasText(measureSample.getSampleName())){
+                if (measureSample != null && StringUtils.hasText(measureSample.getSampleName())) {
                     sampleNumList.add(measureSample.getSampleNumber());
                     sampleNameList.add(measureSample.getSampleName());
                     if (StringUtils.hasText(measureSample.getNormalConcentration())) {
-                        cou =  Double.parseDouble(measureSample.getNormalConcentration()) - last;
+                        cou = Double.parseDouble(measureSample.getNormalConcentration()) - last;
                         last = Double.parseDouble(measureSample.getNormalConcentration());
                     }
                 }
@@ -3297,7 +3300,7 @@ public class RationServiceImpl implements RationService {
                 return R.ok(true);
             }
 
-             TMeasureSample newSample = new  TMeasureSample();
+            TMeasureSample newSample = new TMeasureSample();
             if (cou == 0) {
                 cou = 1;
             }
@@ -3336,12 +3339,12 @@ public class RationServiceImpl implements RationService {
             }
 
             sampleAutoNum = numStartNum;
-            while (sampleNumList.contains(sampleNumPrefix+ sampleAutoNum)) {
+            while (sampleNumList.contains(sampleNumPrefix + sampleAutoNum)) {
                 sampleAutoNum += numSuffix;
             }
 
             int nameNum = nameStartNum;
-            while (sampleNameList.contains(namePrefix+ nameNum)) {
+            while (sampleNameList.contains(namePrefix + nameNum)) {
                 nameNum += nameSuffix;
             }
 
@@ -3349,7 +3352,7 @@ public class RationServiceImpl implements RationService {
             int numName = nameNum;
 
             sampleNumList.add(sampleNumPrefix + num);
-            sampleNameList.add(namePrefix+ numName);
+            sampleNameList.add(namePrefix + numName);
             newSample.setSampleNumber(sampleNumPrefix + num);
             newSample.setSampleName(namePrefix + numName);
 
@@ -3379,11 +3382,11 @@ public class RationServiceImpl implements RationService {
             if (isAutoChangePool) {
                 for (int i = 1; i < all; i++) {
                     newSample.setId(null);
-                    while (sampleNumList.contains(sampleNumPrefix+ sampleAutoNum)) {
+                    while (sampleNumList.contains(sampleNumPrefix + sampleAutoNum)) {
                         sampleAutoNum += numSuffix;
                     }
 
-                    while (sampleNameList.contains(namePrefix+ nameNum)) {
+                    while (sampleNameList.contains(namePrefix + nameNum)) {
                         nameNum += nameSuffix;
                     }
 
@@ -3391,7 +3394,7 @@ public class RationServiceImpl implements RationService {
                     numName = nameNum;
 
                     sampleNumList.add(sampleNumPrefix + num);
-                    sampleNameList.add(namePrefix+ numName);
+                    sampleNameList.add(namePrefix + numName);
                     newSample.setSampleNumber(sampleNumPrefix + num);
                     newSample.setSampleName(namePrefix + numName);
 
@@ -3427,17 +3430,16 @@ public class RationServiceImpl implements RationService {
     }
 
 
-
     @Override
     public R<FittingReceiveInfo> fittingCurve(List<RationCountDataInfo> countData, Boolean empty, String methodId, List<String> inputParam) {
-        
+
         List<Double> data = new ArrayList<>();
         FittingParam param = new FittingParam();
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
 
-        if (!StringUtils.hasText(parameter.getCurveType())){
+        if (!StringUtils.hasText(parameter.getCurveType())) {
             //请选择曲线类型
             return R.fail(YamlMessageSource.getMessageStatic("00102025"));
         }
@@ -3469,7 +3471,7 @@ public class RationServiceImpl implements RationService {
         param.setForce_zero(0L);
 
         if (zeroMethod != null && !zeroMethod.isEmpty()) {
-            for (String zero: zeroMethod) {
+            for (String zero : zeroMethod) {
                 if (zero.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
                     data.add(0.00);
                     inputParam.add("0.0");
@@ -3515,7 +3517,7 @@ public class RationServiceImpl implements RationService {
             info.setRoundCoefficient(kList);
         }
 
-        if (info.getR() != null){
+        if (info.getR() != null) {
 
             Double r = Double.parseDouble(info.getR());
             if (!r.isNaN() && !r.isInfinite()) {
@@ -3526,7 +3528,7 @@ public class RationServiceImpl implements RationService {
             }
         }
 
-        if (info.getR2() != null){
+        if (info.getR2() != null) {
 
             Double r = Double.parseDouble(info.getR2());
             if (!r.isNaN() && !r.isInfinite()) {
@@ -3544,7 +3546,7 @@ public class RationServiceImpl implements RationService {
             equation = rebuildFormula(kList, kDigits, info.getDegree(), "Abs", "C");
             info.setEquation(equation);
         } else {
-            equation = rebuildFormula(kList,kDigits, info.getDegree(), "C", "Abs");
+            equation = rebuildFormula(kList, kDigits, info.getDegree(), "C", "Abs");
             info.setEquation(equation);
         }
         Arrays.stream(param.getX_data()).min().ifPresent(info::setMinX);
@@ -3593,9 +3595,9 @@ public class RationServiceImpl implements RationService {
         for (int i = 0; i <= degree; i++) {
 
             // 设置系数字段（根据degree动态设置）
-            if(coefficientList.get(degree - i) != 0.0){
+            if (coefficientList.get(degree - i) != 0.0) {
                 double cuff = coefficientList.get(degree - i);
-                if (index == 0){
+                if (index == 0) {
                     if (cuff < 0) {
                         formula.append(" - ");
                     }
@@ -3626,7 +3628,7 @@ public class RationServiceImpl implements RationService {
     }
 
     @Override
-    public Result<RationFitCurveVO> queryCurveInfo(String taskId, String methodId){
+    public Result<RationFitCurveVO> queryCurveInfo(String taskId, String methodId) {
 
         if (!StringUtils.hasText(taskId)) {
             log.info("缺少任务id");
@@ -3685,7 +3687,7 @@ public class RationServiceImpl implements RationService {
                 }
             }
 
-            if (StringUtils.hasText(task.getFittingParam()) && !task.getFittingParam().equals("{}") && !task.getFittingParam().equals("null")){
+            if (StringUtils.hasText(task.getFittingParam()) && !task.getFittingParam().equals("{}") && !task.getFittingParam().equals("null")) {
                 FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
 
 
@@ -3697,7 +3699,7 @@ public class RationServiceImpl implements RationService {
 
                 if (StringUtils.hasText(fittingParam.getRoundR())) {
                     Double r = null;
-                    try  {
+                    try {
                         r = Double.valueOf(fittingParam.getRoundR());
                     } catch (Exception ignored) {
                     }
@@ -3713,7 +3715,7 @@ public class RationServiceImpl implements RationService {
                 if (StringUtils.hasText(fittingParam.getRoundR2())) {
 
                     Double r2 = null;
-                    try  {
+                    try {
                         r2 = Double.valueOf(fittingParam.getRoundR2());
                     } catch (Exception ignored) {
                     }
@@ -3748,8 +3750,8 @@ public class RationServiceImpl implements RationService {
                 int degree = Integer.parseInt(parameter.getCurveType());
                 fittingReceiveInfo.setDegree(degree);
 
-                String variable = parameter.getEquationType().equals(RationCurveParamEnums.typeAbs.getIdentity())? "Abs":"C";
-                String Y = parameter.getEquationType().equals(RationCurveParamEnums.typeAbs.getIdentity())? "C":"Abs";
+                String variable = parameter.getEquationType().equals(RationCurveParamEnums.typeAbs.getIdentity()) ? "Abs" : "C";
+                String Y = parameter.getEquationType().equals(RationCurveParamEnums.typeAbs.getIdentity()) ? "C" : "Abs";
                 StringBuilder formula = new StringBuilder();
                 formula.append(Y).append(" = ");
                 List<String> coefficientList = parameter.getCoefficientParams();
@@ -3774,15 +3776,25 @@ public class RationServiceImpl implements RationService {
                     }
                     // 设置系数字段（根据degree动态设置）
                     switch (degree - i) {
-                        case 0: fittingReceiveInfo.setK0(coeffValue); break;
-                        case 1: fittingReceiveInfo.setK1(coeffValue); break;
-                        case 2: fittingReceiveInfo.setK2(coeffValue); break;
-                        case 3: fittingReceiveInfo.setK3(coeffValue); break;
-                        case 4: fittingReceiveInfo.setK4(coeffValue); break;
+                        case 0:
+                            fittingReceiveInfo.setK0(coeffValue);
+                            break;
+                        case 1:
+                            fittingReceiveInfo.setK1(coeffValue);
+                            break;
+                        case 2:
+                            fittingReceiveInfo.setK2(coeffValue);
+                            break;
+                        case 3:
+                            fittingReceiveInfo.setK3(coeffValue);
+                            break;
+                        case 4:
+                            fittingReceiveInfo.setK4(coeffValue);
+                            break;
                     }
-                    if(!coefficientList.get(degree - i).equals("0")){
+                    if (!coefficientList.get(degree - i).equals("0")) {
                         double cuff = Double.parseDouble(coefficientList.get(degree - i));
-                        if (i==0){
+                        if (i == 0) {
                             if (cuff < 0) {
                                 formula.append(" - ");
                             }
@@ -3917,11 +3929,10 @@ public class RationServiceImpl implements RationService {
                 result.setMaxX(result.getMaxX() + v);
                 result.setMinX(result.getMinX() - v);
             }
-        } else if (result.getMaxX()==Double.MIN_VALUE || result.getMinX()==Double.MAX_VALUE) {
-                result.setMaxX(1.0);
-                result.setMinX(0.0);
+        } else if (result.getMaxX() == Double.MIN_VALUE || result.getMinX() == Double.MAX_VALUE) {
+            result.setMaxX(1.0);
+            result.setMinX(0.0);
         }
-
 
 
         return result;
@@ -4066,7 +4077,7 @@ public class RationServiceImpl implements RationService {
 
         if (StringUtils.hasText(info.getRoundR())) {
             Double r = null;
-            try  {
+            try {
                 r = Double.valueOf(info.getRoundR());
             } catch (Exception ignored) {
             }
@@ -4080,7 +4091,7 @@ public class RationServiceImpl implements RationService {
         }
         if (StringUtils.hasText(info.getRoundR2())) {
             Double r2 = null;
-            try  {
+            try {
                 r2 = Double.valueOf(info.getRoundR2());
             } catch (Exception ignored) {
             }
@@ -4098,10 +4109,11 @@ public class RationServiceImpl implements RationService {
 
     /**
      * 值计算
-     * @param info 曲线信息
-     * @param value 待计算的值
+     *
+     * @param info         曲线信息
+     * @param value        待计算的值
      * @param equationType 曲线类型
-     * @param digit 小数位数
+     * @param digit        小数位数
      * @return
      */
     @Override
@@ -4229,7 +4241,7 @@ public class RationServiceImpl implements RationService {
 
     private String roundData(String value, List<RoundingParamVO> roundingParams) {
         double middle = Double.parseDouble(value);
-        String  ans = value;
+        String ans = value;
         for (RoundingParamVO param : roundingParams) {
             Double lowerLimit = param.getLowerLimit();
 
@@ -4310,8 +4322,8 @@ public class RationServiceImpl implements RationService {
 
         for (RationWavelengthDataInfo dataInfo : vo) {
             if (dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
-                allData.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), dataInfo.getAbsValue()==null? null :dataInfo.getAbsValue());
-                allData.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), dataInfo.getTPercentValue()==null? null :dataInfo.getTPercentValue());
+                allData.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), dataInfo.getAbsValue() == null ? null : dataInfo.getAbsValue());
+                allData.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), dataInfo.getTPercentValue() == null ? null : dataInfo.getTPercentValue());
             }
         }
 
@@ -4327,7 +4339,7 @@ public class RationServiceImpl implements RationService {
                     mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
             if (!mapTableHead.isPresent()) {
                 //"缺少参数映射：" + inputParam.getParamName()
-                return R.fail(YamlMessageSource.getMessageStatic("00300005",inputParam.getParamName()));
+                return R.fail(YamlMessageSource.getMessageStatic("00300005", inputParam.getParamName()));
             }
             identity.append(mapTableHead.get().getParamIdentity()).append(",");
             String s = allData.getString(mapTableHead.get().getHeadIdentity());
@@ -4338,8 +4350,8 @@ public class RationServiceImpl implements RationService {
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
         }
-        identity.deleteCharAt(identity.length()-1);
-        values.deleteCharAt(values.length()-1);
+        identity.deleteCharAt(identity.length() - 1);
+        values.deleteCharAt(values.length() - 1);
 
         List<RationCountDataInfo> countList = new ArrayList<>();
         for (PreCountResultParam param : parameter.getResultParams()) {
@@ -4352,7 +4364,7 @@ public class RationServiceImpl implements RationService {
 
             if (!resultJson.get("code").equals("0") && !resultJson.get("code").equals(0)) {
                 //"公式计算出错！" + resultJson.get("message")
-                return R.fail(YamlMessageSource.getMessageStatic("00300007",resultJson.get("message")));
+                return R.fail(YamlMessageSource.getMessageStatic("00300007", resultJson.get("message")));
             }
             countDataInfo.setColValue((String) resultJson.get("result"));
             countList.add(countDataInfo);
@@ -4532,7 +4544,7 @@ public class RationServiceImpl implements RationService {
                                 RationCountDataInfo sumAbs = new RationCountDataInfo();
                                 BeanUtils.copyProperties(yAbs, sumAbs);
 
-                                sumAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit,v1), digit));
+                                sumAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v1), digit));
                                 newList.add(sumAbs);
                             }
                         }
@@ -4620,7 +4632,7 @@ public class RationServiceImpl implements RationService {
         empty = taskSpecimen.stream()
                 .anyMatch(specimen ->
                         specimen.getSpecimenKey().equals(dealSampleKind)
-                                && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())&&
+                                && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity()) &&
                                 specimen.getDeleteType() != null &&
                                 specimen.getDeleteType().equals(createType)
                 );
@@ -4708,7 +4720,7 @@ public class RationServiceImpl implements RationService {
                     //添加到空白列表
                     currentList.add(ansData);
                     double v = Double.parseDouble(ansData.getColValue()) - minuend;
-                    yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit,v),digit));
+                    yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
                     currentList.add(yAbs);
                     dealData.setCountData(currentList);
                     emptyDataList.add(dealData);
@@ -4724,7 +4736,7 @@ public class RationServiceImpl implements RationService {
                                 RationCountDataInfo sumAbs = new RationCountDataInfo();
                                 BeanUtils.copyProperties(yAbs, sumAbs);
 
-                                sumAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit,v1), digit));
+                                sumAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v1), digit));
                                 newList.add(sumAbs);
                             }
                         }
@@ -4773,7 +4785,7 @@ public class RationServiceImpl implements RationService {
                  */
                 FittingReceiveInfo fitInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
 
-                if (fitInfo != null && fitInfo.getRoundCoefficient()!= null) {
+                if (fitInfo != null && fitInfo.getRoundCoefficient() != null) {
                     String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
 
                     if (ans != null) {
@@ -4834,6 +4846,7 @@ public class RationServiceImpl implements RationService {
         return null;
 
     }
+
     public List<RationWavelengthDataInfo> countRepeatData(List<RationWavelengthDataInfo> originData, Integer digit) {
 
         List<RationWavelengthDataInfo> ans = new ArrayList<>();
@@ -4866,14 +4879,14 @@ public class RationServiceImpl implements RationService {
             double mean = DataCountUtil.calculateMean(allAbs, digit);
             Double absSD = DataCountUtil.calculateSD(allAbs, digit);
             Double absRsd = DataCountUtil.calculateRSD(allAbs, digit);
-            repeatData = new RepeatMeasureData(absSD == null ? "未检出" :String.valueOf(absSD), absRsd == null ? "未检出" :String.valueOf(absRsd));
+            repeatData = new RepeatMeasureData(absSD == null ? "未检出" : String.valueOf(absSD), absRsd == null ? "未检出" : String.valueOf(absRsd));
             otherData.put(wavelength + "-" + WaveLengthEnum.abs.getCode(), repeatData);
 
             List<Double> allPercent = tPercentValue.get(wavelength);
             double meanT = DataCountUtil.calculateMean(allPercent, digit);
             Double percentSD = DataCountUtil.calculateSD(allPercent, digit);
             Double percentRsd = DataCountUtil.calculateRSD(allPercent, digit);
-            repeatData = new RepeatMeasureData(percentSD == null ? "未检出" :String.valueOf(percentSD), percentRsd == null ? "未检出" :String.valueOf(percentRsd));
+            repeatData = new RepeatMeasureData(percentSD == null ? "未检出" : String.valueOf(percentSD), percentRsd == null ? "未检出" : String.valueOf(percentRsd));
             otherData.put(wavelength + "-" + WaveLengthEnum.abs.getCode(), repeatData);
 
             dataInfo.setAbsValue(String.valueOf(mean));
@@ -4898,7 +4911,7 @@ public class RationServiceImpl implements RationService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
 
-        if (!StringUtils.hasText(taskId)){
+        if (!StringUtils.hasText(taskId)) {
             //创建任务
 
             //创建任务
@@ -4992,7 +5005,7 @@ public class RationServiceImpl implements RationService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
 
-        if (!StringUtils.hasText(taskId)){
+        if (!StringUtils.hasText(taskId)) {
             //创建任务
 
             //创建任务
@@ -5033,7 +5046,7 @@ public class RationServiceImpl implements RationService {
         List<String> waveLength = parameter.getWaveLength();
         // 通过序列号获取ip
         String ip = deviceInfoService.getIp(deviceSerialNumber);
-        if (RationCurveParamEnums.no_differential.equals(parameter.getDifferentialModeName())){
+        if (RationCurveParamEnums.no_differential.equals(parameter.getDifferentialModeName())) {
             List<ChangeParam> list = new ArrayList<>();
             for (String s : waveLength) {
 
@@ -5056,11 +5069,11 @@ public class RationServiceImpl implements RationService {
                 list.add(changeParam);
             }
             task.setZeroParam(JSON.toJSONString(list));
-        }else{
+        } else {
             Map<String, List<ChangeParam>> map = new HashMap<>();
             for (String s : waveLength) {
-                double startWaveLength = Double.parseDouble(s)+5;
-                double endWaveLength = Double.parseDouble(s)-5;
+                double startWaveLength = Double.parseDouble(s) + 5;
+                double endWaveLength = Double.parseDouble(s) - 5;
                 List<Command> commands = new ArrayList<>();
                 Command com1 = new Command(SetParamEnum.SetStartWl.getComId(), new Object[]{startWaveLength});
                 Command com2 = new Command(SetParamEnum.SetEndWl.getComId(), new Object[]{endWaveLength});
@@ -5068,7 +5081,7 @@ public class RationServiceImpl implements RationService {
                 commands.add(com2);
                 R<String> stringR = null;
                 try {
-                    stringR = devMessageUtil.spectrumScanSet(commands,ip);
+                    stringR = devMessageUtil.spectrumScanSet(commands, ip);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -5147,7 +5160,7 @@ public class RationServiceImpl implements RationService {
                 if (StringUtils.hasText(curve.getR())) {
                     double r = Double.parseDouble(curve.getR());
                     if (!Double.isNaN(r) && !Double.isInfinite(r)) {
-                        String s = checkQcValue(param,r);
+                        String s = checkQcValue(param, r);
                         result.put(param.getControlType(), s);
                     }
                 }
@@ -5157,7 +5170,7 @@ public class RationServiceImpl implements RationService {
                 if (StringUtils.hasText(curve.getR2())) {
                     double r = Double.parseDouble(curve.getR());
                     if (!Double.isNaN(r) && !Double.isInfinite(r)) {
-                        String s = checkQcValue(param,r);
+                        String s = checkQcValue(param, r);
                         result.put(param.getControlType(), s);
                     }
                 }
@@ -5251,8 +5264,6 @@ public class RationServiceImpl implements RationService {
 
         return result;
     }
-
-
 
 
     @Override
@@ -5359,12 +5370,13 @@ public class RationServiceImpl implements RationService {
 
     /**
      * 多格式文件导出（支持word/txt/xlsx）
-     * @param taskId 任务ID
+     *
+     * @param taskId     任务ID
      * @param allDisplay 是否显示全部数据
-     * @param fileType 导出格式（word/txt/xlsx）
+     * @param fileType   导出格式（word/txt/xlsx）
      * @return 生成的文件对象
      */
-    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType) {
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit) {
         // log.info("开始导出11111111，taskId: {}, fileType: {}", taskId, fileType);
         // 1. 基础参数校验（复用原逻辑）
         if (!StringUtils.hasText(taskId)) {
@@ -5403,7 +5415,7 @@ public class RationServiceImpl implements RationService {
         // 构建表头（与原逻辑一致）
         List<HeadVO> heads = new ArrayList<>();
         // 添加动态表头
-        List<HeadVO> vos = getStandSampleTableHead(taskId, methodId, allDisplay,task.getDeviceSerialNumber()).getData();
+        List<HeadVO> vos = getStandSampleTableHead(taskId, methodId, allDisplay, task.getDeviceSerialNumber()).getData();
         heads.addAll(vos);
         // // 最前面加序号列（所有格式统一需要）
         heads.add(0, new HeadVO("序号", "serialNumber"));
@@ -5413,10 +5425,12 @@ public class RationServiceImpl implements RationService {
         queryDataDTO.setOption(new ArrayList<>());
         queryDataDTO.setTaskId(taskId);
         queryDataDTO.setAllDisplay(allDisplay);
+        queryDataDTO.setDigit(digit);
+        queryDataDTO.setOtherDigit(otherDigit);
         Result<RationSampleDataVO> sampleDataResult = querySampleData(queryDataDTO);
         if (!sampleDataResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) { // 校验查询是否成功
             //"查询样品数据失败：" + sampleDataResult.getMessage()
-            return R.fail(YamlMessageSource.getMessageStatic("00303014",sampleDataResult.getMessage()));
+            return R.fail(YamlMessageSource.getMessageStatic("00303014", sampleDataResult.getMessage()));
         }
         RationSampleDataVO dataVO = sampleDataResult.getData();
         if (dataVO == null) { // 校验VO对象是否为空
@@ -5458,7 +5472,7 @@ public class RationServiceImpl implements RationService {
                 file.delete();
             }
             //"文件生成失败：" + e.getMessage()
-            return R.fail(YamlMessageSource.getMessageStatic("00302006",e.getMessage()));
+            return R.fail(YamlMessageSource.getMessageStatic("00302006", e.getMessage()));
         }
     }
 
@@ -5470,21 +5484,21 @@ public class RationServiceImpl implements RationService {
         list.add(0.0);
         list.add(2.0);
 
-        String s = rebuildFormula(list, 2,2, "Abs", "C");
+        String s = rebuildFormula(list, 2, 2, "Abs", "C");
         System.out.println(s);
     }
 
     // ---------------------- 原有downloadWord方法（可保留或删除，建议用上面的downloadFile替代） ----------------------
     public R<File> downloadWord(String taskId, Boolean allDisplay) {
         // 直接调用多格式方法，指定格式为word
-        return downloadFile(taskId, allDisplay, "word");
+        return downloadFile(taskId, allDisplay, "word", null, null);
     }
 
     /**
      * 生成Word文件（修复原逻辑的表格列错位问题）
      */
     private void generateWordFile(File file, TMeasureTask task, TMeasureMethod method,
-                                 List<HeadVO> heads, List<Map<String, Object>> data, int vosSize) throws Exception {
+                                  List<HeadVO> heads, List<Map<String, Object>> data, int vosSize) throws Exception {
         XWPFDocument doc = new XWPFDocument();
         CTDocument1 document = doc.getDocument();
         CTBody body = document.getBody();
@@ -5527,7 +5541,7 @@ public class RationServiceImpl implements RationService {
         for (int i = 0; i < columnCount; i++) {
             // 1. 打印当前循环索引，方便定位具体哪一列出问题
             // log.info("正在处理表头第 {} 列（从0开始计数）", i);
-            
+
             // 2. 验证单元格cell是否存在
             XWPFTableCell cell = headerRow.getCell(i);
             if (cell == null) {
@@ -5536,7 +5550,7 @@ public class RationServiceImpl implements RationService {
                 cell = headerRow.createCell();
                 // log.warn("已为表头第 {} 列主动创建空单元格", i);
             }
-            
+
             // 3. 验证heads列表在当前索引是否有值
             if (i >= heads.size()) {
                 // log.error("表头索引 {} 超出heads列表长度！heads列表实际长度：{}", i, heads.size());
@@ -5549,14 +5563,14 @@ public class RationServiceImpl implements RationService {
                 cell.setText("空表头"); // 给默认值
                 continue;
             }
-            
+
             // 4. 验证表头名称name是否存在（字段缺失检查）
             String headName = head.getName();
             if (headName == null || headName.trim().isEmpty()) {
                 // log.warn("表头第 {} 列的名称name为空（HeadVO.getIdentity()：{}）", i, head.getIdentity());
                 headName = "未命名列（" + head.getIdentity() + "）"; // 用identity补全，方便排查
             }
-            
+
             // 最终填充单元格
             cell.setText(headName);
             // log.info("表头第 {} 列填充完成：cell内容 = {}", i, headName);
@@ -5580,11 +5594,11 @@ public class RationServiceImpl implements RationService {
                 if (head == null) {
                     continue; // 表头不存在则跳过
                 }
-                
+
                 // 2. 获取原始数据（不做默认值处理，保留null）
                 String identity = head.getIdentity();
                 Object originalValue = map != null ? map.get(identity) : null;
-                
+
                 // 3. 原始值直接转换为字符串（不做任何额外处理）
                 String cellData;
                 if (originalValue == null) {
@@ -5737,86 +5751,87 @@ public class RationServiceImpl implements RationService {
             if (head == null) {
                 // log.warn("表头列表第{}个元素为null，使用默认表头", i);
                 excelHeads.add(Collections.singletonList("未命名列_" + i));
-            continue;
-        }
-        // 防护：表头名称为null/空
-        String headName = head.getName();
-        if (headName == null || headName.trim().isEmpty()) {
-            headName = "未命名列（" + head.getIdentity() + "）";
-            // log.warn("表头第{}列名称为空，使用默认名称：{}", i, headName);
-        }
-        excelHeads.add(Collections.singletonList(headName));
-    }
-
-    // 3. 转换数据（处理空Map和null值）
-    List<List<Object>> excelData = new ArrayList<>();
-    for (int rowIdx = 0; rowIdx < data.size(); rowIdx++) {
-        Map<String, Object> map = data.get(rowIdx);
-        // 防护：当前数据行为null
-        if (map == null) {
-            // log.warn("数据列表第{}行的Map为null，跳过该行", rowIdx);
-            continue;
+                continue;
+            }
+            // 防护：表头名称为null/空
+            String headName = head.getName();
+            if (headName == null || headName.trim().isEmpty()) {
+                headName = "未命名列（" + head.getIdentity() + "）";
+                // log.warn("表头第{}列名称为空，使用默认名称：{}", i, headName);
+            }
+            excelHeads.add(Collections.singletonList(headName));
         }
 
-        List<Object> rowData = new ArrayList<>();
-        for (int colIdx = 0; colIdx < heads.size(); colIdx++) {
-            HeadVO head = heads.get(colIdx);
-            // 防护：表头为null时，直接填充默认值
-            if (head == null) {
-                rowData.add("-");
+        // 3. 转换数据（处理空Map和null值）
+        List<List<Object>> excelData = new ArrayList<>();
+        for (int rowIdx = 0; rowIdx < data.size(); rowIdx++) {
+            Map<String, Object> map = data.get(rowIdx);
+            // 防护：当前数据行为null
+            if (map == null) {
+                // log.warn("数据列表第{}行的Map为null，跳过该行", rowIdx);
                 continue;
             }
 
-            // 提取字段值，防护null
-            Object value = map.get(head.getIdentity());
-            String cellData = "-"; // 默认空值
+            List<Object> rowData = new ArrayList<>();
+            for (int colIdx = 0; colIdx < heads.size(); colIdx++) {
+                HeadVO head = heads.get(colIdx);
+                // 防护：表头为null时，直接填充默认值
+                if (head == null) {
+                    rowData.add("-");
+                    continue;
+                }
 
-            if (value != null) {
-                cellData = String.valueOf(value);
-                // 特殊字段格式化（增加null防护）
-                if ("sampleType".equals(head.getIdentity())) {
-                    // 防护：cellData为null/空
-                    if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                // 提取字段值，防护null
+                Object value = map.get(head.getIdentity());
+                String cellData = "-"; // 默认空值
+
+                if (value != null) {
+                    cellData = String.valueOf(value);
+                    // 特殊字段格式化（增加null防护）
+                    if ("sampleType".equals(head.getIdentity())) {
+                        // 防护：cellData为null/空
+                        if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                            cellData = "-";
+                        } else {
+                            // 防护：枚举方法返回null
+                            String typeName = SampleTypeEnum.getName(cellData);
+                            cellData = typeName == null ? "-" : typeName;
+                        }
+                    }
+                    if ("sampleLocation".equals(head.getIdentity())) {
+                        // 防护：避免拼接"样品null"
+                        cellData = (cellData == null || "null".equalsIgnoreCase(cellData)) ? "-" : ("样品" + cellData);
+                    }
+                    // 清除特殊字符，防护空字符串
+                    cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
+                    if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
                         cellData = "-";
-                    } else {
-                        // 防护：枚举方法返回null
-                        String typeName = SampleTypeEnum.getName(cellData);
-                        cellData = typeName == null ? "-" : typeName;
                     }
                 }
-                if ("sampleLocation".equals(head.getIdentity())) {
-                    // 防护：避免拼接"样品null"
-                    cellData = (cellData == null || "null".equalsIgnoreCase(cellData)) ? "-" : ("样品" + cellData);
-                }
-                // 清除特殊字符，防护空字符串
-                cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
-                if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                    cellData = "-";
-                }
+
+                rowData.add(cellData);
             }
-
-            rowData.add(cellData);
+            excelData.add(rowData);
         }
-        excelData.add(rowData);
-    }
 
-    // 4. 写入Excel（确保流正确关闭，防护空列表）
-    if (excelHeads.isEmpty()) {
-        log.warn("表头为空，生成空Excel文件");
+        // 4. 写入Excel（确保流正确关闭，防护空列表）
+        if (excelHeads.isEmpty()) {
+            log.warn("表头为空，生成空Excel文件");
+        }
+        try (OutputStream out = new FileOutputStream(file)) {
+            EasyExcel.write(out)
+                    .head(excelHeads)
+                    .sheet("测量数据")
+                    .doWrite(excelData);
+        } catch (Exception e) {
+            log.error("EasyExcel写入文件失败", e);
+            throw e; // 向上抛出，由外层处理
+        }
     }
-    try (OutputStream out = new FileOutputStream(file)) {
-        EasyExcel.write(out)
-                .head(excelHeads)
-                .sheet("测量数据")
-                .doWrite(excelData);
-    } catch (Exception e) {
-        log.error("EasyExcel写入文件失败", e);
-        throw e; // 向上抛出，由外层处理
-    }
-}
 
 
     // ---------------------- 工具方法 ----------------------
+
     /**
      * 获取文件后缀（Java 8兼容）
      */

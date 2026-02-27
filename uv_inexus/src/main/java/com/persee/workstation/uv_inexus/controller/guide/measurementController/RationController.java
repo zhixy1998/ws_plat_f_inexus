@@ -101,13 +101,13 @@ public class RationController {
 
     @GetMapping("revokeDel")
     @ApiOperation("撤销删除接口")
-    public Result revokeDel(@RequestParam String taskId,@RequestParam String sampleId) {
+    public Result revokeDel(@RequestParam String taskId, @RequestParam String sampleId) {
         return rationService.revokeDel(taskId, sampleId);
     }
 
     @GetMapping("checkAllSampleTestStatus")
     @ApiOperation("检查标准样品是否都测量了")
-    public Result<Boolean> checkCreateNewSample(@RequestParam String taskId){
+    public Result<Boolean> checkCreateNewSample(@RequestParam String taskId) {
         R<Boolean> r = rationService.checkStandAllSampleTest(taskId);
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
@@ -169,12 +169,13 @@ public class RationController {
                             @RequestParam String updateBy) {
         return rationService.zero(deviceSerialNumber, methodId, taskId, updateBy);
     }
+
     @GetMapping("zero2")
     @ApiOperation("校零接口2")
     public Result photoZero2(@RequestParam String deviceSerialNumber,
-                            @RequestParam String methodId,
-                            @RequestParam String taskId,
-                            @RequestParam String updateBy) {
+                             @RequestParam String methodId,
+                             @RequestParam String taskId,
+                             @RequestParam String updateBy) {
         return rationService.zero2(deviceSerialNumber, methodId, taskId, updateBy);
     }
 
@@ -209,6 +210,7 @@ public class RationController {
             return Result.fail(r.getMessage());
         }
     }
+
     @ApiOperation("查询已绑定的映射信息")
     @GetMapping("queryInputParamMapTableHead")
     public Result<List<InputParamMapTableHead>> queryInputParamMapTableHead(@RequestParam String taskId, @RequestParam String sampleKind) {
@@ -225,11 +227,13 @@ public class RationController {
     public ResponseEntity<?> downloadDoc(
             @ApiParam("任务ID") @RequestParam String taskId,
             @ApiParam("是否显示全部数据") @RequestParam Boolean allDisplay,
-            @ApiParam("导出格式（word/excel/txt）") @RequestParam(required = false) String fileType) throws Exception {
-        
+            @ApiParam("导出格式（word/excel/txt）") @RequestParam(required = false) String fileType,
+            @RequestParam Integer digit,
+            @RequestParam Integer otherDigit) throws Exception {
+
         // 调用 Service 层的多格式导出方法
-        R<File> result = rationService.downloadFile(taskId, allDisplay, fileType);
-        
+        R<File> result = rationService.downloadFile(taskId, allDisplay, fileType, digit, otherDigit);
+
         if (result.getSuccess()) {
             File file = result.getData();
             FileInputStream fis = new FileInputStream(file);
@@ -237,7 +241,7 @@ public class RationController {
 
             // 编码文件名（避免中文乱码）
             String fileName = URLEncoder.encode(file.getName(), "UTF-8");
-            
+
             // 异步删除临时文件（10秒后）
             new Thread(() -> {
                 try {
@@ -255,8 +259,8 @@ public class RationController {
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(resource);
         }
-        
+
         // 导出失败时，返回错误信息
-        return ResponseEntity.badRequest().body("导出失败：" );
+        return ResponseEntity.badRequest().body("导出失败：");
     }
 }

@@ -2724,9 +2724,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private void promptUserToPlaceMaterial(String taskId, String stdMaterialName) throws BusinessException {
         // 发送提示信息
         JSONObject noticeMsg = new JSONObject();
-        if (AIR.getDescription().equals(stdMaterialName)){
+        if (AIR.getDescription().equals(stdMaterialName)) {
             noticeMsg.put("notice", "请保持样品池为空！");
-        }else {
+        } else {
             noticeMsg.put("notice", "请放入 " + stdMaterialName);
         }
         sendToActiveSession(null, taskId, noticeMsg);
@@ -3174,7 +3174,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         //时间间隔
         Double timeInterval = MapUtils.getDouble(dataMap, TIME_INTERVAL.getDescription());
         //总时长
-        Double totalTime = timeInterval * scanCount;
+        Double totalTime = timeInterval * (scanCount + 1);
 
         // 设置参数
         DevOperationInputParam inputParam = new DevOperationInputParam();

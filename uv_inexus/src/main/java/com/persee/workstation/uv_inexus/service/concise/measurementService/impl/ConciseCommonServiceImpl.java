@@ -319,7 +319,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         // 根据任务id和is_save字段为1的条件查询
         QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
 //        wrapper.eq("task_id", taskId).eq("task_status",Constants.PARAM_TWO);
-        wrapper.eq("task_id", taskId).eq("is_save",Constants.PARAM_ONE);
+        wrapper.eq("task_id", taskId).eq("is_save", Constants.PARAM_ONE);
         List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
         if (measureDataList != null) {
             for (FMeasureData measureData : measureDataList) {
@@ -438,7 +438,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     }
 
 
-//    @Override
+    //    @Override
 //    public Result<Page<FMeasureTaskDTO>> queryHistoryTask(SelectTaskDto selectTaskDto) {
 //
 //        String userName = selectTaskDto.getUpdateBy();
@@ -513,7 +513,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
         }
         FMeasureMethod method1 = fMeasureMethodService.getById(updateMethodDto.getMethodId());
-        if(method1 == null){
+        if (method1 == null) {
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
@@ -633,6 +633,17 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (inputParamList == null || inputParamList.isEmpty()) {
             //请先设置输入参数！
             return Result.fail(YamlMessageSource.getMessageStatic("0010100D"));
+        }
+        if (org.apache.commons.collections4.CollectionUtils.isNotEmpty(checkFormulaDto.getInputParamList())) {
+            if (checkFormulaDto.getNewFormula() != null) {
+                for (FInputParam fInputParam : checkFormulaDto.getInputParamList()) {
+                    if (fInputParam.getResultIdentity().equals(checkFormulaDto.getNewFormula().getResultIdentity())) {
+                        //标识已存在
+                        return Result.fail(YamlMessageSource.getMessageStatic("0010100B"));
+                    }
+                }
+
+            }
         }
 
         List<String> paramList = new ArrayList<>();
@@ -997,11 +1008,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setEndWaveLength(param.getEndWaveLength() + "nm");
             // (0.慢速 1.中速 2.快速 3.极快)
             vo.setScanSpeed(param.getScanSpeed().equals("0") ? "慢速" : param.getScanSpeed().equals("1") ? "中速" : param.getScanSpeed().equals("2") ? "快速" : "极快");
-            if (param.getRepetitionPattern().equals("单池重复")){
+            if (param.getRepetitionPattern().equals("单池重复")) {
                 vo.setTimeInterval(param.getTimeInterval());
                 vo.setIsRepeat(true);
                 vo.setRepeatCount(param.getRepetitionTime());
-            }else{
+            } else {
                 vo.setTimeInterval(null);
                 vo.setIsRepeat(false);
                 vo.setRepeatCount(null);
@@ -1024,7 +1035,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setSpectrumBandwidth(param.getSpectralBandwidth());
             vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
             // 能量灯(0.钨灯 1.氘灯 2.汞灯)
-            if (param.getLuminosity().equals("3")||param.getLuminosity().equals("4")){
+            if (param.getLuminosity().equals("3") || param.getLuminosity().equals("4")) {
                 vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
                 vo.setGain(param.getGain());
             }
@@ -1046,7 +1057,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 vo.setInstrumentName("紫外可见分光光度计");
                 vo.setInstrumentModel("T600");
             }
-            log.info("报表参数数据输出完毕,内容: {} ",vo);
+            log.info("报表参数数据输出完毕,内容: {} ", vo);
             return Result.ok(vo);
         } else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())) {
             // 根据任务中的方法key查询方法
@@ -1089,7 +1100,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setSpectrumBandwidth(param.getSpectralBandwidth());
             vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
             // 能量灯(0.钨灯 1.氘灯 2.汞灯)
-            if (param.getLuminosity().equals("3")||param.getLuminosity().equals("4")){
+            if (param.getLuminosity().equals("3") || param.getLuminosity().equals("4")) {
                 vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
                 vo.setGain(param.getGain());
             }
@@ -1499,7 +1510,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                         }
                     }
                 }
-                log.info("报表表格数据输出完毕,内容: {} ",vo);
+                log.info("报表表格数据输出完毕,内容: {} ", vo);
                 return Result.ok(vo);
             }
             case "时间扫描": {
@@ -1911,7 +1922,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail(YamlMessageSource.getMessageStatic("00101013"));
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
-        if (task!=null&&task.getIsDelete().equals("1")){
+        if (task != null && task.getIsDelete().equals("1")) {
             //任务已删除
             return Result.fail("任务已删除");
         }
