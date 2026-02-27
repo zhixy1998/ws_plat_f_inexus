@@ -4209,6 +4209,12 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
     }
 
+    @Override
+    public Result updateMethod(TMeasureMethod methodDto) {
+        boolean b = tMeasureMethodService.updateById(methodDto);
+        return b?Result.ok():Result.fail();
+    }
+
     /**
      * 比较参数
      *

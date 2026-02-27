@@ -12,6 +12,7 @@ package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.SpectrumService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
@@ -80,6 +81,13 @@ public class SpectrumController {
             return Result.fail("参数校验失败: " + errorMsg);
         }
         return spectrumService.updateMethodParameter(methodDto);
+    }
+
+    @PostMapping("updateMethodParameter")
+    @ApiOperation("方法参数修改接口")
+    public Result updateMethodParameter( @RequestBody TMeasureMethod methodDto) {
+
+        return spectrumService.updateMethod(methodDto);
     }
 
 

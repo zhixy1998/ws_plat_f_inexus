@@ -12,6 +12,7 @@ package com.persee.workstation.uv_inexus.service.guide.measurementService;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 
@@ -157,4 +158,6 @@ public interface SpectrumService {
 
     // 停止测量接口
     Result stopMeasure(String deviceSerialNumber);
+
+    Result updateMethod(TMeasureMethod methodDto);
 }

@@ -273,15 +273,19 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             set.add(originalSession);
             Set<WebSocketSession> sessions = sessionTaskMap.getOrDefault(taskId, set);
             if (CollectionUtils.isNotEmpty(sessions)) {
-                for (WebSocketSession session : sessions) {
+                Iterator<WebSocketSession> iterator = sessions.iterator();
+                while (iterator.hasNext()) {
+                    WebSocketSession session = iterator.next();
                     if (isSessionValid(session)) {
-                        log.info("dfdsfsfvvv " + payload.toJSONString());
+//                        log.info("消息是：" + payload.toJSONString());
                         session.sendMessage(new TextMessage(payload.toJSONString()));
-                        break;
+                        log.info("消息发送给了：" + session.getId());
                     } else {
+                        iterator.remove();
                         log.warn("WebSocket消息发送失败: taskId={}, 源会话已关闭", taskId);
                     }
                 }
+
             }
 //            // 获取或创建任务的消息队列
 //            BlockingQueue<QueuedMessage> queue = messageQueues.computeIfAbsent(taskId, k -> new LinkedBlockingQueue<>());
@@ -533,6 +537,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     fileName = management.getResultTemplate();
                 }
             }
+            session = new ConcurrentWebSocketSessionDecorator(
+                    session,
+                    10 * 1000, // 发送超时时间（毫秒）
+                    1024 * 1024 // 最大缓冲区大小（字节）
+            );
+            sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
 
             boolean b = workbookCacheManager.acquireEditLock(taskId, updateBy);
 
@@ -543,7 +553,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             lastActivityTime.put(sessionId, System.currentTimeMillis());
             //这个任务有存活的session
             // 添加 session
-            sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
 
 
             JSONObject statusMessage = new JSONObject();
@@ -600,58 +609,43 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                 }
             }
+            log.info("开始发送");
             this.pushEntireWorkbook(session, taskId, fileName);
+            log.info("结束发送");
 //            session.sendMessage(new TextMessage(statusMessage.toString()));
             // 发送缓存的波形图数据给新会话
             sendCachedWaveformData(session, taskId);
             // 启动心跳任务
-            startHeartbeatTask(session);
+            startHeartbeatTask(taskId);
             super.afterConnectionEstablished(session);
         } catch (Exception e) {
             log.error("WebSocket连接建立失败", e);
         }
     }
 
-    private void startHeartbeatTask(WebSocketSession session) {
-        String sessionId = session.getId();
+    private void startHeartbeatTask(String taskId) {
 
         // 取消旧任务
-        ScheduledFuture<?> oldTask = heartbeatTasks.get(sessionId);
+        ScheduledFuture<?> oldTask = heartbeatTasks.get(taskId);
         if (oldTask != null && !oldTask.isDone()) {
             oldTask.cancel(false);
         }
 
         // 创建新心跳任务
         ScheduledFuture<?> newTask = heartbeatScheduler.scheduleAtFixedRate(
-                () -> sendHeartbeat(session),
+                () -> sendHeartbeat(taskId),
                 HEARTBEAT_INTERVAL,
                 HEARTBEAT_INTERVAL,
                 TimeUnit.MILLISECONDS
         );
 
-        heartbeatTasks.put(sessionId, newTask);
+        heartbeatTasks.put(taskId, newTask);
     }
 
-    private void sendHeartbeat(WebSocketSession session) {
-        try {
-            if (!isSessionValid(session)) {
-                cancelHeartbeatTask(session.getId());
-                return;
-            }
-
-            String sessionId = session.getId();
-
-
-            // 发送心跳包
-            session.sendMessage(new TextMessage("ping"));
-
-        } catch (IOException e) {
-            try {
-                session.close();
-            } catch (IOException ignored) {
-            }
-            cancelHeartbeatTask(session.getId());
-        }
+    private void sendHeartbeat(String taskId) {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("ping", "heartbeat");
+        sendToActiveSession(null, taskId, jsonObject);
     }
 
     private void pushEntireWorkbook(WebSocketSession session, String taskId, String fileName) throws IOException {
@@ -668,7 +662,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         ObjectMapper mapper = new ObjectMapper();
         String jsonData = mapper.writeValueAsString(workbookDto);
-        session.sendMessage(new TextMessage(jsonData));
+        JSONObject jsonObject = JSONObject.parseObject(jsonData);
+        sendToActiveSession(null, taskId, jsonObject);
+//        session.sendMessage(new TextMessage(jsonData));
     }
 
 
@@ -979,7 +975,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 historyData = historyData.subList(0, 4);
             }
             String s = JSON.toJSONString(historyData);
-            session.sendMessage(new TextMessage(s));
+//            session.sendMessage(new TextMessage(s));
+            JSONObject jsonObject = JSONObject.parseObject(s);
+            sendToActiveSession(null, taskId, jsonObject);
         }
         // 处理用户操作确认
         if (RESUME.getCode().equals(type)) { // 您定义的恢复命令类型
