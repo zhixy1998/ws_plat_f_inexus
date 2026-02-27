@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.i18n;
 
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 

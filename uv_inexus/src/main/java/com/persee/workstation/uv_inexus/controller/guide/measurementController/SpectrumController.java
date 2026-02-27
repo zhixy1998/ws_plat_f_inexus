@@ -16,6 +16,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.SpectrumService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodChangeCheckVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -62,6 +63,12 @@ public class SpectrumController {
                                          @RequestParam String measureForm,
                                          @RequestParam String updateBy) {
         return spectrumService.queryProjectAllMethods(projectId,measureForm,updateBy);
+    }
+
+    @PostMapping("checkParam")
+    @ApiOperation("检查参数接口")
+    public Result<MethodChangeCheckVO> checkParam(@RequestBody SpectrumMethodParamsDto methodParam) {
+        return spectrumService.checkMethodParam(methodParam);
     }
 
     @GetMapping("methodParameter")

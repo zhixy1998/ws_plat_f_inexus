@@ -23,10 +23,7 @@ import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -56,12 +53,14 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.QueryMethodParameterVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectrumParameterVo;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
@@ -178,6 +177,9 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Value("0")
     String noTested;
+
+    @Value("default")
+    String defaultMethodProjectName;
 
 
     /**
@@ -305,6 +307,114 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail(YamlMessageSource.getMessageStatic("0030000A"));
         }
         return Result.ok(methods);
+    }
+
+    /**
+     * 检查参数接口
+     * @param methodParam
+     * @return
+     */
+    @Override
+    public Result<MethodChangeCheckVO> checkMethodParam(SpectrumMethodParamsDto methodParam) {
+
+        if (!StringUtils.hasText(methodParam.getCurrentMethodId())) {
+            //请选择当前方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000023"));
+        }
+
+        SpectrumParameter newMethodParam = new SpectrumParameter();
+        BeanUtils.copyProperties(methodParam, newMethodParam);
+
+        R<Boolean> r = checkParam(newMethodParam);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        }
+
+        double minWaveLength = 190.0;
+        double maxWaveLength = 1100.0;
+
+        if (StringUtils.hasText(methodParam.getDeviceSerialNumber())) {
+            R<DeviceMeasureVO> typeInfo = deviceInfoService.queryDeviceTypeInfo(methodParam.getDeviceSerialNumber());
+            if (typeInfo.getSuccess()) {
+                DeviceMeasureVO vo = typeInfo.getData();
+                if (vo != null) {
+                    minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                    maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                }
+            }
+        }
+        double startWl = Double.parseDouble(newMethodParam.getStartWaveLength());
+        double endWl = Double.parseDouble(newMethodParam.getEndWaveLength());
+
+        if (startWl < minWaveLength || endWl > maxWaveLength) {
+            //"第" + (i + 1) + "个波长值超出范围（190-900），当前值：" + waveVal
+            return Result.fail(YamlMessageSource.getMessageStatic("00102006",startWl , minWaveLength, maxWaveLength));
+        }
+        // 校验小数点后最多1位
+        String[] parts = String.valueOf(startWl).split("\\.");
+        if (parts.length > 1 && parts[1].length() > 1) {
+            //"波长值" + waveStr + "小数点后最多保留1位"
+            return Result.fail(YamlMessageSource.getMessageStatic("00105005", startWl));
+        }
+
+        if (endWl < minWaveLength || endWl > maxWaveLength) {
+            //"第" + (i + 1) + "个波长值超出范围（190-900），当前值：" + waveVal
+            return Result.fail(YamlMessageSource.getMessageStatic("00102006",endWl , minWaveLength, maxWaveLength));
+        }
+        // 校验小数点后最多1位
+        String[] parts1 = String.valueOf(endWl).split("\\.");
+        if (parts1.length > 1 && parts1[1].length() > 1) {
+            //"波长值" + waveStr + "小数点后最多保留1位"
+            return Result.fail(YamlMessageSource.getMessageStatic("00105005", endWl));
+        }
+
+        MethodChangeCheckVO vo = new MethodChangeCheckVO();
+        vo.setCurrentMethodId(methodParam.getCurrentMethodId());
+        vo.setParamChange(false);
+        vo.setClearDataRange(RationChangeMethodTypeEnums.noChange.getIdentity());
+        vo.setMessage(RationChangeMethodTypeEnums.noChange.getMessage());
+
+
+        TMeasureMethod currentMethod = tMeasureMethodService.getById(methodParam.getCurrentMethodId());
+        if (StringUtils.hasText(currentMethod.getProjectItemKey()) && currentMethod.getProjectItemKey().equals(defaultMethodProjectName)) {
+            log.info("生成新方法");
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.newMethod.getMessage());
+            vo.setClearDataRange(RationChangeMethodTypeEnums.newMethod.getIdentity());
+            return Result.ok(vo);
+        }
+
+        SpectrumParameter oldParam = JSON.parseObject(currentMethod.getMeasurementParamInfo(), SpectrumParameter.class);
+
+        String dbJson = JSON.toJSONString(oldParam, SerializerFeature.SortField);
+        String frontJson = JSON.toJSONString(newMethodParam, SerializerFeature.SortField);
+
+        if (dbJson.equals(frontJson)) {
+            vo.setParamChange(false);
+            vo.setClearDataRange(RationChangeMethodTypeEnums.noChange.getIdentity());
+            vo.setMessage(RationChangeMethodTypeEnums.noChange.getMessage());
+            return Result.ok(vo);
+        }
+        //检查测量数据
+        boolean b = checkSpectrumParam(oldParam, newMethodParam);
+        System.out.println(b);
+        if (!b) {
+            log.info("测量参数有改变");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.measure.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.measure.getMessage());
+            return Result.ok(vo);
+        }
+
+        //检查分析参数
+        boolean analyze = checkSpectrumParam(oldParam, newMethodParam);
+        if (!analyze) {
+            log.info("分析参数有改变");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.analyze.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.analyze.getMessage());
+        }
+        return Result.ok(vo);
     }
 
     /**
@@ -3227,6 +3337,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             }
             task.setMethodKey(newMethod.getId());
             task.setCreateTime(LocalDateTime.now());
+            task.setTaskName(paramDto.getTaskName());
             boolean update = tMeasureTaskService.updateById(task);
             return update ? Result.ok() : Result.fail(YamlMessageSource.getMessageStatic("00000048"));
         } else {
@@ -4481,5 +4592,229 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
     }
 
+
+    /**
+     * 校验光谱扫描参数
+     * @param parameter 光谱扫描参数
+     * @return 校验结果
+     */
+    private R<Boolean> checkParam(SpectrumParameter parameter) {
+        // 1. 根对象非空校验
+        if (parameter == null) {
+            return R.fail(YamlMessageSource.getMessageStatic("00102003"));
+        }
+
+        // 2. 光度模式校验
+        String luminosity = parameter.getLuminosity();
+        if (!StringUtils.hasText(luminosity)) {
+            return R.fail("光度模式不能为空");
+        }
+        List<String> validLuminosityModes = Arrays.asList("1", "2", "3", "4"); // 1.abs 2.T% 3.Es 4.Er
+        if (!validLuminosityModes.contains(luminosity)) {
+            return R.fail("光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：" + luminosity);
+        }
+
+        // 3. 波长参数校验
+        String startWaveStr = parameter.getStartWaveLength();
+        String endWaveStr = parameter.getEndWaveLength();
+        String intervalStr = parameter.getWaveLengthInterval();
+
+        if (!StringUtils.hasText(startWaveStr)) {
+            return R.fail("开始波长不能为空");
+        }
+        if (!StringUtils.hasText(endWaveStr)) {
+            return R.fail("结束波长不能为空");
+        }
+        if (!StringUtils.hasText(intervalStr)) {
+            return R.fail("波长间隔不能为空");
+        }
+
+        // 波长默认范围 190-1100
+        double minWaveLength = 190.0;
+        double maxWaveLength = 1100.0;
+
+        try {
+            double startWave = Double.parseDouble(startWaveStr);
+            if (startWave < minWaveLength || startWave > maxWaveLength) {
+                return R.fail(YamlMessageSource.getMessageStatic("00102006",
+                        1, startWave, minWaveLength, maxWaveLength));
+            }
+            if (startWaveStr.contains(".") && startWaveStr.split("\\.")[1].length() > 1) {
+                return R.fail(YamlMessageSource.getMessageStatic("00105005", startWaveStr));
+            }
+
+            double endWave = Double.parseDouble(endWaveStr);
+            if (endWave < minWaveLength || endWave > maxWaveLength) {
+                return R.fail(YamlMessageSource.getMessageStatic("00102006",
+                        2, endWave, minWaveLength, maxWaveLength));
+            }
+            if (endWaveStr.contains(".") && endWaveStr.split("\\.")[1].length() > 1) {
+                return R.fail(YamlMessageSource.getMessageStatic("00105005", endWaveStr));
+            }
+
+            if (startWave < endWave) {
+                return R.fail("开始波长不能小于结束波长，当前开始：" + startWave + "，结束：" + endWave);
+            }
+
+            double interval = Double.parseDouble(intervalStr);
+            if (interval <= 0) {
+                return R.fail("波长间隔必须大于0，当前值：" + interval);
+            }
+            if (intervalStr.contains(".") && intervalStr.split("\\.")[1].length() > 2) {
+                return R.fail("波长间隔小数点后最多保留2位，当前值：" + intervalStr);
+            }
+
+        } catch (NumberFormatException e) {
+            return R.fail("波长参数格式错误，必须为数字");
+        }
+
+        // 4. 扫描速度校验
+        String scanSpeed = parameter.getScanSpeed();
+        if (!StringUtils.hasText(scanSpeed)) {
+            return R.fail("扫描速度不能为空");
+        }
+        List<String> validScanSpeeds = Arrays.asList("0", "1", "2", "3"); // 0.慢速 1.中速 2.快速 3.极快
+        if (!validScanSpeeds.contains(scanSpeed)) {
+            return R.fail("扫描速度不合法（可选值：0-慢速、1-中速、2-快速、3-极快），当前值：" + scanSpeed);
+        }
+
+        // 5. 重复模式校验
+        String repetitionPattern = parameter.getRepetitionPattern();
+        if (!StringUtils.hasText(repetitionPattern)) {
+            return R.fail("重复模式不能为空");
+        }
+        List<String> validPatterns = Arrays.asList("不重复", "单池重复"); // 0.不重复 1.单池重复
+        if (!validPatterns.contains(repetitionPattern)) {
+            return R.fail("重复模式不合法（可选值：不重复、单池重复），当前值：" + repetitionPattern);
+        }
+
+        // 单池重复模式的详细校验
+        if ("1".equals(repetitionPattern)) {
+            String repetitionTimeStr = parameter.getRepetitionTime();
+            if (!StringUtils.hasText(repetitionTimeStr)) {
+                return R.fail("单池重复模式下，重复次数不能为空");
+            }
+            try {
+                int repetitionTime = Integer.parseInt(repetitionTimeStr);
+                if (repetitionTime < 2 || repetitionTime > 10) {
+                    return R.fail(YamlMessageSource.getMessageStatic("00102018", repetitionTime));
+                }
+            } catch (NumberFormatException e) {
+                return R.fail(YamlMessageSource.getMessageStatic("00102019", repetitionTimeStr));
+            }
+
+            String timeIntervalStr = parameter.getTimeInterval();
+            if (!StringUtils.hasText(timeIntervalStr)) {
+                return R.fail("单池重复模式下，扫描间隔不能为空");
+            }
+            try {
+                double timeInterval = Double.parseDouble(timeIntervalStr);
+                if (timeInterval < 0 || timeInterval > 60) {
+                    return R.fail(YamlMessageSource.getMessageStatic("0010201B", timeInterval));
+                }
+                if (timeIntervalStr.contains(".") && timeIntervalStr.split("\\.")[1].length() > 1) {
+                    return R.fail(YamlMessageSource.getMessageStatic("0010201C", timeIntervalStr));
+                }
+            } catch (NumberFormatException e) {
+                return R.fail(YamlMessageSource.getMessageStatic("0010201D", timeIntervalStr));
+            }
+        }
+
+        // 6. 阶梯校正校验（Boolean类型无需复杂校验，只需确保有值？但可为null代表不启用）
+        // 这里不做强制要求，Boolean允许为null
+
+        // 7. 父类 MeasurePublicParameters 字段校验
+        // 7.1 光谱带宽校验
+        if (!StringUtils.hasText(parameter.getSpectralBandwidth())) {
+            return R.fail("光谱带宽不能为空");
+        }
+        try {
+            double bandwidth = Double.parseDouble(parameter.getSpectralBandwidth());
+            if (bandwidth <= 0) {
+                return R.fail("光谱带宽必须大于0，当前值：" + bandwidth);
+            }
+            // 常见光谱带宽值校验（可选，根据业务决定是否强制）
+            List<Double> validBandwidths = Arrays.asList(0.5, 1.0, 2.0, 4.0, 5.0);
+            if (!validBandwidths.contains(bandwidth)) {
+                return R.fail("光谱带宽值不合法，常见值：" + validBandwidths);
+            }
+        } catch (NumberFormatException e) {
+            return R.fail("光谱带宽格式错误，必须为数字");
+        }
+
+        // 7.2 响应时间校验（如果有业务规则）
+        // 目前没有明确规则，如果有需要可补充
+
+        // 7.3 换灯波长校验
+        String changeLampWave = parameter.getChangeLampWaveLength();
+        if (!StringUtils.hasText(changeLampWave)) {
+            return R.fail(YamlMessageSource.getMessageStatic("00105003"));
+        }
+        try {
+            double waveVal = Double.parseDouble(changeLampWave);
+            if (waveVal < 330 || waveVal > 390) {
+                return R.fail(YamlMessageSource.getMessageStatic("0010202A", waveVal));
+            }
+        } catch (NumberFormatException e) {
+            return R.fail("换灯波长格式错误");
+        }
+
+        // 7.4 能量灯校验
+        String energyLamp = parameter.getEnergyLamp();
+        if (!StringUtils.hasText(energyLamp)) {
+            return R.fail("能量灯不能为空");
+        }
+        if (!energyLamp.matches("^[0-2]$")) {
+            return R.fail("能量灯值无效（可选值：0-钨灯、1-氘灯、2-汞灯），当前值：" + energyLamp);
+        }
+
+        // 7.5 增益校验
+        if (parameter.getGain() != null && parameter.getGain() < 0) {
+            return R.fail("增益不能小于0，当前值：" + parameter.getGain());
+        }
+
+        // 7.6 参考标准名称校验（长度限制等）
+        if (parameter.getReferenceStandardName() != null &&
+                parameter.getReferenceStandardName().length() > 100) {
+            return R.fail("参考标准名称长度不能超过100字符");
+        }
+
+        return R.ok(true);
+    }
+
+    /**
+     * 检查光谱扫描参数是否改变
+     * @param oldParam 旧参数
+     * @param newParam 新参数
+     * @return true--未改变，false--改变了
+     */
+    private boolean checkSpectrumParam(SpectrumParameter oldParam, SpectrumParameter newParam) {
+        if (oldParam == newParam) {
+            return true;  // 同一个对象引用
+        }
+        if (oldParam == null || newParam == null) {
+            return false; // 任一对象为null
+        }
+
+        // 比较所有参数（包括父类和子类的所有字段）
+        return Objects.equals(oldParam.getReferenceStandardName(), newParam.getReferenceStandardName()) &&
+                Objects.equals(oldParam.getPreProcessParameters(), newParam.getPreProcessParameters()) &&
+                Objects.equals(oldParam.getSpectralBandwidth(), newParam.getSpectralBandwidth()) &&
+                Objects.equals(oldParam.getResponseTime(), newParam.getResponseTime()) &&
+                Objects.equals(oldParam.getChangeLampWaveLength(), newParam.getChangeLampWaveLength()) &&
+                Objects.equals(oldParam.getEnergyLamp(), newParam.getEnergyLamp()) &&
+                Objects.equals(oldParam.getEnergyLampName(), newParam.getEnergyLampName()) &&
+                Objects.equals(oldParam.getGain(), newParam.getGain()) &&
+
+                Objects.equals(oldParam.getLuminosity(), newParam.getLuminosity()) &&
+                Objects.equals(oldParam.getStartWaveLength(), newParam.getStartWaveLength()) &&
+                Objects.equals(oldParam.getEndWaveLength(), newParam.getEndWaveLength()) &&
+                Objects.equals(oldParam.getWaveLengthInterval(), newParam.getWaveLengthInterval()) &&
+                Objects.equals(oldParam.getRepetitionPattern(), newParam.getRepetitionPattern()) &&
+                Objects.equals(oldParam.getRepetitionTime(), newParam.getRepetitionTime()) &&
+                Objects.equals(oldParam.getTimeInterval(), newParam.getTimeInterval()) &&
+                Objects.equals(oldParam.getLadderCorrection(), newParam.getLadderCorrection()) &&
+                Objects.equals(oldParam.getScanSpeed(), newParam.getScanSpeed());
+    }
 
 }

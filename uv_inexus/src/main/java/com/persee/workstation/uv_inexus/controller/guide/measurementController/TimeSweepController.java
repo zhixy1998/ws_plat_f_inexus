@@ -10,10 +10,12 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.dto.measurementDto.experimentTest.TimeSweepMethodParamsDto;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TimeSweepService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodChangeCheckVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -58,6 +60,12 @@ public class TimeSweepController {
                                          @RequestParam String measureForm,
                                          @RequestParam String updateBy) {
         return timeSweepService.queryProjectAllMethods(projectId,measureForm,updateBy);
+    }
+
+    @PostMapping("checkParam")
+    @ApiOperation("检查参数接口")
+    public Result<MethodChangeCheckVO> checkParam(@RequestBody TimeSweepMethodParamsDto methodParam) {
+        return timeSweepService.checkMethodParam(methodParam);
     }
 
     @GetMapping("queryMethodParameter")

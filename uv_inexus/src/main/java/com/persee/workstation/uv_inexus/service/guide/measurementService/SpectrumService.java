@@ -15,6 +15,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodChangeCheckVO;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
@@ -32,6 +33,9 @@ public interface SpectrumService {
 
     // 查询项目下的所有方法
     Result queryProjectAllMethods(String projectId,  String measureForm, String updateBy);
+
+    // 检查参数接口
+    Result<MethodChangeCheckVO> checkMethodParam(SpectrumMethodParamsDto methodParam);
 
     // 查询方法参数接口
     Result queryMethodParameter(String methodId);
