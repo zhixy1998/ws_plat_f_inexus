@@ -617,7 +617,7 @@ public class LiveDetectionDevicesWebSocket {
                     if (device != null && Boolean.FALSE.equals(device.getIsIdle())) {
                         log.debug("设备正忙，跳过本次实时回显: {}", taskInfo.deviceSerialNumber);
                         // 关键修复2：设备忙时等待固定间隔再重试，不立即重试
-                        sendBusyInfo(deviceId, info.getDeviceSerialNumber());
+//                        sendBusyInfo(deviceId, info.getDeviceSerialNumber());
                         scheduleNextMeasurement(taskInfo, startTime);
                         return;
                     }
@@ -625,7 +625,7 @@ public class LiveDetectionDevicesWebSocket {
                     info = infoService.getInfo(taskInfo.deviceSerialNumber);
                     if (!Constants.DEVICE_STATUS_IDLE.equals(info.getDeviceCurrentStatus())) {
                         log.debug("设备状态非空闲，跳过本次测量: {}", taskInfo.deviceSerialNumber);
-                        sendBusyInfo(deviceId, info.getDeviceSerialNumber());
+//                        sendBusyInfo(deviceId, info.getDeviceSerialNumber());
                         scheduleNextMeasurement(taskInfo, startTime);
                         return;
                     }
@@ -641,7 +641,7 @@ public class LiveDetectionDevicesWebSocket {
                         info = infoService.getInfo(taskInfo.deviceSerialNumber);
                         if (info != null && Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
                             log.info("设备状态非空闲，跳过本次测量: {}", taskInfo.deviceSerialNumber);
-                            sendBusyInfo(deviceId, info.getDeviceSerialNumber());
+//                            sendBusyInfo(deviceId, info.getDeviceSerialNumber());
                         } else {
                             log.warn("实时回显测量失败: {}, 错误: {}", taskInfo.deviceSerialNumber, operation.getMessage());
                             taskInfo.consecutiveFailures++;

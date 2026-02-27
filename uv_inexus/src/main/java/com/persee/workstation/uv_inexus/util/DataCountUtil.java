@@ -155,27 +155,64 @@ public class DataCountUtil {
             System.out.println("ans:" + ans);
             BigDecimal bd = new BigDecimal(ans);
             bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
-            return String.valueOf(bd);
+            return java.lang.String.valueOf(bd);
         } catch (Exception e) {
             return "0";
         }
     }
+
+    /**
+     *T800计算公式
+     */
+    public static String calcTPercent1960(ChangeParam origin, ChangeParam real, Double z) {
+        try {
+            double d1 = Double.parseDouble(real.getD());
+            double r1 = Double.parseDouble(real.getR());
+            double s1 = Double.parseDouble(real.getS());
+
+            double a1;
+            if (origin == null || origin.isEmpty()) {
+                a1 = 1.0;
+            } else {
+                double r0 = Double.parseDouble(origin.getR());
+                double s0 = Double.parseDouble(origin.getS());
+                double d0 = Double.parseDouble(origin.getD());
+
+                double v0 = (d0 - z * d1) / (1 - z);
+                a1 = (s0 - v0) / (r0 - v0);
+            }
+
+            double v1 =  (d1 - z * d1) / (1 - z);
+            double a2 = (s1 - v1) / (r1 - v1);
+
+            double ans = a2 / a1 * 100.0;
+            return BigDecimal.valueOf(ans)
+                    .setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP)
+                    .toPlainString();
+
+        } catch (Exception e) {
+            log.error("T% 计算异常, origin={}, real={}", origin, real, e);
+            return "0";
+        }
+    }
+
+
 
     public static String countErOrEs(ChangeParam real, String identity) {
 
         String value = null;
         if (identity.equals(WaveLengthEnum.es.getCode())) {
             double s = Double.parseDouble(real.getS());
-            value = String.valueOf((s / 8388607) * 100);
+            value = java.lang.String.valueOf((s / 8388607) * 100);
         }
         if (identity.equals(WaveLengthEnum.er.getCode())) {
             double r = Double.parseDouble(real.getR());
-            value = String.valueOf((r / 8388607) * 100);
+            value = java.lang.String.valueOf((r / 8388607) * 100);
         }
         if (StringUtils.hasText(value)) {
             BigDecimal bd = new BigDecimal(value);
             bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
-            value = String.valueOf(bd);
+            value = java.lang.String.valueOf(bd);
         }
         return value;
     }
@@ -378,7 +415,7 @@ public class DataCountUtil {
         if (obj == null) { // 额外处理null，避免空指针
             return null;
         }
-        String str = String.valueOf(obj);
+        String str = java.lang.String.valueOf(obj);
         // 核心逻辑：只要含e或E，就尝试转小数
         if (str.toLowerCase().contains("e")) {
             try {
@@ -403,7 +440,7 @@ public class DataCountUtil {
         if (decimalPlaces < 0) return value;
 
         // 使用BigDecimal确保精度
-        BigDecimal bd = new BigDecimal(String.valueOf(value));
+        BigDecimal bd = new BigDecimal(java.lang.String.valueOf(value));
 
         // 设置足够的小数位数
         bd = bd.setScale(decimalPlaces + 10, BigDecimal.ROUND_DOWN);
@@ -478,7 +515,7 @@ public class DataCountUtil {
             interval = interval.multiply(BigDecimal.TEN);
         }
 
-        BigDecimal bdValue = new BigDecimal(String.valueOf(value));
+        BigDecimal bdValue = new BigDecimal(java.lang.String.valueOf(value));
         BigDecimal scaledValue = bdValue.divide(interval, 20, BigDecimal.ROUND_HALF_UP);
 
         BigDecimal roundedScaledValue = roundToDecimalPlaces(scaledValue, 0);

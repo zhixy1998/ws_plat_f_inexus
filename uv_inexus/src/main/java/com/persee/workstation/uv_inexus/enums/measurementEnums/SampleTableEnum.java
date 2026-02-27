@@ -25,6 +25,8 @@ public enum SampleTableEnum {
     FIT_CONCENTRATION("fitConcentration", "拟合浓度"),
     SAMPLE_LOCATION("sampleLocation", "样品位置"),
     QUALITY("quality", "质控结果"),
+    Parallel_ID("parallelSampleId", "最终平行样结果"),
+    Parallel_value("parallelSampleResult", "平行值"),
     Abs("Abs", "Abs"),
     SUM_Abs("sumAbs", "ΔAbs"),
     REMARK("remark", "备注"),

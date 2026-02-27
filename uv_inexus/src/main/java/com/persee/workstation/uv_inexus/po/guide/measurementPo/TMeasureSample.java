@@ -48,6 +48,10 @@ public class TMeasureSample{
     @TableField("sample_name")
     private String sampleName;
 
+    // 平行样组Id
+    @TableField("parallel_group_id")
+    private String parallelGroupId;
+
     // 稀释倍数
     @TableField("dilution_ratio")
     private String dilutionRatio;

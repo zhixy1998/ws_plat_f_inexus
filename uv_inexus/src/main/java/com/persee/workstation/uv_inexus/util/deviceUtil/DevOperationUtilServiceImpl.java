@@ -1720,6 +1720,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                             z = darkInfo.get(s);
                         }
                         String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
+
+                        if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                            tPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
+                        }
+
                         String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
                         if (mode.equals(WaveLengthEnum.abs.getCode())) {
                             measureResult.setValue(abs);
@@ -1816,6 +1821,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         z = darkInfo.get(wavelength);
                     }
                     String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
+
+                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        tPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
+                    }
                     String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
                     if (mode.equals(WaveLengthEnum.abs.getCode())) {
                         measureResult.setValue(abs);

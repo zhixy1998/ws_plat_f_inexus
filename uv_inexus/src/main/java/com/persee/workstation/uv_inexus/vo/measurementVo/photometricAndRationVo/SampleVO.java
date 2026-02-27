@@ -32,6 +32,10 @@ public class SampleVO {
     @ApiModelProperty("样品种类,0-标准样品，1-未知样品")
     private String sampleKind;
 
+    private String isParallelSample;
+
+    private String parallelGroupId;
+
     @ApiModelProperty("标准浓度")
     private String normalConcentration;
 

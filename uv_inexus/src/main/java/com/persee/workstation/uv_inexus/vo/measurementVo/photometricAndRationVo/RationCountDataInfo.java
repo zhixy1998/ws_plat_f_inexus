@@ -27,4 +27,10 @@ public class RationCountDataInfo {
     @ApiModelProperty("修约后原始数据，仅针对需要修约的数")
     private String originalValue;
 
+    @ApiModelProperty("平行样组id")
+    private String parallelSampleId;
+
+    @ApiModelProperty("平行样最终结果")
+    private String parallelSampleResult;
+
 }
