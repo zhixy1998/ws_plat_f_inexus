@@ -1988,8 +1988,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         List<BigDecimal> fwhmList = new ArrayList<>();
 
         for (int i = 0; i < peakX.size(); i++) {
-            BigDecimal peakXVal = peakX.get(i);
-            BigDecimal peakYVal = peakY.get(i);
+            Object xObj = peakX.get(i);
+            Object yObj = peakY.get(i);
+
+            BigDecimal peakXVal = convertToBigDecimal(xObj, "peakX");
+            BigDecimal peakYVal = convertToBigDecimal(yObj, "peakY");
+
 
             // 计算半峰高
             BigDecimal halfHeight = peakYVal.divide(BigDecimal.valueOf(2.0), 10, RoundingMode.HALF_UP);
@@ -2018,6 +2022,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         return fwhmList;
     }
 
+    private BigDecimal convertToBigDecimal(Object obj, String fieldName) {
+        if (obj instanceof BigDecimal) {
+            return (BigDecimal) obj;
+        } else if (obj instanceof Number) {
+            return new BigDecimal(obj.toString()).setScale(10, RoundingMode.HALF_UP);
+        } else {
+            log.error("{} 中遇到非数值类型: {}", fieldName, obj == null ? "null" : obj.getClass());
+            return BigDecimal.ZERO;
+        }
+    }
 
     /**
      * 找到最接近目标值的索引
