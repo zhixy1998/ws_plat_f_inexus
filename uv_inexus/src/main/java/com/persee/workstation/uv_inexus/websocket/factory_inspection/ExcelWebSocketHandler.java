@@ -43,7 +43,6 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
-import javafx.util.Pair;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
@@ -279,6 +278,54 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     if (isSessionValid(session)) {
 //                        log.info("消息是：" + payload.toJSONString());
                         session.sendMessage(new TextMessage(payload.toJSONString()));
+                        log.info("消息发送给了：" + session.getId());
+                    } else {
+                        iterator.remove();
+                        log.warn("WebSocket消息发送失败: taskId={}, 源会话已关闭", taskId);
+                    }
+                }
+
+            }
+//            // 获取或创建任务的消息队列
+//            BlockingQueue<QueuedMessage> queue = messageQueues.computeIfAbsent(taskId, k -> new LinkedBlockingQueue<>());
+//
+//            // 创建消息并加入队列
+//            QueuedMessage queuedMessage = new QueuedMessage(originalSession, taskId, payload);
+//            boolean offer = queue.offer(queuedMessage);
+//
+//            // 启动队列处理器（如果还没有运行）
+//            startQueueProcessor(taskId);
+//
+//            // 等待发送完成（可选，可根据性能需求调整）
+//            try {
+//                // 设置合理的超时时间，避免永久阻塞
+//                boolean completed = queuedMessage.getLatch().await(5, TimeUnit.SECONDS);
+//                if (!completed) {
+//                    log.warn("WebSocket消息发送超时: taskId={}, 消息类型={}", taskId, payload.get("type"));
+//                }
+//            } catch (InterruptedException e) {
+//                Thread.currentThread().interrupt();
+//                log.warn("等待消息发送完成时被中断: taskId={}", taskId);
+//            }
+
+            return true; // 消息已加入队列，不代表发送成功
+        } catch (Exception e) {
+            log.error("添加消息到队列失败: taskId={}, 错误: {}", taskId, e.getMessage());
+            return false;
+        }
+    }
+    private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, String payload) {
+        try {
+            HashSet<WebSocketSession> set = new HashSet<>();
+            set.add(originalSession);
+            Set<WebSocketSession> sessions = sessionTaskMap.getOrDefault(taskId, set);
+            if (CollectionUtils.isNotEmpty(sessions)) {
+                Iterator<WebSocketSession> iterator = sessions.iterator();
+                while (iterator.hasNext()) {
+                    WebSocketSession session = iterator.next();
+                    if (isSessionValid(session)) {
+//                        log.info("消息是：" + payload.toJSONString());
+                        session.sendMessage(new TextMessage(payload));
                         log.info("消息发送给了：" + session.getId());
                     } else {
                         iterator.remove();
@@ -975,9 +1022,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 historyData = historyData.subList(0, 4);
             }
             String s = JSON.toJSONString(historyData);
-//            session.sendMessage(new TextMessage(s));
-            JSONObject jsonObject = JSONObject.parseObject(s);
-            sendToActiveSession(null, taskId, jsonObject);
+            sendToActiveSession(null, taskId, s);
         }
         // 处理用户操作确认
         if (RESUME.getCode().equals(type)) { // 您定义的恢复命令类型
@@ -3925,47 +3970,73 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             return R.fail(map);
         }
         log.info("光度测量完成：" + measure);
+        // ... existing code ...
+
         if (photoMode != null) {
-//            List<ChangeParam> zeroList = zero.getData().getZeroResult();
             List<ChangeParam> measureList = measure.getData().getOriginalMeasureResult();
-            Map<String, Pair<ChangeParam, ChangeParam>> pair = pairByWavelength(zeroList, measureList);
+
+            // 替换pairByWavelength的实现，使用Map直接查找避免配对依赖
+            Map<String, ChangeParam> zeroMap = new HashMap<>();
+            if (zeroList != null) {
+                for (ChangeParam zeroParam : zeroList) {
+                    zeroMap.put(zeroParam.getWl(), zeroParam);
+                }
+            }
+
+            Map<String, ChangeParam> measureMap = new HashMap<>();
+            if (measureList != null) {
+                for (ChangeParam measureParam : measureList) {
+                    measureMap.put(measureParam.getWl(), measureParam);
+                }
+            }
+
+            // 获取所有唯一的波长
+            Set<String> allWavelengths = new HashSet<>();
+            allWavelengths.addAll(zeroMap.keySet());
+            allWavelengths.addAll(measureMap.keySet());
 
             ArrayList<String> list = new ArrayList<>();
 
-            if (CollectionUtils.isNotEmpty(pair)) {
+            if (!allWavelengths.isEmpty()) {
                 Integer finalPhotoMode = photoMode;
                 try {
-                    pair.forEach((wavelength, pairValue) -> {
-                        SpectrumPoint point = new SpectrumPoint(Double.parseDouble(wavelength));
-                        point.setZeroRsd(pairValue.getKey());
-                        point.setMeasureRsd(pairValue.getValue());
-                        SpectrumCalcResult result = calculator.calculate(finalPhotoMode, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
+                    // 遍历所有波长，直接从Map中获取对应的数据
+                    for (String wavelength : allWavelengths) {
+                        ChangeParam zeroParam = zeroMap.get(wavelength);
+                        ChangeParam measureParam = measureMap.get(wavelength);
 
-//                        SpectrumCalcResult result = SpectrumResultCalculator.calculate(finalPhotoMode, point, SpectrumSourceType.SINGLE, point);
-                        WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
-                        if (anEnum != null) {
-                            JSONObject object = new JSONObject();
-                            switch (anEnum) {
-                                case abs:
-                                    object.put("peak", Objects.requireNonNull(result).getAbs());
-                                    res.add(object);
-                                    break;
-                                case tPercent:
+                        // 只有当测量值存在时才进行计算
+                        if (measureParam != null) {
+                            SpectrumPoint point = new SpectrumPoint(Double.parseDouble(wavelength));
+                            point.setZeroRsd(zeroParam);  // 可能为null，calculator需要处理
+                            point.setMeasureRsd(measureParam);
 
-                                    object.put("peak", Objects.requireNonNull(result).getTPercent());
-                                    res.add(object);
-                                    break;
-                                case es:
-                                    object.put("peak", Objects.requireNonNull(result).getEs());
-                                    res.add(object);
-                                    break;
-                                case er:
-                                    object.put("peak", Objects.requireNonNull(result).getEr());
-                                    res.add(object);
-                                    break;
+                            SpectrumCalcResult result = calculator.calculate(finalPhotoMode, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
+
+                            WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
+                            if (anEnum != null && result != null) {
+                                JSONObject object = new JSONObject();
+                                switch (anEnum) {
+                                    case abs:
+                                        object.put("peak", result.getAbs());
+                                        res.add(object);
+                                        break;
+                                    case tPercent:
+                                        object.put("peak", result.getTPercent());
+                                        res.add(object);
+                                        break;
+                                    case es:
+                                        object.put("peak", result.getEs());
+                                        res.add(object);
+                                        break;
+                                    case er:
+                                        object.put("peak", result.getEr());
+                                        res.add(object);
+                                        break;
+                                }
                             }
                         }
-                    });
+                    }
                 } catch (Exception e) {
                     log.warn("光度测量出错！");
                     JSONObject jsonObject = new JSONObject();
@@ -3973,10 +4044,17 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     sendToActiveSession(null, taskId, jsonObject);
                     setTaskMeasuring(taskId, false);
                     return R.fail(map);
-
                 }
             }
         }
+
+// ... existing code ...
+
+// 删除原来的pairByWavelength方法，因为不再需要
+// private Map<String, Pair<ChangeParam, ChangeParam>> pairByWavelength(List<ChangeParam> zeroList, List<ChangeParam> measureList) {
+//     // 原来的实现...
+// }
+
 
 
         setTaskMeasuring(taskId, false);
@@ -3984,32 +4062,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         return R.ok(map);
     }
 
-    //pairByWavelength
-    private Map<String, Pair<ChangeParam, ChangeParam>> pairByWavelength(List<ChangeParam> zeroList, List<ChangeParam> measureList) {
-        // 按波长属性配对
-        Map<String, Pair<ChangeParam, ChangeParam>> pairedResults = new HashMap<>();
 
-// 遍历校零结果
-        for (ChangeParam zeroParam : zeroList) {
-            String key = zeroParam.getWl(); // 或其他唯一标识属性
-            pairedResults.put(key, new Pair<>(zeroParam, null));
-        }
-
-// 遍历测量结果，与校零结果配对
-        for (ChangeParam measureParam : measureList) {
-            String key = measureParam.getWl(); // 使用相同属性作为key
-            Pair<ChangeParam, ChangeParam> existingPair = pairedResults.get(key);
-            if (existingPair != null) {
-                // 更新配对结果
-                pairedResults.put(key, new Pair<>(existingPair.getKey(), measureParam));
-            } else {
-                // 如果校零列表中没有对应项，则只有测量值
-                pairedResults.put(key, new Pair<>(null, measureParam));
-            }
-        }
-        return pairedResults;
-
-    }
 
 //    private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
 //        log.debug("准备发送消息到 taskId: {}, 消息内容: {}", taskId, payload.toJSONString());
@@ -4453,7 +4506,7 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
      */
     private String getFileNameFromSession(WebSocketSession session) {
         // 从URL参数中获取文件名
-        String query = session.getUri().getQuery();
+        String query = Objects.requireNonNull(session.getUri()).getQuery();
         if (query != null) {
             String[] params = query.split("&");
             for (String param : params) {
