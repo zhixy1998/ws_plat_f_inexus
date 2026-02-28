@@ -593,12 +593,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail(YamlMessageSource.getMessageStatic("0010100A"));
         }
 
-        if (dto.getInputParamList() != null && !dto.getInputParamList().isEmpty()) {
+        if (!dto.getType()) {
+            if (dto.getInputParamList() != null && !dto.getInputParamList().isEmpty()) {
 
-            for (FInputParam param : dto.getInputParamList()) {
-                if (param.getResultIdentity().equals(newInputParam.getResultIdentity())) {
-                    //标识已存在
-                    return Result.fail(YamlMessageSource.getMessageStatic("0010100B"));
+                for (FInputParam param : dto.getInputParamList()) {
+                    if (param.getResultIdentity().equals(newInputParam.getResultIdentity())) {
+                        //标识已存在
+                        return Result.fail(YamlMessageSource.getMessageStatic("0010100B"));
+                    }
                 }
             }
         }

@@ -23,4 +23,7 @@ public class FCheckSampleInputParamDto {
 
     @ApiModelProperty("新增的输入参数")
     private FInputParam newInputParam;
+
+    @ApiModelProperty("类型/修改还是新增,false：新增，true：修改")
+    private Boolean type;
 }
