@@ -24,6 +24,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSwe
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
+import com.persee.workstation.uv_inexus.util.ColorUtil;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -98,6 +99,8 @@ public class ConciseTimeOneNewWebSocket {
     private DevOperationUtilService devOperationUtilService;
     @Autowired
     DeviceInfoService infoService;
+
+    String currentSampleCell;
 
     /**
      * 时间扫描上下文
@@ -174,6 +177,7 @@ public class ConciseTimeOneNewWebSocket {
     public void measureTask(FTimeNewWebSocketParam param) {
         log.info("单次时间测量连接建立");
         clearGlobalData();
+        currentSampleCell=null;
         Constants.measureStopStatus.put(param.getDeviceSerialNumber(), true);
         String taskId = param.getTaskId();
         connectionClosingMap.put(taskId, new AtomicBoolean(false));
@@ -431,6 +435,7 @@ public class ConciseTimeOneNewWebSocket {
                     // 发送样品池位置信息到前端
                     JSONObject poolMsg = new JSONObject();
                     poolMsg.put("currentPoolNum", sample.getSampleLocation());
+                    currentSampleCell=sample.getSampleLocation();
                     sendMessage(session.getDeviceSerialNumber(), poolMsg);
                     log.info("成功设置样品池位置: {}", sample.getSampleLocation());
                     return true;
@@ -556,6 +561,7 @@ public class ConciseTimeOneNewWebSocket {
         points.add(point);
         payload.put("data", points);
         payload.put("sampleId", sampleId);
+        payload.put("currentPoolNum", currentSampleCell);
 
         log.info("推送数据点: {}", payload);
 
@@ -715,7 +721,7 @@ public class ConciseTimeOneNewWebSocket {
             if (valleys!=null){
                 analysisData.setGrain(com.alibaba.fastjson2.JSON.toJSONString(valleys));
             }
-            analysisData.setColor("#000000");
+            analysisData.setColor(ColorUtil.getRandomColor());
             analysisData.setIsDelete("0");
             analysisData.setIsSave("1");
 

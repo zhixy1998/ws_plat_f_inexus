@@ -297,7 +297,7 @@ public class ConciseBaseLineNewWebSocket {
             if (result.getCode() != 200) {
                 log.error("【设置参数失败】设置参数服务返回失败 code: {}, message: {}",
                         result.getCode(), result.getMessage());
-                sendErrorClose(deviceSerialNumber,"设置参数失败" );
+                sendErrorClose(deviceSerialNumber,result.getMessage() );
                 return false;
             }
 

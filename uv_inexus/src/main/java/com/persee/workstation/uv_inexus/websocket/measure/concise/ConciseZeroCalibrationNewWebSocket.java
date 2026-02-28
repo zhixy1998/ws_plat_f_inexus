@@ -135,7 +135,7 @@ public class ConciseZeroCalibrationNewWebSocket {
         // 设置参数
         Result result = timeSweepService.setUpParametersPort(methodId, deviceSerialNumber);
         if (result.getCode() != 200) {
-            sendError(deviceSerialNumber, "设置参数失败");
+            sendError(deviceSerialNumber, result.getMessage());
             return;
         }
         // 进行校零

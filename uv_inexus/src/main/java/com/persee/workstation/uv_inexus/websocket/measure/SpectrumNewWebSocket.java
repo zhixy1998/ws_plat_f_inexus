@@ -19,6 +19,7 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.Sampl
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
+import com.persee.workstation.uv_inexus.util.ColorUtil;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -72,6 +73,8 @@ public class SpectrumNewWebSocket {
     private static ChangeParam lastChangeParam;
 
     String deviceSerialNumber;
+
+    String currentSampleCell;
 
     @Autowired
     private SpectrumService spectrumService;
@@ -249,7 +252,7 @@ public class SpectrumNewWebSocket {
 
         clearGlobalData();
         Constants.measureStopStatus.put(param.getDeviceSerialNumber(), true);
-
+        currentSampleCell=null;
         // 初始化会话状态
         SessionState state = new SessionState();
         sessionStates.put(param.getDeviceSerialNumber(), state);
@@ -349,7 +352,7 @@ public class SpectrumNewWebSocket {
         /// 设置参数
         Result result = spectrumService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
         if (result.getCode() != 200) {
-            sendError(deviceSerialNumber, "设置参数失败");
+            sendError(deviceSerialNumber, result.getMessage());
             return;
         }
 
@@ -408,7 +411,10 @@ public class SpectrumNewWebSocket {
                                     sendClose(deviceSerialNumber, errorMsg);
                                     return;
                                 }
-                                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
+                                Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
+                                if (b) {
+                                    currentSampleCell=sample.getSampleLocation();
+                                }
                                 JSONObject object = new JSONObject();
                                 object.put("currentPoolNum", sample.getSampleLocation());
                                 sendMessage(deviceSerialNumber, object);
@@ -450,7 +456,10 @@ public class SpectrumNewWebSocket {
                                     sendClose(deviceSerialNumber, errorMsg);
                                     return;
                                 }
-                                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
+                                Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
+                                if (b) {
+                                    currentSampleCell=sample.getSampleLocation();
+                                }
                                 JSONObject object = new JSONObject();
                                 object.put("currentPoolNum", sample.getSampleLocation());
                                 sendMessage(deviceSerialNumber, object);
@@ -1233,7 +1242,6 @@ public class SpectrumNewWebSocket {
         String valueY = DataCountUtil.addZero(value, digit);
         point.put("y", y);
         point.put("roundOffY", valueY);
-
         point.put("xType", "nm");
         // 光度模式是1.Abs 2.T% 3.Es 4.Er
         String luminosityType = luminosity.equals("1") ? "Abs" : luminosity.equals("2") ? "T%" : luminosity.equals("3") ? "Es" : "Er";
@@ -1244,6 +1252,7 @@ public class SpectrumNewWebSocket {
         payload.put("data", dataArray);
         payload.put("sampleId", sampleId);
         payload.put("count", count);
+        payload.put("currentPoolNum", currentSampleCell);
 
         sendMessage(deviceSerialNumber, payload);
 
@@ -1448,6 +1457,7 @@ public class SpectrumNewWebSocket {
         payload.put("sampleId", sampleId);
         payload.put("count", count);
         payload.put("scanMode", "fast");
+        payload.put("currentPoolNum", currentSampleCell);
 
         log.info("推送数据信息:");
         log.info("数据点数: " + dataArray.size());
@@ -1786,7 +1796,7 @@ public class SpectrumNewWebSocket {
                 if (markings != null) {
                     analysisData.setGrain(JSON.toJSONString(markings));
                 }
-                analysisData.setColor("#000000");
+                analysisData.setColor(ColorUtil.getRandomColor());
                 analysisData.setIsDelete("0");
                 analysisData.setIsSave("1");
                 tMeasureAnalysisDataService.save(analysisData);
@@ -1823,7 +1833,7 @@ public class SpectrumNewWebSocket {
                     if (markings != null) {
                         analysisData.setGrain(JSON.toJSONString(markings));
                     }
-                    analysisData.setColor("#000000");
+                    analysisData.setColor(ColorUtil.getRandomColor());
                     analysisData.setIsSave("1");
                     tMeasureAnalysisDataService.updateById(analysisData);
                 } else {
@@ -1854,7 +1864,7 @@ public class SpectrumNewWebSocket {
                     if (markings != null) {
                         analysis.setGrain(JSON.toJSONString(markings));
                     }
-                    analysis.setColor("#000000");
+                    analysis.setColor(ColorUtil.getRandomColor());
                     analysis.setIsDelete("0");
                     analysis.setIsSave("1");
                     tMeasureAnalysisDataService.save(analysis);

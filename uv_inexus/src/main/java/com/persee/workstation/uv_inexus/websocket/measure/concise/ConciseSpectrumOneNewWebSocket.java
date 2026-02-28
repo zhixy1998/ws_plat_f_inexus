@@ -23,6 +23,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpe
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
+import com.persee.workstation.uv_inexus.util.ColorUtil;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
@@ -79,6 +80,7 @@ public class ConciseSpectrumOneNewWebSocket {
     private static ChangeParam lastChangeParam;
 
     String deviceSerialNumber;
+    String currentSampleCell;
 
     @Autowired
     private SpectrumConciseService spectrumService;
@@ -257,6 +259,8 @@ public class ConciseSpectrumOneNewWebSocket {
         SessionState state = new SessionState();
         sessionStates.put(param.getDeviceSerialNumber(), state);
 
+        currentSampleCell=null;
+
         deviceSerialNumber = param.getDeviceSerialNumber();
 
         state.setBatchSize(staircaseEliminationBatchSize);
@@ -373,7 +377,10 @@ public class ConciseSpectrumOneNewWebSocket {
                     sendError(deviceSerialNumber, "设置出错");
                     return;
                 }
-                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
+                Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
+                if (b) {
+                    currentSampleCell=sample.getSampleLocation();
+                }
                 JSONObject object = new JSONObject();
                 object.put("currentPoolNum", sample.getSampleLocation());
                 sendMessage(deviceSerialNumber, object);
@@ -1183,6 +1190,7 @@ public class ConciseSpectrumOneNewWebSocket {
         payload.put("data", dataArray);
         payload.put("sampleId", sampleId);
         payload.put("count", count);
+        payload.put("currentPoolNum", currentSampleCell);
 
         sendMessage(deviceSerialNumber, payload);
 
@@ -1789,7 +1797,7 @@ public class ConciseSpectrumOneNewWebSocket {
                 existingAnalysisData.setAnalysisResult(JSON.toJSONString(result));
                 existingAnalysisData.setPeak(JSON.toJSONString(peakValleys));
                 existingAnalysisData.setGrain(JSON.toJSONString(markings));
-                existingAnalysisData.setColor("#000000");
+                existingAnalysisData.setColor(ColorUtil.getRandomColor());
                 existingAnalysisData.setIsSave("1");
                 boolean updateAnalysis = tMeasureAnalysisDataService.updateById(existingAnalysisData);
                 if (!updateAnalysis) {
@@ -1830,7 +1838,7 @@ public class ConciseSpectrumOneNewWebSocket {
                     analysisData.setAnalysisType("5");
                     analysisData.setPeak(JSON.toJSONString(peakValleys));
                     analysisData.setGrain(JSON.toJSONString(markings));
-                    analysisData.setColor("#000000");
+                    analysisData.setColor(ColorUtil.getRandomColor());
                     analysisData.setIsDelete("0");
                     analysisData.setIsSave("1");
                     boolean saveAnalysis = tMeasureAnalysisDataService.save(analysisData);
@@ -1875,7 +1883,7 @@ public class ConciseSpectrumOneNewWebSocket {
                     analysisData.setAnalysisType("5");
                     analysisData.setPeak(JSON.toJSONString(peakValleys));
                     analysisData.setGrain(JSON.toJSONString(markings));
-                    analysisData.setColor("#000000");
+                    analysisData.setColor(ColorUtil.getRandomColor());
                     analysisData.setIsDelete("0");
                     analysisData.setIsSave("1");
                     boolean saveAnalysis = tMeasureAnalysisDataService.save(analysisData);

@@ -27,6 +27,7 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.Sampl
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
+import com.persee.workstation.uv_inexus.util.ColorUtil;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -103,6 +104,8 @@ public class TimeNewOneWebSocket {
     @Autowired
     DeviceInfoService infoService;
 
+    String currentSampleCell;
+
     /**
      * 时间扫描上下文
      */
@@ -169,6 +172,7 @@ public class TimeNewOneWebSocket {
     public void measureTask(TimeNewWebSocketParam param) {
         log.info("单次时间测量连接建立");
         clearGlobalData();
+        currentSampleCell=null;
         Constants.measureStopStatus.put(param.getDeviceSerialNumber(), true);
         String taskId = param.getTaskId();
         connectionClosingMap.put(taskId, new AtomicBoolean(false));
@@ -432,6 +436,7 @@ public class TimeNewOneWebSocket {
                     JSONObject poolMsg = new JSONObject();
                     poolMsg.put("currentPoolNum", sample.getSampleLocation());
                     sendMessage(session.getDeviceSerialNumber(), poolMsg);
+                    currentSampleCell=sample.getSampleLocation();
                     log.info("成功设置样品池位置: {}", sample.getSampleLocation());
                     return true;
                 }else{
@@ -556,6 +561,7 @@ public class TimeNewOneWebSocket {
         points.add(point);
         payload.put("data", points);
         payload.put("sampleId", sampleId);
+        payload.put("currentPoolNum", currentSampleCell);
 
         log.info("推送数据点: {}", payload);
 
@@ -714,7 +720,7 @@ public class TimeNewOneWebSocket {
             if (valleys!=null){
                 analysisData.setGrain(com.alibaba.fastjson2.JSON.toJSONString(valleys));
             }
-            analysisData.setColor("#000000");
+            analysisData.setColor(ColorUtil.getRandomColor());
             analysisData.setIsDelete("0");
             analysisData.setIsSave("1");
 

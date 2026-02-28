@@ -23,6 +23,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpe
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
+import com.persee.workstation.uv_inexus.util.ColorUtil;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -57,7 +58,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;//
+import java.util.stream.Collectors;
 
 @Component
 public class ConciseSpectrumNewWebSocket {
@@ -79,6 +80,7 @@ public class ConciseSpectrumNewWebSocket {
     private static ChangeParam lastChangeParam;
 
     String deviceSerialNumber;
+    String currentSampleCell;
 
     @Autowired
     private SpectrumConciseService spectrumService;
@@ -257,6 +259,8 @@ public class ConciseSpectrumNewWebSocket {
         SessionState state = new SessionState();
         sessionStates.put(param.getDeviceSerialNumber(), state);
 
+        currentSampleCell=null;
+
         deviceSerialNumber = param.getDeviceSerialNumber();
 
         state.setBatchSize(staircaseEliminationBatchSize);
@@ -339,7 +343,7 @@ public class ConciseSpectrumNewWebSocket {
         /// 设置参数
         Result result = spectrumService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
         if (result.getCode() != 200) {
-            sendError(deviceSerialNumber, "设置参数失败");
+            sendError(deviceSerialNumber, result.getMessage());
             return;
         }
 
@@ -394,7 +398,10 @@ public class ConciseSpectrumNewWebSocket {
                                     sendError(deviceSerialNumber,  "设置出错");
                                     return;
                                 }
-                                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
+                                Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
+                                if (b) {
+                                    currentSampleCell=sample.getSampleLocation();
+                                }
                                 JSONObject object = new JSONObject();
                                 object.put("currentPoolNum", sample.getSampleLocation());
                                 sendMessage(deviceSerialNumber, object);
@@ -432,7 +439,10 @@ public class ConciseSpectrumNewWebSocket {
                                     sendError(deviceSerialNumber,  "设置出错");
                                     return;
                                 }
-                                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
+                                Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
+                                if (b) {
+                                    currentSampleCell=sample.getSampleLocation();
+                                }
                                 JSONObject object = new JSONObject();
                                 object.put("currentPoolNum", sample.getSampleLocation());
                                 sendMessage(deviceSerialNumber, object);
@@ -1264,7 +1274,7 @@ public class ConciseSpectrumNewWebSocket {
         payload.put("data", dataArray);
         payload.put("sampleId", sampleId);
         payload.put("count", count);
-
+        payload.put("currentPoolNum", currentSampleCell);
         sendMessage(deviceSerialNumber, payload);
 
         // 添加小延迟，避免推送过快
@@ -1490,6 +1500,7 @@ public class ConciseSpectrumNewWebSocket {
         payload.put("sampleId", sampleId);
         payload.put("count", count);
         payload.put("scanMode", "fast");
+        payload.put("currentPoolNum", currentSampleCell);
 
         log.info("推送数据信息:");
         log.info("数据点数: " + dataArray.size());
@@ -1828,7 +1839,7 @@ public class ConciseSpectrumNewWebSocket {
                 if (markings != null) {
                     analysisData.setGrain(JSON.toJSONString(markings));
                 }
-                analysisData.setColor("#000000");
+                analysisData.setColor(ColorUtil.getRandomColor());
                 analysisData.setIsDelete("0");
                 analysisData.setIsSave("1");
                 tMeasureAnalysisDataService.save(analysisData);
@@ -1865,7 +1876,7 @@ public class ConciseSpectrumNewWebSocket {
                     if (markings != null) {
                         analysisData.setGrain(JSON.toJSONString(markings));
                     }
-                    analysisData.setColor("#000000");
+                    analysisData.setColor(ColorUtil.getRandomColor());
                     analysisData.setIsSave("1");
                     tMeasureAnalysisDataService.updateById(analysisData);
                 } else {
@@ -1896,7 +1907,7 @@ public class ConciseSpectrumNewWebSocket {
                     if (markings != null) {
                         analysis.setGrain(JSON.toJSONString(markings));
                     }
-                    analysis.setColor("#000000");
+                    analysis.setColor(ColorUtil.getRandomColor());
                     analysis.setIsDelete("0");
                     analysis.setIsSave("1");
                     tMeasureAnalysisDataService.save(analysis);

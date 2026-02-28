@@ -27,6 +27,7 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.Sampl
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
+import com.persee.workstation.uv_inexus.util.ColorUtil;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -104,6 +105,7 @@ public class TimeNewWebSocket {
     DeviceInfoService infoService;
 
     private String deviceSerialNumber;
+    String currentSampleCell;
 
     /**
      * 时间扫描上下文
@@ -180,6 +182,7 @@ public class TimeNewWebSocket {
     public void measureTask(TimeNewWebSocketParam param) {
         log.info("时间扫描连接建立");
         clearGlobalData();
+        currentSampleCell=null;
         Constants.measureStopStatus.put(param.getDeviceSerialNumber(), true);
         String taskId = param.getTaskId();
         connectionClosingMap.put(taskId, new AtomicBoolean(false));
@@ -230,7 +233,7 @@ public class TimeNewWebSocket {
             // 设置参数
             Result paramResult = timeSweepService.setMethodParameters(task.getMethodKey(), deviceSerialNumber);
             if (paramResult.getCode() != 200) {
-                sendError(deviceSerialNumber, "设置参数失败");
+                sendError(deviceSerialNumber, paramResult.getMessage());
                 return;
             }
 
@@ -497,6 +500,7 @@ public class TimeNewWebSocket {
                 JSONObject poolMsg = new JSONObject();
                 poolMsg.put("currentPoolNum", sampleInfo.getSampleLocation());
                 sendMessage(session.getDeviceSerialNumber(), poolMsg);
+                currentSampleCell=sampleInfo.getSampleLocation();
                 log.info("成功设置样品池位置: {}", sampleInfo.getSampleLocation());
             }else{
                 log.warn("设置样品池位置失败: {}", sampleInfo.getSampleLocation());
@@ -615,6 +619,7 @@ public class TimeNewWebSocket {
         points.add(point);
         payload.put("data", points);
         payload.put("sampleId", sampleId);
+        payload.put("currentPoolNum", currentSampleCell);
 
         log.info("推送数据点: {}", payload);
 
@@ -774,7 +779,7 @@ public class TimeNewWebSocket {
             if (valleys!=null){
                 analysisData.setGrain(com.alibaba.fastjson2.JSON.toJSONString(valleys));
             }
-            analysisData.setColor("#000000");
+            analysisData.setColor(ColorUtil.getRandomColor());
             analysisData.setIsDelete("0");
             analysisData.setIsSave("1");
 

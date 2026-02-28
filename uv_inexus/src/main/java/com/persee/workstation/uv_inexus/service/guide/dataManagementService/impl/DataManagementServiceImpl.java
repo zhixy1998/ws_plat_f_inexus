@@ -398,7 +398,11 @@ public class DataManagementServiceImpl implements DataManagementService {
             taskSumListDto.setProjectName(project.getProjectName());
             taskSumListDto.setMeasureMode(task.getMeasureType());
             taskSumListDto.setTaskStatus(TaskStatusEnum.UNTESTED.getCode().equals(task.getTaskStatus())?"未测":TaskStatusEnum.TESTED.getCode().equals(task.getTaskStatus())?"已测":"结束");
-            taskSumListDto.setSampleNum((long) specimen.size());
+            if (specimen != null && !specimen.isEmpty()){
+                taskSumListDto.setSampleNum((long)specimen.size());
+            }else{
+                taskSumListDto.setSampleNum(0L);
+            }
             taskSumListDto.setMeasureStartTime(task.getStartTime());
             taskSumList.add(taskSumListDto);
         }
