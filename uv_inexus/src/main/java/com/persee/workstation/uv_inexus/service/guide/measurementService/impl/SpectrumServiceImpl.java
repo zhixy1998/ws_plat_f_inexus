@@ -3115,7 +3115,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                             for (int i = 0; i < digit; i++) {
                                 zeros.append("0");
                             }
-                            DecimalFormat df = new DecimalFormat("#." + zeros.toString());
+                            DecimalFormat df = new DecimalFormat("0." + zeros.toString());
                             df.setRoundingMode(RoundingMode.HALF_UP); // 四舍五入
                             y = df.format(yValue);
 
