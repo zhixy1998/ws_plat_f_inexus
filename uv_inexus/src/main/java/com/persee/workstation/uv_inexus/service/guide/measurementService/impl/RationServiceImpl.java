@@ -56,6 +56,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
+import com.persee.workstation.uv_inexus.websocket.measure.param.ParallelData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
@@ -1865,6 +1866,11 @@ public class RationServiceImpl implements RationService {
 
                 TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
 
+                if (StringUtils.hasText(sample.getParallelGroupId())) {
+                    HeadVO parallelGroupHead = new HeadVO(SampleTableEnum.Parallel_ID.getName(), SampleTableEnum.Parallel_ID.getIdentity(), TableHeadILocateEnums.analyze.getIdentity());
+                    ans.add(parallelGroupHead);
+                }
+
                 if (StringUtils.hasText(sample.getSampleType())) {
                     if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
                         empty = true;
@@ -1995,6 +2001,8 @@ public class RationServiceImpl implements RationService {
             ans.addAll(taskHeads);
         }
 
+
+
         if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
 
             String fitConcentrationName = SampleTableEnum.FIT_CONCENTRATION.getName();
@@ -2015,6 +2023,10 @@ public class RationServiceImpl implements RationService {
                 fitHead.setPrintTitle(fHeadVO.getPrintTitle());
             }
             ans.add(fitHead);
+
+            if (analyzeMap.containsKey(SampleTableEnum.Parallel_ID.getIdentity())) {
+                ans.add(analyzeMap.get(SampleTableEnum.Parallel_ID.getIdentity()));
+            }
 
             List<HeadVO> headAnalyze = new ArrayList<>();
 
@@ -2038,6 +2050,10 @@ public class RationServiceImpl implements RationService {
                 headAnalyze.add(analyzeHead);
             }
             ans.addAll(headAnalyze);
+        } else {
+            if (analyzeMap.containsKey(SampleTableEnum.Parallel_ID.getIdentity())) {
+                ans.add(analyzeMap.get(SampleTableEnum.Parallel_ID.getIdentity()));
+            }
         }
         List<HeadVO> other = headsMap.get(TableHeadILocateEnums.other.getIdentity());
         if (other == null || other.isEmpty()) {
@@ -2114,6 +2130,7 @@ public class RationServiceImpl implements RationService {
                     log.info("跳过该样品");
                     continue;
                 }
+
                 if (StringUtils.hasText(sample.getSampleType())) {
                     if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
                         empty = true;
@@ -2125,6 +2142,12 @@ public class RationServiceImpl implements RationService {
                         ans.addAll(heads);
                     }
                 }
+
+                if (StringUtils.hasText(sample.getParallelGroupId())) {
+                    HeadVO parallelGroupHead = new HeadVO(SampleTableEnum.Parallel_ID.getName(), SampleTableEnum.Parallel_ID.getIdentity(), TableHeadILocateEnums.analyze.getIdentity());
+                    ans.add(parallelGroupHead);
+                }
+
             }
         }
 
@@ -2324,6 +2347,49 @@ public class RationServiceImpl implements RationService {
                 analysisData.setMeasureDataId(emptyData.getMeasureDataId());
                 analysisData.setDataVersion(0);
                 analysisData.setAnalysisResult(JSON.toJSONString(emptyData.getCountData()));
+                analysisData.setIsDelete(createType);
+                tMeasureAnalysisDataService.save(analysisData);
+            }
+        }
+    }
+
+
+    @Override
+    public void updateParallelData(List<RationSaveCountDataInfo> parallelData) {
+        for (RationSaveCountDataInfo parallel : parallelData) {
+            LambdaQueryWrapper<TMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TMeasureAnalysisData::getTaskId, parallel.getTaskId())
+                    .eq(TMeasureAnalysisData::getSampleKey, parallel.getSampleId())
+                    .eq(TMeasureAnalysisData::getMeasureDataId, parallel.getMeasureDataId())
+                    .orderByDesc(TMeasureAnalysisData::getDataVersion)
+                    .last("limit 1");
+            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
+            if (analysisData != null) {
+                List<RationCountDataInfo> analysisResult = new ArrayList<>();
+                List<RationCountDataInfo> ans = new ArrayList<>();
+                if (StringUtils.hasText(analysisData.getAnalysisResult())) {
+                    analysisResult = JSON.parseArray(analysisData.getAnalysisResult(), RationCountDataInfo.class);
+                }
+
+                if (analysisResult != null && !analysisResult.isEmpty()) {
+                    for (RationCountDataInfo dataInfo : analysisResult) {
+                        if (!dataInfo.getIdentity().equals(SampleTableEnum.Parallel_ID.getIdentity()) && !dataInfo.getIdentity().equals(SampleTableEnum.Parallel_value.getIdentity())) {
+                            ans.add(dataInfo);
+                        }
+                    }
+                }
+                ans.addAll(parallel.getCountData());
+
+
+                analysisData.setAnalysisResult(JSON.toJSONString(ans));
+                tMeasureAnalysisDataService.updateById(analysisData);
+            } else {
+                analysisData = new TMeasureAnalysisData();
+                analysisData.setTaskId(parallel.getTaskId());
+                analysisData.setSampleKey(parallel.getSampleId());
+                analysisData.setMeasureDataId(parallel.getMeasureDataId());
+                analysisData.setDataVersion(0);
+                analysisData.setAnalysisResult(JSON.toJSONString(parallel.getCountData()));
                 analysisData.setIsDelete(createType);
                 tMeasureAnalysisDataService.save(analysisData);
             }
@@ -2797,35 +2863,6 @@ public class RationServiceImpl implements RationService {
                 map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
                 map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
 
-                LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
-                analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
-                        .eq(TMeasureAnalysisData::getSampleKey, sampleId)
-                        .eq(TMeasureAnalysisData::getMeasureDataId, data.getId())
-                        .orderByDesc(TMeasureAnalysisData::getDataVersion).last("limit 1");
-
-                TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-                if (one != null && one.getAnalysisResult() != null) {
-                    List<RationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), RationCountDataInfo.class);
-                    for (RationCountDataInfo countData : countDataList) {
-
-                        if (countData.getColValue() != null) {
-                            map.put(countData.getIdentity(), countData.getColValue());
-
-                            if (countData.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
-                                Map<String, String> qcAns = checkValueQuantity(task.getMethodKey(), countData.getColValue(), qcType);
-                                Object object = map.get(SampleTableEnum.QUALITY.getIdentity());
-                                if (object != null) {
-                                    Map<String, String> quality = new ObjectMapper().convertValue(object,
-                                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {
-                                            });
-                                    qcAns.putAll(quality);
-                                }
-                                map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
-                            }
-                        }
-                    }
-                }
-
             }
         } else {
             //重复模式，获取数据方式待定----暂时先以不重复做回显
@@ -2931,6 +2968,7 @@ public class RationServiceImpl implements RationService {
         LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
         analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
                 .eq(TMeasureAnalysisData::getSampleKey, sampleId);
+
         if (data != null) {
             analysisDataQueryWrapper.eq(TMeasureAnalysisData::getMeasureDataId, data.getId());
         }
@@ -2940,8 +2978,21 @@ public class RationServiceImpl implements RationService {
         if (one != null && one.getAnalysisResult() != null) {
             List<RationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), RationCountDataInfo.class);
             for (RationCountDataInfo countData : countDataList) {
+
+                if (countData.getIdentity().equals(SampleTableEnum.Parallel_ID.getIdentity())) {
+                    map.put(countData.getIdentity(), countData.getColValue());
+                    continue;
+                }
+
                 if (StringUtils.hasText(countData.getColValue())) {
-                    map.put(countData.getIdentity(), DataCountUtil.addZero(Double.valueOf(countData.getColValue()), digit));
+                    String value = countData.getColValue();
+                    try {
+                        Double v = Double.valueOf(value);
+                        value = DataCountUtil.addZero(v, digit);
+                    } catch (Exception ignored) {
+                    }
+
+                    map.put(countData.getIdentity(), value);
 
                     if (countData.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                         Map<String, String> qcAns = checkValueQuantity(task.getMethodKey(), countData.getColValue(), qcType);
@@ -2954,6 +3005,7 @@ public class RationServiceImpl implements RationService {
                         }
                         map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
                     }
+
                 }
             }
         }
@@ -3895,7 +3947,10 @@ public class RationServiceImpl implements RationService {
 
                     }
                     if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
-                        point.setConcentration(DataCountUtil.addZero(Double.valueOf(dataInfo.getColValue()), digit));
+
+                        String s = DataCountUtil.addZero(Double.valueOf(dataInfo.getOriginalValue()), digit);
+                        point.setConcentration(s);
+
                     }
                 }
             }
@@ -4426,6 +4481,8 @@ public class RationServiceImpl implements RationService {
                                 && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())
                 );
 
+        ParallelData parallelData = new ParallelData();
+
         for (TaskSpecimen specimen : taskSpecimen) {
 
             if (specimen.getDeleteType().equals(deleteType)) {
@@ -4564,6 +4621,8 @@ public class RationServiceImpl implements RationService {
 
                 }
                 saveEmptySampleData(emptyDataList);
+                handleParallelGroup(sample, parallelData, taskId, data.getId(), minuend, digit, true);
+
                 lastIsEmpty = true;
 
             } else {
@@ -4572,6 +4631,7 @@ public class RationServiceImpl implements RationService {
                 //测量过的数据，非空白样，添加标准浓度为了拟合曲线
                 //TODO 未来需要添加质量和浓度的区分
                 fitCurveParams.add(sample.getNormalConcentration());
+                String parallelValue = ansData.getColValue();
 
                 if (empty) {
                     RationCountDataInfo sumAbsData = new RationCountDataInfo();
@@ -4582,6 +4642,7 @@ public class RationServiceImpl implements RationService {
                     currentList.add(sumAbsData);
                     currentList.add(ansData);
                     dealData.setCountData(currentList);
+                    parallelValue = sumAbsData.getColValue();
                     fitCurveData.add(sumAbsData);
                 } else {
                     currentList.add(ansData);
@@ -4589,6 +4650,8 @@ public class RationServiceImpl implements RationService {
                     fitCurveData.add(ansData);
                 }
                 saveAnalyzeData(dealData);
+                handleParallelGroup(sample, parallelData, taskId, data.getId(), Double.parseDouble(parallelValue), digit, false);
+
                 lastIsEmpty = false;
             }
             specimen.setIsTested(tested);
@@ -4605,6 +4668,98 @@ public class RationServiceImpl implements RationService {
         }
         tMeasureTaskService.updateById(task);
         return R.ok();
+    }
+
+    /**
+     * 简化版并行数据处理
+     */
+    private void handleParallelGroup(TMeasureSample sample, ParallelData parallelData,
+                                     String taskId, String measureDataId, double value, int digit, boolean isEmpty) {
+        // 没有并行组ID直接返回
+        if (!StringUtils.hasText(sample.getParallelGroupId())) {
+            return;
+        }
+
+        boolean isSameGroup = Objects.equals(sample.getParallelGroupId(), parallelData.getParallelId());
+        String parallelValue;
+        String displayValue = "";
+
+        if (isSameGroup) {
+            // 同一组：更新数据
+            if (isEmpty) {
+                parallelValue = DataCountUtil.addZero(value, digit);
+            } else {
+                // 非空白样计算平均值
+                List<String> valueList = parallelData.getParallelValueList();
+                valueList.add(String.valueOf(value));
+                double avg = valueList.stream().mapToDouble(Double::parseDouble).sum() / valueList.size();
+                parallelValue = DataCountUtil.addZero(DataCountUtil.formatValue(digit, avg), digit);
+            }
+            parallelData.setParallelValue(parallelValue);
+        } else {
+            // 新组：初始化数据
+            parallelData.setParallelId(sample.getParallelGroupId());
+            parallelValue = DataCountUtil.addZero(value, digit);
+            parallelData.setParallelValue(parallelValue);
+
+            if (!isEmpty) {
+                // 非空白样初始化valueList
+                List<String> valueList = new ArrayList<>();
+                valueList.add(String.valueOf(value));
+                parallelData.setParallelValueList(valueList);
+            }
+        }
+        displayValue = parallelValue;
+        if (sample.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity()) && !isEmpty) {
+            TMeasureTask task = tMeasureTaskService.getById(taskId);
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+
+            RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+
+            displayValue = this.fitDataRounding(parallelValue, parameter);
+        }
+
+        // 创建并行数据信息
+        List<RationCountDataInfo> parallelInfo = Arrays.asList(
+                createDataInfo(SampleTableEnum.Parallel_ID, sample.getParallelGroupId()),
+                createDataInfo(SampleTableEnum.Parallel_value, displayValue)
+        );
+
+        // 保存数据
+        RationSaveCountDataInfo saveData = new RationSaveCountDataInfo();
+        saveData.setTaskId(taskId);
+        saveData.setSampleId(sample.getId());
+        saveData.setMeasureDataId(measureDataId);
+        saveData.setCountData(parallelInfo);
+
+        List<RationSaveCountDataInfo> dataList = parallelData.getDealDataList();
+        if (dataList == null) {
+            dataList = new ArrayList<>();
+        }
+
+        if (isSameGroup) {
+            // 更新所有已有数据的并行值
+            String finalParallelValue = displayValue;
+            dataList.forEach(info ->
+                    info.getCountData().stream()
+                            .filter(datum -> datum.getIdentity().equals(SampleTableEnum.Parallel_value.getIdentity()))
+                            .forEach(datum -> datum.setColValue(finalParallelValue))
+            );
+        }
+
+        dataList.add(saveData);
+        parallelData.setDealDataList(dataList);
+        this.updateParallelData(dataList);
+    }
+
+    /**
+     * 创建数据信息对象
+     */
+    private RationCountDataInfo createDataInfo(SampleTableEnum tableEnum, String value) {
+        RationCountDataInfo info = new RationCountDataInfo();
+        info.setIdentity(tableEnum.getIdentity());
+        info.setColValue(value);
+        return info;
     }
 
     @Override
@@ -4631,12 +4786,13 @@ public class RationServiceImpl implements RationService {
 
         empty = taskSpecimen.stream()
                 .anyMatch(specimen ->
-                        specimen.getSpecimenKey().equals(dealSampleKind)
+                        specimen.getSampleKind().equals(dealSampleKind)
                                 && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity()) &&
                                 specimen.getDeleteType() != null &&
                                 specimen.getDeleteType().equals(createType)
                 );
 
+        ParallelData parallelData = new ParallelData();
         for (TaskSpecimen specimen : taskSpecimen) {
 
             if (specimen.getDeleteType().equals(deleteType)) {
@@ -4756,6 +4912,8 @@ public class RationServiceImpl implements RationService {
 
                 }
                 saveEmptySampleData(emptyDataList);
+                handleParallelGroup(sample, parallelData, taskId, data.getId(), minuend, digit, true);
+
                 lastIsEmpty = true;
             } else {
                 List<RationCountDataInfo> currentList = new ArrayList<>();
@@ -4784,6 +4942,7 @@ public class RationServiceImpl implements RationService {
                 获取拟合的值
                  */
                 FittingReceiveInfo fitInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+                String fitAns = null;
 
                 if (fitInfo != null && fitInfo.getRoundCoefficient() != null) {
                     String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
@@ -4797,6 +4956,8 @@ public class RationServiceImpl implements RationService {
                         valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
                         valueData.setColValue(s);
                         currentList.add(valueData);
+
+                        fitAns = ans;
                     }
                 }
 
@@ -4804,6 +4965,9 @@ public class RationServiceImpl implements RationService {
                 dealData.setCountData(currentList);
                 saveAnalyzeData(dealData);
                 lastIsEmpty = false;
+                if (StringUtils.hasText(fitAns)) {
+                    handleParallelGroup(sample, parallelData, taskId, data.getId(), Double.parseDouble(fitAns), digit, false);
+                }
             }
         }
         return R.ok();

@@ -38,6 +38,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
+import com.persee.workstation.uv_inexus.websocket.measure.param.ParallelData;
 import com.persee.workstation.uv_inexus.websocket.measure.param.PhotoAndRationMetricWebsocketParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -193,6 +194,7 @@ public class RationMeasureNewWebSocket{
             empty = taskSpecimen.stream()
                     .anyMatch(specimen ->
                             specimen.getSampleType() != null &&
+                                    specimen.getSampleKind().equals(param.getSampleKind()) &&
                                     specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity()) &&
                                     specimen.getDeleteType() != null &&
                                     specimen.getDeleteType().equals("0")
@@ -321,6 +323,9 @@ public class RationMeasureNewWebSocket{
                 return;
             }
 
+            ParallelData parallelData = new ParallelData();
+
+
             //后续添加仪器状态检测
 
             if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
@@ -395,32 +400,29 @@ public class RationMeasureNewWebSocket{
 
                             if (repeat) {
                                 List<RationWavelengthDataInfo> wavelengthDataInfos = countRepeatData(list, digit);
-                                R<RationCountDataInfo> absValue = rationService.countAbsValue(wavelengthDataInfos, parameter, digit);
-                                if (!absValue.getSuccess()) {
-                                    log.info("计算abs失败");
-                                    continue;
-                                }
-                                ansData = absValue.getData();
-
-                            } else {
-
-                                R<RationCountDataInfo> absValue = rationService.countAbsValue(list, parameter, digit);
-                                if (!absValue.getSuccess()) {
-                                    log.info("重新计算abs失败");
-                                    continue;
-                                }
-                                ansData = absValue.getData();
+                                list.clear();
+                                list.addAll(wavelengthDataInfos);
                             }
+
+                            R<RationCountDataInfo> absValue = rationService.countAbsValue(list, parameter, digit);
+                            if (!absValue.getSuccess()) {
+                                log.info("重新计算abs失败");
+                                continue;
+                            }
+                            ansData = absValue.getData();
 
                             if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
 
                                 emptySampleDeal(digit, ansData, dealData);
+
+                                handleParallelGroup(sample, parallelData, taskId, data.getId(), minuend, digit, true);
                                 lastIsEmpty = true;
                             } else {
                                 lastIsEmpty = false;
                                 //测量过的数据，非空白样，添加标准浓度为了拟合曲线
                                 //TODO 未来需要添加质量和浓度的区分
                                 fitCurveParams.add(sample.getNormalConcentration());
+                                String parallelValue = ansData.getColValue();
 
                                 if (empty) {
                                     RationCountDataInfo sumAbsData = new RationCountDataInfo();
@@ -430,9 +432,12 @@ public class RationMeasureNewWebSocket{
                                     String s = DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit);
                                     sumAbsData.setColValue(s);
                                     fitCurveData.add(sumAbsData);
+                                    parallelValue = sumAbsData.getColValue();
                                 } else {
                                     fitCurveData.add(ansData);
                                 }
+
+                                handleParallelGroup(sample, parallelData, taskId, data.getId(), Double.parseDouble(parallelValue), digit, false);
                             }
                         }
                         continue;
@@ -449,6 +454,10 @@ public class RationMeasureNewWebSocket{
 
                     } else {
                         r = singleSampleSimpleMeasure(sample, parameter, task, deviceSerialNumber);
+                    }
+                    if (isAutoChangePool) {
+                        currentPoolNum = Integer.parseInt(sample.getSampleLocation());
+                        samplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), param.getUpdateBy());
                     }
 
                     if (!r.getSuccess()) {
@@ -500,12 +509,18 @@ public class RationMeasureNewWebSocket{
                         }
                         lastIsEmpty = true;
                         specimen.setIsTested(right);
+
+                        //平行样处理
+                        handleParallelGroup(sample, parallelData, taskId, measureDataId, minuend, digit, true);
+
                         continue;
                     } else {
                         lastIsEmpty = false;
                         //测量成功后，非空白样，添加标准浓度为了拟合曲线
                         //TODO 未来需要添加质量和浓度的区分
                         fitCurveParams.add(sample.getNormalConcentration());
+
+                        String parallelValue = absData.getColValue();
 
                         if (empty) {
                             RationCountDataInfo sumAbsData = new RationCountDataInfo();
@@ -516,6 +531,8 @@ public class RationMeasureNewWebSocket{
                             fitCurveData.add(sumAbsData);
                             measureAbsDataList.add(sumAbsData);
 
+                            parallelValue = sumAbsData.getColValue();
+
                             sampleSend(deviceSerialNumber, sample.getId(), sumAbsData.getIdentity(), null, String.valueOf(sumAbsData.getColValue()));
                             sendPoint(deviceSerialNumber, sample.getNormalConcentration(), sumAbsData.getColValue(), parameter);
                         } else {
@@ -523,8 +540,14 @@ public class RationMeasureNewWebSocket{
                             sendPoint(deviceSerialNumber, sample.getNormalConcentration(), absData.getColValue(), parameter);
                         }
                         data.setCountData(measureAbsDataList);
-                        rationService.saveSampleMeasureData(data);
+                        R<RationSaveCountDataInfo> r1 = rationService.saveSampleMeasureData(data);
+                        RationSaveCountDataInfo r1Data = r1.getData();
+                        String measureDataId = r1Data.getMeasureDataId();
+
                         specimen.setIsTested(right);
+
+                        //平行样处理
+                        handleParallelGroup(sample, parallelData, taskId, measureDataId, Double.parseDouble(parallelValue), digit, false);
                     }
                     specimen.setIsTested(right);
                 }
@@ -663,48 +686,74 @@ public class RationMeasureNewWebSocket{
                     /*
                     测过的样品，未知样，只需要处理空白即可
                      */
-                        if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+
                             //只处理空白样
-                            LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-                            queryWrapper.eq(TMeasureData::getTaskId, taskId)
-                                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
-                                    .orderByDesc(TMeasureData::getSerialNumber)
-                                    .last("limit 1");
-                            TMeasureData data = tMeasureDataService.getOne(queryWrapper);
-                            if (data == null) {
-                                data = new TMeasureData();
+                        LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                        queryWrapper.eq(TMeasureData::getTaskId, taskId)
+                                .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
+                                .orderByDesc(TMeasureData::getSerialNumber)
+                                .last("limit 1");
+                        TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+                        if (data == null) {
+                            data = new TMeasureData();
+                        }
+                        List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
+                        if (list != null && !list.isEmpty()) {
+                            RationCountDataInfo ansData;
+
+                            RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
+                            dealData.setSampleId(specimen.getSpecimenKey());
+                            dealData.setTaskId(taskId);
+                            dealData.setMeasureDataId(data.getId());
+
+                            if (repeat) {
+                                List<RationWavelengthDataInfo> wavelengthDataInfos = countRepeatData(list, digit);
+                                list.clear();
+                                list.addAll(wavelengthDataInfos);
                             }
-                            List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
-                            if (list != null && !list.isEmpty()) {
-                                RationCountDataInfo ansData;
 
-                                RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
-                                dealData.setSampleId(specimen.getSpecimenKey());
-                                dealData.setTaskId(taskId);
-                                dealData.setMeasureDataId(data.getId());
+                            R<RationCountDataInfo> absValue = rationService.countAbsValue(list, parameter, digit);
+                            if (!absValue.getSuccess()) {
+                                log.info("数据处理失败");
+                                continue;
+                            }
+                            ansData = absValue.getData();
 
-                                if (repeat) {
-                                    List<RationWavelengthDataInfo> wavelengthDataInfos = countRepeatData(list, digit);
-                                    R<RationCountDataInfo> absValue = rationService.countAbsValue(wavelengthDataInfos, parameter, digit);
-                                    if (!absValue.getSuccess()) {
-                                        log.info("数据处理失败");
-                                        continue;
-                                    }
-                                    ansData = absValue.getData();
+                            if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+                                emptySampleDeal(digit, ansData, dealData);
+
+                                handleParallelGroup(sample, parallelData, taskId, data.getId(), minuend, digit, true);
+                                lastIsEmpty = true;
+                            } else {
+                                lastIsEmpty = false;
+                                double countValue = 0.0;
+                                if (empty) {
+
+                                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                                    Double value = DataCountUtil.formatValue(digit, v);
+                                    countValue = value;
 
                                 } else {
-
-                                    R<RationCountDataInfo> absValue = rationService.countAbsValue(list, parameter, digit);
-                                    if (!absValue.getSuccess()) {
-                                        log.info("数据处理失败");
-                                        continue;
-                                    }
-                                    ansData = absValue.getData();
+                                    countValue = Double.parseDouble(ansData.getColValue());
                                 }
+                                FittingReceiveInfo fittingInfo = null;
+                                if (StringUtils.hasText(task.getFittingParam())) {
+                                    fittingInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+                                }
+                                if (fittingInfo != null) {
+                                    String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType());
 
-                                emptySampleDeal(digit, ansData, dealData);
+                                    if (ans != null && fittingInfo.getRoundCoefficient() != null) {
+
+                                        String s = rationService.fitDataRounding(ans, parameter);
+
+                                        //平行样处理
+                                        handleParallelGroup(sample, parallelData, taskId, data.getId(), Double.parseDouble(ans), digit, false);
+                                    }
+                                }
                             }
                         }
+                        continue;
                     }
 
                     /*
@@ -738,12 +787,15 @@ public class RationMeasureNewWebSocket{
                         return;
                     }
                     RationSaveCountDataInfo saveDataInfo = saved.getData();
+
                     specimen.setIsTested(right);
                     task.setSampleKey(JSON.toJSONString(taskSpecimen));
-
+                    task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
                     tMeasureTaskService.updateById(task);
 
                     List<RationCountDataInfo> measureAbsDataList = saveDataInfo.getCountData();
+
+                    String measureDataId = saveDataInfo.getMeasureDataId();
 
                     RationCountDataInfo absData = new RationCountDataInfo();
                     for (RationCountDataInfo dataInfo : measureAbsDataList) {
@@ -754,14 +806,13 @@ public class RationMeasureNewWebSocket{
                     }
                     if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
 
-                        String measureDataId = saveDataInfo.getMeasureDataId();
-
                         RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
                         dealData.setTaskId(taskId);
                         dealData.setSampleId(sample.getId());
                         dealData.setMeasureDataId(measureDataId);
 
                         emptySampleDeal(digit, absData, dealData);
+                        handleParallelGroup(sample, parallelData, taskId, measureDataId, minuend, digit, true);
                         for (RationSaveCountDataInfo info : emptyDataList) {
                             String sampleId = info.getSampleId();
                             for (RationCountDataInfo countDatum : info.getCountData()) {
@@ -771,17 +822,24 @@ public class RationMeasureNewWebSocket{
                             }
 
                         }
+
+                        lastIsEmpty = true;
+                        specimen.setIsTested(right);
+
+                        //平行样处理
+                        handleParallelGroup(sample, parallelData, taskId, measureDataId, minuend, digit, true);
+
                         continue;
                     } else {
                         lastIsEmpty = false;
                         //TODO 未来需要添加质量和浓度的区分
-                    /*
-                    未知样处理----计算sumAbs值，计算拟合浓度，计算公式，保存结果
-                    如果有空白样，和没有空白样
-                    统一一个参数，然后根据有无空白，赋值
-                    然后各类计算
-                    最后保存。。。。应该先保存一次测量结果，在保存计算结果，
-                     */
+                        /*
+                        未知样处理----计算sumAbs值，计算拟合浓度，计算公式，保存结果
+                        如果有空白样，和没有空白样
+                        统一一个参数，然后根据有无空白，赋值
+                        然后各类计算
+                        最后保存。。。。应该先保存一次测量结果，在保存计算结果，
+                         */
                         double countValue = 0.0;
 
                         if (empty) {
@@ -800,6 +858,7 @@ public class RationMeasureNewWebSocket{
                             countValue = Double.parseDouble(absData.getColValue());
                         }
                         FittingReceiveInfo fittingInfo = null;
+                        String fitAns = null;
                         if (StringUtils.hasText(task.getFittingParam())) {
                             fittingInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
                         }
@@ -824,10 +883,19 @@ public class RationMeasureNewWebSocket{
                                 jsonObject.put("value", valueData.getColValue());
                                 sendMessage(deviceSerialNumber, jsonObject);
                                 sendUnknowPoint(deviceSerialNumber, valueData, String.valueOf(countValue), parameter);
+
+                                //平行样处理
+                                fitAns = ans;
+
                             }
                         }
                         saveDataInfo.setCountData(measureAbsDataList);
                         rationService.saveAnalyzeData(saveDataInfo);
+
+                        if (StringUtils.hasText(fitAns)) {
+                            handleParallelGroup(sample, parallelData, taskId, measureDataId, Double.parseDouble(fitAns), digit, false);
+                        }
+
                         //定量的公式计算----待定
 //                    rationService.formula()
 
@@ -875,6 +943,109 @@ public class RationMeasureNewWebSocket{
             infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         }
 
+    }
+
+
+    /**
+     * 简化版并行数据处理
+     */
+    private void handleParallelGroup(TMeasureSample sample, ParallelData parallelData,
+                                     String taskId, String measureDataId, double value, int digit, boolean isEmpty) {
+        // 没有并行组ID直接返回
+        if (!StringUtils.hasText(sample.getParallelGroupId())) {
+            return;
+        }
+
+        boolean isSameGroup = Objects.equals(sample.getParallelGroupId(), parallelData.getParallelId());
+        String parallelValue;
+        String displayValue = "";
+
+        if (isSameGroup) {
+            // 同一组：更新数据
+            if (isEmpty) {
+                parallelValue = DataCountUtil.addZero(value, digit);
+            } else {
+                // 非空白样计算平均值
+                List<String> valueList = parallelData.getParallelValueList();
+                valueList.add(String.valueOf(value));
+                double avg = valueList.stream().mapToDouble(Double::parseDouble).sum() / valueList.size();
+                parallelValue = DataCountUtil.addZero(DataCountUtil.formatValue(digit, avg), digit);
+            }
+            parallelData.setParallelValue(parallelValue);
+        } else {
+            // 新组：初始化数据
+            parallelData.setParallelId(sample.getParallelGroupId());
+            parallelValue = DataCountUtil.addZero(value, digit);
+            parallelData.setParallelValue(parallelValue);
+
+            if (!isEmpty) {
+                // 非空白样初始化valueList
+                List<String> valueList = new ArrayList<>();
+                valueList.add(String.valueOf(value));
+                parallelData.setParallelValueList(valueList);
+            }
+        }
+        displayValue = parallelValue;
+        if (sample.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity()) && !isEmpty) {
+            TMeasureTask task = tMeasureTaskService.getById(taskId);
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+
+            RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+
+            displayValue = rationService.fitDataRounding(parallelValue, parameter);
+        }
+
+        // 创建并行数据信息
+        List<RationCountDataInfo> parallelInfo = Arrays.asList(
+                createDataInfo(SampleTableEnum.Parallel_ID, sample.getParallelGroupId()),
+                createDataInfo(SampleTableEnum.Parallel_value, displayValue)
+        );
+
+        // 保存数据
+        RationSaveCountDataInfo saveData = new RationSaveCountDataInfo();
+        saveData.setTaskId(taskId);
+        saveData.setSampleId(sample.getId());
+        saveData.setMeasureDataId(measureDataId);
+        saveData.setCountData(parallelInfo);
+
+        List<RationSaveCountDataInfo> dataList = parallelData.getDealDataList();
+        if (dataList == null) {
+            dataList = new ArrayList<>();
+        }
+
+        if (isSameGroup) {
+            // 更新所有已有数据的并行值
+            String finalParallelValue = displayValue;
+            dataList.forEach(info ->
+                    info.getCountData().stream()
+                            .filter(datum -> datum.getIdentity().equals(SampleTableEnum.Parallel_value.getIdentity()))
+                            .forEach(datum -> datum.setColValue(finalParallelValue))
+            );
+        }
+
+        dataList.add(saveData);
+        parallelData.setDealDataList(dataList);
+        rationService.updateParallelData(dataList);
+    }
+
+    /**
+     * 创建数据信息对象
+     */
+    private RationCountDataInfo createDataInfo(SampleTableEnum tableEnum, String value) {
+        RationCountDataInfo info = new RationCountDataInfo();
+        info.setIdentity(tableEnum.getIdentity());
+        info.setColValue(value);
+        return info;
+    }
+
+
+    public void sendParallelData(String sampleId, String deviceSerialNumber, String parallelId, String value) {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("sampleId", sampleId);
+        jsonObject.put("parallelSampleId", parallelId);
+
+        jsonObject.put("parallelSampleResult", value);
+        sendMessage(deviceSerialNumber, jsonObject);
     }
 
     public void reCountUnknowSampleData(String deviceSerialNumber, List<TaskSpecimen> dealSampleList, String taskId, FittingReceiveInfo curveData, RationParameter parameter) {

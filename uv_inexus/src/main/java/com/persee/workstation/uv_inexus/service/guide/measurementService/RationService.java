@@ -96,6 +96,8 @@ public interface RationService {
 
     void saveEmptySampleData(List<RationSaveCountDataInfo> emptySampleList);
 
+    void updateParallelData(List<RationSaveCountDataInfo> parallelData);
+
     R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, RationParameter parameter, Integer digit);
 
     R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, RationParameter parameter);
