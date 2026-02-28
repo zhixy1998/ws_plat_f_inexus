@@ -1843,10 +1843,10 @@ public class RationServiceImpl implements RationService {
         if (StringUtils.hasText(task.getTableInfo())) {
             RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
             if (shot != null && shot.getStandHead() != null) {
-                if (shot.getStandHead().getSampleHeads() != null) {
+                if (shot.getStandHead().getSampleHeads() != null && !shot.getStandHead().getSampleHeads().isEmpty()) {
                     ans.addAll(shot.getStandHead().getSampleHeads());
                 }
-                if (shot.getStandHead().getTaskHeads() != null) {
+                if (shot.getStandHead().getTaskHeads() != null && !shot.getStandHead().getTaskHeads().isEmpty()) {
                     ans.addAll(shot.getStandHead().getTaskHeads());
                 }
             }
@@ -2772,6 +2772,9 @@ public class RationServiceImpl implements RationService {
         RepeatMeasureData tPercentData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode());
         String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
 
+        SystemBusinessParamVO vo = businessParamService.queryBusinessParam();
+        Integer sdDigits = vo.getSdDigits();
+
 
         if (option != null && !option.isEmpty()) {
             for (String s : option) {
@@ -2786,14 +2789,21 @@ public class RationServiceImpl implements RationService {
                 if (DataIdentityEnums.sd.getIdentity().equals(s)) {
                     children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
 
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
+                    String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getSd());
+                    String sdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getSd());
+
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(sdT), sdDigits));
                     ans.putIfAbsent(pre + DataIdentityEnums.sd.getIdentity(), children);
                 }
                 if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
                     children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
+                    String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getRsd());
+                    String rsdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getRsd());
+
+
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(rsdT), sdDigits));
                     ans.putIfAbsent(pre + DataIdentityEnums.rsd.getIdentity(), children);
                 }
             }
@@ -3964,7 +3974,7 @@ public class RationServiceImpl implements RationService {
         }
 
         RationCurveDataInfo result = new RationCurveDataInfo();
-        result.setMaxX(Double.MIN_VALUE);
+        result.setMaxX(-Double.MAX_VALUE);
         result.setMinX(Double.MAX_VALUE);
 
         if (!isDirectCoefficient && !standData.isEmpty()) {
@@ -4477,7 +4487,7 @@ public class RationServiceImpl implements RationService {
 
         empty = taskSpecimen.stream()
                 .anyMatch(specimen ->
-                        specimen.getSpecimenKey().equals(dealSampleKind)
+                        specimen.getSampleKind().equals(dealSampleKind)
                                 && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())
                 );
 

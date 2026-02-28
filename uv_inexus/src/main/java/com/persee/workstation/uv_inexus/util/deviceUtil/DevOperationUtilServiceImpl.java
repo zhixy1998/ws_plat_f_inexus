@@ -1368,6 +1368,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         device = deviceManager.getDevice(deviceId);
 
+        Map<String, String> darkInfo = info.getDarkInfo();
+        String z = "1";
+        if (darkInfo != null && StringUtils.hasText(darkInfo.get(device.getCurrentWavelength()))) {
+            z = darkInfo.get(device.getCurrentWavelength());
+        }
+
         ChangeParam measureParam = resultEntity.getMeasureResult();
         if (!Objects.isNull(measureParam)) {
 
@@ -1386,9 +1392,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 String s;
                 if (!Objects.isNull(zeroParam)) {
-                    s = DataCountUtil.countTPercent(zeroParam, measureParam, 1.0);
+                    s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z));
                 } else {
-                    s = DataCountUtil.countTPercent(null, measureParam, 1.0);
+                    s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z));
                 }
                 String abs = DataCountUtil.changeTPercentOrAbs(null, s);
                 resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, abs));
@@ -1398,10 +1404,18 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             } else if (luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
                 ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
                 String s;
+
                 if (!Objects.isNull(zeroParam)) {
-                    s = DataCountUtil.countTPercent(zeroParam, measureParam, 1.0);
+                    s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z));
+
+                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z));
+                    }
                 } else {
-                    s = DataCountUtil.countTPercent(null, measureParam, 1.0);
+                    s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z));
+                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z));
+                    }
                 }
                 resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
             }

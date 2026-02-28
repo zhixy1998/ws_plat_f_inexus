@@ -150,11 +150,11 @@ public class SpectrumResultCalculator {
                 double s0 = Double.parseDouble(origin.getS());
                 double d0 = Double.parseDouble(origin.getD());
 
-                double v0 = (d0 - Z * d1) / (1 - Z);
+                double v0 = (d0 - Z * r0) / (1 - Z);
                 a1 = (s0 - v0) / (r0 - v0);
             }
 
-            double v1 =  (d1 - Z * d1) / (1 - Z);
+            double v1 =  (d1 - Z * r1) / (1 - Z);
             double a2 = (s1 - v1) / (r1 - v1);
 
             double ans = a2 / a1 * 100.0;

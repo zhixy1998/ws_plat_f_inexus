@@ -4165,7 +4165,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
 
         RationCurveDataInfo result = new RationCurveDataInfo();
-        result.setMaxX(Double.MIN_VALUE);
+        result.setMaxX(-Double.MIN_VALUE);
         result.setMinX(Double.MAX_VALUE);
 
         if (!isDirectCoefficient && !standData.isEmpty()) {

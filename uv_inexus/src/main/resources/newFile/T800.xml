@@ -1055,7 +1055,7 @@
 <string/>
 </OutputString>
 <SendBytes>
-<string>101:255:241:3:1:I73:I74:I75:I76:I77:I78:Check</string>
+<string>101:254:241:3:1:I73:I74:I75:I76:I77:I78:Check</string>
 </SendBytes>
 <ReadBytes>
 <string>255:101:241:3:0:0:0:0:0:0:0:Check</string>
@@ -1118,7 +1118,7 @@
 <ProtocolItem>
 <ID>NewIP</ID>
 <Describe>修改仪器IP地址</Describe>
-<Timeout>10000</Timeout>
+<Timeout>15000</Timeout>
 <ACK>N</ACK>
 <InputString>
 <string>PCMac1:I91:0</string>

@@ -97,9 +97,9 @@ public class UdpResponseDeal {
             case "GetAccessoryType":
                 return parseType(responses);
             case "Measure":
-//                return measure(responses);
-            case "Zero":
                 return measure(responses);
+            case "Zero":
+                return zero(responses);
 //                return parseZero(responses);
             case "ScanFast":
             case "Scan":
@@ -882,6 +882,89 @@ public class UdpResponseDeal {
      * S、D、R解析
      */
     public static OperationResultEntity measure(List<byte[]> responses) {
+
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应为空，无法解析 measure");
+            resultEntity.setErrorMsg("回应为空，无法解析 measure");
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
+        }
+
+        ChangeParam param = new ChangeParam();
+        boolean hasWlS = false;
+        boolean hasDR = false;
+
+        try {
+            for (byte[] resp : responses) {
+
+                if (resp == null || resp.length < 11) {
+                    continue;
+                }
+
+                int cmdType1 = resp[2] & 0xFF; // 大类
+                int cmdType = resp[3] & 0xFF; // 小类
+
+                // 只处理 0x13
+                if (cmdType1 != 0x13) {
+                    continue;
+                }
+
+                // ---------- wl + s ----------
+                if (cmdType == 0x03 || cmdType == 0x05 || cmdType == 0x07) {
+
+                    int step = ((resp[5] & 0xFF) << 8)
+                            | (resp[6] & 0xFF);
+
+                    int s0 = ((resp[8] & 0xFF) << 16)
+                            | ((resp[9] & 0xFF) << 8)
+                            | (resp[10] & 0xFF);
+
+                    param.setStep(String.valueOf(step));
+                    param.setS(String.valueOf(s0));
+                    hasWlS = true;
+                }
+
+                // ---------- d + r ----------
+                else if (cmdType == 0x04 || cmdType == 0x06 || cmdType == 0x08) {
+
+                    int d0 = ((resp[4] & 0xFF) << 16)
+                            | ((resp[5] & 0xFF) << 8)
+                            | (resp[6] & 0xFF);
+
+                    int r0 =  ((resp[8] & 0xFF) << 16)
+                            | ((resp[9] & 0xFF) << 8)
+                            | (resp[10] & 0xFF);
+
+                    param.setD(String.valueOf(d0));
+                    param.setR(String.valueOf(r0));
+                    hasDR = true;
+                }
+
+                // ---------- 一组数据齐了 ----------
+                if (hasWlS && hasDR) {
+                    break; // Zero 只需要一组
+                }
+            }
+
+
+
+            if (hasWlS || hasDR) {
+                resultEntity.setMeasureResult(param);
+            } else {
+                resultEntity.setErrorMsg("未解析到 measure 测量数据");
+                resultEntity.setIsSuccess(false);
+            }
+
+            return resultEntity;
+
+        } catch (Exception e) {
+            System.out.println("measure解析异常: " + e.getMessage());
+            return null;
+        }
+    }
+
+
+    public static OperationResultEntity zero(List<byte[]> responses) {
 
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应为空，无法解析 measure");

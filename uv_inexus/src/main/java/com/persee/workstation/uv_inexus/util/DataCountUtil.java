@@ -178,11 +178,23 @@ public class DataCountUtil {
                 double s0 = Double.parseDouble(origin.getS());
                 double d0 = Double.parseDouble(origin.getD());
 
-                double v0 = (d0 - z * d1) / (1 - z);
+                double v = z * r0;
+                double m1 = d0 - v;
+                double m2 = 1 - z;
+                double v0 = m1 / m2;
+
+
+
+//                double v0 = (d0 - z * r0) / (1 - z);
                 a1 = (s0 - v0) / (r0 - v0);
             }
 
-            double v1 =  (d1 - z * d1) / (1 - z);
+            double v = z * r1;
+            double m1 = d1 - v;
+            double m2 = 1 - z;
+            double v1 = m1 / m2;
+
+//            double v1 =  (d1 - z * r1) / (1 - z);
             double a2 = (s1 - v1) / (r1 - v1);
 
             double ans = a2 / a1 * 100.0;
@@ -610,4 +622,6 @@ public class DataCountUtil {
         double ans = (sd / Math.abs(mean)) * 100;
         return formatValue(digit, ans);
     }
+
+
 }

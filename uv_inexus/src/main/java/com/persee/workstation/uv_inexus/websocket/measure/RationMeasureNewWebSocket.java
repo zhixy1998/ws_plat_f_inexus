@@ -287,7 +287,6 @@ public class RationMeasureNewWebSocket{
                 return;
             }
 
-
             List<Integer> usefulLocation = samplePoolConfigService.getUsefulLocation(deviceSerialNumber);
             R<FSamplePoolInfoVO> poolInfo = samplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
             if (!poolInfo.getSuccess()) {

@@ -466,9 +466,6 @@ public class ConcisePhotometricNewWebSocket {
         R<OperationResultEntity> operation = new R<>();
         if (StringUtils.hasText(sample.getSampleLocation())) {
             param.setCellPos(Integer.valueOf(sample.getSampleLocation()));
-            JSONObject object = new JSONObject();
-            object.put("currentPoolNum", sample.getSampleLocation());
-            sendMessage(deviceSerialNumber, object);
 
             inputParam.setParam(param);
 
@@ -478,6 +475,10 @@ public class ConcisePhotometricNewWebSocket {
                 log.info("设置样品池位置出错");
                 return R.fail("设置样品池位置出错！");
             }
+
+            JSONObject object = new JSONObject();
+            object.put("currentPoolNum", sample.getSampleLocation());
+            sendMessage(deviceSerialNumber, object);
         }
         LocalDateTime startTime = LocalDateTime.now();
 

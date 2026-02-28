@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -563,7 +564,9 @@ public class MessageOnTimeDeal {
 
         String dStr = rsd.getD();
         String sStr = rsd.getS();
-        String wlStr = String.valueOf(sp.getWavelength());
+        BigDecimal bigDecimal = BigDecimal.valueOf(sp.getWavelength());
+        String wlStr = bigDecimal.toPlainString();
+//        String wlStr = String.valueOf(sp.getWavelength());
 
         if (!StringUtils.hasText(dStr) || !StringUtils.hasText(sStr)) return;
 
@@ -588,7 +591,11 @@ public class MessageOnTimeDeal {
         String dStr = rsd.getD();
         String sStr = rsd.getS();
         String rStr = rsd.getR();
-        String wlStr = String.valueOf(sp.getWavelength());
+
+        BigDecimal bigDecimal = BigDecimal.valueOf(sp.getWavelength());
+        String wlStr = bigDecimal.toPlainString();
+
+//        String wlStr = String.valueOf(sp.getWavelength());
 
         // 任一字符串为空则直接返回
         if (!StringUtils.hasText(dStr) || !StringUtils.hasText(sStr) || !StringUtils.hasText(rStr)) {

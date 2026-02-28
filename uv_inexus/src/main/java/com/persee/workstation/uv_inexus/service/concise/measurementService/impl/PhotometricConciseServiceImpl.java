@@ -36,6 +36,7 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -54,6 +55,7 @@ import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricSampl
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.*;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
@@ -112,6 +114,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;
+
+    @Autowired
+    SystemBusinessParamService businessParamService;
 
     @Autowired
     private DevOperationUtilService operationUtilService;
@@ -2836,6 +2841,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FRepeatMeasureData tPercentData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode());
         String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
 
+        SystemBusinessParamVO vo = businessParamService.queryBusinessParam();
+        Integer sdDigits = vo.getSdDigits();
+
+
 
         if (wlData.getMode().equals(WaveLengthEnum.abs.getCode()) || wlData.getMode().equals(WaveLengthEnum.tPercent.getCode())) {
 
@@ -2852,14 +2861,22 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
 
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
+                        String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getSd());
+                        String sdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getSd());
+
+
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(sdT), sdDigits));
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
+
+                        String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getRsd());
+                        String rsdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getRsd());
+
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(rsdT), sdDigits));
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.rsd.getIdentity(), children);
                     }
                 }
@@ -2875,14 +2892,21 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     }
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
+
                         FRepeatMeasureData measureData = wlData.getOtherData().get(mapName);
-                        children.put(mapName, measureData.getSd());
+
+                        String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, measureData.getRsd());
+
+                        children.put(mapName, DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
                         FRepeatMeasureData measureData = wlData.getOtherData().get(mapName);
-                        children.put(mapName, measureData.getRsd());
+
+                        String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, measureData.getRsd());
+
+                        children.put(mapName, DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.rsd.getIdentity(), children);
                     }
                 }
