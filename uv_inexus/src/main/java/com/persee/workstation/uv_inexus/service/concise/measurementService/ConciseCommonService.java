@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AddSampleDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
@@ -67,7 +68,7 @@ public interface ConciseCommonService {
     Result newReportTableDataQuery(String taskId,String analysisId, Boolean allDisplay,Integer digit);
 
     // 是否添加样品
-    Result isAddSample(String taskId,String deviceSerialNumber);
+    Result isAddSample(AddSampleDTO addSampleDTO);
 
     Result<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber);
     //删除方法

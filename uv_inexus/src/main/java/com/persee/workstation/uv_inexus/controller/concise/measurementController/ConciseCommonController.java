@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.controller.concise.measurementControlle
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AddSampleDTO;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.DatabaseEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -24,9 +25,11 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveD
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.stream.Collectors;
 
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/")
 @RestController
@@ -185,10 +188,18 @@ public class ConciseCommonController {
         return conciseCommonService.newReportTableDataQuery(taskId, analysisId,allDisplay,digit);
     }
 
-    @GetMapping("isAddSample")
+
+    @PostMapping("isAddSample")
     @ApiOperation("是否添加样品")
-    public Result isAddSample(@RequestParam String taskId,@RequestParam String deviceSerialNumber) {
-        return conciseCommonService.isAddSample(taskId,deviceSerialNumber);
+    public Result isAddSample(@RequestBody @Valid AddSampleDTO addSampleDTO,
+                              BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            String errorMsg = bindingResult.getFieldErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .collect(Collectors.joining("; "));
+            return Result.fail("参数校验失败: " + errorMsg);
+        }
+        return conciseCommonService.isAddSample(addSampleDTO);
     }
 
     @GetMapping("queryDeviceTypeInfo")
