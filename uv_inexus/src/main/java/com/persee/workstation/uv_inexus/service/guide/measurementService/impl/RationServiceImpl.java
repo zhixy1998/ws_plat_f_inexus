@@ -1230,6 +1230,7 @@ public class RationServiceImpl implements RationService {
         boolean isWeight = false;
 
         String methodKey = task.getMethodKey();
+        String unit = null;
         if (StringUtils.hasText(methodKey)) {
             TMeasureMethod method = tMeasureMethodService.getById(methodKey);
             if (method != null && StringUtils.hasText(method.getMeasurementParamInfo())) {
@@ -1237,6 +1238,10 @@ public class RationServiceImpl implements RationService {
                 if (parameter != null && Objects.equals(parameter.getSamplePoolWay(), RationWeightEnum.WEIGHT.getIdentity())) {
                     isWeight = true;
                 }
+                if (parameter != null && StringUtils.hasText(parameter.getUnit())) {
+                    unit = parameter.getUnit();
+                }
+
             }
         }
 
@@ -1250,6 +1255,7 @@ public class RationServiceImpl implements RationService {
                     if (vo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
                         vo.setName(RationWeightEnum.FIT_WEIGHT.getName());
                     }
+                    vo.setUnit(unit);
                 }
             }
             return Result.ok(preHead);
@@ -1285,6 +1291,7 @@ public class RationServiceImpl implements RationService {
                     if (vo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
                         vo.setName(RationWeightEnum.FIT_WEIGHT.getName());
                     }
+                    vo.setUnit(unit);
                 }
             }
             return Result.ok(ans);
@@ -1918,11 +1925,14 @@ public class RationServiceImpl implements RationService {
         for (String s : waveLength) {
             String absIdentity = s + "-" + WaveLengthEnum.abs.getCode();
             String tPercentIdentity = s + "-" + WaveLengthEnum.tPercent.getCode();
-            String absName = WaveLengthEnum.abs.getName() + "[" + s + "nm]";
-            String tPercentName = WaveLengthEnum.tPercent.getName() + "[" + s + "nm]";
+//            String absName = WaveLengthEnum.abs.getName() + "[" + s + "nm]";
+            String absName = WaveLengthEnum.abs.getName();
+            String unit = s + "nm";
+//            String tPercentName = WaveLengthEnum.tPercent.getName() + "[" + s + "nm]";
+            String tPercentName = WaveLengthEnum.tPercent.getName();
 
-            HeadVO absHead = new HeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
-            HeadVO tPercentHead = new HeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
+            HeadVO absHead = new HeadVO(absName, absIdentity, unit, TableHeadILocateEnums.measure.getIdentity(), absName);
+            HeadVO tPercentHead = new HeadVO(tPercentName, tPercentIdentity, unit, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
 
             if (map.containsKey(absIdentity)) {
                 absHead = map.get(absIdentity);
@@ -1971,7 +1981,8 @@ public class RationServiceImpl implements RationService {
                 }
 
                 if (StringUtils.hasText(parameter.getUnit())) {
-                    an.setName(an.getName() + "(" + parameter.getUnit() + ")");
+                    an.setName(an.getName());
+                    an.setUnit(parameter.getUnit());
                 }
                 break;
             }
@@ -2008,15 +2019,13 @@ public class RationServiceImpl implements RationService {
             String fitConcentrationName = SampleTableEnum.FIT_CONCENTRATION.getName();
             String fitConcentrationIdentity = SampleTableEnum.FIT_CONCENTRATION.getIdentity();
 
+            String unit = parameter.getUnit();
+
             if (parameter.getSamplePoolWay().equals(RationWeightEnum.WEIGHT.getIdentity())) {
                 fitConcentrationName = RationWeightEnum.getName(fitConcentrationIdentity);
             }
 
-            if (StringUtils.hasText(parameter.getUnit())) {
-                fitConcentrationName = fitConcentrationName + "(" + parameter.getUnit() + ")";
-            }
-
-            HeadVO fitHead = new HeadVO(fitConcentrationName, SampleTableEnum.FIT_CONCENTRATION.getIdentity(), TableHeadILocateEnums.analyze.getIdentity(), fitConcentrationName);
+            HeadVO fitHead = new HeadVO(fitConcentrationName, SampleTableEnum.FIT_CONCENTRATION.getIdentity(), unit, TableHeadILocateEnums.analyze.getIdentity(), fitConcentrationName);
             if (analyzeMap.containsKey(fitConcentrationIdentity)) {
 
                 HeadVO fHeadVO = analyzeMap.get(fitConcentrationIdentity);
@@ -2041,8 +2050,8 @@ public class RationServiceImpl implements RationService {
                     results.setParam(results.getResultIdentity() + "-" + results.getFormulaText());
                 }
 
-                String name = results.getResultName() + "(" + results.getUnit() + ")";
-                HeadVO analyzeHead = new HeadVO(name, results.getParam(), TableHeadILocateEnums.analyze.getIdentity(), name);
+                String name = results.getResultName();
+                HeadVO analyzeHead = new HeadVO(name, results.getParam(),results.getUnit(), TableHeadILocateEnums.analyze.getIdentity(), name);
 
                 if (analyzeMap.containsKey(results.getParam())) {
                     analyzeHead = analyzeMap.get(results.getParam());

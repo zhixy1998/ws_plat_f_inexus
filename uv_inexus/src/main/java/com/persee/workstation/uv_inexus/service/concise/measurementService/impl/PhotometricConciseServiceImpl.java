@@ -2024,8 +2024,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
             for (String s : waveLength) {
                 String identity = s + "-"+ mode;
-                String name =WaveLengthEnum.getName(mode) + "[" + s + "nm]";
-                FHeadVO newHead = new FHeadVO(name, identity, TableHeadILocateEnums.measure.getIdentity(), name);
+                String name =WaveLengthEnum.getName(mode);
+                String unit = s + "nm";
+                FHeadVO newHead = new FHeadVO(name, identity, unit, TableHeadILocateEnums.measure.getIdentity(), name);
                 if (map.containsKey(identity)) {
                     newHead = map.get(identity);
                 }
@@ -2035,11 +2036,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             for (String s : waveLength) {
                 String absIdentity = s + "-"+ WaveLengthEnum.abs.getCode();
                 String tPercentIdentity = s + "-"+ WaveLengthEnum.tPercent.getCode();
-                String absName = WaveLengthEnum.abs.getName()+ "[" + s + "nm]";
-                String tPercentName = WaveLengthEnum.tPercent.getName()+ "[" + s + "nm]";
+                String unit = s + "nm";
+                String absName = WaveLengthEnum.abs.getName();
+                String tPercentName = WaveLengthEnum.tPercent.getName();
 
-                FHeadVO absHead = new FHeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
-                FHeadVO tPercentHead = new FHeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
+                FHeadVO absHead = new FHeadVO(absName, absIdentity, unit, TableHeadILocateEnums.measure.getIdentity(), absName);
+                FHeadVO tPercentHead = new FHeadVO(tPercentName, tPercentIdentity, unit, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
 
                 if (map.containsKey(absIdentity)) {
                     absHead = map.get(absIdentity);
@@ -2105,8 +2107,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             if (!StringUtils.hasText(results.getParam())) {
                 results.setParam(results.getResultIdentity() + "-" + results.getFormulaText());
             }
-            String name = results.getResultName() + "(" + results.getUnit() + ")";
-            FHeadVO analyzeHead = new FHeadVO(name, results.getParam(), TableHeadILocateEnums.analyze.getIdentity(), name);
+            String name = results.getResultName();
+            String unit = results.getUnit();
+            FHeadVO analyzeHead = new FHeadVO(name, results.getParam(), unit, TableHeadILocateEnums.analyze.getIdentity(), name);
 
             if (analyzeMap.containsKey(results.getParam())) {
                 analyzeHead = analyzeMap.get(results.getParam());

@@ -1342,11 +1342,11 @@ public class ConciseRationMeasureNewWebSocket {
             sendMessage(deviceSerialNumber, object);
         }
 
-
         double timeInterval = Double.parseDouble(parameter.getTimeInterval());
         timeInterval=timeInterval*1000;
         int interval= (int) Math.floor(timeInterval/5);
         LocalDateTime startTime = LocalDateTime.now();
+        LocalDateTime sampleTime = LocalDateTime.now();
         for (int i = 0; i < repeatCount; i++) {
             while (repeatMiddleTime != null && ChronoUnit.MILLIS.between(repeatMiddleTime, LocalDateTime.now()) < timeInterval) {
                 log.info("时间间隔未到");
@@ -1426,13 +1426,15 @@ public class ConciseRationMeasureNewWebSocket {
                 jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getTPercentValue()));
                 sendMessage(deviceSerialNumber, jsonObject);
 
-                jsonObject.put("key", SampleTableEnum.SAMPLING_TIME.getIdentity());
-                jsonObject.put("value", originDataInfo.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-                sendMessage(deviceSerialNumber, jsonObject);
-
-
             }
+            repeatMiddleTime = LocalDateTime.now();
 
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("sampleId", sample.getId());
+            jsonObject.put("key", SampleTableEnum.SAMPLING_TIME.getIdentity());
+            jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
+            jsonObject.put("value", repeatMiddleTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            sendMessage(deviceSerialNumber, jsonObject);
 
         }
         //重复测完，开始计算平均值

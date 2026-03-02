@@ -928,6 +928,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             newHead.setName(param.getParamName());
             newHead.setPrintTitle(param.getParamName());
             newHead.setIdentity(newHeadIdentity);
+            newHead.setUnit(param.getUnit());
             newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
 
             heads.add(newHead);
@@ -1443,8 +1444,9 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
             for (String s : waveLength) {
                 String identity = s + "-"+ mode;
-                String name = s + WaveLengthEnum.getName(mode)  + "[" + s + "nm]";
-                HeadVO newHead = new HeadVO(name, identity, TableHeadILocateEnums.measure.getIdentity(), name);
+                String name = s + WaveLengthEnum.getName(mode);
+                String unit = s + "nm";
+                HeadVO newHead = new HeadVO(name, identity, unit, TableHeadILocateEnums.measure.getIdentity(), name);
                 if (map.containsKey(identity)) {
                     newHead = map.get(identity);
                 }
@@ -1454,11 +1456,12 @@ public class PhotometricServiceImpl implements PhotometricService {
             for (String s : waveLength) {
                 String absIdentity = s + "-"+ WaveLengthEnum.abs.getCode();
                 String tPercentIdentity = s + "-"+ WaveLengthEnum.tPercent.getCode();
-                String absName = WaveLengthEnum.abs.getName()+ "[" + s + "nm]";
-                String tPercentName = WaveLengthEnum.tPercent.getName()+ "[" + s + "nm]";
+                String absName = WaveLengthEnum.abs.getName();
+                String tPercentName = WaveLengthEnum.tPercent.getName();
+                String unit = s + "nm";
 
-                HeadVO absHead = new HeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
-                HeadVO tPercentHead = new HeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
+                HeadVO absHead = new HeadVO(absName, absIdentity,unit, TableHeadILocateEnums.measure.getIdentity(), absName);
+                HeadVO tPercentHead = new HeadVO(tPercentName, tPercentIdentity, unit, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
 
                 if (map.containsKey(absIdentity)) {
                     absHead = map.get(absIdentity);
@@ -1523,8 +1526,9 @@ public class PhotometricServiceImpl implements PhotometricService {
             if (!StringUtils.hasText(results.getParam())) {
                 results.setParam(results.getResultIdentity() + "-" + results.getFormulaText());
             }
-            String name = results.getResultName() + "(" + results.getUnit() + ")";
-            HeadVO analyzeHead = new HeadVO(name, results.getParam(), TableHeadILocateEnums.analyze.getIdentity(), name);
+            String name = results.getResultName();
+            String unit = results.getUnit();
+            HeadVO analyzeHead = new HeadVO(name, results.getParam(), unit, TableHeadILocateEnums.analyze.getIdentity(), name);
 
             if (analyzeMap.containsKey(results.getParam())) {
                 analyzeHead = analyzeMap.get(results.getParam());

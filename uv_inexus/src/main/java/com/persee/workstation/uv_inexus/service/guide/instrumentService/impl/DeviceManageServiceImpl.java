@@ -176,33 +176,34 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return R.fail(YamlMessageSource.getMessageStatic("00203001"));
         }
 
-        DeviceConnectionManager manager = DeviceConnectionManager.getInstance();
-        Integer first = null;
-        Integer two = null;
-        first = manager.getDevCurrentStatus(info.getDeviceId());
+//        DeviceConnectionManager manager = DeviceConnectionManager.getInstance();
+//        Integer first = null;
+//        Integer two = null;
+//        first = manager.getDevCurrentStatus(info.getDeviceId());
+//
+//        try {
+//            Thread.sleep(1000);
+//        } catch (Exception e) {
+//            log.error("查询仪器状态异常！", e);
+//        }
+//        two = manager.getDevCurrentStatus(info.getDeviceId());
+//
+//        if (first == null || two == null){
+//            return R.fail("获取当前状态值失败");
+//        }
+//
+//        boolean flag = first.equals(Constants.DEVICE_STATUS_IDLE) || first.equals(Constants.DEVICE_STATUS_ECHO);
+//        boolean flag2 = two.equals(Constants.DEVICE_STATUS_IDLE) || two.equals(Constants.DEVICE_STATUS_ECHO);
+//
+//
+//        if (flag && flag2 && !info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_IDLE)) {
+//            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+//            return R.ok(Constants.DEVICE_STATUS_IDLE);
+//        } else {
+//            return R.ok(info.getDeviceCurrentStatus());
+//        }
 
-        try {
-            Thread.sleep(1000);
-        } catch (Exception e) {
-            log.error("查询仪器状态异常！", e);
-        }
-        two = manager.getDevCurrentStatus(info.getDeviceId());
-
-        if (first == null || two == null){
-            return R.fail("获取当前状态值失败");
-        }
-
-        boolean flag = first.equals(Constants.DEVICE_STATUS_IDLE) || first.equals(Constants.DEVICE_STATUS_ECHO);
-        boolean flag2 = two.equals(Constants.DEVICE_STATUS_IDLE) || two.equals(Constants.DEVICE_STATUS_ECHO);
-
-
-        if (flag && flag2 && !info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_IDLE)) {
-            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-            return R.ok(Constants.DEVICE_STATUS_IDLE);
-        } else {
-            return R.ok(info.getDeviceCurrentStatus());
-        }
-
+        return R.ok(info.getDeviceCurrentStatus());
     }
 
     @Override

@@ -23,6 +23,9 @@ public class FHeadVO {
     @ApiModelProperty("标识")
     private String identity;
 
+    @ApiModelProperty("单位")
+    private String unit;
+
     @ApiModelProperty("打印标题")
     private String printTitle;
 
@@ -43,6 +46,13 @@ public class FHeadVO {
     public FHeadVO(String name, String identity, String locate, String printTitle) {
         this.name = name;
         this.identity = identity;
+        this.printTitle = printTitle;
+        this.locate = locate;
+    }
+    public FHeadVO(String name, String identity, String unit, String locate, String printTitle) {
+        this.name = name;
+        this.identity = identity;
+        this.unit = unit;
         this.printTitle = printTitle;
         this.locate = locate;
     }
