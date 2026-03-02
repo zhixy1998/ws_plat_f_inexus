@@ -2302,7 +2302,23 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (StringUtils.hasText(photometricParameter.getEnergyLamp())) {
             param.setLampPos(Integer.valueOf(photometricParameter.getEnergyLamp()));
         }
-        param.setSlit1(Double.valueOf(photometricParameter.getSpectralBandwidth()));
+
+        if (deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+            param.setSlit1(Double.valueOf(photometricParameter.getSpectralBandwidth()));
+        }
+
+        double startWl = Double.MIN_VALUE;
+
+        for (String s : waveLength) {
+            double v = Double.parseDouble(s);
+            if (startWl < v) {
+                startWl = v;
+            }
+        }
+        if (startWl != Double.MIN_VALUE) {
+            param.setStartWl(startWl);
+        }
+
         inputParam.setParam(param);
 
         R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);

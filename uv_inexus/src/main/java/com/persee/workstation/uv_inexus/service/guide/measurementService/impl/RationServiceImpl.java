@@ -5143,6 +5143,17 @@ public class RationServiceImpl implements RationService {
         if (needSetSit) {
             param.setSlit1(Double.valueOf(parameter.getSpectralBandwidth()));
         }
+        double startWl = Double.MIN_VALUE;
+
+        for (String s : waveLength) {
+            double v = Double.parseDouble(s);
+            if (startWl < v) {
+                startWl = v;
+            }
+        }
+        if (startWl != Double.MIN_VALUE) {
+            param.setStartWl(startWl);
+        }
 
         inputParam.setParam(param);
 
