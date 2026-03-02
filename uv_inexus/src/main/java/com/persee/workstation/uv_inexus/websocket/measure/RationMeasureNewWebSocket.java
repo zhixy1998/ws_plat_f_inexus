@@ -1459,7 +1459,6 @@ public class RationMeasureNewWebSocket{
                 sendMessage(deviceSerialNumber, object);
             }
 
-            int repetitionTime = Integer.parseInt(parameter.getTimeInterval());
             double timeInterval = Double.parseDouble(parameter.getTimeInterval());
             timeInterval = timeInterval * 1000;
             int interval = (int) Math.floor(timeInterval / 5);
@@ -1536,11 +1535,15 @@ public class RationMeasureNewWebSocket{
                     jsonObject.put("value", originDataInfo.getTPercentValue());
                     sendMessage(deviceSerialNumber, jsonObject);
 
-                    jsonObject.put("key", SampleTableEnum.SAMPLING_TIME.getIdentity());
-                    jsonObject.put("value", originDataInfo.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-                    sendMessage(deviceSerialNumber, jsonObject);
-
                 }
+                repeatMiddleTime = LocalDateTime.now();
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sampleId", sample.getId());
+                jsonObject.put("key", SampleTableEnum.SAMPLING_TIME.getIdentity());
+                jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
+                jsonObject.put("value", repeatMiddleTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                sendMessage(deviceSerialNumber, jsonObject);
 
 
             }
