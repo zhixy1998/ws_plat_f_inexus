@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.controller.concise.measurementControlle
 
 import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.config.logging.SysLog;
+import com.persee.workstation.uv_inexus.dto.concise.common.CreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
@@ -91,18 +92,29 @@ public class PhotometricConciseController {
         return fPhotometricService.querySampleHeads(taskId);
     }
 
-    @GetMapping("createSample")
-    @ApiOperation("创建样本接口")
-    public Result<Boolean> createSample(@RequestParam String taskId,
-                                        @RequestParam String updateBy,
-                                        @RequestParam String deviceSerialNumber) {
-        R<Boolean> r = fPhotometricService.createSample(taskId, updateBy, deviceSerialNumber);
+//    @GetMapping("createSample")
+//    @ApiOperation("创建样本接口")
+//    public Result<Boolean> createSample(@RequestParam String taskId,
+//                                        @RequestParam String updateBy,
+//                                        @RequestParam String deviceSerialNumber) {
+//        R<Boolean> r = fPhotometricService.createSample(taskId, updateBy, deviceSerialNumber);
+//        if (!r.getSuccess()) {
+//            return Result.fail(r.getMessage());
+//        } else {
+//            return Result.ok();
+//        }
+//
+//    }
+
+    @PostMapping("createSample")
+    @ApiOperation("创建样品接口")
+    public Result createSample(@RequestBody CreateSampleDTO dto) {
+        R<Boolean> r = fPhotometricService.newCreateSample(dto);
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         } else {
             return Result.ok();
         }
-
     }
 
     @GetMapping("getCurrentInfo")
