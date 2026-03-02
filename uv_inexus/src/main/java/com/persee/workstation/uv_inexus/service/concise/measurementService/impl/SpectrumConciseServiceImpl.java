@@ -370,8 +370,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             // 查询对应类型的默认方法
             QueryWrapper<FMeasureMethod> queryWrapper = new QueryWrapper<>();
             queryWrapper.eq("measurement_type", measureType);
-            queryWrapper.eq("method_name", "默认方法文件数据");
-            queryWrapper.eq("user_id", id);
+            queryWrapper.eq("method_name", "默认方法");
             queryWrapper.last("LIMIT 1");
             method = fMeasureMethodService.getOne(queryWrapper);
             if (method == null) {
