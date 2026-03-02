@@ -316,6 +316,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             return Result.fail(YamlMessageSource.getMessageStatic("00100006"));
         }
 
+        SysUserPO sysUserPO = userManageDAO.selectByUsername(updateBy);
+        if (sysUserPO == null) {
+            //更新人不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("0020400A"));
+        }
+
         TimeSweepNearestMethodVo vo = new TimeSweepNearestMethodVo();
 
         QueryWrapper<FMeasureMethod> wrapper = new QueryWrapper<>();
@@ -325,13 +331,13 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         wrapper.last("LIMIT 1");
 
         FMeasureMethod method = fMeasureMethodService.getOne(wrapper);
-        SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
-        String id = po.getId();
+        String id = sysUserPO.getId();
         if (method == null) {
             // 查询对应类型的默认方法
             QueryWrapper<FMeasureMethod> queryWrapper = new QueryWrapper<>();
             queryWrapper.eq("measurement_type", measureType);
-            queryWrapper.eq("method_name", "默认方法");
+            queryWrapper.eq("method_name", "默认方法文件数据");
+            queryWrapper.eq("user_id", id);
             queryWrapper.last("LIMIT 1");
             method = fMeasureMethodService.getOne(queryWrapper);
             if (method == null) {
