@@ -264,7 +264,7 @@ public class SpectrumNewWebSocket {
         // 初始化发送锁
         sessionSendLocks.put(deviceSerialNumber, new Object());
 
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.Spectrum.getOperation(), Constants.DEVICE_STATUS_MEASURE);
 
         if (Constants.endTime != null || Constants.startTime != null) {
             JSONObject errorMsg = new JSONObject();

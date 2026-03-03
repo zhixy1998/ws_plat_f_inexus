@@ -159,7 +159,7 @@ public class ConciseBaseLineNewWebSocket {
         // 初始化发送锁
         sessionSendLocks.put(sessionId, new Object());
 
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.ConciseBaseLine.getOperation(), Constants.DEVICE_STATUS_MEASURE);
 
         // 往前端推送数据的线程
         Thread taskThread = new Thread(() -> {

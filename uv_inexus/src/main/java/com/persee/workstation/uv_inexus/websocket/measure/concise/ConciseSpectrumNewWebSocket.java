@@ -267,7 +267,7 @@ public class ConciseSpectrumNewWebSocket {
         // 初始化发送锁
         sessionSendLocks.put(deviceSerialNumber, new Object());
 
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.ConciseSpectrum.getOperation(), Constants.DEVICE_STATUS_MEASURE);
 
         clearGlobalData();
         // 停止状态给初始值

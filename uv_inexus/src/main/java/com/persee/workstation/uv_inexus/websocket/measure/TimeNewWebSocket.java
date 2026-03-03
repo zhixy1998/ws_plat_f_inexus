@@ -212,7 +212,7 @@ public class TimeNewWebSocket {
             String updateBy = param.getUpdateBy();
             Integer digit = param.getDigit();
 
-            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.TimeMeasure.getOperation(), Constants.DEVICE_STATUS_MEASURE);
 
             if (taskId == null || deviceSerialNumber == null || updateBy == null) {
                 sendError(deviceSerialNumber, "参数错误");

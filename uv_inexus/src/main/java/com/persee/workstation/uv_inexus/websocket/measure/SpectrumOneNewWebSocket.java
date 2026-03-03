@@ -267,7 +267,7 @@ public class SpectrumOneNewWebSocket {
 
         // 初始化发送锁
         sessionSendLocks.put(deviceSerialNumber, new Object());
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.SpectrumOne.getOperation(), Constants.DEVICE_STATUS_MEASURE);
 
         clearGlobalData();
         Constants.measureStopStatus.put(deviceSerialNumber, true);
