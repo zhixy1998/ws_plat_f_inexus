@@ -371,12 +371,26 @@ public class GuidePhotometricWebSocket {
              tMeasureTaskService.updateById(task);
              //样品测完，移动样品池到1号
              if (isAutoChangePool) {
-                 String ip = infoService.getIp(deviceSerialNumber);
-                 R<String> stringR = devMessageUtil.setCurrentCellPos(1, ip);
-                 if (stringR.getSuccess()) {
-                     tSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, 1, updateBy);
+
+                 if (!usefulLocation.isEmpty()) {
+                     DevOperationInputParam inputParam = new DevOperationInputParam();
+                     inputParam.setDeviceSerialNumber(deviceSerialNumber);
+                     inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+                     SetParam setParam = new SetParam();
+                     R<OperationResultEntity> operation = new R<>();
+                     setParam.setCellPos(usefulLocation.get(0));
+
+                     inputParam.setParam(setParam);
+
+                     operation = operationUtilService.operation(inputParam);
+
+                     if (!operation.getSuccess()) {
+                         log.info("设置样品池位置出错");
+                     }
+
                      JSONObject object = new JSONObject();
-                     object.put("currentPoolNum", 1);
+                     object.put("currentPoolNum", usefulLocation.get(0));
                      sendMessage(deviceSerialNumber, object);
                  }
              }

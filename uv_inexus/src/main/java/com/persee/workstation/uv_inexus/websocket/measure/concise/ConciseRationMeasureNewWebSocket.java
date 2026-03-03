@@ -561,21 +561,30 @@ public class ConciseRationMeasureNewWebSocket {
 
                 //样品测完，移动样品池到1号
                 if (isAutoChangePool) {
-                    DevOperationInputParam inputParam = new DevOperationInputParam();
-                    inputParam.setDeviceSerialNumber(deviceSerialNumber);
-                    inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
 
-                    SetParam endParam = new SetParam();
+                    if (!usefulLocation.isEmpty()) {
+                        DevOperationInputParam inputParam = new DevOperationInputParam();
+                        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+                        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
 
-                    endParam.setCellPos(1);
-                    JSONObject object = new JSONObject();
-                    object.put("currentPoolNum", 1);
-                    sendMessage(deviceSerialNumber, object);
+                        SetParam setParam = new SetParam();
+                        R<OperationResultEntity> operation = new R<>();
+                        setParam.setCellPos(usefulLocation.get(0));
 
-                    inputParam.setParam(endParam);
+                        inputParam.setParam(setParam);
 
-                    operationUtilService.operation(inputParam);
+                        operation = operationUtilService.operation(inputParam);
+
+                        if (!operation.getSuccess()) {
+                            log.info("设置样品池位置出错");
+                        }
+
+                        JSONObject object = new JSONObject();
+                        object.put("currentPoolNum", usefulLocation.get(0));
+                        sendMessage(deviceSerialNumber, object);
+                    }
                 }
+
 
                 //所有样品测完，拟合曲线
                 //拟合曲线
@@ -889,20 +898,27 @@ public class ConciseRationMeasureNewWebSocket {
                 //样品测完，移动样品池到1号
                 if (isAutoChangePool) {
 
-                    DevOperationInputParam inputParam = new DevOperationInputParam();
-                    inputParam.setDeviceSerialNumber(deviceSerialNumber);
-                    inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+                    if (!usefulLocation.isEmpty()) {
+                        DevOperationInputParam inputParam = new DevOperationInputParam();
+                        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+                        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
 
-                    SetParam endParam = new SetParam();
+                        SetParam setParam = new SetParam();
+                        R<OperationResultEntity> operation = new R<>();
+                        setParam.setCellPos(usefulLocation.get(0));
 
-                    endParam.setCellPos(1);
-                    JSONObject object = new JSONObject();
-                    object.put("currentPoolNum", 1);
-                    sendMessage(deviceSerialNumber, object);
+                        inputParam.setParam(setParam);
 
-                    inputParam.setParam(endParam);
+                        operation = operationUtilService.operation(inputParam);
 
-                    operationUtilService.operation(inputParam);
+                        if (!operation.getSuccess()) {
+                            log.info("设置样品池位置出错");
+                        }
+
+                        JSONObject object = new JSONObject();
+                        object.put("currentPoolNum", usefulLocation.get(0));
+                        sendMessage(deviceSerialNumber, object);
+                    }
                 }
 
                 JSONObject message = new JSONObject();

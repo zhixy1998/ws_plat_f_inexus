@@ -433,14 +433,17 @@ public class LiveDetectionDevicesWebSocket {
 
                     String deviceId = deviceInfo.getDeviceId();
                     DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+
                     if (device != null) {
 
                         // 校零中推送校零波长
-                        if (Constants.DEVICE_STATUS_ZERO.equals(deviceInfo.getDeviceCurrentStatus())
-                                && StringUtils.hasText(device.getZeroWavelength())) {
-                            statusInfo.setX(device.getZeroWavelength() + "nm");
+                        Integer devCurrentStatus = deviceManager.getDevCurrentStatus(deviceId);
+                        if (Constants.DEVICE_STATUS_ZERO.equals(devCurrentStatus) ) {
+                            if (StringUtils.hasText(device.getZeroWavelength())) {
+                                statusInfo.setX(device.getZeroWavelength() + "nm");
+                                statusInfo.setDevCurrentStatus(devCurrentStatus);
+                            }
                         }
-
                         statusInfo.setDevUseType(device.getUseType());
                     }
 

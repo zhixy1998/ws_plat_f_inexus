@@ -1465,16 +1465,18 @@ public class RationServiceConciseImpl implements RationConciseService {
                 //样品种类出错
                 return Result.fail(YamlMessageSource.getMessageStatic("00000024"));
             }
-            if (isWeight) {
-                for (FHeadVO vo : ans) {
-                    if (vo.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity())) {
+
+            for (FHeadVO vo : ans) {
+                if (vo.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity())) {
+
+                    if (isWeight) {
                         vo.setName(RationWeightEnum.NORMAL_WEIGHT.getName());
-                    }
-                    if (vo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
-                        vo.setName(RationWeightEnum.FIT_WEIGHT.getName());
+                    } else {
+                        vo.setName(SampleTableEnum.NORMAL_CONCENTRATION.getName());
                     }
                 }
             }
+
             return Result.ok(ans);
         }
 
@@ -2149,25 +2151,32 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (systemHeads != null) {
             ans.addAll(systemHeads);
         }
+
+        List<FHeadVO> middleHeads = new ArrayList<>();
+
         for (FHeadVO an : ans) {
             if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
                 ans.remove(an);
-                break;
+                continue;
             }
+
 
             if (an.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity())) {
 
                 if (parameter.getSamplePoolWay().equals(RationWeightEnum.WEIGHT.getIdentity())) {
                     an.setName(RationWeightEnum.getName(an.getIdentity()));
+                } else {
+                    an.setName(SampleTableEnum.NORMAL_CONCENTRATION.getName());
                 }
                 if (StringUtils.hasText(parameter.getUnit())) {
                     an.setName(an.getName());
                     an.setUnit(parameter.getUnit());
                 }
-
-                break;
             }
+            middleHeads.add(an);
         }
+        ans.clear();
+        ans.addAll(middleHeads);
 
         if (StringUtils.hasText(deviceSerialNumber)) {
 
@@ -3132,8 +3141,6 @@ public class RationServiceConciseImpl implements RationConciseService {
             map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
             map.put(SampleTableEnum.SAMPLE_KIND.getIdentity(), sample.getSampleKind());
             map.put(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity(), sample.getNormalConcentration());
-            map.put(SampleTableEnum.DILUTION_RATIO.getIdentity(), sample.getDilutionRatio());
-            map.put(SampleTableEnum.AMOUNT.getIdentity(), sample.getSampleVolume());
 
             if (StringUtils.hasText(sample.getNewColData())){
                 Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
@@ -4021,70 +4028,79 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
+        if (parameter.getCoefficientMode() == null) {
+            parameter.setCoefficientMode(RationCurveParamEnums.standard_curve.getIdentity());
+        }
 
-        if (StringUtils.hasText(task.getSampleKey())) {
+        if ( parameter.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
+
             RationCurveDataInfo curveData = getCurveData(task, parameter, digit);
 
-            if (StringUtils.hasText(parameter.getCoefficientMode()) && parameter.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
-                FittingReceiveInfo fittingInfo = createFittingInfo(methodId);
+            FittingReceiveInfo fittingInfo = createFittingInfo(methodId);
 
-                if (fittingInfo != null) {
-                    fittingInfo.setMaxX(curveData.getMaxX());
-                    fittingInfo.setMinX(curveData.getMinX());
+            if (fittingInfo != null) {
+                fittingInfo.setMaxX(curveData.getMaxX());
+                fittingInfo.setMinX(curveData.getMinX());
 
-                    resultVo = curveData(fittingInfo);
-                    resultVo.setUnknowPoints(curveData.getUnknowPoints());
-                    resultVo.setTaskId(taskId);
-                    resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
-                    resultVo.setCurveType(RationCurveParamEnums.getName(parameter.getCurveType()));
-                    return Result.ok(resultVo);
-                }
-            }
-
-            if (StringUtils.hasText(task.getFittingParam()) && !task.getFittingParam().equals("{}") && !task.getFittingParam().equals("null")){
-                FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
-
-
-                fittingParam.setMaxX(curveData.getMaxX());
-                fittingParam.setMinX(curveData.getMinX());
-                resultVo = curveData(fittingParam);
-                resultVo.setStandPoints(curveData.getStandPoints());
+                resultVo = curveData(fittingInfo);
                 resultVo.setUnknowPoints(curveData.getUnknowPoints());
+                resultVo.setTaskId(taskId);
+                resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
+                resultVo.setCurveType(RationCurveParamEnums.getName(parameter.getCurveType()));
+                return Result.ok(resultVo);
+            }
+        } else {
+            if (StringUtils.hasText(task.getSampleKey())) {
+                RationCurveDataInfo curveData = getCurveData(task, parameter, digit);
 
-                if (StringUtils.hasText(fittingParam.getRoundR())) {
-                    Double r = null;
-                    try  {
-                        r = Double.valueOf(fittingParam.getRoundR());
-                    } catch (Exception ignored) {
-                    }
-                    if (r != null) {
-                        if (!r.isNaN() && !r.isInfinite()) {
-                            resultVo.setR(DataCountUtil.addZero(r, rSquareDigits));
-                        } else {
-                            resultVo.setR(String.valueOf(r));
+
+                if (StringUtils.hasText(task.getFittingParam()) && !task.getFittingParam().equals("{}") && !task.getFittingParam().equals("null")){
+                    FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+
+
+                    fittingParam.setMaxX(curveData.getMaxX());
+                    fittingParam.setMinX(curveData.getMinX());
+                    resultVo = curveData(fittingParam);
+                    resultVo.setStandPoints(curveData.getStandPoints());
+                    resultVo.setUnknowPoints(curveData.getUnknowPoints());
+
+                    if (StringUtils.hasText(fittingParam.getRoundR())) {
+                        Double r = null;
+                        try  {
+                            r = Double.valueOf(fittingParam.getRoundR());
+                        } catch (Exception ignored) {
                         }
+                        if (r != null) {
+                            if (!r.isNaN() && !r.isInfinite()) {
+                                resultVo.setR(DataCountUtil.addZero(r, rSquareDigits));
+                            } else {
+                                resultVo.setR(String.valueOf(r));
+                            }
 
-                    }
-                }
-                if (StringUtils.hasText(fittingParam.getRoundR2())) {
-
-                    Double r2 = null;
-                    try  {
-                        r2 = Double.valueOf(fittingParam.getRoundR2());
-                    } catch (Exception ignored) {
-                    }
-                    if (r2 != null) {
-                        if (!r2.isNaN() && !r2.isInfinite()) {
-                            resultVo.setR2(DataCountUtil.addZero(r2, rSquareDigits));
-                        } else {
-                            resultVo.setR2(String.valueOf(r2));
                         }
                     }
+                    if (StringUtils.hasText(fittingParam.getRoundR2())) {
+
+                        Double r2 = null;
+                        try  {
+                            r2 = Double.valueOf(fittingParam.getRoundR2());
+                        } catch (Exception ignored) {
+                        }
+                        if (r2 != null) {
+                            if (!r2.isNaN() && !r2.isInfinite()) {
+                                resultVo.setR2(DataCountUtil.addZero(r2, rSquareDigits));
+                            } else {
+                                resultVo.setR2(String.valueOf(r2));
+                            }
+                        }
+                    }
+                    Map<String, String> map = checkCurveQuantity(methodId, resultVo);
+                    resultVo.setQuality(map);
                 }
-                Map<String, String> map = checkCurveQuantity(methodId, resultVo);
-                resultVo.setQuality(map);
             }
         }
+
+
 
         resultVo.setTaskId(taskId);
         resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
@@ -4104,6 +4120,9 @@ public class RationServiceConciseImpl implements RationConciseService {
         String taskId = task.getId();
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
 
         boolean standEmpty = false;
         boolean unKnowEmpty = false;
@@ -4161,7 +4180,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                     }
                     if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
-                        point.setConcentration(DataCountUtil.addZero(Double.valueOf(dataInfo.getColValue()), digit));
+                        point.setConcentration(DataCountUtil.addZero(Double.valueOf(dataInfo.getOriginalValue()), digit));
                     }
                 }
             }
