@@ -404,7 +404,7 @@ public class DeviceConnectionManager {
             return false;
         }
 
-        device.addZeroResult(wavelength, changeParam);
+        device.addZeroResult(Double.valueOf(wavelength), changeParam);
         device.updateLastUseTime();
         logInfo("添加校零结果: %s -> 波长 %s", deviceId, wavelength);
         return true;

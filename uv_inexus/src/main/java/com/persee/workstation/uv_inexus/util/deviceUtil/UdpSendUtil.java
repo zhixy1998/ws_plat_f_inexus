@@ -1020,7 +1020,7 @@ public class UdpSendUtil {
         log.info("时间扫描数据处理成功");
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
         String currentWavelength = device.getCurrentWavelength() == null ? "" : device.getCurrentWavelength();
-        Map<String, ChangeParam> zeroResult = device.getZeroResult();
+        Map<Double, ChangeParam> zeroResult = device.getZeroResult();
         ChangeParam measureResult = parse.getMeasureResult();
 
         double wl;
@@ -1030,9 +1030,8 @@ public class UdpSendUtil {
             log.warn("波长格式非法: {}", currentWavelength);
             return;
         }
-        String key = String.valueOf((int) wl);
 
-        ChangeParam zeroRsd = zeroResult.get(key);
+        ChangeParam zeroRsd = zeroResult.get(wl);
         if (zeroRsd == null) {
             log.warn("未找到 zeroRsd, wl={}", currentWavelength);
 //            return;
