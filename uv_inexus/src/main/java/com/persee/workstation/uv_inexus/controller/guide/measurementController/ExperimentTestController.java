@@ -271,8 +271,10 @@ public class ExperimentTestController {
     public Result<List<MethodBaseVo>> listOfMethods(@RequestParam(required = false) String methodName,
                                                     @RequestParam Integer pageNum,
                                                     @RequestParam Integer pageSize,
-                                                    @RequestParam String sort){
-        return experimentTestService.listOfMethods(methodName,pageNum,pageSize, sort);
+                                                    @RequestParam String sort,
+                                                    @RequestParam(required = false) String updateBy,
+                                                    @RequestParam(required = false,defaultValue = "false") Boolean isMethodManage){
+        return experimentTestService.listOfMethods(methodName,pageNum,pageSize, sort,updateBy,isMethodManage);
     }
 
 

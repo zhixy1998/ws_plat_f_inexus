@@ -68,6 +68,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepRepo
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.util.StringUtil;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,7 +91,7 @@ import static com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTyp
 
 @Slf4j
 @Service
-("experimentTestService")
+        ("experimentTestService")
 public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Autowired
     private TMeasureProjectService tMeasureProjectService;
@@ -160,7 +161,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private SysUserService userService;
 
     @Autowired
-    private SysUserGroupMapper userGroupMapper ;
+    private SysUserGroupMapper userGroupMapper;
 
     @Autowired
     private TMeasureProjectCollaboratorGroupService collaboratorGroupService;
@@ -188,13 +189,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Override
     public Result newProject(ProjectParamDto paramDto) {
         // 根据用户名查询项目数据
-        List<TMeasureProject> projects = tMeasureProjectService.list(Wrappers.lambdaQuery(TMeasureProject.class).eq(TMeasureProject::getProjectName,paramDto.getProjectName()));
+        List<TMeasureProject> projects = tMeasureProjectService.list(Wrappers.lambdaQuery(TMeasureProject.class).eq(TMeasureProject::getProjectName, paramDto.getProjectName()));
         if (projects.size() > 0) {
             //该项目已存在
             return Result.fail(YamlMessageSource.getMessageStatic("00301001"));
         }
         // 根据用户名称查询用户
-        SysUserPO user = systemUserManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername,paramDto.getUpdateBy()));
+        SysUserPO user = systemUserManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, paramDto.getUpdateBy()));
         // 根据用户id查询组id
         SysUserGroupPO userGroupPO = sysUserGroupMapper.selectOne(new QueryWrapper<SysUserGroupPO>().eq("user_id", user.getId()));
         // 创建项目表
@@ -212,14 +213,14 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     @Override
-    public Result recentlyAccomplishTask(String updateBy,String measureType) {
+    public Result recentlyAccomplishTask(String updateBy, String measureType) {
         // 根据用户名查询用户id
         SysUserPO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         if (user == null) {
             //用户不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
-        if (measureType == null){
+        if (measureType == null) {
             measureType = "光谱扫描";
         }
         // 根据用户id查询字段is_delete为1的数据
@@ -229,7 +230,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 .eq("measure_type", measureType)
                 .orderByDesc("create_time").last("limit 3"));
         List<RecentlyCompletedTasksVo> vos = new ArrayList<>();
-        if (taskList.size() == 0){
+        if (taskList.size() == 0) {
             return Result.ok(vos);
         }
         for (TMeasureTask task : taskList) {
@@ -246,7 +247,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setMeasurementSample(String.valueOf(lists.size()));
             if (measureData != null) {
                 vo.setMeasurementStartTime(measureData.getMeasurementStartTime().format(formatter));
-            vo.setMeasurementEndTime(measureData.getMeasurementEndTime().format(formatter));
+                vo.setMeasurementEndTime(measureData.getMeasurementEndTime().format(formatter));
             }
 
             vos.add(vo);
@@ -257,6 +258,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 查询项目统计接口
+     *
      * @param updateBy
      * @return
      */
@@ -276,7 +278,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
          * 		项目1[创建人,创建时间,最近更新人,最近更新时间,方法个数,任务个数],
          * 		项目2[创建人,创建时间,最近更新人,最近更新时间,方法个数,任务个数],
          * 		........
-         * 	    }
+         *        }
          * }
          */
         SysUserPO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
@@ -343,7 +345,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         Map<String, Object> params = methodDto.getParams();
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(methodDto.getMethodType());
         // TODO 实验测试的创建方法需要完善
-        switch (type){
+        switch (type) {
             case PHOTOMETRIC_MEASUREMENT:
                 PhotometricParameter photometricParameter = convertParams(params, PhotometricParameter.class);
                 return photometricService.createMethodPort(methodDto, methodDto.getUpdateBy(), photometricParameter);
@@ -388,10 +390,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
 
         // 根据任务名称查询任务,如果为空则继续,如果有值的话则返回错误
-        List<TMeasureTask> taskList =  tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getTaskName, paramDto.getTaskName())
+        List<TMeasureTask> taskList = tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getTaskName, paramDto.getTaskName())
                 .eq(TMeasureTask::getMeasureType, paramDto.getMeasurementType())
                 .eq(TMeasureTask::getProjectItemKey, paramDto.getProjectId()));
-        if (!taskList.isEmpty()){
+        if (!taskList.isEmpty()) {
             //任务名称重复
             return Result.fail(YamlMessageSource.getMessageStatic("0000004D"));
         }
@@ -412,7 +414,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         List<TaskSpecimen> list = new ArrayList<>();
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(paramDto.getMeasurementType());
         // TODO 所有测量的创建任务需要完善
-        switch (type){
+        switch (type) {
             case PHOTOMETRIC_MEASUREMENT: {
                 if (paramDto.getSpecimens() != null && !paramDto.getSpecimens().isEmpty()) {
                     for (Map<String, String> cols : paramDto.getSpecimens()) {
@@ -1426,9 +1428,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Override
     public Result queryTaskPort(QueryTaskDto queryTask) {
         // 判断方法id是all还是id
-        QueryWrapper<TMeasureTask> wrapper =  new QueryWrapper<>();
+        QueryWrapper<TMeasureTask> wrapper = new QueryWrapper<>();
         wrapper.eq("project_item_key", queryTask.getProjectId());
-        if (queryTask.getMethodIds().size()!=0){
+        if (queryTask.getMethodIds().size() != 0) {
             wrapper.in("method_key", queryTask.getMethodIds());
         }
         if ((queryTask.getStartTime() != null && !queryTask.getStartTime().isEmpty())
@@ -1467,7 +1469,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             //项目不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00301010"));
         }
-        if (method == null){
+        if (method == null) {
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
@@ -1479,25 +1481,26 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 查询当前用户的所有项目
+     *
      * @return
      */
     @Override
     public Result queryAllProject(String updateBy) {
         SysUserPO user = userService.getOne(new QueryWrapper<SysUserPO>().eq("username", updateBy));
-        if (user == null){
+        if (user == null) {
             return Result.fail("用户不存在");
         }
         // 根据用户查询用户所在的组
         SysUserGroupPO userGroupPO = userGroupMapper.selectOne(new QueryWrapper<SysUserGroupPO>().eq("user_id", user.getId()));
-        if (userGroupPO == null){
+        if (userGroupPO == null) {
             return Result.fail("用户未加入任何组");
         }
         // 根据查询到的组id条件查询协作组中所有的组内的协作项目id
         List<TMeasureProjectCollaboratorGroup> projectList = collaboratorGroupService.list(new QueryWrapper<TMeasureProjectCollaboratorGroup>().eq("group_id", userGroupPO.getGroupId()));
         QueryWrapper<TMeasureProject> wrapper = new QueryWrapper<>();
         List<String> collects;
-        if (projectList != null && projectList.size() > 0){
-            collects=projectList.stream().map(TMeasureProjectCollaboratorGroup::getProjectId).collect(Collectors.toList());
+        if (projectList != null && projectList.size() > 0) {
+            collects = projectList.stream().map(TMeasureProjectCollaboratorGroup::getProjectId).collect(Collectors.toList());
         } else {
             collects = new ArrayList<>();
         }
@@ -1519,47 +1522,47 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     @Override
-        public Result queryMethodProt(String projectId, String measureType, String updateBy, Integer pageNum, Integer pageSize) {
+    public Result queryMethodProt(String projectId, String measureType, String updateBy, Integer pageNum, Integer pageSize) {
         // 校验所有的参数
-        if (projectId == null || projectId.isEmpty()){
+        if (projectId == null || projectId.isEmpty()) {
             return Result.fail(YamlMessageSource.getMessageStatic("项目不存在"));
         }
-        if (measureType == null || measureType.isEmpty()){
+        if (measureType == null || measureType.isEmpty()) {
             return Result.fail(YamlMessageSource.getMessageStatic("00307003"));
         }
-        if (updateBy == null || updateBy.isEmpty()){
+        if (updateBy == null || updateBy.isEmpty()) {
             return Result.fail(YamlMessageSource.getMessageStatic("0020400A"));
         }
 
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(measureType);
         // TODO 所有测量的查看任务查询需要完善
-        switch (type){
+        switch (type) {
             case PHOTOMETRIC_MEASUREMENT:
-                if (!measureType.equals(PHOTOMETRIC_MEASUREMENT.getDescription())){
+                if (!measureType.equals(PHOTOMETRIC_MEASUREMENT.getDescription())) {
                     //请选择光度测量
                     return Result.fail(YamlMessageSource.getMessageStatic("00301007"));
                 }
                 break;
             case QUANTITATIVE_MEASUREMENT:
-                if (!measureType.equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())){
+                if (!measureType.equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
                     //请选择定量测量
                     return Result.fail(YamlMessageSource.getMessageStatic("00301008"));
                 }
                 break;
             case SPECTRAL_SCAN:
-                if (!measureType.equals(MeasureTypeEnum.SPECTRAL_SCAN.getDescription())){
+                if (!measureType.equals(MeasureTypeEnum.SPECTRAL_SCAN.getDescription())) {
                     //请选择光谱扫描
                     return Result.fail(YamlMessageSource.getMessageStatic("00301009"));
                 }
                 break;
             case TIME_SCAN:
-                if (!measureType.equals(MeasureTypeEnum.TIME_SCAN.getDescription())){
+                if (!measureType.equals(MeasureTypeEnum.TIME_SCAN.getDescription())) {
                     //请选择时间扫描
                     return Result.fail(YamlMessageSource.getMessageStatic("0030100A"));
                 }
                 break;
             case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
-                if (!measureType.equals(MeasureTypeEnum.TWO_COMPONENT_QUANTITATIVE_ANALYSIS.getDescription())){
+                if (!measureType.equals(MeasureTypeEnum.TWO_COMPONENT_QUANTITATIVE_ANALYSIS.getDescription())) {
                     return Result.fail(YamlMessageSource.getMessageStatic("0030100B"));
                 }
                 break;
@@ -1567,8 +1570,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(pageNum, pageSize), new QueryWrapper<TMeasureMethod>()
                 .eq("project_item_key", projectId)
                 .eq("measurement_type", measureType)
-               .eq("method_creator", updateBy));
-        if (page==null||page.getRecords().size() == 0){
+                .eq("method_creator", updateBy));
+        if (page == null || page.getRecords().size() == 0) {
             //未查询到数据
             return Result.fail(YamlMessageSource.getMessageStatic("0030100C"));
         }
@@ -1580,11 +1583,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             // 查询当前方法id的所有任务的数量
             Long count = tMeasureTaskService.count(new QueryWrapper<TMeasureTask>().eq("method_key", method.getId()));
             vo.setTaskCount(count);
-            if (count > 0){
+            if (count > 0) {
                 // 查询当前方法id的所有任务中最近采集的任务时间,最近采集任务的时间字段是collection_start_time
                 TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("method_key", method.getId())
                         .orderByDesc("create_time").last("limit 1"));
-                if(task.getStartTime()!=null){
+                if (task.getStartTime() != null) {
                     vo.setLastTaskTime(task.getStartTime().format(formatter));
                 }
             }
@@ -1600,20 +1603,21 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 查询方法
+     *
      * @param methodType
      * @param projectId
      * @return
      */
     @Override
-    public Result assignMethodPort(String methodType, String projectId,String updateBy) {
+    public Result assignMethodPort(String methodType, String projectId, String updateBy) {
         // 根据方法判定是否是测量方法
         MeasureTypeEnum.fromDescription(methodType);
-        if (methodType == null || methodType.equals("")){
+        if (methodType == null || methodType.equals("")) {
             return Result.ok(new ArrayList<>());
         }
         // 根据项目id和方法类型查询方法表数据
-        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", methodType).eq("method_creator",updateBy));
-        if (list == null || list.size() == 0){
+        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", methodType).eq("method_creator", updateBy));
+        if (list == null || list.size() == 0) {
             return Result.ok(new ArrayList<>());
         }
         return Result.ok(list);
@@ -1623,7 +1627,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     public Result queryReferenceStandard(String standardName) {
 //         根据标准名称模糊查询标准表数据
         List<TReportStandardDetection> list = tReportStandardDetectionService.list(new QueryWrapper<TReportStandardDetection>().like("standard_name", standardName).eq("release_status", "有效"));
-        if (list == null || list.size() == 0){
+        if (list == null || list.size() == 0) {
             //未查询到数据
             return Result.fail(YamlMessageSource.getMessageStatic("0030100C"));
         }
@@ -1634,7 +1638,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     public Result preprocessTheData(String standardId) {
         // 根据标准id查询前处理信息表数据
         TReportStandardPretreatment info = tReportStandardPretreatmentService.getOne(new QueryWrapper<TReportStandardPretreatment>().eq("detection_id", standardId));
-        if (info == null){
+        if (info == null) {
             //未查询到前处理信息
             return Result.fail(YamlMessageSource.getMessageStatic("0030100D"));
         }
@@ -1642,7 +1646,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     @Override
-    public Result reportDataQuery(String taskId,String reportName,String sampleId) {
+    public Result reportDataQuery(String taskId, String reportName, String sampleId) {
 
         if ((taskId == null)) {
             //任务id不能为空
@@ -1655,7 +1659,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
-        if (reportName.equals("光度测量原始记录表格")){
+        if (reportName.equals("光度测量原始记录表格")) {
 
             PhotometricReportDataVO vo = new PhotometricReportDataVO();
 
@@ -1690,7 +1694,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setDataList(list);
 
             return Result.ok(vo);
-        } else if (reportName.equals("光度测量表格")){
+        } else if (reportName.equals("光度测量表格")) {
             R<PhotometricReportDataVO> reportCount = photometricService.getReportCount(taskId);
             if (reportCount.getSuccess()) {
                 PhotometricReportDataVO vo = reportCount.getData();
@@ -1698,16 +1702,14 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             }
 
             return Result.fail(reportCount.getMessage());
-        }
-        else if(reportName.equals("定量测量表格")){
+        } else if (reportName.equals("定量测量表格")) {
             RationReportDataVO vo = new RationReportDataVO();
-            rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), false,task.getDeviceSerialNumber());
+            rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), false, task.getDeviceSerialNumber());
 
             return Result.ok("暂未开放");
         } else if (reportName.equals("定量测定原始记录表格")) {
             return Result.ok("暂未开放");
-        }
-        else if (reportName.equals("光谱扫描表格")) {
+        } else if (reportName.equals("光谱扫描表格")) {
 
             // 根据任务id测量数据表
             List<TMeasureData> measureData = tMeasureDataService.list(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("is_delete", "0"));
@@ -1724,11 +1726,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 TMeasureSample sample = tMeasureSampleService.getById(data.getSampleKey());
                 vo.setName(sample.getSampleName());
                 List<PeakValleyMarking> peak = JSON.parseArray(data.getPeak(), PeakValleyMarking.class);
-                vo.setPeak(peak.stream().map(x->x.getX()).collect(Collectors.toCollection(ArrayList::new)));
+                vo.setPeak(peak.stream().map(x -> x.getX()).collect(Collectors.toCollection(ArrayList::new)));
                 List<PeakValleyMarking> valley = JSON.parseArray(data.getPeak(), PeakValleyMarking.class);
-                vo.setValley(valley.stream().map(x->x.getX()).collect(Collectors.toCollection(ArrayList::new)));
+                vo.setValley(valley.stream().map(x -> x.getX()).collect(Collectors.toCollection(ArrayList::new)));
                 List<PeakValleyMarking> markKing = JSON.parseArray(data.getPeak(), PeakValleyMarking.class);
-                vo.setMarkPoint(markKing.stream().map(x->x.getX()).collect(Collectors.toCollection(ArrayList::new)));
+                vo.setMarkPoint(markKing.stream().map(x -> x.getX()).collect(Collectors.toCollection(ArrayList::new)));
                 vo.setParameterData(JSON.parseArray(data.getOriginalCalculationData(), String.class));
                 vo.setDataType("测量数据");
                 list.add(vo);
@@ -1748,7 +1750,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             }
 
             return Result.ok(list);
-        }else if (reportName.equals("时间扫描表格")){
+        } else if (reportName.equals("时间扫描表格")) {
             TimeSweepReportDataVo vo = new TimeSweepReportDataVo();
 
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
@@ -1760,12 +1762,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             heads.add(new HeadVO("序号", "serialNumber"));
             heads.add(new HeadVO("峰/谷", "type"));
             heads.add(new HeadVO("波长(nm)", "waveLength"));
-            heads.add(new HeadVO(param.getLuminosity().equals("1")?"Abs":param.getLuminosity().equals("2")?"T%":"3".equals(param.getLuminosity())?"Es":"Er", "luminosity"));
+            heads.add(new HeadVO(param.getLuminosity().equals("1") ? "Abs" : param.getLuminosity().equals("2") ? "T%" : "3".equals(param.getLuminosity()) ? "Es" : "Er", "luminosity"));
             heads.add(new HeadVO("注释", "remark"));
             vo.setHeadList(heads);
 
 
-            List<PeakValleyMarking> list = timeSweepService.queryReportFormData(taskId,sampleId);
+            List<PeakValleyMarking> list = timeSweepService.queryReportFormData(taskId, sampleId);
             List<Map<String, Object>> dataList = new ArrayList<>();
             int i = 1;
             for (PeakValleyMarking marking : list) {
@@ -1773,20 +1775,20 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 map.put("serialNumber", String.valueOf(i));
                 map.put("type", marking.getType());
                 String substring;
-                if (marking.getX().length() <=4){
-                   substring = marking.getX();
-                }else {
-                   substring  =   marking.getX().substring(0,4);
+                if (marking.getX().length() <= 4) {
+                    substring = marking.getX();
+                } else {
+                    substring = marking.getX().substring(0, 4);
                 }
                 map.put("waveLength", substring);
                 map.put("luminosity", marking.getY());
-                map.put("remark", marking.getRemark()==null||marking.getRemark().equals("")?"":marking.getRemark());
+                map.put("remark", marking.getRemark() == null || marking.getRemark().equals("") ? "" : marking.getRemark());
                 dataList.add(map);
                 i++;
             }
             vo.setDataList(dataList);
             return Result.ok(vo);
-        }else{
+        } else {
             //类型错误,请重新选择
             return Result.fail(YamlMessageSource.getMessageStatic("00000005"));
         }
@@ -2109,7 +2111,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         }
                     }
                 }
-                log.info("报表表格数据输出完毕,内容: {} ",vo);
+                log.info("报表表格数据输出完毕,内容: {} ", vo);
                 return Result.ok(vo);
             }
             case "时间扫描": {
@@ -2270,7 +2272,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             //缺少参数
             return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
         }
-        List<TaskBaseVO> taskList =  tMeasureTaskMapper.getAllTask(projectId, measureType);
+        List<TaskBaseVO> taskList = tMeasureTaskMapper.getAllTask(projectId, measureType);
 
         if (taskList == null || taskList.isEmpty()) {
             //没有找到该任务
@@ -2286,11 +2288,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Override
     public Result useThisMethodPort(CreateTaskParamDto dto) {
         // 使用StringUtils 判断参数是否为空
-        if (!StringUtils.hasText(dto.getMethodId())){
+        if (!StringUtils.hasText(dto.getMethodId())) {
             //缺少参数
             return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
         }
-        if (dto.getTaskName() == null || dto.getTaskName().isEmpty()){
+        if (dto.getTaskName() == null || dto.getTaskName().isEmpty()) {
             return Result.fail("任务名称不可为空");
         }
         // 根据项目id查询任务名称是否在当前项目下重复,如果重复则返回错误
@@ -2298,11 +2300,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         wq.eq("project_item_key", dto.getProjectId());
         wq.eq("task_name", dto.getTaskName());
         List<TMeasureTask> list = tMeasureTaskService.list(wq);
-        if (list != null && list.size() > 0){
+        if (list != null && list.size() > 0) {
             return Result.fail(YamlMessageSource.getMessageStatic("0000004D"));
         }
         TMeasureMethod method = tMeasureMethodService.getById(dto.getMethodId());
-        if (method == null){
+        if (method == null) {
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
@@ -2361,13 +2363,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
         Result task = createTask(dto);
         if (!task.getCode().equals(200)) {
-           return Result.fail(task.getMessage());
+            return Result.fail(task.getMessage());
         }
 
         MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
         vo.setProjectId(method.getProjectItemKey());
         vo.setMethodId(methodId);
-        ProjectTaskMethodVo data =(ProjectTaskMethodVo) task.getData();
+        ProjectTaskMethodVo data = (ProjectTaskMethodVo) task.getData();
         vo.setTaskId(data.getTaskId());
         vo.setTaskName(dto.getTaskName());
         vo.setMethodName(method.getMethodName());
@@ -2381,18 +2383,29 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 获取所有方法或按条件查询方法
+     *
      * @param methodName
      * @param pageNum
      * @param pageSize
      * @return
      */
     @Override
-    public Result listOfMethods(String methodName, Integer pageNum, Integer pageSize, String sort) {
+    public Result listOfMethods(String methodName, Integer pageNum, Integer pageSize, String sort, String updateBy,Boolean isMethodManage) {
+        //为不干扰其他使用场景，仅仅方法管理里根据用户进行了查询
+        if (!isMethodManage){
+            updateBy=null;
+        }
         // 1. 获取所有方法或按条件查询方法
         List<MethodBaseVo> methodVo;
         if (methodName == null || methodName.isEmpty()) {
-            List<TMeasureMethod> methods = tMeasureMethodService.list();  // 查询所有方法
-            if (methods == null || methods.isEmpty()){
+            List<TMeasureMethod> methods = null;
+            if (StringUtil.isNotBlank(updateBy)) {
+                methods = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).eq(TMeasureMethod::getMethodCreator, updateBy));  // 根据方法名查询
+            } else {
+                methods = tMeasureMethodService.list();  // 根据方法名查询
+            }
+//            List<TMeasureMethod> methods = tMeasureMethodService.list();  // 查询所有方法
+            if (methods == null || methods.isEmpty()) {
                 return Result.ok(new ArrayList<>());
             }
             methodVo = methods.stream()
@@ -2405,14 +2418,20 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         vo.setMeasurementType(method.getMeasurementType());
                         vo.setCreateTime(method.getMethodCreateTime().format(formatter));
                         TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
-                        if (project != null){
+                        if (project != null) {
                             vo.setProject(project.getProjectName());
+                            vo.setProjectId(project.getId());
                         }
                         return vo;
                     })
                     .collect(Collectors.toList());
         } else {
-            List<TMeasureMethod> methods = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).like(TMeasureMethod::getMethodName, methodName));  // 根据方法名查询
+            List<TMeasureMethod> methods = null;
+            if (StringUtil.isNotBlank(updateBy)) {
+                methods = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).like(TMeasureMethod::getMethodName, methodName).eq(TMeasureMethod::getMethodCreator, updateBy));  // 根据方法名查询
+            } else {
+                methods = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).like(TMeasureMethod::getMethodName, methodName));  // 根据方法名查询
+            }
             methodVo = methods.stream()
                     .map(method -> {
                         // 将TMeasureMethod拷贝到MethodBaseVo
@@ -2423,7 +2442,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         vo.setMeasurementType(method.getMeasurementType());
                         vo.setCreateTime(method.getMethodCreateTime().format(formatter));
                         TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
-                        vo.setProject(project.getProjectName());
+                        if (project != null) {
+                            vo.setProject(project.getProjectName());
+                            vo.setProjectId(project.getId());
+                        }
                         return vo;
                     })
                     .collect(Collectors.toList());
@@ -2446,7 +2468,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             LocalDateTime lastUsedTime = latestTask != null ? latestTask.getCreateTime() : null;
             if (lastUsedTime == null) {
                 method.setRecentUsageTime("—");
-            } else{
+            } else {
                 method.setRecentUsageTime(lastUsedTime.format(formatter));  // 将使用时间设置到方法对象中
             }
 
@@ -2488,6 +2510,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 最近创建的任务
+     *
      * @param updateBy
      * @param measureType
      * @return
@@ -2500,7 +2523,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             //用户不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
-        if (measureType == null){
+        if (measureType == null) {
             measureType = "光谱扫描";
         }
         // 根据用户id查询字段is_delete为1的数据
@@ -2509,7 +2532,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 .eq("measure_type", measureType)
                 .orderByDesc("create_time").last("limit 3"));
         List<RecentlyCompletedTasksVo> vos = new ArrayList<>();
-        if (taskList == null){
+        if (taskList == null) {
             return Result.ok(new ArrayList<>());
         }
         for (TMeasureTask task : taskList) {
@@ -2518,9 +2541,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
             TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", task.getId()).last("limit 1"));
             List<TaskSpecimen> lists = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            if(lists != null){
+            if (lists != null) {
                 vo.setMeasurementSample(String.valueOf(lists.size()));
-            }else{
+            } else {
                 vo.setMeasurementSample("0");
             }
             vo.setTaskName(task.getTaskName());
@@ -2530,10 +2553,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setProjectName(project.getProjectName());
 
             if (measureData != null) {
-                if (measureData.getMeasurementStartTime() != null&& measureData.getMeasurementEndTime() != null){
+                if (measureData.getMeasurementStartTime() != null && measureData.getMeasurementEndTime() != null) {
                     vo.setMeasurementStartTime(measureData.getMeasurementStartTime().format(formatter));
                     vo.setMeasurementEndTime(measureData.getMeasurementEndTime().format(formatter));
-                }else{
+                } else {
                     vo.setMeasurementStartTime("—");
                     vo.setMeasurementEndTime("—");
                 }
@@ -3093,7 +3116,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
             SpectralReportVo vo = new SpectralReportVo();
-            TMeasureProject project =tMeasureProjectService.getById(task.getProjectItemKey());
+            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
             SysUserPO user = systemUserManageDAO.selectById(task.getUserId());
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             PhotometricParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
@@ -3399,11 +3422,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setEndWaveLength(param.getEndWaveLength() + "nm");
             // (0.慢速 1.中速 2.快速 3.极快)
             vo.setScanSpeed(param.getScanSpeed().equals("0") ? "慢速" : param.getScanSpeed().equals("1") ? "中速" : param.getScanSpeed().equals("2") ? "快速" : "极快");
-            if (param.getRepetitionPattern().equals("单池重复")){
+            if (param.getRepetitionPattern().equals("单池重复")) {
                 vo.setTimeInterval(param.getTimeInterval());
                 vo.setIsRepeat(true);
                 vo.setRepeatCount(param.getRepetitionTime());
-            }else{
+            } else {
                 vo.setTimeInterval(null);
                 vo.setIsRepeat(false);
                 vo.setRepeatCount(null);
@@ -3426,7 +3449,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setSpectrumBandwidth(param.getSpectralBandwidth());
             vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
             // 能量灯(0.钨灯 1.氘灯 2.汞灯)
-            if (param.getLuminosity().equals("3")||param.getLuminosity().equals("4")){
+            if (param.getLuminosity().equals("3") || param.getLuminosity().equals("4")) {
                 vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
                 vo.setGain(param.getGain());
             }
@@ -3448,7 +3471,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 vo.setInstrumentName("紫外可见分光光度计");
                 vo.setInstrumentModel("T600");
             }
-            log.info("报表参数数据输出完毕,内容: {} ",vo);
+            log.info("报表参数数据输出完毕,内容: {} ", vo);
             return Result.ok(vo);
         } else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())) {
             // 根据任务中的方法key查询方法
@@ -3491,7 +3514,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setSpectrumBandwidth(param.getSpectralBandwidth());
             vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
             // 能量灯(0.钨灯 1.氘灯 2.汞灯)
-            if (param.getLuminosity().equals("3")||param.getLuminosity().equals("4")){
+            if (param.getLuminosity().equals("3") || param.getLuminosity().equals("4")) {
                 vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
                 vo.setGain(param.getGain());
             }
@@ -3509,9 +3532,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
 
-
     /**
      * 查询报告参数
+     *
      * @param taskId
      * @param sampleId
      * @param serialNumber
@@ -3555,11 +3578,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
         // 编写查询测量的条件
         QueryWrapper<TMeasureData> wrapper = new QueryWrapper<>();
-        wrapper.eq("task_key",taskId);
-        wrapper.eq("sample_key",sampleId);
+        wrapper.eq("task_key", taskId);
+        wrapper.eq("sample_key", sampleId);
         // 如果存在编号，则查询该设备编号的测量数据
         if (StringUtils.hasText(serialNumber)) {
-            wrapper.eq("serial_number",serialNumber);
+            wrapper.eq("serial_number", serialNumber);
         }
         wrapper.last("limit 1");
         TMeasureData measureData = tMeasureDataService.getOne(wrapper);
@@ -3600,26 +3623,26 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 BeanUtils.copyProperties(param, report);
                 /// 测量
                 // 将扫描速度的参数转换为(0.慢速 1.中速 2.快速 3.极快)用equals判断
-                report.setScanSpeed(param.getScanSpeed().equals("0")?"慢速":param.getScanSpeed().equals("1")?"中速":param.getScanSpeed().equals("2")?"快速":"极快");
+                report.setScanSpeed(param.getScanSpeed().equals("0") ? "慢速" : param.getScanSpeed().equals("1") ? "中速" : param.getScanSpeed().equals("2") ? "快速" : "极快");
                 // 将阶梯矫正的参数转换为(true.启用 false.不启用)用equals判断
-                report.setLadderCorrection(param.getLadderCorrection().equals(true)?"启用":"不启用");
+                report.setLadderCorrection(param.getLadderCorrection().equals(true) ? "启用" : "不启用");
                 // 将重复模式转换为(0.不重复 1.单池重复)用equals判断
-                report.setRepetitionPattern(param.getRepetitionPattern().equals("0")?"不重复":"单池重复");
+                report.setRepetitionPattern(param.getRepetitionPattern().equals("0") ? "不重复" : "单池重复");
                 report.setDetectionStartTime(measureData.getMeasurementStartTime().format(formatter));
                 report.setDetectionEndTime(measureData.getMeasurementEndTime().format(formatter));
                 ///  仪器
                 report.setDeviceSerialNumber(task.getDeviceSerialNumber());
                 // 将光度模式转换为(1.abs 2.T% 3.Es 4.Er)用equals判断,首字母大写
-                report.setLuminosityMode(param.getLuminosity().equals("1")?"Abs":param.getLuminosity().equals("2")?"T%":param.getLuminosity().equals("3")?"Es":"Er");
+                report.setLuminosityMode(param.getLuminosity().equals("1") ? "Abs" : param.getLuminosity().equals("2") ? "T%" : param.getLuminosity().equals("3") ? "Es" : "Er");
                 // 将能量灯转换为(0.钨灯 1.氘灯 2.汞灯)
-                report.setEnergyLamp(param.getEnergyLamp().equals("0")?"钨灯":param.getEnergyLamp().equals("1")?"氘灯":"汞灯");
+                report.setEnergyLamp(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
 
                 /// 其他
                 report.setProjectName(project.getProjectName());
                 report.setUserBy(method.getMethodCreator());
-                if (serialNumber!=null){
-                    report.setSampleName(sample.getSampleName()+"-"+serialNumber);
-                }else{
+                if (serialNumber != null) {
+                    report.setSampleName(sample.getSampleName() + "-" + serialNumber);
+                } else {
                     report.setSampleName(sample.getSampleName());
                 }
                 report.setSampleNumber(sample.getSampleNumber());
@@ -3645,16 +3668,16 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 ///  仪器
                 report.setDeviceSerialNumber(task.getDeviceSerialNumber());
                 // 将光度模式转换为(1.abs 2.T% 3.Es 4.Er)用equals判断,首字母大写
-                report.setLuminosityMode(param.getLuminosity().equals("1")?"Abs":param.getLuminosity().equals("2")?"T%":param.getLuminosity().equals("3")?"Es":"Er");
+                report.setLuminosityMode(param.getLuminosity().equals("1") ? "Abs" : param.getLuminosity().equals("2") ? "T%" : param.getLuminosity().equals("3") ? "Es" : "Er");
                 // 将能量灯转换为(0.钨灯 1.氘灯 2.汞灯)
-                report.setEnergyLamp(param.getEnergyLamp().equals("0")?"钨灯":param.getEnergyLamp().equals("1")?"氘灯":"汞灯");
+                report.setEnergyLamp(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
 
                 /// 其他
                 report.setProjectName(project.getProjectName());
                 report.setUserBy(method.getMethodCreator());
-                if (serialNumber!=null){
-                    report.setSampleName(sample.getSampleName()+"-"+serialNumber);
-                }else{
+                if (serialNumber != null) {
+                    report.setSampleName(sample.getSampleName() + "-" + serialNumber);
+                } else {
                     report.setSampleName(sample.getSampleName());
                 }
                 report.setSampleNumber(sample.getSampleNumber());
@@ -3673,6 +3696,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 导出方法
+     *
      * @param ids
      * @return
      */
@@ -3683,6 +3707,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 导出方法到Excel
+     *
      * @param methods 方法列表
      * @return Excel字节数组
      */
@@ -3745,6 +3770,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 从Excel导入方法
+     *
      * @param file Excel文件
      * @return 导入结果
      */
@@ -3831,6 +3857,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 获取单元格的字符串值
+     *
      * @param cell 单元格
      * @return 字符串值
      */
@@ -3862,6 +3889,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 导入方法
+     *
      * @param file
      * @return
      */
@@ -3883,7 +3911,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             TMeasureMethod method = JSON.parseObject(json, TMeasureMethod.class);
             methodList.add(method);
         }
-        if(!CollectionUtils.isEmpty(methodList)) {
+        if (!CollectionUtils.isEmpty(methodList)) {
             for (TMeasureMethod method : methodList) {
                 // 判断是否存在
                 TMeasureMethod exist = tMeasureMethodService.getById(method.getId());
@@ -3901,9 +3929,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
 
-
     /**
      * 清空项目
+     *
      * @param projectId
      * @return
      */
@@ -3933,10 +3961,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
         // 3. 删除项目
         boolean removed = tMeasureProjectService.removeById(projectId);
-        if ( removed){
+        if (removed) {
             //项目已清空
             return Result.ok(YamlMessageSource.getMessageStatic("0030101E"));
-        }else {
+        } else {
             //项目清空失败
             return Result.fail(YamlMessageSource.getMessageStatic("00301017"));
         }
@@ -3945,6 +3973,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 清除任务
+     *
      * @param taskId
      * @return
      */
@@ -3992,10 +4021,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
         // 5. 删除任务本身
         boolean removed = tMeasureTaskService.removeById(taskId);
-        if (removed){
+        if (removed) {
             //任务已删除
             return Result.ok(YamlMessageSource.getMessageStatic("0030101C"));
-        }else  {
+        } else {
             //任务删除失败
             return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
         }
@@ -4003,6 +4032,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 清除方法
+     *
      * @param methodId
      * @return
      */
@@ -4024,10 +4054,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
         // 2. 删除方法
         boolean removed = tMeasureMethodService.removeById(methodId);
-        if (removed){
+        if (removed) {
             //方法已删除
             return Result.ok(YamlMessageSource.getMessageStatic("00301014"));
-        }else {
+        } else {
             //方法删除失败
             return Result.fail(YamlMessageSource.getMessageStatic("00301011"));
         }
@@ -4040,7 +4070,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
         }
         SaveStateVo vo = new SaveStateVo();
-        QueryWrapper<TMeasureTask> wrapper= new QueryWrapper<>();
+        QueryWrapper<TMeasureTask> wrapper = new QueryWrapper<>();
         wrapper.eq("id", taskId)
                 .eq("is_delete", "0");
         TMeasureTask task = tMeasureTaskService.getOne(wrapper);
@@ -4063,6 +4093,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 方法名称重复性检查
+     *
      * @param projectId
      * @param methodName
      * @return
@@ -4082,9 +4113,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 打印日志
         log.info("方法名称查重检查: projectId={}, methodName={}, count={}",
                 projectId, methodName, count);
-        if (count>0){
+        if (count > 0) {
             return Result.ok(true);
-        }else{
+        } else {
             return Result.ok(false);
         }
     }
@@ -4104,15 +4135,16 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 打印日志
         log.info("任务名称查重检查: projectId={}, methodName={}, count={}",
                 projectId, taskName, count);
-        if (count>0){
+        if (count > 0) {
             return Result.ok(true);
-        }else{
+        } else {
             return Result.ok(false);
         }
     }
 
     /**
      * 查询样品默认表头
+     *
      * @param measureType
      * @return
      */
@@ -4124,25 +4156,25 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
         Map<String, List<HeadVO>> map = new HashMap<>();
         MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
-        switch (measureTypeEnum){
-            case PHOTOMETRIC_MEASUREMENT :{
+        switch (measureTypeEnum) {
+            case PHOTOMETRIC_MEASUREMENT: {
                 List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
                 map.put("hander", preHead);
                 break;
             }
-            case QUANTITATIVE_MEASUREMENT :{
+            case QUANTITATIVE_MEASUREMENT: {
                 List<HeadVO> unknown = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), Constants.PARAM_ONE);
                 map.put("unknown", unknown);
                 List<HeadVO> standard = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), Constants.PARAM_ZERO);
                 map.put("standard", standard);
                 break;
             }
-            case SPECTRAL_SCAN :{
+            case SPECTRAL_SCAN: {
                 List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
                 map.put("hander", preHead);
                 break;
             }
-            case TIME_SCAN :{
+            case TIME_SCAN: {
                 List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.TIME_SCAN.getDescription(), null);
                 map.put("hander", preHead);
                 break;

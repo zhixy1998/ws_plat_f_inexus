@@ -4327,6 +4327,14 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Override
     public Result updateMethod(TMeasureMethod methodDto) {
+        LambdaQueryWrapper<TMeasureTask> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TMeasureTask::getMethodKey, methodDto.getId())
+                .eq(TMeasureTask::getIsDelete, 0);
+        long count = tMeasureTaskService.count(wrapper);
+        if (count > 0) {
+            return Result.ok("该方法正在被使用，是否要新建方法");
+        }
+
         boolean b = tMeasureMethodService.updateById(methodDto);
         return b?Result.ok():Result.fail();
     }

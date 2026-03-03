@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
+import com.alibaba.fastjson2.JSON;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -34,6 +35,7 @@ import javax.validation.Valid;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URLEncoder;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -53,8 +55,8 @@ public class SpectrumController {
 
     @GetMapping("queryEssentialInformation")
     @ApiOperation("查询项目任务方法接口")
-    public Result queryProjectTaskMethod(@RequestParam String updateBy,@RequestParam String measureType) {
-        return spectrumService.queryProjectTaskMethod(updateBy,measureType);
+    public Result queryProjectTaskMethod(@RequestParam String updateBy, @RequestParam String measureType) {
+        return spectrumService.queryProjectTaskMethod(updateBy, measureType);
     }
 
     @GetMapping("queryProjectAllMethods")
@@ -62,7 +64,7 @@ public class SpectrumController {
     public Result queryProjectAllMethods(@RequestParam String projectId,
                                          @RequestParam String measureForm,
                                          @RequestParam String updateBy) {
-        return spectrumService.queryProjectAllMethods(projectId,measureForm,updateBy);
+        return spectrumService.queryProjectAllMethods(projectId, measureForm, updateBy);
     }
 
     @PostMapping("checkParam")
@@ -92,9 +94,23 @@ public class SpectrumController {
 
     @PostMapping("updateMethodParameter")
     @ApiOperation("方法参数修改接口")
-    public Result updateMethodParameter( @RequestBody TMeasureMethod methodDto) {
-
-        return spectrumService.updateMethod(methodDto);
+    public Result updateMethodParameter(@RequestBody TMeasureMethodDto methodDto) throws InvocationTargetException, IllegalAccessException {
+        // 将 measurementParamInfo 对象转为 JSON 字符串
+        if (methodDto.getMeasurementParamInfo() != null) {
+            try {
+                String paramJson = JSON.toJSONString(methodDto.getMeasurementParamInfo());
+                // 转换为实体类
+                TMeasureMethod measureMethod = new TMeasureMethod();
+                measureMethod.setMeasurementParamInfo(paramJson);
+                measureMethod.setMeasurementType(methodDto.getMeasurementType());
+                measureMethod.setId(methodDto.getId());
+                return spectrumService.updateMethod(measureMethod);
+            } catch (Exception e) {
+                log.error("测量参数序列化失败", e);
+                return Result.fail("参数序列化失败：" + e.getMessage());
+            }
+        }
+        return Result.fail();
     }
 
 
@@ -118,8 +134,8 @@ public class SpectrumController {
 
     @GetMapping("setUpParametersPort")
     @ApiOperation("设置参数接口")
-    public Result setUpParametersPort(@RequestParam String methodId,@RequestParam String deviceSerialNumber) {
-        return spectrumService.setUpParametersPort(methodId,deviceSerialNumber);
+    public Result setUpParametersPort(@RequestParam String methodId, @RequestParam String deviceSerialNumber) {
+        return spectrumService.setUpParametersPort(methodId, deviceSerialNumber);
     }
 
     @GetMapping("saveData")
@@ -143,14 +159,14 @@ public class SpectrumController {
 
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")
-    public Result addOrDeleteSamplePort(@RequestBody AddOrDeleteSampleDTO paramDto){
+    public Result addOrDeleteSamplePort(@RequestBody AddOrDeleteSampleDTO paramDto) {
         return spectrumService.addOrDeleteSamplePort(paramDto);
     }
 
     @DeleteMapping("deleteSamplePort")
     @ApiOperation("删除样本接口")
-    public Result deleteSamplePort(@RequestParam String sampleId,@RequestParam String taskId){
-        return spectrumService.deleteSamplePort(sampleId,taskId);
+    public Result deleteSamplePort(@RequestParam String sampleId, @RequestParam String taskId) {
+        return spectrumService.deleteSamplePort(sampleId, taskId);
     }
 
 
@@ -159,14 +175,14 @@ public class SpectrumController {
     public Result sampleListPort(@RequestParam String taskId,
                                  @RequestParam(required = false) String type,
                                  @RequestParam(required = false) Integer digit) {
-        return spectrumService.sampleListPort(taskId,type,digit);
+        return spectrumService.sampleListPort(taskId, type, digit);
     }
 
 
     @GetMapping("deleteSampleListPort")
     @ApiOperation("删除样品列表接口")
-    public Result deleteSampleListPort(@RequestParam String taskId,@RequestParam String sampleId,@RequestParam String analysisId) {
-        return spectrumService.deleteSampleListPort(taskId,sampleId,analysisId);
+    public Result deleteSampleListPort(@RequestParam String taskId, @RequestParam String sampleId, @RequestParam String analysisId) {
+        return spectrumService.deleteSampleListPort(taskId, sampleId, analysisId);
     }
 
 
@@ -175,7 +191,7 @@ public class SpectrumController {
     public Result changeTheListPort(@RequestParam String taskId,
                                     @RequestParam(required = false) String type,
                                     @RequestParam(required = false) Integer digit) {
-        return spectrumService.changeTheListPort(taskId,type,digit);
+        return spectrumService.changeTheListPort(taskId, type, digit);
     }
 
     @GetMapping("deleteChangeListPort")
@@ -187,13 +203,13 @@ public class SpectrumController {
 
     @GetMapping("restoreDeletedListData")
     @ApiOperation("恢复已删除数据接口")
-    public Result restoreDeletedListData(@RequestParam String taskId,@RequestParam String sampleId,@RequestParam String type,@RequestParam String analysisId){
-        return spectrumService.restoreDeletedListData(taskId,sampleId,type,analysisId);
+    public Result restoreDeletedListData(@RequestParam String taskId, @RequestParam String sampleId, @RequestParam String type, @RequestParam String analysisId) {
+        return spectrumService.restoreDeletedListData(taskId, sampleId, type, analysisId);
     }
 
     @PostMapping("updateDataColor")
     @ApiOperation("更新数据颜色接口")
-    public Result updateDataColor(@RequestBody UpdateDataColorDto paramDto){
+    public Result updateDataColor(@RequestBody UpdateDataColorDto paramDto) {
         return spectrumService.updateDataColor(paramDto);
     }
 
@@ -205,7 +221,7 @@ public class SpectrumController {
 
     @PostMapping("addAnalysisDataGaugePointPort")
     @ApiOperation("添加分析标记点接口")
-    public Result addAnalysisDataGaugePointPort(@RequestBody AnalysisDataGaugePointDto paramDto){
+    public Result addAnalysisDataGaugePointPort(@RequestBody AnalysisDataGaugePointDto paramDto) {
         return spectrumService.addAnalysisDataGaugePointPort(paramDto);
     }
 
@@ -218,13 +234,13 @@ public class SpectrumController {
 
     @PostMapping("seekingPeaksAndValleysPort")
     @ApiOperation("寻峰寻谷接口")
-    public Result seekingPeaksAndValleysPort(@RequestBody SeekingPeaksValleysDto paramDto){
+    public Result seekingPeaksAndValleysPort(@RequestBody SeekingPeaksValleysDto paramDto) {
         return spectrumService.peakSearchingPort(paramDto);
     }
 
     @PostMapping("addPeakValleyRemarks")
     @ApiOperation("添加峰谷备注接口")
-    public Result addPeakValleyRemarks(@RequestBody PeakValleyMarkingDto paramDto){
+    public Result addPeakValleyRemarks(@RequestBody PeakValleyMarkingDto paramDto) {
         return spectrumService.addPeakValleyRemarks(paramDto);
     }
 
@@ -238,13 +254,13 @@ public class SpectrumController {
 
     @PostMapping("addGaugePoint")
     @ApiOperation("添加标记点接口")
-    public Result addGaugePoint(@RequestBody AddGaugePointDto paramDto){
+    public Result addGaugePoint(@RequestBody AddGaugePointDto paramDto) {
         return spectrumService.addGaugePoint(paramDto);
     }
 
     @PostMapping("addGaugePointRemarks")
     @ApiOperation("添加标记点备注接口")
-    public Result addGaugePointRemarks(@RequestBody PeakValleyMarkingDto paramDto){
+    public Result addGaugePointRemarks(@RequestBody PeakValleyMarkingDto paramDto) {
         return spectrumService.addGaugePointRemarks(paramDto);
     }
 
@@ -256,31 +272,31 @@ public class SpectrumController {
 
     @PostMapping("fourOperationsPort")
     @ApiOperation("四则运算接口")
-    public Result fourOperationsPort(@RequestBody FourOperationsParamDto paramDto){
+    public Result fourOperationsPort(@RequestBody FourOperationsParamDto paramDto) {
         return spectrumService.fourOperationsPort(paramDto);
     }
 
     @PostMapping("advancedOperationsPort")
     @ApiOperation("高级运算接口")
-    public Result advancedOperationsPort(@RequestBody AdvancedOperationsDto paramDto){
+    public Result advancedOperationsPort(@RequestBody AdvancedOperationsDto paramDto) {
         return spectrumService.advancedOperationsPort(paramDto);
     }
 
     @PostMapping("smoothnessPort")
     @ApiOperation("平滑接口")
-    public Result smoothnessPort(@RequestBody SmoothnessDto paramDto){
+    public Result smoothnessPort(@RequestBody SmoothnessDto paramDto) {
         return spectrumService.smoothnessPort(paramDto);
     }
 
     @PostMapping("differentialPort")
     @ApiOperation("微分接口")
-    public Result differentialPort(@RequestBody DifferentialDto paramDto){
+    public Result differentialPort(@RequestBody DifferentialDto paramDto) {
         return spectrumService.differentialPort(paramDto);
     }
 
     @PostMapping("luminanceModeConversionPort")
     @ApiOperation("光度模式转换")
-    public Result luminanceModeConversionPort(@RequestBody LuminosityConversionDto paramDto){
+    public Result luminanceModeConversionPort(@RequestBody LuminosityConversionDto paramDto) {
         return spectrumService.luminanceModeConversionPort(paramDto);
     }
 
@@ -292,8 +308,8 @@ public class SpectrumController {
 
     @PostMapping("queryTheTaskImage")
     @ApiOperation("获取任务图片接口")
-    public Result queryTheTaskImage(@RequestParam String id,@RequestParam String type) {
-        return spectrumService.queryTheTaskImage(id,type);
+    public Result queryTheTaskImage(@RequestParam String id, @RequestParam String type) {
+        return spectrumService.queryTheTaskImage(id, type);
     }
 
 
@@ -306,8 +322,8 @@ public class SpectrumController {
 
     @GetMapping("obtainTheBaseline")
     @ApiOperation("获取基线接口")
-    public Result obtainTheBaseline(@RequestParam(required = false) String taskId,@RequestParam String methodId,@RequestParam String deviceSerialNumber) {
-        return spectrumService.obtainTheBaseline(taskId,methodId,deviceSerialNumber);
+    public Result obtainTheBaseline(@RequestParam(required = false) String taskId, @RequestParam String methodId, @RequestParam String deviceSerialNumber) {
+        return spectrumService.obtainTheBaseline(taskId, methodId, deviceSerialNumber);
     }
 
 
@@ -329,8 +345,8 @@ public class SpectrumController {
 
     @PostMapping("testCompare")
     @ApiOperation("测试对比接口")
-    public Result testCompare(@RequestParam String taskId,@RequestBody SpectrumParameter spectrumParameter) {
-        return spectrumService.testCompare(taskId,spectrumParameter);
+    public Result testCompare(@RequestParam String taskId, @RequestBody SpectrumParameter spectrumParameter) {
+        return spectrumService.testCompare(taskId, spectrumParameter);
     }
 
     @GetMapping("downloadDoc")
@@ -346,10 +362,10 @@ public class SpectrumController {
             // 新增 digit 参数（根据实际需求调整 required 和描述）
             @ApiParam(value = "修约", required = false)
             @RequestParam(value = "digit", required = false) Integer digit) throws Exception {
-        
+
         // 调用 Service 层的多格式导出方法
         R<File> result = spectrumService.downloadFile(taskId, allDisplay, fileType, analysisIds, digit);
-        
+
         if (result.getSuccess()) {
             File file = result.getData();
             FileInputStream fis = new FileInputStream(file);
@@ -359,7 +375,7 @@ public class SpectrumController {
             String fileName = URLEncoder.encode(file.getName(), "UTF-8");
             // 处理IE浏览器编码问题（可选，增强兼容性）
             fileName = fileName.replace("+", "%20");
-            
+
             // 异步删除临时文件（优化：增加try-with-resources避免流泄漏，日志替换System.out）
             new Thread(() -> {
                 try {
@@ -383,7 +399,7 @@ public class SpectrumController {
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(resource);
         }
-        
+
         // 关键修正：返回Service层的具体错误信息，而非空字符串
         return ResponseEntity.badRequest().body("导出失败：" + result.getMessage());
     }

@@ -69,7 +69,7 @@ public interface ExperimentTestService {
     Result<MeasurementCurrentInfoVO> useMethodToTest(String methodId, String updateBy, String deviceSerialNumber);
 
     // 获取方法列表
-    Result listOfMethods(String methodName, Integer pageNum, Integer pageSize,String sort);
+    Result listOfMethods(String methodName, Integer pageNum, Integer pageSize,String sort,String updateBy,Boolean isMethodManage);
 
     // 最近创建的任务
     Result recentlyCreatedTasks(String updateBy, String measureType);
