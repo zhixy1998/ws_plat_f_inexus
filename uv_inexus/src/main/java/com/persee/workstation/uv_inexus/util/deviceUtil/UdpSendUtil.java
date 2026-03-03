@@ -1030,8 +1030,9 @@ public class UdpSendUtil {
             log.warn("波长格式非法: {}", currentWavelength);
             return;
         }
+        String key = String.valueOf((int) wl);
 
-        ChangeParam zeroRsd = zeroResult.get(currentWavelength);
+        ChangeParam zeroRsd = zeroResult.get(key);
         if (zeroRsd == null) {
             log.warn("未找到 zeroRsd, wl={}", currentWavelength);
 //            return;
