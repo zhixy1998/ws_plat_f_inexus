@@ -441,12 +441,7 @@ public class LiveDetectionDevicesWebSocket {
                             statusInfo.setX(device.getZeroWavelength() + "nm");
                         }
 
-//                        if (Constants.DEVICE_STATUS_MEASURE.equals(deviceInfo.getDeviceCurrentStatus())) {
-//                            statusInfo.setLuminosity(WaveLengthEnum.getName(device.getLuminosityMode()));
-//                            statusInfo.setX(device.getCurrentWavelength() + "nm");
-//                            statusInfo.setY(device.);
-//                        }
-
+                        statusInfo.setDevUseType(device.getUseType());
                     }
 
                     WebSocketResponseVO webSocketResponseVO = new WebSocketResponseVO();

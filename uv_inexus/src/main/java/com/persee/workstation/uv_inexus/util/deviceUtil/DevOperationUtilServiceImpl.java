@@ -45,6 +45,7 @@ import org.springframework.util.StringUtils;
 import javax.annotation.PostConstruct;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.net.DatagramSocket;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -784,13 +785,18 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             if (!result.getSuccess()) {
                 return R.fail("参数设置失败，指令：" + command.getCmdId());
             }
-            if (setParam.getPhotoMode() != null) {
-                deviceManager.setLuminosityMode(deviceId, String.valueOf(setParam.getPhotoMode()));
-            }
+        }
 
-            if (setParam.getSetWl() != null) {
-                deviceManager.setCurrentWavelength(deviceId, String.valueOf(setParam.getSetWl()));
-            }
+        if (setParam.getPhotoMode() != null) {
+            deviceManager.setLuminosityMode(deviceId, String.valueOf(setParam.getPhotoMode()));
+        }
+
+        if (setParam.getSetWl() != null) {
+
+            BigDecimal wl = BigDecimal.valueOf(setParam.getSetWl());
+            String wlStr = wl.stripTrailingZeros().toPlainString();
+
+            deviceManager.setCurrentWavelength(deviceId, wlStr);
         }
 
         resultEntity.setIsSuccess(true);

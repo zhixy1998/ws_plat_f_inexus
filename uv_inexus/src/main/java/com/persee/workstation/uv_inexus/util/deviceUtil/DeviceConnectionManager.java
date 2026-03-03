@@ -404,7 +404,7 @@ public class DeviceConnectionManager {
             return false;
         }
 
-        device.addZeroResult(Double.valueOf(wavelength), changeParam);
+        device.addZeroResult(wavelength, changeParam);
         device.updateLastUseTime();
         logInfo("添加校零结果: %s -> 波长 %s", deviceId, wavelength);
         return true;
@@ -533,6 +533,41 @@ public class DeviceConnectionManager {
         }
         return device.getDevCurrentStatus();
     }
+
+    /**
+     * 设置当前状态
+     * @param deviceId 设备ID
+     * @param status 当前状态值
+     * @return 是否成功
+     */
+    public boolean setDevCurrentUseType(String deviceId, String status) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置状态值失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.setUseType(status);
+        device.updateLastUseTime();
+        logInfo("设置当前状态值: %s -> %s", deviceId, status);
+        return true;
+    }
+
+    /**
+     * 获取当前状态值
+     * @param deviceId 设备ID
+     * @return 当前状态值
+     */
+    public String getDevCurrentUseType(String deviceId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置状态值失败: 设备不存在 %s", deviceId);
+            return null;
+        }
+        return device.getUseType();
+    }
+
+
 
     /**
      * 获取仪器空闲状态

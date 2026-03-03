@@ -33,6 +33,8 @@ public interface DeviceInfoService {
 
     void updateDeviceCurrentStatus(String deviceSerialNumber, Integer currentStatus);
 
+    void updateDeviceCurrentStatus(String deviceSerialNumber, String useType, Integer currentStatus);
+
     Boolean changeDeviceName(String deviceSerialNumber, String newDeviceName, String updateBy);
 
     //占用仪器

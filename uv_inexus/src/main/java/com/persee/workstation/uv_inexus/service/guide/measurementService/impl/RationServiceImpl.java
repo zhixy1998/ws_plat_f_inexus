@@ -3758,7 +3758,7 @@ public class RationServiceImpl implements RationService {
                 }
             }
 
-            if (StringUtils.hasText(task.getFittingParam()) && !task.getFittingParam().equals("{}") && !task.getFittingParam().equals("null")) {
+            if (StringUtils.hasText(task.getFittingParam()) && !"{}".equals(task.getFittingParam()) && !"null".equals(task.getFittingParam())) {
                 FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
 
 
@@ -4676,6 +4676,7 @@ public class RationServiceImpl implements RationService {
             specimen.setIsTested(tested);
         }
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        task.setFittingParam("{}");
 
         //拟合曲线
         R<FittingReceiveInfo> infoR = fittingCurve(fitCurveData, empty, task.getMethodKey(), fitCurveParams);

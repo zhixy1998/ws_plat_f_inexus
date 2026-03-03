@@ -25,7 +25,6 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1019,10 +1018,10 @@ public class UdpSendUtil {
         }
         log.info("时间扫描数据处理成功");
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
-        String currentWavelength = device.getCurrentWavelength() == null ? "" : device.getCurrentWavelength();
-        Map<Double, ChangeParam> zeroResult = device.getZeroResult();
-        ChangeParam measureResult = parse.getMeasureResult();
 
+        String currentWavelength = device.getCurrentWavelength() == null ? "" : device.getCurrentWavelength();
+        ChangeParam measureResult = parse.getMeasureResult();
+        ChangeParam zeroRsd = deviceManager.getZeroResult(deviceId, currentWavelength);
         double wl;
         try {
             wl = Double.parseDouble(currentWavelength);
@@ -1030,8 +1029,6 @@ public class UdpSendUtil {
             log.warn("波长格式非法: {}", currentWavelength);
             return;
         }
-
-        ChangeParam zeroRsd = zeroResult.get(wl);
         if (zeroRsd == null) {
             log.warn("未找到 zeroRsd, wl={}", currentWavelength);
 //            return;

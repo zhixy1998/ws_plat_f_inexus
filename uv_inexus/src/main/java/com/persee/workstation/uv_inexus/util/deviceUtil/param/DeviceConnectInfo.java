@@ -98,10 +98,15 @@ public class DeviceConnectInfo {
      * 仪器具体状态
      */
     private Integer devCurrentStatus = 0;
+
+    /**
+     * 仪器当前使用类型
+     */
+    private String useType;
     /**
      * 校零结果  键: 波长, 值: 校零参数 (保留 Map 结构！)
      */
-    private Map<Double, ChangeParam> zeroResult = new HashMap<>();
+    private Map<String, ChangeParam> zeroResult = new HashMap<>();
     /**
      * 当前校零波长
      */
@@ -140,7 +145,7 @@ public class DeviceConnectInfo {
     /** 当前扫描波长配置（前端下发） */
     private ScanWavelengthConfig scanWavelengthConfig;
     // ====== 校零结果管理方法 ======
-    public void addZeroResult(Double wavelength, ChangeParam changeParam) {
+    public void addZeroResult(String wavelength, ChangeParam changeParam) {
         zeroResult.put(wavelength, changeParam);
     }
 
@@ -148,7 +153,7 @@ public class DeviceConnectInfo {
         return zeroResult.get(wavelength);
     }
 
-    public Map<Double, ChangeParam> getAllZeroResults() {
+    public Map<String, ChangeParam> getAllZeroResults() {
         return Collections.unmodifiableMap(zeroResult);
     }
 

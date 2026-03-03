@@ -565,7 +565,7 @@ public class MessageOnTimeDeal {
         String dStr = rsd.getD();
         String sStr = rsd.getS();
         BigDecimal bigDecimal = BigDecimal.valueOf(sp.getWavelength());
-        String wlStr = bigDecimal.toPlainString();
+        String wlStr = bigDecimal.stripTrailingZeros().toPlainString();
 //        String wlStr = String.valueOf(sp.getWavelength());
 
         if (!StringUtils.hasText(dStr) || !StringUtils.hasText(sStr)) return;
@@ -593,7 +593,7 @@ public class MessageOnTimeDeal {
         String rStr = rsd.getR();
 
         BigDecimal bigDecimal = BigDecimal.valueOf(sp.getWavelength());
-        String wlStr = bigDecimal.toPlainString();
+        String wlStr = bigDecimal.stripTrailingZeros().toPlainString();
 
 //        String wlStr = String.valueOf(sp.getWavelength());
 
