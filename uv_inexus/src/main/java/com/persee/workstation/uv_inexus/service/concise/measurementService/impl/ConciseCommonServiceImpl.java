@@ -1606,6 +1606,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         String normalConcentration = dto.getNormalConcentration();
         String measureType = dto.getMeasureType();
 
+        if (deviceSerialNumber==null||deviceSerialNumber.equals("")){
+            return Result.fail(YamlMessageSource.getMessageStatic("00305007"));
+        }
+        if (taskId == null || taskId.equals("")) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
+        }
+
         // 1. 获取任务信息
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
@@ -1618,7 +1625,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
 
         // 3. 判断是否是定量测量
-        boolean isQuantitative = "定量测定".equals(measureType);
+        boolean isQuantitative = QUANTITATIVE_MEASUREMENT.equals(measureType);
 
         // 4. 如果是定量测量标准样品，校验浓度
         if (isQuantitative && SampleTypeEnum.kind_stand.getIdentity().equals(sampleKind)) {
@@ -2161,7 +2168,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (taskSpecimen.isEmpty()) {
             // 首次创建样品
             return createFirstQuantitativeSample(task, taskSpecimen, sampleKind, normalConcentration,
-                    concentrationDigit, dynamicHeads, numberConfig, nameConfig);
+                    concentrationDigit, dynamicHeads, numberConfig, nameConfig,isAutoChangePool,deviceSerialNumber);
         } else {
             // 后续添加样品
             return createSubsequentQuantitativeSamples(dto, task, taskSpecimen, sampleKind, normalConcentration,
@@ -2203,19 +2210,36 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
         });
 
+        // 获取自动切换样品池配置
+        boolean isAutoChangePool = getAutoChangePoolConfig(dto, deviceSerialNumber);
+
+        // 获取当前样品池信息（用于分配池号）
+        Integer currentPoolNum = null;
+        if (isAutoChangePool) {
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            if (poolInfo.getSuccess() && poolInfo.getData() != null) {
+                currentPoolNum = poolInfo.getData().getCurrentPoolNum();
+            }
+        }
+
         if (taskSpecimen.isEmpty()) {
-            // 首次创建样品
+            // ===== 第一次创建：始终只创建一个样品 =====
             FMeasureSample newSample = new FMeasureSample();
 
-            // 使用配置的开始号（修正：从配置的startNum开始）
+            // 使用配置的开始号
             sampleAutoNum = numberConfig.getStartNum();
 
-            // 生成样品编号：名称-开始号
+            // 生成样品编号：前缀-开始号
             newSample.setSampleNumber(numberConfig.getPreName() + "-" + sampleAutoNum);
 
-            // 生成样品名称：使用配置的起始编号（修正：从配置的startNum开始）
+            // 生成样品名称：使用配置的起始编号
             newSample.setSampleName(nameConfig.getPreName() + nameConfig.getStartNum());
             newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+
+            // 如果开启了自动切换样品池，分配当前池号
+            if (isAutoChangePool && currentPoolNum != null) {
+                newSample.setSampleLocation(String.valueOf(currentPoolNum));
+            }
 
             if (!dynamicHeads.isEmpty()) {
                 newSample.setHeads(JSON.toJSONString(dynamicHeads));
@@ -2229,7 +2253,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested,
                     newSample.getSampleType(), null));
 
+            log.info("首次创建样品: {}, 池号: {}", newSample.getSampleNumber(), newSample.getSampleLocation());
+
         } else {
+            // ===== 后续创建样品 =====
+
             // 检查是否有未测试的样品
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
@@ -2260,67 +2288,102 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 return Result.ok(true);
             }
 
-            FMeasureSample newSample = new FMeasureSample();
+            // ===== 判断要创建的样品数量 =====
+            int samplesToCreate = 1;  // 默认创建1个
 
-            // 计算下一个编号（修正：使用配置的递增逻辑）
-            if (sampleAutoNum == 0) {
-                // 如果没有保存过自动编号，使用配置的开始号
-                sampleAutoNum = numberConfig.getStartNum();
-            } else {
-                // 否则使用当前编号 + 配置的递增量
-                sampleAutoNum = sampleAutoNum + numberConfig.getStep();
-            }
+            List<Integer> poolNumbers = new ArrayList<>();  // 存储要分配的池号
 
-            // 检查编号是否已存在，如果存在则继续递增
-            int number = sampleAutoNum;
-            while (sampleNumList.contains(numberConfig.getPreName() + "-" + number)) {
-                number += numberConfig.getStep();
-            }
-
-            // 计算当前名称的序号（修正：基于现有样品数量，使用配置的递增逻辑）
-            // 先找到最大的名称序号
-            int maxNameNumber = nameConfig.getStartNum();
-            for (String sampleName : sampleNameList) {
-                if (sampleName.startsWith(nameConfig.getPreName())) {
-                    try {
-                        String numberStr = sampleName.substring(nameConfig.getPreName().length());
-                        int currentNum = Integer.parseInt(numberStr);
-                        if (currentNum > maxNameNumber) {
-                            maxNameNumber = currentNum;
-                        }
-                    } catch (NumberFormatException e) {
-                        // 忽略非数字后缀
-                    }
+            if (isAutoChangePool) {
+                // 开启自动切换：获取所有可用池号
+                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+                if (!usefulLocation.isEmpty()) {
+                    samplesToCreate = usefulLocation.size();  // 按可用池号数量创建
+                    poolNumbers = usefulLocation;
+                    log.info("自动切换样品池开启，将创建 {} 个样品，分配池号: {}", samplesToCreate, poolNumbers);
                 }
+            } else {
+                // 未开启自动切换：只创建1个
+                samplesToCreate = 1;
+                log.info("未开启自动切换，创建1个样品");
             }
 
-            // 计算下一个名称序号
-            int nameSequenceNum = maxNameNumber + nameConfig.getStep();
-
-            // 检查名称是否已存在，如果存在则继续递增
-            while (sampleNameList.contains(nameConfig.getPreName() + nameSequenceNum)) {
-                nameSequenceNum += nameConfig.getStep();
+            // 计算当前的样品编号的最大值
+            int currentMaxNumber = findMaxNumberFromSamples(sampleNumList, numberConfig.getPreName() + "-");
+            if (currentMaxNumber < numberConfig.getStartNum()) {
+                currentMaxNumber = numberConfig.getStartNum();
             }
 
-            // 设置样品编号和名称
-            newSample.setSampleNumber(numberConfig.getPreName() + "-" + number);
-            newSample.setSampleName(nameConfig.getPreName() + nameSequenceNum);
-            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
-
-            if (!dynamicHeads.isEmpty()) {
-                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            // 计算当前名称的最大序号
+            int currentMaxNameNumber = findMaxNumberFromSamples(sampleNameList, nameConfig.getPreName());
+            if (currentMaxNameNumber < nameConfig.getStartNum()) {
+                currentMaxNameNumber = nameConfig.getStartNum();
             }
 
-            boolean save = fMeasureSampleService.save(newSample);
-            if (!save) {
+            // 批量创建样品
+            List<FMeasureSample> newSamples = new ArrayList<>();
+            int nextNumber = currentMaxNumber;
+            int nextNameNumber = currentMaxNameNumber;
+
+            for (int i = 0; i < samplesToCreate; i++) {
+                // 计算下一个编号
+                if (i == 0) {
+                    nextNumber = currentMaxNumber + numberConfig.getStep();
+                } else {
+                    nextNumber += numberConfig.getStep();
+                }
+
+                // 检查编号是否已存在
+                while (sampleNumList.contains(numberConfig.getPreName() + "-" + nextNumber)) {
+                    nextNumber += numberConfig.getStep();
+                }
+
+                // 计算下一个名称序号
+                if (i == 0) {
+                    nextNameNumber = currentMaxNameNumber + nameConfig.getStep();
+                } else {
+                    nextNameNumber += nameConfig.getStep();
+                }
+
+                // 检查名称是否已存在
+                while (sampleNameList.contains(nameConfig.getPreName() + nextNameNumber)) {
+                    nextNameNumber += nameConfig.getStep();
+                }
+
+                FMeasureSample newSample = new FMeasureSample();
+                newSample.setSampleNumber(numberConfig.getPreName() + "-" + nextNumber);
+                newSample.setSampleName(nameConfig.getPreName() + nextNameNumber);
+                newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+
+                // 分配池号（如果开启了自动切换）
+                if (isAutoChangePool && !poolNumbers.isEmpty()) {
+                    newSample.setSampleLocation(String.valueOf(poolNumbers.get(i)));
+                }
+
+                if (!dynamicHeads.isEmpty()) {
+                    newSample.setHeads(JSON.toJSONString(dynamicHeads));
+                }
+
+                newSamples.add(newSample);
+                sampleNumList.add(newSample.getSampleNumber());
+                sampleNameList.add(newSample.getSampleName());
+            }
+
+            // 批量保存样品
+            boolean saveAll = fMeasureSampleService.saveBatch(newSamples);
+            if (!saveAll) {
                 return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
             }
 
-            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested,
-                    newSample.getSampleType(), null));
+            // 添加到任务标本列表
+            for (FMeasureSample sample : newSamples) {
+                taskSpecimen.add(new FTaskSpecimen(sample.getId(), createType, noTested,
+                        sample.getSampleType(), null));
+            }
 
-            // 更新自动编号
-            sampleAutoNum = number;
+            // 更新自动编号（取最后一个样品的编号）
+            sampleAutoNum = nextNumber;
+
+            log.info("后续创建 {} 个样品成功", samplesToCreate);
         }
 
         // 更新任务
@@ -2330,9 +2393,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (!update) {
             return Result.fail(YamlMessageSource.getMessageStatic("00000048"));
         }
-
-        // 处理自动换池
-        handleAutoChangePool(dto, task, deviceSerialNumber, false);
 
         return Result.ok(true);
     }
@@ -2361,7 +2421,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     private Result createFirstQuantitativeSample(FMeasureTask task, List<FTaskSpecimen> taskSpecimen,
                                                  String sampleKind, String normalConcentration,
                                                  Integer concentrationDigit, List<FHeadVO> dynamicHeads,
-                                                 SampleNumConfig numberConfig, SampleNameConfig nameConfig) {
+                                                 SampleNumConfig numberConfig, SampleNameConfig nameConfig,
+                                                 Boolean isAutoChangePool,String deviceSerialNumber) {
 
         FMeasureSample newSample = new FMeasureSample();
 
@@ -2381,6 +2442,12 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         newSample.setSampleKind(sampleKind);
         if (!dynamicHeads.isEmpty()) {
             newSample.setHeads(JSON.toJSONString(dynamicHeads));
+        }
+
+        // 如果开启自动切换样品池的话将当前池号设置给样品
+        if (isAutoChangePool){
+            R<FSamplePoolInfoVO> fSamplePoolInfoVOR = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            newSample.setSampleLocation(String.valueOf(fSamplePoolInfoVOR.getData().getCurrentPoolNum()));
         }
 
         boolean save = fMeasureSampleService.save(newSample);
@@ -2450,8 +2517,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         int samplesToCreate = 1;
         if (isAutoChangePool) {
             List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
-            int all = usefulLocation.size();
-            samplesToCreate = Math.max(1, all - taskSpecimen.size());
+            samplesToCreate = usefulLocation.size();
         }
 
         // 计算当前的样品编号和名称的最大值
