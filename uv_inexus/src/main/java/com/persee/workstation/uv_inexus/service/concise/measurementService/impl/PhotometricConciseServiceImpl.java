@@ -3108,6 +3108,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         param.setPhotoMode(Integer.valueOf(photometricParameter.getLuminosity()));
         param.setResponseTime(Double.valueOf(photometricParameter.getResponseTime()));
+        param.setChangeLampWl(Double.parseDouble(photometricParameter.getChangeLampWaveLength()));
 
         if (photometricParameter.getGain() != null) {
             param.setGain(photometricParameter.getGain());

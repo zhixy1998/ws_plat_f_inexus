@@ -275,7 +275,7 @@ public class ConcisePhotometricNewWebSocket {
                     photometricService.saveCountData(data, dataId);
                 }
             }
-
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         } else {
 
             R<Boolean> createR = photometricService.createSample(taskId, updateBy, deviceSerialNumber);

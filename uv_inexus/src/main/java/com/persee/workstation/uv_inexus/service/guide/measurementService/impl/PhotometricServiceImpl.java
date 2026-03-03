@@ -2299,6 +2299,7 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         param.setPhotoMode(Integer.valueOf(photometricParameter.getLuminosity()));
         param.setResponseTime(Double.valueOf(photometricParameter.getResponseTime()));
+        param.setChangeLampWl(Double.parseDouble(photometricParameter.getChangeLampWaveLength()));
 
         if (photometricParameter.getGain() != null) {
             param.setGain(photometricParameter.getGain());
