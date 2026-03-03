@@ -3979,14 +3979,63 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
 
         if (RationCurveParamEnums.typeAbs.getIdentity().equals(parameter.getEquationType())) {
-            info.setEquation(equation.replace("x", "Abs").replace("y", "C"));
+            equation = rebuildFormula(kList, kDigits, info.getDegree(), "Abs", "C");
+            info.setEquation(equation);
         } else {
-            info.setEquation(equation.replace("x", "C").replace("y", "Abs"));
+            equation = rebuildFormula(kList, kDigits, info.getDegree(), "C", "Abs");
+            info.setEquation(equation);
         }
         Arrays.stream(param.getX_data()).min().ifPresent(info::setMinX);
         Arrays.stream(param.getX_data()).max().ifPresent(info::setMaxX);
 
         return R.ok(info);
+    }
+
+
+    public String rebuildFormula(List<Double> coefficientList, Integer kDigits, Integer degree, String x, String y) {
+
+
+        while (coefficientList.size() < degree + 1) {
+            coefficientList.add(0.0);
+        }
+
+        StringBuilder formula = new StringBuilder();
+        formula.append(y).append(" = ");
+        int index = 0;
+
+        for (int i = 0; i <= degree; i++) {
+
+            // 设置系数字段（根据degree动态设置）
+            if (coefficientList.get(degree - i) != 0.0) {
+                double cuff = coefficientList.get(degree - i);
+                if (index == 0) {
+                    if (cuff < 0) {
+                        formula.append(" - ");
+                    }
+                }
+                if (index > 0) {
+                    if (cuff < 0) {
+                        formula.append(" - ");
+                    } else {
+                        formula.append(" + ");
+                    }
+                }
+                // 添加系数绝对值，如果是负数则取绝对值
+                double value = Math.abs(cuff);
+                String s = DataCountUtil.formatValueWithBigDecimal(kDigits, String.valueOf(value));
+                s = DataCountUtil.addZero(Double.valueOf(s), kDigits);
+
+                formula.append(s);
+                if (degree - i > 0) {
+                    formula.append("*").append(x);
+                    if (degree - i > 1) {
+                        formula.append("^").append(degree - i);
+                    }
+                }
+                index++;
+            }
+        }
+        return formula.toString();
     }
 
 
@@ -4299,7 +4348,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
                 List<Double> coefficientList = curve.getCoefficientList();
                 double k = 0;
-                if (coefficientList != null && coefficientList.size() <= 2) {
+                if (coefficientList != null && coefficientList.size() == 2) {
                     k = coefficientList.get(1);
                 }
 

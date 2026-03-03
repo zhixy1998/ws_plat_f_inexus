@@ -3743,69 +3743,74 @@ public class RationServiceImpl implements RationService {
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
 
-        if (StringUtils.hasText(task.getSampleKey())) {
+        if ( parameter.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
+
             RationCurveDataInfo curveData = getCurveData(task, parameter, digit);
 
-            if (StringUtils.hasText(parameter.getCoefficientMode()) && parameter.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
-                FittingReceiveInfo fittingInfo = createFittingInfo(methodId);
+            FittingReceiveInfo fittingInfo = createFittingInfo(methodId);
 
-                if (fittingInfo != null) {
-                    fittingInfo.setMaxX(curveData.getMaxX());
-                    fittingInfo.setMinX(curveData.getMinX());
+            if (fittingInfo != null) {
+                fittingInfo.setMaxX(curveData.getMaxX());
+                fittingInfo.setMinX(curveData.getMinX());
 
-                    resultVo = curveData(fittingInfo);
-                    resultVo.setUnknowPoints(curveData.getUnknowPoints());
-                    resultVo.setTaskId(taskId);
-                    resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
-                    resultVo.setCurveType(RationCurveParamEnums.getName(parameter.getCurveType()));
-                    return Result.ok(resultVo);
-                }
-            }
-
-            if (StringUtils.hasText(task.getFittingParam()) && !"{}".equals(task.getFittingParam()) && !"null".equals(task.getFittingParam())) {
-                FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
-
-
-                fittingParam.setMaxX(curveData.getMaxX());
-                fittingParam.setMinX(curveData.getMinX());
-                resultVo = curveData(fittingParam);
-                resultVo.setStandPoints(curveData.getStandPoints());
+                resultVo = curveData(fittingInfo);
                 resultVo.setUnknowPoints(curveData.getUnknowPoints());
+                resultVo.setTaskId(taskId);
+                resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
+                resultVo.setCurveType(RationCurveParamEnums.getName(parameter.getCurveType()));
+                return Result.ok(resultVo);
+            }
+        } else {
 
-                if (StringUtils.hasText(fittingParam.getRoundR())) {
-                    Double r = null;
-                    try {
-                        r = Double.valueOf(fittingParam.getRoundR());
-                    } catch (Exception ignored) {
-                    }
-                    if (r != null) {
-                        if (!r.isNaN() && !r.isInfinite()) {
-                            resultVo.setR(DataCountUtil.addZero(r, rSquareDigits));
-                        } else {
-                            resultVo.setR(String.valueOf(r));
+            if (StringUtils.hasText(task.getSampleKey())) {
+                RationCurveDataInfo curveData = getCurveData(task, parameter, digit);
+
+                if (StringUtils.hasText(task.getFittingParam()) && !"{}".equals(task.getFittingParam()) && !"null".equals(task.getFittingParam())) {
+                    FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+
+
+                    fittingParam.setMaxX(curveData.getMaxX());
+                    fittingParam.setMinX(curveData.getMinX());
+                    resultVo = curveData(fittingParam);
+                    resultVo.setStandPoints(curveData.getStandPoints());
+                    resultVo.setUnknowPoints(curveData.getUnknowPoints());
+
+                    if (StringUtils.hasText(fittingParam.getRoundR())) {
+                        Double r = null;
+                        try {
+                            r = Double.valueOf(fittingParam.getRoundR());
+                        } catch (Exception ignored) {
                         }
+                        if (r != null) {
+                            if (!r.isNaN() && !r.isInfinite()) {
+                                resultVo.setR(DataCountUtil.addZero(r, rSquareDigits));
+                            } else {
+                                resultVo.setR(String.valueOf(r));
+                            }
 
-                    }
-                }
-                if (StringUtils.hasText(fittingParam.getRoundR2())) {
-
-                    Double r2 = null;
-                    try {
-                        r2 = Double.valueOf(fittingParam.getRoundR2());
-                    } catch (Exception ignored) {
-                    }
-                    if (r2 != null) {
-                        if (!r2.isNaN() && !r2.isInfinite()) {
-                            resultVo.setR2(DataCountUtil.addZero(r2, rSquareDigits));
-                        } else {
-                            resultVo.setR2(String.valueOf(r2));
                         }
                     }
+                    if (StringUtils.hasText(fittingParam.getRoundR2())) {
+
+                        Double r2 = null;
+                        try {
+                            r2 = Double.valueOf(fittingParam.getRoundR2());
+                        } catch (Exception ignored) {
+                        }
+                        if (r2 != null) {
+                            if (!r2.isNaN() && !r2.isInfinite()) {
+                                resultVo.setR2(DataCountUtil.addZero(r2, rSquareDigits));
+                            } else {
+                                resultVo.setR2(String.valueOf(r2));
+                            }
+                        }
+                    }
+                    Map<String, String> map = checkCurveQuantity(methodId, resultVo);
+                    resultVo.setQuality(map);
                 }
-                Map<String, String> map = checkCurveQuantity(methodId, resultVo);
-                resultVo.setQuality(map);
             }
         }
+
 
         resultVo.setTaskId(taskId);
         resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
