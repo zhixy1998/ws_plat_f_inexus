@@ -31,7 +31,6 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
-import com.persee.workstation.uv_inexus.websocket.concise.ConciseSpectrumWebSocket;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
@@ -63,7 +62,7 @@ import java.util.stream.Collectors;
 @Component
 public class ConciseSpectrumNewWebSocket {
 
-    private static final Logger log = LoggerFactory.getLogger(ConciseSpectrumWebSocket.class);
+    private static final Logger log = LoggerFactory.getLogger(ConciseSpectrumNewWebSocket.class);
     // 存储任务线程
     private static final Map<String, Thread> taskThreads = new ConcurrentHashMap<>();
     // 会话状态管理

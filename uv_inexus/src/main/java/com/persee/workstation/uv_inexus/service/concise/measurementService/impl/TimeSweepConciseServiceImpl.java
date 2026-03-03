@@ -3894,12 +3894,15 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
         ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
         Boolean put = timeMeasureIsStop.put(info.getDeviceId(), true);
+        if (put== null) {
+            return Result.ok("设备正在停止中");
+        }
         if (!put) {
             log.info("设备已停止测量");
             Constants.measureStopStatus.put(deviceSerialNumber, false);
             return Result.ok();
         } else {
-            return Result.fail();
+            return Result.ok("设备正在停止中");
         }
     }
 
