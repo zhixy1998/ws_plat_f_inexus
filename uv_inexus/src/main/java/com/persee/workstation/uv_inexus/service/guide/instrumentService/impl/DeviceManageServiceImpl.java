@@ -395,33 +395,33 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return null;
     }
 
+
+
     @Override
     public R<Boolean> closeOrOpenLamp(String lampType, Integer status, String deviceSerialNumber) {
 
 //        SetWLampStatus  （设置钨灯开关：1开0关）
 //        SetDLampStatus  （设置氘灯开关：1开0关）
 //        SetLampPos （设置灯位置：0钨灯1氘灯）
-        Command command = new Command();
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+        SetParam param = new SetParam();
         if (lampType.equals(EnergyLampEnums.Tungsten.getIdentity())) {
-            command = new Command("SetWLampStatus", new Object[]{status});
-        }
-        if (lampType.equals(EnergyLampEnums.Deuterium.getIdentity())) {
-            command = new Command("SetDLampStatus", new Object[]{status});
+            param.setWLampStatus(status);
+        } else if (lampType.equals(EnergyLampEnums.Deuterium.getIdentity())) {
+            param.setDLampStatus(status);
+        } else {
+            log.info("灯类型出错");
+            return R.fail("灯类型出错！");
         }
 
-        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
-        if (info == null || !StringUtils.hasText(info.getIp()) || !info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
-            return R.fail("设备未连接");
-        }
-        String ip = info.getIp();
-        R<Boolean> r = infoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
-        if (!r.getSuccess()) {
-            return R.fail(r.getMessage());
-        }
-        Boolean b = devMessageUtil.changeLamp(command, ip);
-        infoService.releaseDevice(deviceSerialNumber);
-        if (!b) {
-            return R.fail("操作失败");
+        inputParam.setParam(param);
+
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
         }
 
         return R.ok(true);
@@ -429,25 +429,25 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public R<Boolean> changeLamp(String currentLampType, String deviceSerialNumber) {
-        Command command = new Command();
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+        SetParam param = new SetParam();
+
         if (currentLampType.equals(EnergyLampEnums.Tungsten.getIdentity())) {
-            command = new Command("SetLampPos", new Object[]{1});
+            param.setLampPos(1);
         } else if (currentLampType.equals(EnergyLampEnums.Deuterium.getIdentity())) {
-            command = new Command("SetLampPos", new Object[]{0});
+            param.setLampPos(0);
+        } else {
+            log.info("当前灯类型出错");
+            return R.fail("灯类型出错！");
         }
-        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
-        if (info == null || !StringUtils.hasText(info.getIp()) || !info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
-            return R.fail("设备未连接");
-        }
-        String ip = info.getIp();
-        R<Boolean> r = infoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
-        if (!r.getSuccess()) {
-            return R.fail(r.getMessage());
-        }
-        Boolean b = devMessageUtil.changeLamp(command, ip);
-        infoService.releaseDevice(deviceSerialNumber);
-        if (!b) {
-            return R.fail("操作失败");
+        inputParam.setParam(param);
+
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
         }
 
         return R.ok(true);

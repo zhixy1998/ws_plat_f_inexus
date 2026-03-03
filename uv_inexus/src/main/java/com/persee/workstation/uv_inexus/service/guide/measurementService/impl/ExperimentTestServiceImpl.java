@@ -4320,6 +4320,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             TMeasureTask task = tMeasureTaskService.getById(taskId);
             task.setMethodKey(methodId);
             task.setCreateTime(LocalDateTime.now());
+
+            task.setFittingParam("{}");
             tMeasureTaskService.updateById(task);
 
             infoVO.setTaskId(task.getId());

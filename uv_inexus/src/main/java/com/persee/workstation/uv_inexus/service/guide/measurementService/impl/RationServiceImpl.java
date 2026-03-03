@@ -557,7 +557,7 @@ public class RationServiceImpl implements RationService {
         TMeasureTask newTask = new TMeasureTask();
         newTask.setMethodKey(newMethod.getId());
         newTask.setCreateTime(LocalDateTime.now());
-        newTask.setFittingParam(task.getFittingParam());
+//        newTask.setFittingParam(task.getFittingParam());
         SysUserPO sysUserPO = userManageDAO.selectByUsername(methodDto.getUpdateBy());
         newTask.setUserId(sysUserPO.getId());
 
@@ -3918,6 +3918,9 @@ public class RationServiceImpl implements RationService {
         String taskId = task.getId();
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
 
         boolean standEmpty = false;
         boolean unKnowEmpty = false;
