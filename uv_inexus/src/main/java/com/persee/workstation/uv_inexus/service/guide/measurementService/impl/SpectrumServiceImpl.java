@@ -461,6 +461,11 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter) {
+        // 先校验方法是否合法
+        R<Boolean> r = checkParam(spectrumParameter);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        }
         // 创建测量方法表
         TMeasureMethod tMeasureMethod = new TMeasureMethod();
         if (methodDto.getPretreatmentIds() != null) {

@@ -2736,6 +2736,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, TimeSweepParamter timeSweepParamter) {
+        R<Boolean> r = checkParam(timeSweepParamter);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        }
         if (updateBy.length()>=256){
             //用户名过长！
             return Result.fail(YamlMessageSource.getMessageStatic("00305001"));

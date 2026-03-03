@@ -339,7 +339,10 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Override
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, PhotometricParameter photometricParameter) {
-
+        R<Boolean> r = checkParam(photometricParameter);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        }
         if (photometricParameter.getWaveLength() == null || photometricParameter.getWaveLength().isEmpty()) {
             //请填写波长值
             return Result.fail(YamlMessageSource.getMessageStatic("0000000E"));

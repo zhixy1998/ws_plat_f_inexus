@@ -298,6 +298,10 @@ public class RationServiceImpl implements RationService {
 
     @Override
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, RationParameter rationParameter) {
+        R<Boolean> r = checkParam(rationParameter);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        }
         if (rationParameter.getWaveLength() == null || rationParameter.getWaveLength().isEmpty()) {
             //请填写波长参数
             return Result.fail(YamlMessageSource.getMessageStatic("00000022"));
