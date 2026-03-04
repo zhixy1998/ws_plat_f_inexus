@@ -23,6 +23,7 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMo
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -208,6 +209,17 @@ public class DeviceController {
             return Result.ok(r.getData());
         } else {
             return Result.fail(r.getMessage());
+        }
+    }
+
+    @GetMapping("/queryDeviceTypeInfo")
+    @ApiOperation("查询设备类型信息")
+    public Result<DeviceMeasureVO> queryDeviceTypeInfo(@RequestParam(required = false) String deviceSerialNumber) {
+        R<DeviceMeasureVO> r = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        } else {
+            return Result.ok(r.getData());
         }
     }
 
