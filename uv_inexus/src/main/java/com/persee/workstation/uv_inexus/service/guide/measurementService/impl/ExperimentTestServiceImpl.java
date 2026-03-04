@@ -3335,14 +3335,15 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     if (specimen.getDeleteType().equals("1")) {
                         continue;
                     }
-                    if (!specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
-                        continue;
-                    }
+
                     if (specimen.getIsTested().equals("0")) {
                         continue;
                     }
                     TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                    vo.setStandardConcentration(sample.getNormalConcentration());
+                    if (!specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                        vo.setStandardConcentration(sample.getNormalConcentration());
+                    }
+
                     vo.setSampleName(sample.getSampleName());
                     vo.setSampleNumber(sample.getSampleNumber());
                     LambdaQueryWrapper<TMeasureData> wrapper = new LambdaQueryWrapper<>();

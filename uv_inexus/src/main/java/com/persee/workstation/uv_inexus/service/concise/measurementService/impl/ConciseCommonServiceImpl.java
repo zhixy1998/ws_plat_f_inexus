@@ -879,14 +879,15 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                     if (specimen.getDeleteType().equals("1")) {
                         continue;
                     }
-                    if (!specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
-                        continue;
-                    }
+
                     if (specimen.getIsTested().equals("0")) {
                         continue;
                     }
                     FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
-                    vo.setStandardConcentration(sample.getNormalConcentration());
+                    if (!specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                        vo.setStandardConcentration(sample.getNormalConcentration());
+                    }
+
                     vo.setSampleName(sample.getSampleName());
                     vo.setSampleNumber(sample.getSampleNumber());
                     LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
