@@ -1838,7 +1838,7 @@
 <ProtocolItem>
 <ID>Dark</ID>
 <Describe>暗电流校正</Describe>
-<Timeout>30000</Timeout>
+<Timeout>15000</Timeout>
 <ACK>N</ACK>
 <InputString>
 <string/>
@@ -1847,15 +1847,15 @@
 <string/>
 </OutputString>
 <SendBytes>
-<string>181:255:19:5:0:0:0:0:0:0:0:Check</string>
+    <string>181:255:0:14:0:0:0:0:0:0:0:194</string>
 </SendBytes>
 <ReadBytes>
 <string>254:181:0:14:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
-    <ReplyNumber>-1</ReplyNumber>
+    <ReplyNumber>24</ReplyNumber>
     <HeadReceiveBytes>
-        <string>255:181:19:5</string>
-        <string>255:181:19:6</string>
+        <string>255:181:0:14</string>
+        <string>181:255:0:14</string>
     </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>

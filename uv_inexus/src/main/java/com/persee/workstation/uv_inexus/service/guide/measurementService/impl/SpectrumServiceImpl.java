@@ -322,6 +322,11 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000023"));
         }
 
+        if (methodParam.getTaskId()==null||!StringUtils.hasText(methodParam.getTaskId())) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00101006"));
+        }
+
+
         SpectrumParameter newMethodParam = new SpectrumParameter();
         BeanUtils.copyProperties(methodParam, newMethodParam);
 

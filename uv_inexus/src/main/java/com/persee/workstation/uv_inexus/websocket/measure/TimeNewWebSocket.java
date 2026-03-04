@@ -871,7 +871,7 @@ public class TimeNewWebSocket {
     private void sendMessage(String deviceSerialNumber, JSONObject object) {
 
         WebSocketResponseVO vo = new WebSocketResponseVO();
-        vo.setOperation(WebSocketOperationEnum.ConciseTimeMeasure.getOperation());
+        vo.setOperation(WebSocketOperationEnum.TimeMeasure.getOperation());
         vo.setData(object);
 
         webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
@@ -879,7 +879,7 @@ public class TimeNewWebSocket {
 
     private void sendError(String deviceSerialNumber, String message) {
         infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConciseTimeMeasure.getOperation(), message);
+        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.TimeMeasure.getOperation(), message);
         safeCleanup(deviceSerialNumber, true);
     }
 }

@@ -290,6 +290,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000023"));
         }
 
+        if (methodParam.getTaskId()==null||!StringUtils.hasText(methodParam.getTaskId())) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00101006"));
+        }
+
         TimeSweepParamter newMethodParam = new TimeSweepParamter();
         BeanUtils.copyProperties(methodParam, newMethodParam);
 
@@ -3898,6 +3902,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             double expectedTotalTime = (totalNumber - 1) * intervalTime;
             // 允许的误差范围（例如0.01）
             double tolerance = 0.01;
+
+            if (parameter.getScanUnit().equals("0")) {
+                expectedTotalTime = expectedTotalTime / 60;
+            }
 
             if (Math.abs(scanTime - expectedTotalTime) > tolerance) {
                 return R.fail(String.format("扫描总时长与时间间隔、总个数不匹配：总时长=%.2f，期望值=%.2f (总个数-1)×时间间隔",
