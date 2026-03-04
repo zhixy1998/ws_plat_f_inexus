@@ -2848,6 +2848,7 @@ public class RationServiceImpl implements RationService {
         map.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber());
         map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
         map.put(SampleTableEnum.SAMPLE_KIND.getIdentity(), sample.getSampleKind());
+        map.put(SampleTableEnum.Parallel_ID.getIdentity(), sample.getParallelGroupId());
 
         SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
         Integer concentrationDigits = businessParamVO.getConcentrationDigits();

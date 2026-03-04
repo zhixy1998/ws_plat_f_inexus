@@ -67,7 +67,17 @@ public class RestUtil {
     }
 
     public String dataFit(FittingParam param) {
-        RestTemplate restTemplate = new RestTemplate();
+
+        // 创建带有超时设置的 RestTemplate
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+
+        // 设置连接超时（单位：毫秒） // 5秒连接超时
+        factory.setConnectTimeout(3000);
+        // 10秒读取超时
+        factory.setReadTimeout(5000);
+
+
+        RestTemplate restTemplate = new RestTemplate(factory);
         String url = baseUrl + "least_squares_fitting";
 
         String jsonString = JSONObject.toJSONString(param);
@@ -92,7 +102,14 @@ public class RestUtil {
 
     //根据吸光度计算拟合浓度
     public String concentrationCalculate(List<Double> coefficient, Double value, Integer mode) {
-        RestTemplate restTemplate = new RestTemplate();
+        // 创建带有超时设置的 RestTemplate
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+
+        // 设置连接超时（单位：毫秒） // 5秒连接超时
+        factory.setConnectTimeout(3000);
+        // 10秒读取超时
+        factory.setReadTimeout(5000);
+        RestTemplate restTemplate = new RestTemplate(factory);
         String url = baseUrl + "calculate_concentration_or_abs";
 
         JSONObject jsonObject = new JSONObject();
