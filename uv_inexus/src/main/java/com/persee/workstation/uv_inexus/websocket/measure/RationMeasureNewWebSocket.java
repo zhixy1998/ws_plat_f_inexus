@@ -1561,6 +1561,7 @@ public class RationMeasureNewWebSocket{
 
 
             }
+            LocalDateTime endTime = LocalDateTime.now();
             //重复测完，开始计算平均值
 
             Map<String, List<Double>> absValues = originDataList.stream()
@@ -1612,7 +1613,7 @@ public class RationMeasureNewWebSocket{
 
                 originDataList.add(info);
             }
-            LocalDateTime endTime = LocalDateTime.now();
+
 
             R<RationCountDataInfo> absValue = rationService.countAbsValue(originDataList, parameter, digit);
             if (!absValue.getSuccess()) {

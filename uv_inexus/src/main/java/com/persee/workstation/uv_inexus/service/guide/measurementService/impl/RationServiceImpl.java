@@ -558,6 +558,8 @@ public class RationServiceImpl implements RationService {
         newTask.setMethodKey(newMethod.getId());
         newTask.setCreateTime(LocalDateTime.now());
 //        newTask.setFittingParam(task.getFittingParam());
+        FittingReceiveInfo curveInfo = createFittingInfo(newMethod.getId());
+        newTask.setFittingParam(JSON.toJSONString(curveInfo));
         SysUserPO sysUserPO = userManageDAO.selectByUsername(methodDto.getUpdateBy());
         newTask.setUserId(sysUserPO.getId());
 
@@ -2777,7 +2779,7 @@ public class RationServiceImpl implements RationService {
 
     }
 
-    private Map<String, Map<String, String>> extracted(List<String> option, RationWavelengthDataInfo wlData, TMeasureSample sample) {
+    private Map<String, Map<String, String>> extracted(List<String> option, RationWavelengthDataInfo wlData, TMeasureSample sample, Integer digit) {
 
         Map<String, Map<String, String>> ans = new HashMap<>();
 
@@ -2795,8 +2797,8 @@ public class RationServiceImpl implements RationService {
                 if (DataIdentityEnums.avg.getIdentity().equals(s)) {
                     children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
 
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue());
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), wlData.getTPercentValue());
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(wlData.getAbsValue()), digit));
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(wlData.getTPercentValue()), digit));
                     ans.putIfAbsent(pre + DataIdentityEnums.avg.getIdentity(), children);
                 }
                 if (DataIdentityEnums.sd.getIdentity().equals(s)) {
@@ -2943,7 +2945,7 @@ public class RationServiceImpl implements RationService {
 //                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
 //                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getTPercentValue()));
 
-                            Map<String, Map<String, String>> ch = extracted(option, dataInfo, sample);
+                            Map<String, Map<String, String>> ch = extracted(option, dataInfo, sample, digit);
                             if (!ch.isEmpty()) {
                                 for (Map.Entry<String, Map<String, String>> entry : ch.entrySet()) {
                                     String key = entry.getKey();
@@ -4615,7 +4617,7 @@ public class RationServiceImpl implements RationService {
                     currentList.add(ansData);
                     double v = Double.parseDouble(ansData.getColValue()) - minuend;
 
-                    yAbs.setColValue(String.valueOf(v));
+                    yAbs.setColValue(DataCountUtil.addZero(v, digit));
                     currentList.add(yAbs);
                     dealData.setCountData(currentList);
                     emptyDataList.add(dealData);
