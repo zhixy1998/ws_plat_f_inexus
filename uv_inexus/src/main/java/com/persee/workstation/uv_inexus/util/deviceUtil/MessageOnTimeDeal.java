@@ -298,6 +298,10 @@ public class MessageOnTimeDeal {
 
         boolean isBaseline = cmdId.equals("BaseLine") || cmdId.equals("BaseLineFast");
 
+        if (isScan || isBaseline) {
+            unknowCountMessageQueue.clearCommand(deviceSerialNumber, cmdId);
+        }
+
         MessageStoreManager store = MessageStoreManager.getInstance();
         Map<String, Thread> targetThreadMap = isScan ? scanProcessorThreadMap : baselineProcessorThreadMap;
 

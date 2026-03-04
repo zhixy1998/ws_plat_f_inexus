@@ -870,6 +870,7 @@ public class UdpSendUtil {
             List<String> headReceiveBytes
     ) {
 
+        unknowCountMessageQueue.clearCommand(deviceSerialNumber, cmdId);
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
         long startTime = System.currentTimeMillis();
@@ -910,7 +911,7 @@ public class UdpSendUtil {
                     );
 
                     infoService.newReleaseDevice(deviceSerialNumber);
-                    scheduler.shutdown();
+                    scheduler.shutdownNow();
                     return;
                 }
 
@@ -925,7 +926,7 @@ public class UdpSendUtil {
                     );
 
                     infoService.newReleaseDevice(deviceSerialNumber);
-                    scheduler.shutdown();
+                    scheduler.shutdownNow();
                     return;
                 }
 
@@ -946,7 +947,7 @@ public class UdpSendUtil {
                 );
 
                 infoService.newReleaseDevice(deviceSerialNumber);
-                scheduler.shutdown();
+                scheduler.shutdownNow();
             }
 
         }, 0, intervalMillis, TimeUnit.MILLISECONDS);
