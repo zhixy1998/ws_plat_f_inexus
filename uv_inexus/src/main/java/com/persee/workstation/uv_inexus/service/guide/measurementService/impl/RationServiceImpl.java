@@ -1330,16 +1330,19 @@ public class RationServiceImpl implements RationService {
             //未知样品表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000028"));
         }
-        for (Map<String, String> map : dto.getNewStandSamples()) {
-            String jsonString = JSON.toJSONString(map);
-            FSampleVO sampleDto = JSON.parseObject(jsonString, FSampleVO.class);
-            if (sampleDto.getSampleNumber() != null && sampleDto.getSampleNumber().length() > 256) {
-                return Result.fail("新增标准样品编号超出限制");
-            }
-            if (sampleDto.getSampleName() != null && sampleDto.getSampleName().length() > 256) {
-                return Result.fail("新增标准样品名称超出限制");
+        if (dto.getNewStandSamples() != null) {
+            for (Map<String, String> map : dto.getNewStandSamples()) {
+                String jsonString = JSON.toJSONString(map);
+                FSampleVO sampleDto = JSON.parseObject(jsonString, FSampleVO.class);
+                if (sampleDto.getSampleNumber() != null && sampleDto.getSampleNumber().length() > 256) {
+                    return Result.fail("新增标准样品编号超出限制");
+                }
+                if (sampleDto.getSampleName() != null && sampleDto.getSampleName().length() > 256) {
+                    return Result.fail("新增标准样品名称超出限制");
+                }
             }
         }
+
 
         for (Map<String, String> map : dto.getNewUnknowSamples()) {
             String jsonString = JSON.toJSONString(map);
