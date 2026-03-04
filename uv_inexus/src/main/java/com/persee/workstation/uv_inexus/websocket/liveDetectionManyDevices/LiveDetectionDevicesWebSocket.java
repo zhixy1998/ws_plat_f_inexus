@@ -196,10 +196,36 @@ public class LiveDetectionDevicesWebSocket {
             String deviceSerialNumber = input.getDeviceSerialNumber();
             String operation = input.getOperation();
 
+//            DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+//            if (info != null&&info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_MEASURE)
+//            &&!info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_ECHO)) {
+//                webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.Common.getOperation(), "当前仪器正在测量");
+//                return;
+//            }
+
 
             if (!StringUtils.hasText(deviceSerialNumber) || !StringUtils.hasText(operation)) {
                 webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "缺少设备序列号或操作类型");
                 return;
+            }
+
+
+            if (StringUtils.hasText(deviceSerialNumber) && !operation.equals(WebSocketOperationEnum.LiveDetection.getOperation()) && !operation.equals(WebSocketOperationEnum.DeviceStatus.getOperation())) {
+
+                DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+                if (info == null) {
+                    webSocketSendUtil.sendErrorMessage(deviceSerialNumber, operation, "设备不存在");
+                    return;
+                }
+                if (!info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_IDLE) && !info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_ECHO)) {
+
+                    if (info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_MEASURE)) {
+                        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.Common.getOperation(), "当前仪器正在测量");
+                        return;
+                    }
+                    log.info("设备状态：{}", info.getDeviceCurrentStatus());
+                    webSocketSendUtil.sendErrorMessage(deviceSerialNumber, operation, "设备正在执行其他操作");
+                }
             }
 
             WebSocketOperationEnum anEnum = WebSocketOperationEnum.getEnum(operation);

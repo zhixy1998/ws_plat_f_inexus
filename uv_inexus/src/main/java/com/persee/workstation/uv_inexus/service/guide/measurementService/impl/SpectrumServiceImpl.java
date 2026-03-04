@@ -634,7 +634,8 @@ public class SpectrumServiceImpl implements SpectrumService {
                             .eq("sample_key", taskSpeciman.getSpecimenKey())
                             .eq("analysis_type", "5")
                             .eq("is_delete", "0")
-                            .eq("analysis_number", 1));
+                            .eq("analysis_number", 1)
+                            .last("limit 1"));
                     TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
                     if (one.getAnalysisResult() != null) {
                         Map<String, String> map = new HashMap<>();
