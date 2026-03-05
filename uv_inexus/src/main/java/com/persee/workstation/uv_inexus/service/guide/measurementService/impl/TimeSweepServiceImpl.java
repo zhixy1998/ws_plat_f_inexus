@@ -3898,18 +3898,24 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             }
 
             // 验证扫描总时长、时间间隔和总个数的关系
-            // 总时长应该约等于 (总个数-1) * 时间间隔
-            double expectedTotalTime = (totalNumber - 1) * intervalTime;
-            // 允许的误差范围（例如0.01）
-            double tolerance = 0.01;
+            if (parameter.getScanUnit().equals("1")) { // 秒模式
+                // 计算理论上的最小总个数（floor方式）
+                int minTotalNumber = (int) Math.floor(scanTime / intervalTime) + 1;
+                // 计算理论上的最大总个数（ceil方式）
+                int maxTotalNumber = (int) Math.ceil(scanTime / intervalTime) + 1;
 
-            if (parameter.getScanUnit().equals("0")) {
-                expectedTotalTime = expectedTotalTime / 60;
-            }
+                // 检查当前总个数是否在合理范围内
+                if (!(totalNumber >= minTotalNumber) && !(totalNumber <= maxTotalNumber)) {
+                    return R.fail(String.format("扫描总时长与时间间隔、总个数不匹配"));
+                }
+            } else { // 分钟模式
+                double totalSeconds = scanTime * 60;
+                int minTotalNumber = (int) Math.floor(totalSeconds / intervalTime) + 1;
+                int maxTotalNumber = (int) Math.ceil(totalSeconds / intervalTime) + 1;
 
-            if (Math.abs(scanTime - expectedTotalTime) > tolerance) {
-                return R.fail(String.format("扫描总时长与时间间隔、总个数不匹配：总时长=%.2f，期望值=%.2f (总个数-1)×时间间隔",
-                        scanTime, expectedTotalTime));
+                if (!(totalNumber >= minTotalNumber) && !(totalNumber <= maxTotalNumber)) {
+                    return R.fail(String.format("扫描总时长与时间间隔、总个数不匹配"));
+                }
             }
 
             // 根据单位设置最大扫描时长限制

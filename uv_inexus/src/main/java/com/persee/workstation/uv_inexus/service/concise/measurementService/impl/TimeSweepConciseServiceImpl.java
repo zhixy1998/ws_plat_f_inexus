@@ -182,117 +182,199 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     @Value("0")
     String noTested;
 
+    /**
+     * 校验时间扫描参数
+     * @param parameter 时间扫描参数
+     * @return 校验结果
+     */
     private R<Boolean> checkParam(FTimeSweepParamter parameter) {
-        // 1. 校验光度模式
-        if (parameter.getLuminosity() == null || parameter.getLuminosity().trim().isEmpty()) {
-            //光度模式不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("00105001"));
-        }
-        if (!Arrays.asList("1", "2", "3", "4").contains(parameter.getLuminosity())) {
-            //光度模式只能是1(abs)、2(T%)、3(Es)、4(Er)
-            return R.fail(YamlMessageSource.getMessageStatic("00105002"));
+        // 1. 根对象非空校验
+        if (parameter == null) {
+            return R.fail(YamlMessageSource.getMessageStatic("00102003"));
         }
 
-        // 2. 校验波长值
-        if (parameter.getWaveLength() == null || parameter.getWaveLength().trim().isEmpty()) {
-            //波长值不能为空
+        // 2. 光度模式校验
+        String luminosity = parameter.getLuminosity();
+        if (!StringUtils.hasText(luminosity)) {
+            return R.fail("光度模式不能为空");
+        }
+        List<String> validLuminosityModes = Arrays.asList("1", "2", "3", "4"); // 1.abs 2.T% 3.Es 4.Er
+        if (!validLuminosityModes.contains(luminosity)) {
+            return R.fail("光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：" + luminosity);
+        }
+
+        // 3. 波长值校验
+        String waveLengthStr = parameter.getWaveLength();
+        if (!StringUtils.hasText(waveLengthStr)) {
+            return R.fail("波长值不能为空");
+        }
+
+        // 波长默认范围 190-1100
+        double minWaveLength = 190.0;
+        double maxWaveLength = 1100.0;
+
+        try {
+            double waveLength = Double.parseDouble(waveLengthStr);
+            if (waveLength < minWaveLength || waveLength > maxWaveLength) {
+                return R.fail(YamlMessageSource.getMessageStatic("00102006",
+                        1, waveLength, minWaveLength, maxWaveLength));
+            }
+            if (waveLengthStr.contains(".") && waveLengthStr.split("\\.")[1].length() > 1) {
+                return R.fail(YamlMessageSource.getMessageStatic("00105005", waveLengthStr));
+            }
+        } catch (NumberFormatException e) {
+            return R.fail("波长值格式错误，必须为数字");
+        }
+
+        // 4. 扫描单位校验
+        String scanUnit = parameter.getScanUnit();
+        if (!StringUtils.hasText(scanUnit)) {
+            return R.fail("扫描单位不能为空");
+        }
+        List<String> validScanUnits = Arrays.asList("0", "1"); // 0.分 1.秒
+        if (!validScanUnits.contains(scanUnit)) {
+            return R.fail("扫描单位不合法（可选值：0-分、1-秒），当前值：" + scanUnit);
+        }
+
+        // 5. 扫描总时长和总个数的关联校验
+        String scanTimeStr = parameter.getScanTime();
+        String totalNumberStr = parameter.getTotalNumber();
+        String intervalTimeStr = parameter.getIntervalTime();
+
+        // 5.1 扫描总时长校验
+        if (!StringUtils.hasText(scanTimeStr)) {
+            return R.fail("扫描总时长不能为空");
+        }
+
+        // 5.2 时间间隔校验
+        if (!StringUtils.hasText(intervalTimeStr)) {
+            return R.fail("时间间隔不能为空");
+        }
+
+        // 5.3 扫描总个数校验
+        if (!StringUtils.hasText(totalNumberStr)) {
+            return R.fail("扫描总个数不能为空");
+        }
+
+        try {
+            double scanTime = Double.parseDouble(scanTimeStr);
+            if (scanTime <= 0) {
+                return R.fail("扫描总时长必须大于0，当前值：" + scanTime);
+            }
+
+            double intervalTime = Double.parseDouble(intervalTimeStr);
+            if (intervalTime <= 0) {
+                return R.fail("时间间隔必须大于0，当前值：" + intervalTime);
+            }
+
+            int totalNumber = Integer.parseInt(totalNumberStr);
+            if (totalNumber <= 0) {
+                return R.fail("扫描总个数必须大于0，当前值：" + totalNumber);
+            }
+            if (totalNumber > 9999) {
+                return R.fail("扫描总个数不能超过9999，当前值：" + totalNumber);
+            }
+
+            // 验证扫描总时长、时间间隔和总个数的关系
+            if (parameter.getScanUnit().equals("1")) { // 秒模式
+                // 计算理论上的最小总个数（floor方式）
+                int minTotalNumber = (int) Math.floor(scanTime / intervalTime) + 1;
+                // 计算理论上的最大总个数（ceil方式）
+                int maxTotalNumber = (int) Math.ceil(scanTime / intervalTime) + 1;
+
+                // 检查当前总个数是否在合理范围内
+                if (!(totalNumber >= minTotalNumber) && !(totalNumber <= maxTotalNumber)) {
+                    return R.fail(String.format("扫描总时长与时间间隔、总个数不匹配"));
+                }
+            } else { // 分钟模式
+                double totalSeconds = scanTime * 60;
+                int minTotalNumber = (int) Math.floor(totalSeconds / intervalTime) + 1;
+                int maxTotalNumber = (int) Math.ceil(totalSeconds / intervalTime) + 1;
+
+                if (!(totalNumber >= minTotalNumber) && !(totalNumber <= maxTotalNumber)) {
+                    return R.fail(String.format("扫描总时长与时间间隔、总个数不匹配"));
+                }
+            }
+
+            // 根据单位设置最大扫描时长限制
+            if ("0".equals(scanUnit)) { // 分
+                if (scanTime > 1440) { // 最大24小时
+                    return R.fail("扫描总时长（分）不能超过1440分钟（24小时），当前值：" + scanTime);
+                }
+            } else { // 秒
+                if (scanTime > 3600) { // 最大1小时
+                    return R.fail("扫描总时长（秒）不能超过3600秒（1小时），当前值：" + scanTime);
+                }
+            }
+
+        } catch (NumberFormatException e) {
+            return R.fail("时间参数格式错误，必须为数字");
+        }
+
+        // 6. 多联池模式校验
+        String multiPoolMode = parameter.getMultiPoolMode();
+        if (!StringUtils.hasText(multiPoolMode)) {
+            return R.fail("多联池模式不能为空");
+        }
+        List<String> validMultiPoolModes = Arrays.asList("0", "1"); // 0.顺序单池连续采样 1.循环多池交替采样
+        if (!validMultiPoolModes.contains(multiPoolMode)) {
+            return R.fail("多联池模式不合法（可选值：0-顺序单池连续采样、1-循环多池交替采样），当前值：" + multiPoolMode);
+        }
+
+        // 7. 父类 MeasurePublicParameters 字段校验
+        // 7.1 光谱带宽校验
+        String spectralBandwidth = parameter.getSpectralBandwidth();
+        if (!StringUtils.hasText(spectralBandwidth)) {
+            return R.fail("光谱带宽不能为空");
+        }
+        try {
+            double bandwidth = Double.parseDouble(spectralBandwidth);
+            if (bandwidth <= 0) {
+                return R.fail("光谱带宽必须大于0，当前值：" + bandwidth);
+            }
+            // 常见光谱带宽值校验（可选，根据业务决定是否强制）
+            List<Double> validBandwidths = Arrays.asList(0.5, 1.0, 2.0, 4.0, 5.0);
+            if (!validBandwidths.contains(bandwidth)) {
+                return R.fail("光谱带宽值不合法，常见值：" + validBandwidths);
+            }
+        } catch (NumberFormatException e) {
+            return R.fail("光谱带宽格式错误，必须为数字");
+        }
+
+        // 7.3 换灯波长校验
+        String changeLampWave = parameter.getChangeLampWaveLength();
+        if (!StringUtils.hasText(changeLampWave)) {
             return R.fail(YamlMessageSource.getMessageStatic("00105003"));
         }
         try {
-            double waveLength = Double.parseDouble(parameter.getWaveLength());
-            if (waveLength < 190 || waveLength > 900) {
-                //波长值 waveLength 必须在190-900范围内
-                return R.fail(YamlMessageSource.getMessageStatic("00105004", waveLength));
-            }
-            // 校验小数点后最多1位
-            String[] parts = parameter.getWaveLength().split("\\.");
-            if (parts.length > 1 && parts[1].length() > 1) {
-                //波长值小数点后最多保留1位
-                return R.fail(YamlMessageSource.getMessageStatic("00105019"));
+            double waveVal = Double.parseDouble(changeLampWave);
+            if (waveVal < 330 || waveVal > 390) {
+                return R.fail(YamlMessageSource.getMessageStatic("0010202A", waveVal));
             }
         } catch (NumberFormatException e) {
-            //波长值必须为有效的数字
-            return R.fail(YamlMessageSource.getMessageStatic("0010501A"));
+            return R.fail("换灯波长格式错误");
         }
 
-        // 3. 校验扫描总时长
-        if (parameter.getScanTime() == null || parameter.getScanTime().trim().isEmpty()) {
-            //扫描总时长不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("00105007"));
+        // 7.4 能量灯校验
+        String energyLamp = parameter.getEnergyLamp();
+        if (!StringUtils.hasText(energyLamp)) {
+            return R.fail("能量灯不能为空");
         }
-        try {
-            double scanTime = Double.parseDouble(parameter.getScanTime());
-            if (scanTime < 0 || scanTime > 10000) {
-                //扫描总时长必须在0-10000范围内
-                return R.fail(YamlMessageSource.getMessageStatic("00105008"));
-            }
-            // 校验小数点后最多1位
-            String[] parts = parameter.getScanTime().split("\\.");
-            if (parts.length > 1 && parts[1].length() > 1) {
-                //扫描总时长小数点后最多保留1位
-                return R.fail(YamlMessageSource.getMessageStatic("00105009"));
-            }
-        } catch (NumberFormatException e) {
-            //扫描总时长必须为有效的数字
-            return R.fail(YamlMessageSource.getMessageStatic("0010500A"));
+        if (!energyLamp.matches("^[0-2]$")) {
+            return R.fail("能量灯值无效（可选值：0-钨灯、1-氘灯、2-汞灯），当前值：" + energyLamp);
         }
 
-        // 4. 校验扫描单位
-        if (parameter.getScanUnit() == null || parameter.getScanUnit().trim().isEmpty()) {
-            //扫描单位不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("0010500B"));
-        }
-        if (!Arrays.asList("0", "1").contains(parameter.getScanUnit())) {
-            //扫描单位只能是0(分)、1(秒)
-            return R.fail(YamlMessageSource.getMessageStatic("0010500C"));
+        // 7.5 增益校验
+        if (parameter.getGain() != null && parameter.getGain() < 0) {
+            return R.fail("增益不能小于0，当前值：" + parameter.getGain());
         }
 
-        // 5. 校验时间间隔
-        if (parameter.getIntervalTime() == null || parameter.getIntervalTime().trim().isEmpty()) {
-            //时间间隔不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("0010500D"));
-        }
-        try {
-            double intervalTime = Double.parseDouble(parameter.getIntervalTime());
-            if (intervalTime < 0 || intervalTime > 100) {
-                //时间间隔必须在0-100范围内
-                return R.fail(YamlMessageSource.getMessageStatic("0010500E"));
-            }
-            // 校验小数点后最多1位
-            String[] parts = parameter.getIntervalTime().split("\\.");
-            if (parts.length > 1 && parts[1].length() > 1) {
-                //时间间隔小数点后最多保留1位
-                return R.fail(YamlMessageSource.getMessageStatic("0010500F"));
-            }
-        } catch (NumberFormatException e) {
-            //时间间隔必须为有效的数字
-            return R.fail(YamlMessageSource.getMessageStatic("00105010"));
+        // 7.7 参考标准名称校验（长度限制等）
+        if (parameter.getReferenceStandardName() != null &&
+                parameter.getReferenceStandardName().length() > 100) {
+            return R.fail("参考标准名称长度不能超过100字符");
         }
 
-        // 6. 校验扫描总个数（非空即可，未明确范围限制）
-        if (parameter.getTotalNumber() == null || parameter.getTotalNumber().trim().isEmpty()) {
-            //扫描总个数不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("00105011"));
-        }
-        try {
-            // 仅校验为数字格式
-            Integer.parseInt(parameter.getTotalNumber());
-        } catch (NumberFormatException e) {
-            //扫描总个数必须为有效的整数
-            return R.fail(YamlMessageSource.getMessageStatic("00105012"));
-        }
-
-        // 7. 校验多联池模式
-        if (parameter.getMultiPoolMode() == null || parameter.getMultiPoolMode().trim().isEmpty()) {
-            //多联池模式不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("00105013"));
-        }
-        if (!Arrays.asList("0", "1").contains(parameter.getMultiPoolMode())) {
-            //多联池模式只能是0(顺序单池连续采样)、1(循环多池交替采样)
-            return R.fail(YamlMessageSource.getMessageStatic("00105014"));
-        }
-
-        // 所有校验通过
         return R.ok(true);
     }
 
@@ -484,6 +566,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      */
     @Override
     public Result use(TimeUseMethodDto paramDto) {
+        FTimeSweepParamter param = new FTimeSweepParamter();
+        BeanUtils.copyProperties(paramDto.getParameter(), param);
+        R<Boolean> r = checkParam(param);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        }
         double response = Double.parseDouble(paramDto.getParameter().getResponseTime());
         double interval = Double.parseDouble(paramDto.getParameter().getIntervalTime());
         if (response >= interval) {
