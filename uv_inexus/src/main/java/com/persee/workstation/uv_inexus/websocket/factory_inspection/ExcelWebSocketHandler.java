@@ -267,53 +267,39 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
     private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
+        log.info("我被调用了");
         try {
-            HashSet<WebSocketSession> set = new HashSet<>();
-            set.add(originalSession);
-            Set<WebSocketSession> sessions = sessionTaskMap.getOrDefault(taskId, set);
+            if(originalSession!=null&&!isSessionValid(originalSession)){
+                originalSession.sendMessage(new TextMessage(payload.toJSONString()));
+                return true;
+            }
+            Set<WebSocketSession> sessions = sessionTaskMap.get(taskId);
             if (CollectionUtils.isNotEmpty(sessions)) {
                 Iterator<WebSocketSession> iterator = sessions.iterator();
                 while (iterator.hasNext()) {
                     WebSocketSession session = iterator.next();
                     if (isSessionValid(session)) {
-//                        log.info("消息是：" + payload.toJSONString());
+                        log.info("准备发送消息到 sessionId: {}, 消息内容：{}", session.getId(), payload.toJSONString());
                         session.sendMessage(new TextMessage(payload.toJSONString()));
-                        log.info("消息发送给了：" + session.getId());
+                        log.info("消息发送成功到 sessionId: {}", session.getId());
                     } else {
                         iterator.remove();
-                        log.warn("WebSocket消息发送失败: taskId={}, 源会话已关闭", taskId);
+                        log.warn("WebSocket 消息发送失败：taskId={}, 源会话已关闭", taskId);
                     }
                 }
-
+                log.info("消息已发送到 {} 个 session，sessionId 列表：{}", sessions.size(),
+                        sessions.stream().map(WebSocketSession::getId).collect(Collectors.toList()));
+            } else {
+                log.warn("没有找到活跃的 session: taskId={}", taskId);
             }
-//            // 获取或创建任务的消息队列
-//            BlockingQueue<QueuedMessage> queue = messageQueues.computeIfAbsent(taskId, k -> new LinkedBlockingQueue<>());
-//
-//            // 创建消息并加入队列
-//            QueuedMessage queuedMessage = new QueuedMessage(originalSession, taskId, payload);
-//            boolean offer = queue.offer(queuedMessage);
-//
-//            // 启动队列处理器（如果还没有运行）
-//            startQueueProcessor(taskId);
-//
-//            // 等待发送完成（可选，可根据性能需求调整）
-//            try {
-//                // 设置合理的超时时间，避免永久阻塞
-//                boolean completed = queuedMessage.getLatch().await(5, TimeUnit.SECONDS);
-//                if (!completed) {
-//                    log.warn("WebSocket消息发送超时: taskId={}, 消息类型={}", taskId, payload.get("type"));
-//                }
-//            } catch (InterruptedException e) {
-//                Thread.currentThread().interrupt();
-//                log.warn("等待消息发送完成时被中断: taskId={}", taskId);
-//            }
 
-            return true; // 消息已加入队列，不代表发送成功
+            return true;
         } catch (Exception e) {
-            log.error("添加消息到队列失败: taskId={}, 错误: {}", taskId, e.getMessage());
+            log.error("发送消息失败：taskId={}, 错误：{}", taskId, e.getMessage(), e);
             return false;
         }
     }
+
     private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, String payload) {
         try {
             HashSet<WebSocketSession> set = new HashSet<>();
@@ -1082,7 +1068,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         halt.put(taskId, false);
         //得到所有的检测项
         if (CollectionUtils.isNotEmpty(list)) {
-            CompletableFuture.runAsync(() -> {
+//            CompletableFuture.runAsync(() -> {
                 for (ExcelDataAsset asset : list) {
                     if (halt.get(taskId)) {
                         try {
@@ -1166,7 +1152,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         sendToActiveSession(null, taskId, jsonObject);
                     }
                 }
-            });
+//            });
 
 
         }
@@ -3608,10 +3594,17 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         log.info("时间扫描结果：{}", p);
                     }
                 } else {
-                    log.info("sfsafasfdsdfsadfsdfdsf");
+                    log.info("收到了结束相关标志!!!");
                     if (o instanceof EndMarker) {
+                        log.info("找到结束标志了，看看是什么结束标志！！！");
                         EndMarker marker = (EndMarker) o;
                         if (marker.getReason() == EndMarker.Reason.NORMAL) {
+                            log.info("i={}, total_time={}", i, totalTime);
+                            if (i<totalTime){
+                                log.info("时间扫描未成完，继续接收数据");
+                                continue;
+                            }
+                            log.info("时间扫描正常结束标志");
                             log.info("设备 {} 的时间扫描正常结束", deviceSerialNumber);
                             break;
                         } else if (marker.getReason() == EndMarker.Reason.TIME_STOP) {
@@ -3621,9 +3614,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                            jsonObject.put("error", "时间扫描-超时");
 //                            sendToActiveSession(null, taskId, jsonObject);
                             map.put("line", line);
+                            log.info("时间扫描停止标志");
                             return R.fail(map);
                         } else if (marker.getReason() == EndMarker.Reason.UN_NORMAL) {
-                            log.info("设备 {} 的时间扫描异常结束", deviceSerialNumber);
+                            log.info("时间扫描异常结束标志");
                             setTaskMeasuring(taskId, false);
                             map.put("line", line);
                             return R.fail(map);
