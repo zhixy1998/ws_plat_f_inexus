@@ -581,6 +581,7 @@ public class RationMeasureNewWebSocket{
 
                 //所有样品测完，拟合曲线
                 //拟合曲线
+                task.setFittingParam("{}");
                 int minPointNum = Integer.MIN_VALUE + 1;
 
                 switch (parameter.getCurveType()) {

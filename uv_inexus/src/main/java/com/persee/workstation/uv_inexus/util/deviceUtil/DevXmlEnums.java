@@ -11,10 +11,7 @@ package com.persee.workstation.uv_inexus.util.deviceUtil;
 
 import lombok.Getter;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author xudian
@@ -24,9 +21,9 @@ import java.util.Map;
 public enum DevXmlEnums {
 
     T800("T800", "newFile/T800.xml", "T800", 8000,
-            new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
-                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
-                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A},
+            Arrays.asList("TestConnect", "GetSn", "GetAccessoryType", "GetInitStatus", "GetCellPos"), new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
+            (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+            (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A},
 
             new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
@@ -34,9 +31,9 @@ public enum DevXmlEnums {
             false),
 
     T600AndT700("T600/T700", "newFile/T600.1.xml", "T600/T700", 5000,
-            new byte[]{(byte) 0xFF, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
-                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
-                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xBA},
+            Arrays.asList("Connect", "GetSn", "GetAccessoryType", "GetInitStatus", "GetCellPos", "GetWlList"), new byte[]{(byte) 0xFF, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
+            (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+            (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xBA},
             new byte[]{(byte) 0xFE, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xB9},
@@ -50,6 +47,8 @@ public enum DevXmlEnums {
     private final String desc;
     // 发送端口
     private final int port;
+    // 连接指令
+    private final List<String> connectCommands;
     // 起始报文
     private final byte[] startMessage;
 
@@ -67,12 +66,13 @@ public enum DevXmlEnums {
     }
 
     // 构造函数
-    DevXmlEnums(String devType, String xmlPath, String desc, int port,
+    DevXmlEnums(String devType, String xmlPath, String desc, int port, List<String> connectCommands,
                 byte[] startMessage, byte[] newIpStartMessage, boolean needFit) {
         this.devType = devType;
         this.xmlPath = xmlPath;
         this.desc = desc;
         this.port = port;
+        this.connectCommands = connectCommands;
         this.startMessage = startMessage;
         this.newIpStartMessage = newIpStartMessage;
         this.needFit = needFit;

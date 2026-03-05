@@ -1013,8 +1013,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         Object[] param = new Object[]{};
         String deviceId = deviceInfo.getDeviceId();
-        for (ConnectEnum anEnum : ConnectEnum.values()) {
-            String comId = anEnum.getComId();
+
+
+        DevXmlEnums devXmlEnums = DevXmlEnums.getEnum(devType);
+        List<String> connectCommands = devXmlEnums.getConnectCommands();
+
+        for (String comId : connectCommands) {
             Map<String, Transition> xml = xmlManage.getXmlInfo(devType);
             Transition transition = xml.get(comId);
             int replyNumber = transition.getReplyNumber();
