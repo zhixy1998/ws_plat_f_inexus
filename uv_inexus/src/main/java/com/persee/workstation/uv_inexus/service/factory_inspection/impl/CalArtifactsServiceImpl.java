@@ -77,7 +77,8 @@ public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, Cal
             calArtifacts.setId(IdGeneratorUtil.generateIdWithPrefix("mat"));
             calArtifacts.setIsDelete(NOT_DELETED.getCode());
             LambdaQueryWrapper<CalArtifacts> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(CalArtifacts::getName, calArtifacts.getName());
+            wrapper.eq(CalArtifacts::getName, calArtifacts.getName())
+                    .eq(CalArtifacts::getIsDelete, NOT_DELETED.getCode());
             long count = this.count(wrapper);
             if (count>0){
                 throw new RuntimeException("标准物名称已存在");

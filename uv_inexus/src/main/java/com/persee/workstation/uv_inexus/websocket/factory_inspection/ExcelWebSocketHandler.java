@@ -178,7 +178,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private FindMaxOffsetUVTestTool findMaxOffsetUVTestTool;
     @Autowired
     private SpectrumResultCalculator calculator;
-    private volatile Boolean autoSwitchSamplePool = true;
+//    private volatile Boolean autoSwitchSamplePool = true;
     private final UnknowCountMessageQueue queue = MessageOnTimeDeal.unknowCountMessageQueue;
     //用任务id做主键，任务当前测量的检测项为值，线程安全
     private final Map<String, String> currentMeasureItemMap = new ConcurrentHashMap<>();
@@ -1165,6 +1165,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         sendToActiveSession(null, taskId, jsonObject);
                     }
                 }
+                try {
+                    setTaskMeasuring(taskId, false);
+                } catch (BusinessException e) {
+                    throw new RuntimeException(e);
+                }
             });
 
 
@@ -1354,14 +1359,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             log.info("测量次数：" + repeatCount);
 
 //告诉前端走到了哪个检测项
-                            JSONObject json1 = new JSONObject();
-                            json1.put("itemName", category + "--" + projectName);
-                            sendToActiveSession(null, taskId, json1);
 
-
-                            JSONObject jsonObject1 = new JSONObject();
-                            jsonObject1.put("itemId", itemId);
-                            sendToActiveSession(null, taskId, jsonObject1);
                             //每个特征值测几次
                             for (Integer d = 0; d < repeatCount; d++) {
 
@@ -1388,8 +1386,19 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                         return futureResult;
                                     }
                                 }
+
                                 try {
                                     if (!halt.get(taskId)) {
+                                        if(d==0) {
+                                            JSONObject json1 = new JSONObject();
+                                            json1.put("itemName", category + "--" + projectName);
+                                            sendToActiveSession(null, taskId, json1);
+
+
+                                            JSONObject jsonObject1 = new JSONObject();
+                                            jsonObject1.put("itemId", itemId);
+                                            sendToActiveSession(null, taskId, jsonObject1);
+                                        }
                                         map = sendBatchDataPoints(session, taskId, itemId, dataMap, updateBy, operationInstrument, list, samplePoolNum, d);
                                     }
                                 } catch (Exception e) {
