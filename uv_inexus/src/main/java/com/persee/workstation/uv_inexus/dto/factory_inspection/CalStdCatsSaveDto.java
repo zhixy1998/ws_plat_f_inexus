@@ -59,4 +59,10 @@ public class CalStdCatsSaveDto {
      */
     @ApiModelProperty(value="修改者")
     private String updateBy;
+    /*
+    * 标准值单位
+    * */
+    @ApiModelProperty(value="标准值单位")
+    private String standardUnit;
+
 }

@@ -203,6 +203,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 t.setDaemon(true);
                 return t;
             });
+    // 用于跟踪已注册的 session，避免重复添加
+    private final Map<String, Set<String>> registeredSessionIds = new ConcurrentHashMap<>();
 
     // 记录每个连接的最后活动时间
     private final Map<String, Long> lastActivityTime = new ConcurrentHashMap<>();
@@ -261,13 +263,27 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
     // 提供添加会话的方法
+    // 提供添加会话的方法
     public void addSessionToTask(String taskId, WebSocketSession session) {
-        sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
+        String sessionId = session.getId();
+
+        // 检查是否已经注册过
+        Set<String> sessionIds = registeredSessionIds.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet());
+
+        // 只有未注册的 session 才添加
+        if (sessionIds.add(sessionId)) {
+            sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
+            log.info("添加新会话到任务：taskId={}, sessionId={}", taskId, sessionId);
+        } else {
+            log.debug("会话已存在，跳过添加：taskId={}, sessionId={}", taskId, sessionId);
+        }
     }
+
+    // ... existing code ...
 
 
     private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
-        log.info("我被调用了");
+        log.info("我被调用了"+payload.toString());
         try {
             if(originalSession!=null&&!isSessionValid(originalSession)){
                 originalSession.sendMessage(new TextMessage(payload.toJSONString()));
@@ -575,8 +591,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     10 * 1000, // 发送超时时间（毫秒）
                     1024 * 1024 // 最大缓冲区大小（字节）
             );
-            sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
-
+//            sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
+            addSessionToTask(taskId, session);
             boolean b = workbookCacheManager.acquireEditLock(taskId, updateBy);
 
             // 为会话创建专属Workbook
@@ -900,6 +916,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             management.setCompletionStatus(IN_PROGRESS.getCode());
 //            management.set
             taskService.updateById(management);
+            // 添加这一行：设置停止标志，与单项测量保持一致
+            taskStopFlag.put(taskId, false);
+
             handleAutoInspection(session, taskId, updateBy);
         }
         if (SET_STANDARD.getCode().equals(type)) {
@@ -1068,11 +1087,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         halt.put(taskId, false);
         //得到所有的检测项
         if (CollectionUtils.isNotEmpty(list)) {
-//            CompletableFuture.runAsync(() -> {
+            CompletableFuture.runAsync(() -> {
                 for (ExcelDataAsset asset : list) {
                     if (halt.get(taskId)) {
                         try {
                             setTaskMeasuring(taskId, false);
+                            break;
                         } catch (BusinessException e) {
                             log.error("设置任务测量状态失败，任务ID: {}", taskId, e);
                             // 可选：向前端发送错误信息
@@ -1089,22 +1109,15 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         //检测项名称
                         String projectName = MapUtils.getString(dataMap, PROJECT_NAME.getDescription());
                         log.info("自动检测，开始检测项>>>>>>>>>>>>> 检测类别：{} , 检测项名称：{}", category, projectName);
-                        //告诉前端走到了哪个检测项
-                        JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("itemName", category + "--" + projectName);
-                        sendToActiveSession(null, taskId, jsonObject);
 
-
-                        JSONObject jsonObject1 = new JSONObject();
-                        jsonObject1.put("itemId", asset.getId());
-                        sendToActiveSession(null, taskId, jsonObject1);
                     }
 
 
                     request.setItemId(asset.getId());
                     try {
 
-                        sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
+                        addSessionToTask(taskId, session);
+//                        sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
                         if (halt.get(taskId)) {
                             log.info("任务已暂停，请检查任务是否暂停");
                             setTaskMeasuring(taskId, false);
@@ -1152,7 +1165,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         sendToActiveSession(null, taskId, jsonObject);
                     }
                 }
-//            });
+            });
 
 
         }
@@ -1340,7 +1353,15 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             log.info("样品池检测完成");
                             log.info("测量次数：" + repeatCount);
 
+//告诉前端走到了哪个检测项
+                            JSONObject json1 = new JSONObject();
+                            json1.put("itemName", category + "--" + projectName);
+                            sendToActiveSession(null, taskId, json1);
 
+
+                            JSONObject jsonObject1 = new JSONObject();
+                            jsonObject1.put("itemId", itemId);
+                            sendToActiveSession(null, taskId, jsonObject1);
                             //每个特征值测几次
                             for (Integer d = 0; d < repeatCount; d++) {
 
