@@ -57,7 +57,7 @@ public class SoftwareActivationController {
     /**
      * 软件激活接口：通过ID查询设备，验证激活码并更新状态
      */
-    @ButtonPermission("softwareActivationsoftwareActivationDevice")
+//    @ButtonPermission("softwareActivationsoftwareActivationDevice")
     @OperateLog(module = "激活仪器", description = "执行激活仪器", recordParams = true)
     @PostMapping("/activate")
     @ApiOperation("软件激活接口（通过ID查询设备，验证激活码并更新状态）")
@@ -227,7 +227,8 @@ public class SoftwareActivationController {
      * 根据ID删除
      */
     @DeleteMapping("/{id}")
-    @ButtonPermission("revokeActivation")
+//    @ButtonPermission("softwareActivationDeleteInstrument")
+    @OperateLog(module = "删除仪器", description = "执行删除仪器操作", recordParams = true)
     @ApiOperation("根据ID删除软件激活记录")
     public Result<Void> deleteById(@PathVariable Integer id) {
         softwareActivationService.removeById(id);

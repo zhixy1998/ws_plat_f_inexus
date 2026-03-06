@@ -16,6 +16,7 @@ import lombok.Data;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 快捷配置授权给小组的参数DTO
@@ -28,7 +29,9 @@ public class QuickConfigGrantPermDTO {
     @ApiModelProperty(value = "小组ID", required = true, example = "1001")
     private String groupId;
 
-    @NotEmpty(message = "快捷配置ID列表不能为空")
-    @ApiModelProperty(value = "快捷配置ID列表", required = true, example = "[1,2,3]")
-    private List<Long> quickConfigIds;
+    // 核心修改：从List<Long>改为Map<String, List<Long>>
+//    @NotEmpty(message = "快捷配置权限映射不能为空")
+    @ApiModelProperty(value = "快捷配置ID-权限ID列表映射", required = true,
+            example = "{\"1\":[2,3,4],\"2\":[6,7,8]}")
+    private Map<String, List<Long>> quickConfigIds;
 }

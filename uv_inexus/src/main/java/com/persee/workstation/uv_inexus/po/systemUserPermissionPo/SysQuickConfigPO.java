@@ -39,8 +39,12 @@ public class SysQuickConfigPO extends BasePO {
     private String name;
 
     @TableField("perm_ids")
-    @ApiModelProperty("绑定权限名称")
+    @ApiModelProperty("绑定权限ids")
     private String permIds;
+
+    @TableField("perm_ids_have")
+    @ApiModelProperty("绑定权限ids拥有的回显")
+    private String permIdsHave;
 
     @TableField("parent_id")
     @ApiModelProperty("父级ID（0为一级配置）")
