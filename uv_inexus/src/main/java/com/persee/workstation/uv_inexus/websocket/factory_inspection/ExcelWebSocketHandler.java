@@ -1165,6 +1165,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         sendToActiveSession(null, taskId, jsonObject);
                     }
                 }
+                JSONObject jsonObject1 = new JSONObject();
+                jsonObject1.put("liveEcho", "自动检测结束");
+
+                // 发送到队列
+                sendToActiveSession(null, taskId, jsonObject1);
                 try {
                     setTaskMeasuring(taskId, false);
                 } catch (BusinessException e) {
