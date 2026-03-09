@@ -128,6 +128,7 @@ public class TimeNewOneWebSocket {
         Integer digit;
         String currentSampleId;
         TMeasureTask task;
+        Integer currentSerialNumber = 1;
 
         void clearData() {
             xData.clear();
@@ -278,11 +279,11 @@ public class TimeNewOneWebSocket {
             }else{
                 JSONObject object = new JSONObject();
                 object.put("success", "停止成功");
-                infoService.updateDeviceCurrentStatus(context.deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
                 sendMessage(session.getDeviceSerialNumber(), object);
                 // 正常完成 - 等待数据保存后再清理
                 log.info("测量停止成功，等待数据保存...");
             }
+            infoService.updateDeviceCurrentStatus(context.deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             if (context.waitForDataSave(30, TimeUnit.SECONDS)) {
                 log.info("数据保存完成，开始清理会话");
                 safeCleanup(sessionId, true);
@@ -309,6 +310,17 @@ public class TimeNewOneWebSocket {
                                           TimeSweepParamter param, String sampleId, String updateBy) {
         context.clearData();
         context.currentSampleId = sampleId;
+
+        // 获取当前样品的下一个序列号
+        TMeasureData lastData = tMeasureDataService.getOne(
+                new QueryWrapper<TMeasureData>()
+                        .eq("task_id", context.task.getId())
+                        .eq("sample_key", sampleId)
+                        .orderByDesc("serial_number")
+                        .last("LIMIT 1")
+        );
+        context.currentSerialNumber = lastData != null ? lastData.getSerialNumber() + 1 : 1;
+
 
         // 使用BigDecimal避免浮点数精度问题
         BigDecimal interval = new BigDecimal(param.getIntervalTime());
@@ -533,7 +545,19 @@ public class TimeNewOneWebSocket {
             }
             context.yData.add(yValue);
 
+            // 推送数据点
             pushDataPoint(deviceSerialNumber, xValue, yValue, context.currentSampleId, param, context.digit, yType);
+
+            // 每次推送后立即保存到数据库
+            handleTimePointDataStorage(
+                    deviceSerialNumber,
+                    context.task.getId(),
+                    context.currentSampleId,
+                    context.currentSerialNumber,  // 需要在context中添加这个字段
+                    xValue,
+                    yValue,
+                    calculate.getMeasureRsd()
+            );
 
         } catch (Exception e) {
             log.error("计算数据异常", e);
@@ -589,6 +613,138 @@ public class TimeNewOneWebSocket {
             context.markDataSaved();
         }
     }
+
+
+    /**
+     * 处理单点数据的数据库存储（首次创建，后续追加）
+     * @param deviceSerialNumber 设备编号
+     * @param taskId 任务ID
+     * @param sampleId 样品ID
+     * @param xValue 当前时间点
+     * @param yValue 当前测量值
+     * @param originalData 当前原始数据
+     */
+    private void handleTimePointDataStorage(String deviceSerialNumber, String taskId, String sampleId,
+                                            Integer serialNumber, BigDecimal xValue, BigDecimal yValue,
+                                            ChangeParam originalData) {
+        try {
+            // 构建当前点的结果字符串
+            String pointResult = xValue + "," + yValue;
+
+            // 查询是否已存在测量数据记录
+            QueryWrapper<TMeasureData> dataQuery = new QueryWrapper<>();
+            dataQuery.eq("task_id", taskId)
+                    .eq("sample_key", sampleId)
+                    .eq("serial_number", serialNumber);
+            TMeasureData existingMeasureData = tMeasureDataService.getOne(dataQuery);
+
+            if (existingMeasureData == null) {
+                // 第一次创建，新建记录
+
+                // 1. 创建测量数据记录
+                TMeasureData measureData = new TMeasureData();
+                measureData.setSerialNumber(serialNumber);
+                measureData.setTaskId(taskId);
+                measureData.setSampleKey(sampleId);
+
+                List<String> resultList = new ArrayList<>();
+                resultList.add(pointResult);
+                measureData.setOriginalCalculationData(JSON.toJSONString(resultList));
+
+                List<ChangeParam> originalList = new ArrayList<>();
+                originalList.add(originalData);
+                measureData.setInstrumentData(JSON.toJSONString(originalList));
+
+                measureData.setIsDelete("0");
+                measureData.setIsSave("0"); // 标记为未完成
+                tMeasureDataService.save(measureData);
+
+                // 2. 获取样品名称
+                TMeasureSample sample = tMeasureSampleService.getById(sampleId);
+                String sampleName = sample != null ? sample.getSampleName() : "样品";
+
+                // 3. 创建分析数据记录
+                TMeasureAnalysisData analysisData = new TMeasureAnalysisData();
+                analysisData.setAnalysisNumber(serialNumber);
+                analysisData.setAnalysisName(sampleName + "-" + serialNumber);
+                analysisData.setTaskId(taskId);
+                analysisData.setSampleKey(sampleId);
+                analysisData.setMeasureDataId(measureData.getId());
+                analysisData.setAnalysisParam(JSON.toJSONString(originalList));
+                analysisData.setAnalysisResult(JSON.toJSONString(resultList));
+                analysisData.setAnalysisType("5");
+                analysisData.setColor(ColorUtil.getRandomColor());
+                analysisData.setIsDelete("0");
+                analysisData.setIsSave("0");
+                tMeasureAnalysisDataService.save(analysisData);
+
+                // 4. 创建图片记录
+                TMeasureAnalysisImage analysisImage = new TMeasureAnalysisImage();
+                analysisImage.setAnalysisId(analysisData.getId());
+                tMeasureAnalysisImageService.save(analysisImage);
+
+                log.info("时间扫描首次创建数据点: sampleId={}, serialNumber={}", sampleId, serialNumber);
+
+            } else {
+                // 后续追加，更新已有记录
+
+                // 更新测量数据
+                String existingDataStr = existingMeasureData.getOriginalCalculationData();
+                List<String> existingData = new ArrayList<>();
+                if (existingDataStr != null && !"[]".equals(existingDataStr) && !existingDataStr.isEmpty()) {
+                    existingData = JSON.parseArray(existingDataStr, String.class);
+                }
+                existingData.add(pointResult);
+                existingMeasureData.setOriginalCalculationData(JSON.toJSONString(existingData));
+
+                // 更新仪器数据
+                String existingInstrumentStr = existingMeasureData.getInstrumentData();
+                List<ChangeParam> existingInstrument = new ArrayList<>();
+                if (existingInstrumentStr != null && !"[]".equals(existingInstrumentStr) && !existingInstrumentStr.isEmpty()) {
+                    existingInstrument = JSON.parseArray(existingInstrumentStr, ChangeParam.class);
+                }
+                existingInstrument.add(originalData);
+                existingMeasureData.setInstrumentData(JSON.toJSONString(existingInstrument));
+
+                tMeasureDataService.updateById(existingMeasureData);
+
+                // 更新分析数据
+                QueryWrapper<TMeasureAnalysisData> analysisQuery = new QueryWrapper<>();
+                analysisQuery.eq("task_id", taskId)
+                        .eq("sample_key", sampleId)
+                        .eq("analysis_number", serialNumber)
+                        .eq("analysis_type", "5");
+                TMeasureAnalysisData existingAnalysis = tMeasureAnalysisDataService.getOne(analysisQuery);
+
+                if (existingAnalysis != null) {
+                    String existingResultStr = existingAnalysis.getAnalysisResult();
+                    List<String> existingResult = new ArrayList<>();
+                    if (existingResultStr != null && !"[]".equals(existingResultStr) && !existingResultStr.isEmpty()) {
+                        existingResult = JSON.parseArray(existingResultStr, String.class);
+                    }
+                    existingResult.add(pointResult);
+                    existingAnalysis.setAnalysisResult(JSON.toJSONString(existingResult));
+
+                    String existingParamStr = existingAnalysis.getAnalysisParam();
+                    List<ChangeParam> existingParam = new ArrayList<>();
+                    if (existingParamStr != null && !"[]".equals(existingParamStr) && !existingParamStr.isEmpty()) {
+                        existingParam = JSON.parseArray(existingParamStr, ChangeParam.class);
+                    }
+                    existingParam.add(originalData);
+                    existingAnalysis.setAnalysisParam(JSON.toJSONString(existingParam));
+
+                    tMeasureAnalysisDataService.updateById(existingAnalysis);
+                }
+
+                log.debug("时间扫描追加数据点: sampleId={}, serialNumber={}, 当前总点数={}",
+                        sampleId, serialNumber, existingData.size());
+            }
+
+        } catch (Exception e) {
+            log.error("处理时间扫描单点数据存储异常", e);
+        }
+    }
+
 
     /**
      * 保存测量数据
@@ -666,17 +822,11 @@ public class TimeNewOneWebSocket {
             }
 
             // 保存测量数据
-            TMeasureData measureData = new TMeasureData();
-
-            TMeasureData lastData = tMeasureDataService.getOne(
-                    new QueryWrapper<TMeasureData>()
-                            .eq("task_id", context.task.getId())
-                            .eq("sample_key", sampleId)
-                            .orderByDesc("serial_number")
-                            .last("LIMIT 1")
-            );
-
-            measureData.setSerialNumber(lastData != null ? lastData.getSerialNumber() + 1 : 1);
+            TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", context.task.getId()).eq("sample_key", sampleId).last("limit 1"));
+            if (measureData == null) {
+                measureData = new TMeasureData();
+            }
+            measureData.setSerialNumber(1);
             measureData.setTaskId(context.task.getId());
             measureData.setSampleKey(sampleId);
             measureData.setInstrumentData(JSON.toJSONString(context.originalData));
@@ -692,19 +842,14 @@ public class TimeNewOneWebSocket {
             measureData.setIsDelete("0");
             measureData.setIsSave("1");
 
-            tMeasureDataService.save(measureData);
+            tMeasureDataService.updateById(measureData);
 
             // 保存分析数据
-            TMeasureAnalysisData analysisData = new TMeasureAnalysisData();
-            TMeasureAnalysisData lastAnalysis = tMeasureAnalysisDataService.getOne(
-                    new QueryWrapper<TMeasureAnalysisData>()
-                            .eq("task_id", context.task.getId())
-                            .eq("sample_key", sampleId)
-                            .orderByDesc("analysis_number")
-                            .last("LIMIT 1")
-            );
-
-            analysisData.setAnalysisNumber(lastAnalysis != null ? lastAnalysis.getAnalysisNumber() + 1 : 1);
+            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", context.task.getId()).eq("sample_key", sampleId).last("limit 1"));
+            if (analysisData == null) {
+                analysisData = new TMeasureAnalysisData();
+            }
+            analysisData.setAnalysisNumber(1);
 
             TMeasureSample sample = tMeasureSampleService.getById(sampleId);
             analysisData.setAnalysisName(sample != null ? sample.getSampleName() + "(" + analysisData.getAnalysisNumber() + ")" : "未知样品");
@@ -724,12 +869,15 @@ public class TimeNewOneWebSocket {
             analysisData.setIsDelete("0");
             analysisData.setIsSave("1");
 
-            tMeasureAnalysisDataService.save(analysisData);
+            tMeasureAnalysisDataService.updateById(analysisData);
 
             // 保存分析图片
-            TMeasureAnalysisImage image = new TMeasureAnalysisImage();
-            image.setAnalysisId(analysisData.getId());
-            tMeasureAnalysisImageService.save(image);
+            TMeasureAnalysisImage tMeasureAnalysisImage = tMeasureAnalysisImageService.getOne(new QueryWrapper<TMeasureAnalysisImage>().eq("analysis_id", analysisData.getId()));
+            if (tMeasureAnalysisImage == null) {
+                tMeasureAnalysisImage = new TMeasureAnalysisImage();
+            }
+            tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
+            tMeasureAnalysisImageService.updateById(tMeasureAnalysisImage);
 
             // 更新任务状态
             updateTaskStatus(context.task, sampleId, context.deviceSerialNumber);

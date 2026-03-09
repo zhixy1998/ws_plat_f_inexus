@@ -1285,7 +1285,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     //样品不存在
                     return Result.fail(YamlMessageSource.getMessageStatic("0000000B"));
                 }
-                if (taskSpeciman.getIsTested().equals("0")) {
+                QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                queryWrapper.eq("task_id", taskId);
+                queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
+                queryWrapper.eq("analysis_type", "5");
+                if (type == null) {
+                    queryWrapper.eq("is_delete", "0");
+                }
+                queryWrapper.orderByDesc("analysis_number");
+                queryWrapper.last("limit 1");
+                FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
+
+                if (measureData == null ||taskSpeciman.getIsTested().equals("0")&& measureData.getAnalysisResult() == null) {
                     vo.setTitle(sample.getSampleName());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
                     vo.setAnalysisId(null);
@@ -1295,27 +1306,19 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     vo.setData(null);
                     vo.setDeleteType("0");
                 } else {
-                    QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-                    queryWrapper.eq("task_id", taskId);
-                    queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
-                    queryWrapper.eq("analysis_type", "5");
-                    if (type == null) {
-                        queryWrapper.eq("is_delete", "0");
-                    }
-                    queryWrapper.orderByDesc("analysis_number");
-                    queryWrapper.last("limit 1");
-                    FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
-                    if (measureData == null) {
-                        continue;
-                    }
                     vo.setTitle(sample.getSampleName());
                     vo.setAnalysisId(measureData.getId());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
                     vo.setSampleLocation(sample.getSampleLocation());
                     vo.setAnalysisNumber(measureData.getAnalysisNumber());
                     vo.setColor(measureData.getColor());
-                    vo.setData(getSampleData(measureData, digit));
-                    vo.setOriginalData(getOriginalSampleData(measureData, digit));
+                    if (measureData.getAnalysisResult() == null) {
+                        vo.setData(null);
+                        vo.setOriginalData(null);
+                    } else {
+                        vo.setData(getSampleData(measureData, digit));
+                        vo.setOriginalData(getOriginalSampleData(measureData, digit));
+                    }
                     vo.setDeleteType(taskSpeciman.getDeleteType());
                 }
                 vo.setType("0");

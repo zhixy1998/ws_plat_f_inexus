@@ -1043,7 +1043,7 @@ public class ConciseSpectrumNewWebSocket {
                         }else {
                             y.add(Double.valueOf(message.getErResult().getEr()));
                         }
-                        changeParams.add(message.getMeasureRsd());
+                        changeParams.add(message.getScanRsd());
 
 
                         // 将新点添加到批次缓冲区，并检查是否达到批次大小
@@ -1150,14 +1150,21 @@ public class ConciseSpectrumNewWebSocket {
                     // 总是创建新的列表，避免追加到旧列表
                     originalYValues.put(key, new ArrayList<>(yForStorage));
                 }
-
+                // 判断是否是当前样品的第一次批次
+                boolean isFirstBatch = false;
+                SessionState state = sessionStates.get(batchData.sessionId);
+                if (state != null) {
+                    // 如果已推送点数为0，说明是第一次批次
+                    isFirstBatch = (state.pushedPointsCount.get() == 0);
+                }
+                // 调用新的存储方法，处理数据库的首次创建或追加
+                handleBatchDataStorage(batchData, isFirstBatch);
                 // 推送处理后的数据
                 pushBatchDataDirectly(batchData.xBatch, processedY,
                         batchData.count, batchData.sampleId,
                         batchData.parameter.getLuminosity(), batchData.digit);
 
                 // 更新已推送点数
-                SessionState state = sessionStates.get(batchData.sessionId);
                 if (state != null) {
                     state.incrementPushedPoints(batchData.xBatch.size());
                 }
@@ -1208,6 +1215,168 @@ public class ConciseSpectrumNewWebSocket {
                 log.info("推送线程被中断");
                 break;
             }
+        }
+    }
+
+    /**
+     * 处理批次数据的数据库存储（首次创建，后续追加）
+     * @param batchData 批次数据
+     * @param isFirstBatch 是否是当前样品的第一次批次
+     */
+    private void handleBatchDataStorage(BatchData batchData, boolean isFirstBatch) {
+        try {
+            String taskId = batchData.task.getId();
+            String sampleId = batchData.sampleId;
+            Integer count = batchData.count;
+
+            log.info("处理批次数据存储: sampleId={}, count={}, 点数={}, isFirstBatch={}",
+                    sampleId, count, batchData.xBatch.size(), isFirstBatch);
+
+            // 构建当前批次的结果字符串
+            List<String> batchResult = new ArrayList<>();
+            for (int i = 0; i < batchData.xBatch.size(); i++) {
+                batchResult.add(batchData.xBatch.get(i) + "," + batchData.yBatch.get(i));
+            }
+
+            if (isFirstBatch) {
+                // 第一次批次，创建新记录
+
+                // 1. 创建测量数据记录（只放数据，其他字段为空）
+                FMeasureData measureData = new FMeasureData();
+                measureData.setSerialNumber(count);
+                measureData.setTaskId(taskId);
+                measureData.setSampleKey(sampleId);
+                measureData.setOriginalCalculationData(JSON.toJSONString(batchResult));
+                // 其他字段暂时不设置
+                measureData.setIsDelete("0");
+                measureData.setIsSave("0"); // 标记为未完成
+                tMeasureDataService.save(measureData);
+
+                // 2. 获取样品名称用于分析数据名称
+                FMeasureSample sample = tMeasureSampleService.getById(sampleId);
+                String sampleName = sample != null ? sample.getSampleName() : "样品";
+
+                // 3. 创建分析数据记录（只放数据，其他字段为空）
+                FMeasureAnalysisData analysisData = new FMeasureAnalysisData();
+                analysisData.setAnalysisNumber(count);
+                analysisData.setAnalysisName(sampleName + "-" + count);
+                analysisData.setTaskId(taskId);
+                analysisData.setSampleKey(sampleId);
+                analysisData.setMeasureDataId(measureData.getId());
+                analysisData.setAnalysisResult(JSON.toJSONString(batchResult));
+                analysisData.setAnalysisType("5");
+                analysisData.setColor(ColorUtil.getRandomColor());
+                analysisData.setIsDelete("0");
+                analysisData.setIsSave("0"); // 标记为未完成
+                tMeasureAnalysisDataService.save(analysisData);
+
+                // 4. 创建关联的图片记录（空记录）
+                FMeasureAnalysisImage analysisImage = new FMeasureAnalysisImage();
+                analysisImage.setAnalysisId(analysisData.getId());
+                tMeasureAnalysisImageService.save(analysisImage);
+
+                log.info("首次创建数据记录: measureDataId={}, analysisDataId={}",
+                        measureData.getId(), analysisData.getId());
+
+            } else {
+                // 后续批次，追加数据到已有记录
+
+                // 1. 查询已存在的测量数据记录
+                QueryWrapper<FMeasureData> dataQuery = new QueryWrapper<>();
+                dataQuery.eq("task_id", taskId)
+                        .eq("sample_key", sampleId)
+                        .eq("serial_number", count);
+                FMeasureData existingMeasureData = tMeasureDataService.getOne(dataQuery);
+
+                if (existingMeasureData != null) {
+                    // 获取已有数据
+                    String existingDataStr = existingMeasureData.getOriginalCalculationData();
+                    List<String> existingData = new ArrayList<>();
+                    if (existingDataStr != null && !"[]".equals(existingDataStr) && !existingDataStr.isEmpty()) {
+                        try {
+                            existingData = JSON.parseArray(existingDataStr, String.class);
+                        } catch (Exception e) {
+                            log.error("解析已有数据失败", e);
+                            existingData = new ArrayList<>();
+                        }
+                    }
+
+                    // 追加新数据
+                    existingData.addAll(batchResult);
+
+                    // 更新记录
+                    existingMeasureData.setOriginalCalculationData(JSON.toJSONString(existingData));
+                    tMeasureDataService.updateById(existingMeasureData);
+
+                    log.info("追加数据到测量记录: 原有{}点, 新增{}点, 总计{}点",
+                            existingData.size() - batchResult.size(), batchResult.size(), existingData.size());
+                } else {
+                    log.warn("未找到对应的测量数据记录，重新创建: taskId={}, sampleId={}, count={}",
+                            taskId, sampleId, count);
+                    // 如果找不到记录，重新创建（兜底逻辑）
+                    FMeasureData newMeasureData = new FMeasureData();
+                    newMeasureData.setSerialNumber(count);
+                    newMeasureData.setTaskId(taskId);
+                    newMeasureData.setSampleKey(sampleId);
+                    newMeasureData.setOriginalCalculationData(JSON.toJSONString(batchResult));
+                    newMeasureData.setIsDelete("0");
+                    newMeasureData.setIsSave("0");
+                    tMeasureDataService.save(newMeasureData);
+                }
+
+                // 2. 查询已存在的分析数据记录
+                QueryWrapper<FMeasureAnalysisData> analysisQuery = new QueryWrapper<>();
+                analysisQuery.eq("task_id", taskId)
+                        .eq("sample_key", sampleId)
+                        .eq("analysis_number", count)
+                        .eq("analysis_type", "5");
+                FMeasureAnalysisData existingAnalysisData = tMeasureAnalysisDataService.getOne(analysisQuery);
+
+                if (existingAnalysisData != null) {
+                    // 获取已有数据
+                    String existingResultStr = existingAnalysisData.getAnalysisResult();
+                    List<String> existingResult = new ArrayList<>();
+                    if (existingResultStr != null && !"[]".equals(existingResultStr) && !existingResultStr.isEmpty()) {
+                        try {
+                            existingResult = JSON.parseArray(existingResultStr, String.class);
+                        } catch (Exception e) {
+                            log.error("解析已有分析结果失败", e);
+                            existingResult = new ArrayList<>();
+                        }
+                    }
+
+                    // 追加新数据
+                    existingResult.addAll(batchResult);
+
+                    // 更新记录
+                    existingAnalysisData.setAnalysisResult(JSON.toJSONString(existingResult));
+                    tMeasureAnalysisDataService.updateById(existingAnalysisData);
+
+                    log.info("追加数据到分析记录: 原有{}点, 新增{}点, 总计{}点",
+                            existingResult.size() - batchResult.size(), batchResult.size(), existingResult.size());
+                } else {
+                    log.warn("未找到对应的分析数据记录，重新创建: taskId={}, sampleId={}, count={}",
+                            taskId, sampleId, count);
+                    // 如果找不到记录，重新创建（兜底逻辑）
+                    FMeasureSample sample = tMeasureSampleService.getById(sampleId);
+                    String sampleName = sample != null ? sample.getSampleName() : "样品";
+
+                    FMeasureAnalysisData newAnalysisData = new FMeasureAnalysisData();
+                    newAnalysisData.setAnalysisNumber(count);
+                    newAnalysisData.setAnalysisName(sampleName + "-" + count);
+                    newAnalysisData.setTaskId(taskId);
+                    newAnalysisData.setSampleKey(sampleId);
+                    newAnalysisData.setAnalysisResult(JSON.toJSONString(batchResult));
+                    newAnalysisData.setAnalysisType("5");
+                    newAnalysisData.setColor(ColorUtil.getRandomColor());
+                    newAnalysisData.setIsDelete("0");
+                    newAnalysisData.setIsSave("0");
+                    tMeasureAnalysisDataService.save(newAnalysisData);
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("处理批次数据存储异常", e);
         }
     }
 
@@ -1350,7 +1519,7 @@ public class ConciseSpectrumNewWebSocket {
                 }else {
                     processedY.add(Double.valueOf(message.getErResult().getEr()));
                 }
-                changeParams.add(message.getMeasureRsd());
+                changeParams.add(message.getScanRsd());
             } catch (InterruptedException e) {
                 log.error("等待数据采集完成时发生中断异常", e);
                 Thread.currentThread().interrupt();
@@ -1812,7 +1981,7 @@ public class ConciseSpectrumNewWebSocket {
             FSpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
             if ("不重复".equals(spectrumParameter.getRepetitionPattern())) {
                 // 普通模式
-                FMeasureData measureData = new FMeasureData();
+                FMeasureData measureData = traceDataService.getOne(new QueryWrapper<FMeasureData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("serial_number", number).last("limit 1"));
                 measureData.setSerialNumber(1);
                 measureData.setTaskId(taskId);
                 measureData.setSampleKey(sampleId);
@@ -1822,8 +1991,8 @@ public class ConciseSpectrumNewWebSocket {
                 measureData.setMeasurementEndTime(endTime);
                 measureData.setIsDelete("0");
                 measureData.setIsSave("1");
-                traceDataService.save(measureData);
-                FMeasureAnalysisData analysisData = new FMeasureAnalysisData();
+                traceDataService.updateById(measureData);
+                FMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<FMeasureAnalysisData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("analysis_number", number).last("limit 1"));
                 analysisData.setAnalysisNumber(1);
                 analysisData.setAnalysisName(sample.getSampleName() + "(" + analysisData.getAnalysisNumber() + ")");
                 analysisData.setTaskId(taskId);
@@ -1841,10 +2010,10 @@ public class ConciseSpectrumNewWebSocket {
                 analysisData.setColor(ColorUtil.getRandomColor());
                 analysisData.setIsDelete("0");
                 analysisData.setIsSave("1");
-                tMeasureAnalysisDataService.save(analysisData);
-                FMeasureAnalysisImage tMeasureAnalysisImage = new FMeasureAnalysisImage();
+                tMeasureAnalysisDataService.updateById(analysisData);
+                FMeasureAnalysisImage tMeasureAnalysisImage = tMeasureAnalysisImageService.getOne(new QueryWrapper<FMeasureAnalysisImage>().eq("analysis_id", analysisData.getId()));
                 tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
-                tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
+                tMeasureAnalysisImageService.updateById(tMeasureAnalysisImage);
             } else {
                 // 重复模式
                 FMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(
