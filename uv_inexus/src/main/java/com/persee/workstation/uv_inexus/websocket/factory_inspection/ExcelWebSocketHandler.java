@@ -263,29 +263,52 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
     // 提供添加会话的方法
-    // 提供添加会话的方法
+
+    // 在类成员变量处添加一个新的数据结构，用于跟踪已连接的前端地址
+    private final Map<String, Set<String>> taskToFrontendAddresses = new ConcurrentHashMap<>();
+
+
     public void addSessionToTask(String taskId, WebSocketSession session) {
         String sessionId = session.getId();
+
+        // 获取前端地址（IP + 端口）
+        String frontendAddress = getFrontendAddress(session);
 
         // 检查是否已经注册过
         Set<String> sessionIds = registeredSessionIds.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet());
 
-        // 只有未注册的 session 才添加
-        if (sessionIds.add(sessionId)) {
-            sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
-            log.info("添加新会话到任务：taskId={}, sessionId={}", taskId, sessionId);
-        } else {
-            log.debug("会话已存在，跳过添加：taskId={}, sessionId={}", taskId, sessionId);
+        synchronized (sessionIds) {
+            // 只有未注册的 session 才添加
+            if (sessionIds.add(sessionId)) {
+                // 检查这个前端地址是否已经存在于该任务中
+                Set<String> frontendAddresses = taskToFrontendAddresses.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet());
+
+                synchronized (frontendAddresses) {
+                    if (frontendAddresses.contains(frontendAddress)) {
+                        log.warn("检测到同一前端重复连接，跳过添加：taskId={}, sessionId={}, 前端地址={}",
+                                taskId, sessionId, frontendAddress);
+                        // 从 sessionId 集合中移除刚才添加的 ID
+                        sessionIds.remove(sessionId);
+                        return;
+                    }
+
+                    // 添加前端地址
+                    frontendAddresses.add(frontendAddress);
+                }
+
+                sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
+                log.info("添加新会话到任务：taskId={}, sessionId={}, 前端地址={}", taskId, sessionId, frontendAddress);
+            } else {
+                log.debug("会话已存在，跳过添加：taskId={}, sessionId={}", taskId, sessionId);
+            }
         }
     }
-
-    // ... existing code ...
 
 
     private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
         log.info("我被调用了"+payload.toString());
         try {
-            if(originalSession!=null&&!isSessionValid(originalSession)){
+            if(originalSession != null && !isSessionValid(originalSession)){
                 originalSession.sendMessage(new TextMessage(payload.toJSONString()));
                 return true;
             }
@@ -295,12 +318,19 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 while (iterator.hasNext()) {
                     WebSocketSession session = iterator.next();
                     if (isSessionValid(session)) {
-                        log.info("准备发送消息到 sessionId: {}, 消息内容：{}", session.getId(), payload.toJSONString());
+                        log.info("准备发送消息到 sessionId: {}, 前端地址：{}, 消息内容：{}",
+                                session.getId(), getFrontendAddress(session), payload.toJSONString());
                         session.sendMessage(new TextMessage(payload.toJSONString()));
                         log.info("消息发送成功到 sessionId: {}", session.getId());
                     } else {
+                        // 移除无效 session 时，也要清理对应的前端地址
+                        String frontendAddress = getFrontendAddress(session);
+                        Set<String> frontendAddresses = taskToFrontendAddresses.get(taskId);
+                        if (frontendAddresses != null) {
+                            frontendAddresses.remove(frontendAddress);
+                        }
                         iterator.remove();
-                        log.warn("WebSocket 消息发送失败：taskId={}, 源会话已关闭", taskId);
+                        log.warn("WebSocket 消息发送失败：taskId={}, 源会话已关闭，前端地址={}", taskId, frontendAddress);
                     }
                 }
                 log.info("消息已发送到 {} 个 session，sessionId 列表：{}", sessions.size(),
@@ -315,6 +345,29 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             return false;
         }
     }
+
+
+    /**
+     * 获取前端连接的地址标识（IP + 端口）
+     */
+    private String getFrontendAddress(WebSocketSession session) {
+        try {
+            java.net.InetSocketAddress remoteAddress = session.getRemoteAddress();
+            if (remoteAddress != null) {
+                String ip = remoteAddress.getAddress() != null ?
+                        remoteAddress.getAddress().getHostAddress() : "unknown";
+                int port = remoteAddress.getPort();
+                return ip + ":" + port;
+            }
+        } catch (Exception e) {
+            log.warn("获取远程地址失败：{}", e.getMessage());
+        }
+        // 如果获取不到远程地址，使用 sessionId 作为备用标识
+        return "session:" + session.getId();
+    }
+
+    // ... existing code ...
+
 
     private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, String payload) {
         try {
@@ -745,11 +798,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        session = new ConcurrentWebSocketSessionDecorator(
-                session,
-                10 * 1000, // 发送超时时间（毫秒）
-                1024 * 1024 // 最大缓冲区大小（字节）
-        );
+//        session = new ConcurrentWebSocketSessionDecorator(
+//                session,
+//                10 * 1000, // 发送超时时间（毫秒）
+//                1024 * 1024 // 最大缓冲区大小（字节）
+//        );
         // 更新最后活动时间
         lastActivityTime.put(session.getId(), System.currentTimeMillis());
 
@@ -1116,7 +1169,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     request.setItemId(asset.getId());
                     try {
 
-                        addSessionToTask(taskId, session);
+//                        addSessionToTask(taskId, session);
 //                        sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
                         if (halt.get(taskId)) {
                             log.info("任务已暂停，请检查任务是否暂停");
@@ -4391,21 +4444,17 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
     }
 
 
+    // ... existing code ...
+
     // 在连接关闭时清理队列
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        // 使用ConcurrentWebSocketSessionDecorator包装原始session
-        session = new ConcurrentWebSocketSessionDecorator(
-                session,
-                10 * 1000, // 发送超时时间（毫秒）
-                1024 * 1024 // 最大缓冲区大小（字节）
-        );
-
         String sessionId = session.getId();
         String taskId = getTaskIdFromSession(session);
+        String frontendAddress = getFrontendAddress(session);
 
-        log.info("ExcelWebSocketHandler连接关闭，会话ID: {}, 状态: {}, 任务ID: {}",
-                sessionId, status, taskId);
+        log.info("ExcelWebSocketHandler 连接关闭，会话 ID: {}, 状态：{}, 任务 ID: {}, 前端地址：{}",
+                sessionId, status, taskId, frontendAddress);
 
         try {
             // 清理任务相关的队列和状态
@@ -4422,8 +4471,23 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
                 // 清理处理标志
                 queueProcessingFlags.remove(taskId);
 
-                // 从session映射中移除
-                sessionTaskMap.remove(taskId);
+                // 从 session 映射中移除
+                Set<WebSocketSession> sessions = sessionTaskMap.get(taskId);
+                if (sessions != null) {
+                    sessions.removeIf(s -> s.getId().equals(sessionId));
+                    if (sessions.isEmpty()) {
+                        sessionTaskMap.remove(taskId);
+                    }
+                }
+
+                // 清理前端地址映射
+                Set<String> frontendAddresses = taskToFrontendAddresses.get(taskId);
+                if (frontendAddresses != null) {
+                    frontendAddresses.remove(frontendAddress);
+                    if (frontendAddresses.isEmpty()) {
+                        taskToFrontendAddresses.remove(taskId);
+                    }
+                }
             }
 
             // 清理会话相关资源
@@ -4435,13 +4499,16 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
                 pauseControls.remove(taskId);
             }
 
-            log.info("ExcelWebSocketHandler连接已完全清理，会话ID: {}", sessionId);
+            log.info("ExcelWebSocketHandler 连接已完全清理，会话 ID: {}, 前端地址：{}", sessionId, frontendAddress);
         } catch (Exception e) {
-            log.error("清理WebSocket连接时出现异常", e);
+            log.error("清理 WebSocket 连接时出现异常", e);
         }
 
         super.afterConnectionClosed(session, status);
     }
+
+    // ... existing code ...
+
 
     // 在停止任务时也清理队列
     public void stopTask(String taskId) throws BusinessException {
