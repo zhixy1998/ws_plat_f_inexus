@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.instrumentController;
 
 
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.model.R;
@@ -23,6 +24,7 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMo
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import io.swagger.annotations.Api;
@@ -87,7 +89,7 @@ public class DeviceController {
         }
     }
 
-        @PostMapping("/TimeMeasure")
+    @PostMapping("/TimeMeasure")
     @ApiOperation("时间扫描测试")
     @LogPoint(value = "扫描测试", module = "设备管理", recordParams = true, recordResult = true)
     public Result<OperationResultEntity> TimeMeasure(
@@ -351,6 +353,8 @@ public class DeviceController {
         }
     }
 
+    @ButtonPermission("instrumentConfigSave")
+    @OperateLog(module = "仪器管理-仪器配置-保存修改的仪器配置", description = "执行仪器管理-仪器配置-保存修改的仪器配置记录", recordParams = true)
     @PostMapping("/devConfig")
     @ApiOperation("新--仪器配置接口")
     public Result<Boolean> devConfig(@RequestBody DevConfigDTO dto){
@@ -380,7 +384,6 @@ public class DeviceController {
         List<Double> bandWidth = deviceManageService.getBandWidth(deviceSerialNumber);
         return Result.ok(bandWidth);
     }
-
 
 
     @ApiOperation("设置进样器参数配置")
@@ -446,6 +449,8 @@ public class DeviceController {
 //            return Result.fail(r.getMessage());
 //        }
 //    }
+    @ButtonPermission("instrumentCalibrationWavelengthCorrection")
+    @OperateLog(module = "仪器管理-仪器校正-波长校正", description = "执行仪器管理-仪器校正-波长校正记录", recordParams = true)
     @PostMapping("/calibration")
     @ApiOperation("仪器校准")
     public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto){

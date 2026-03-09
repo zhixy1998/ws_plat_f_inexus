@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddSampleDTO;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.DatabaseEnum;
@@ -18,6 +19,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
@@ -117,6 +119,8 @@ public class ConciseCommonController {
         return conciseCommonService.delTask(taskId);
     }
 
+    @ButtonPermission("lumneModifyAttachmentParams")
+    @OperateLog(module = "实验测试-经典模式-光度测量-修改附件参数", description = "执行实验测试-经典模式-光度测量-修改附件参数记录", recordParams = true)
     @PostMapping("changeSampleAttachmentInfo")
     @ApiOperation("修改样品池信息")
     public Result<Boolean> changeSampleAttachmentInfo(@RequestBody FSamplePoolInfoChangeDto dto) {

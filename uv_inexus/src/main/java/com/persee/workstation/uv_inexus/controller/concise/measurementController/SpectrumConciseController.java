@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidationDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
@@ -17,6 +18,7 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.ExperimentTestService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -120,7 +122,8 @@ public class SpectrumConciseController {
     public Result<List<FHeadVO>> querySampleHeads(@RequestParam String taskId) {
         return spectrumConciseService.querySampleHeads(taskId);
     }
-
+    @ButtonPermission("spectralScanSetSample")
+    @OperateLog(module = "实验测试-经典模式-光谱扫描-设置样品", description = "执行实验测试-经典模式-光谱扫描-设置样品记录", recordParams = true)
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSamplePort(@RequestBody FAddOrDeleteSampleDTO paramDto) {
