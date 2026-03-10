@@ -33,7 +33,7 @@ public class OperateLogPO {
     /**
      * 操作用户ID（关联sys_user.id）
      */
-     private String userId;
+    private String userId;
 
     /**
      * 操作用户名（冗余存储，便于快速查询）
@@ -49,6 +49,11 @@ public class OperateLogPO {
      * 操作描述（如：新增用户）
      */
     private String description;
+
+    /**
+     * 权限标识（关联ButtonPermission注解的参数）
+     */
+    private String permission;
 
     /**
      * 调用方法全路径（如：com.xxx.UserController.addUser）
