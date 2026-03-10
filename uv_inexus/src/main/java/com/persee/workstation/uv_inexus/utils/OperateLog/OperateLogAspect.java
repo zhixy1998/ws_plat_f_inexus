@@ -111,6 +111,10 @@ public class OperateLogAspect {
                     operateDescMap.put("add", "设置");
                     operateDescMap.put("edit", "修改");
                     operateDescMap.put("delete", "删除");
+                    operateDescMap.put("lumne", "光度测量");
+                    operateDescMap.put("quantity", "定量测量");
+                    operateDescMap.put("spectralScan", "光谱测量");
+                    operateDescMap.put("timeScan", "时间测量");
 
                     // 替换描述中的占位符，或拼接操作类型
                     String operateName = operateDescMap.getOrDefault(currentOperateType, currentOperateType);

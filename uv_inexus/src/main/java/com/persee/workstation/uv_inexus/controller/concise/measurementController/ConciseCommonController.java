@@ -88,13 +88,29 @@ public class ConciseCommonController {
     public Result queryMethodParameter(@RequestParam String methodId) {
         return conciseCommonService.queryMethodParameter(methodId);
     }
-
+    @ButtonPermission(
+            description = "实验测试-经典模式-重命名方法名称", // 操作描述
+            permissionMapping = "lumne=lumneRenameMethodName,quantity=quantityRenameMethodName,spectralScan=spectralScanRenameMethodName,timeScan=timeScanRenameMethodName" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-经典模式-{operateType}-重命名方法名称操作",
+            recordParams = true
+    )
     @PostMapping("updateMethod")
     @ApiOperation("修改方法名称")
     public Result<String> updateMethod(@RequestBody UpdateMethodDto updateMethodDto) {
         return conciseCommonService.updateMethod(updateMethodDto);
     }
-
+    @ButtonPermission(
+            description = "实验测试-经典模式-删除历史方法数据", // 操作描述
+            permissionMapping = "lumne=lumneDeleteMethod,quantity=quantityDeleteMethod,spectralScan=spectralScanDeleteMethod,timeScan=timeScanDeleteMethod" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-经典模式-{operateType}-删除历史方法数据操作",
+            recordParams = true
+    )
     @GetMapping("delMethod")
     @ApiOperation("删除方法")
     public Result<String> delMethod(@RequestParam("methodId") String methodId) {
@@ -106,21 +122,44 @@ public class ConciseCommonController {
     public Result<Page<FMeasureTaskDTO>> queryHistoryTask(@RequestBody SelectTaskDto selectTaskDto) {
         return conciseCommonService.queryHistoryTask(selectTaskDto);
     }
-
+    @ButtonPermission(
+            description = "实验测试-经典模式-重命名历史文件名称", // 操作描述
+            permissionMapping = "lumne=lumneRenameMethodName,quantity=quantityRenameDataName,spectralScan=spectralScanRenameDataName,timeScan=timeScanRenameDataName" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-经典模式-{operateType}-重命名历史文件名称操作",
+            recordParams = true
+    )
     @PostMapping("updateTask")
     @ApiOperation("修改任务名称")
     public Result updateTask(@RequestBody UpdateTaskDto updateTaskDto) {
         return conciseCommonService.updateTask(updateTaskDto);
     }
-
+    @ButtonPermission(
+            description = "实验测试-经典模式-删除历史文件数据", // 操作描述
+            permissionMapping = "lumne=lumneDeleteData,quantity=quantityDeleteData,spectralScan=spectralScanDeleteData,timeScan=timeScanDeleteData" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-经典模式-{operateType}-删除历史文件数据操作",
+            recordParams = true
+    )
     @GetMapping("delTask")
     @ApiOperation("删除历史文件")
     public Result delTask(@RequestParam("taskId") String taskId) {
         return conciseCommonService.delTask(taskId);
     }
 
-    @ButtonPermission("lumneModifyAttachmentParams")
-    @OperateLog(module = "实验测试-经典模式-光度测量-修改附件参数", description = "执行实验测试-经典模式-光度测量-修改附件参数记录", recordParams = true)
+    @ButtonPermission(
+            description = "实验测试-经典模式-光度测量-设置样品", // 操作描述
+            permissionMapping = "lumne=lumneModifyAttachmentParams,quantity=quantityModifyMethodParams,spectralScan=spectralScanModifyMethodParams,timeScan=timeScanModifyAttachmentParams" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-经典模式-{operateType}-修改方法参数操作",
+            recordParams = true
+    )
     @PostMapping("changeSampleAttachmentInfo")
     @ApiOperation("修改样品池信息")
     public Result<Boolean> changeSampleAttachmentInfo(@RequestBody FSamplePoolInfoChangeDto dto) {

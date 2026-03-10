@@ -70,14 +70,17 @@ public class PhotometricConciseController {
     public Result<FMeasurementCurrentInfoVO> newDraft(@RequestBody SaveDataDto dto) {
         return fPhotometricService.newDraft(dto);
     }
-    @ButtonPermission("lumneApplyMethod")
-    @OperateLog(module = "实验测试-经典模式-光度测量-应用方法", description = "执行实验测试-经典模式-光度测量-应用方法记录", recordParams = true)
+
+    @ButtonPermission("lumneModifyMethodParams")
+    @OperateLog(module = "实验测试-经典模式-定量测量-修改方法参数", description = "执行实验测试-经典模式-定量测量-修改方法参数", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
     public Result<FMethodChangeCheckVO> checkParam(@RequestBody NewPhotometricMethodParamCheckDTO methodParam) {
         return fPhotometricService.checkMethodParam(methodParam);
     }
 
+    @ButtonPermission("lumneApplyMethod")
+    @OperateLog(module = "实验测试-经典模式-光度测量-应用方法", description = "执行实验测试-经典模式-光度测量-应用方法记录", recordParams = true)
     @PostMapping("applyMethod")
     @ApiOperation("应用方法接口")
     public Result<FMeasurementCurrentInfoVO> applyMethod(@RequestBody NewPhotometricMethodParamCheckDTO methodParam) {
@@ -130,7 +133,7 @@ public class PhotometricConciseController {
     }
 
     @ButtonPermission(
-            description = "实验测试-经典模式-光度测量-设置样品", // 操作描述
+            description = "实验测试-经典模式-光定量测量-设置样品", // 操作描述
             permissionMapping = "add=lumnsetSample,edit=lumnmodifySampleInformation" // 自定义操作类型→驼峰权限标识
     )
     @OperateLog(

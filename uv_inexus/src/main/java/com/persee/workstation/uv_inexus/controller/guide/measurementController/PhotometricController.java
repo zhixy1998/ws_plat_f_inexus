@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
@@ -17,6 +18,7 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.PhotometricService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import io.swagger.annotations.Api;
@@ -49,12 +51,16 @@ public class PhotometricController {
         return photometricService.updateMethodParameter(methodDto);
     }
 
+    @ButtonPermission("wizardModeQuantityModifySampleInformation")
+    @OperateLog(module = "实验测试-向导模式-定量测量-修改方法参数", description = "执行实验测试-向导模式-定量测量-修改方法参数操作", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
     public Result<MethodChangeCheckVO> checkParam(@RequestBody PhotometricMethodParameterDto methodParam) {
         return photometricService.checkMethodParam(methodParam);
     }
 
+    @ButtonPermission("wizardModeLumneApplyMethod")
+    @OperateLog(module = "实验测试-向导模式-定量测量-应用方法", description = "执行实验测试-向导模式-定量测量-应用方法操作", recordParams = true)
     @PostMapping("updateMethodParam")
     @ApiOperation("保存方法参数接口")
     public Result<MeasurementCurrentInfoVO> applyMethod(@RequestBody PhotometricMethodParameterDto methodParam) {

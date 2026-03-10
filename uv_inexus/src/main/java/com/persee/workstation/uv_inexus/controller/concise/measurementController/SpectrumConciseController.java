@@ -80,7 +80,8 @@ public class SpectrumConciseController {
         return spectrumConciseService.parameterValidation(paramDto);
     }
 
-
+    @ButtonPermission("spectralScanApplyMethod")
+    @OperateLog(module = "实验测试-经典模式-光谱扫描-应用方法", description = "执行实验测试-经典模式-光谱扫描-应用方法记录", recordParams = true)
     @PostMapping("applyMethod")
     @ApiOperation("应用接口")
     public Result applyMethod(@Valid @RequestBody FUseMethodDto paramDto,
@@ -143,7 +144,8 @@ public class SpectrumConciseController {
         return spectrumConciseService.detectionTaskStatus(taskId);
     }
 
-
+    @ButtonPermission("quantityCreateTask")
+    @OperateLog(module = "实验测试-经典模式-定量测量-新建任务", description = "执行实验测试-经典模式-定量测量-新建任务记录", recordParams = true)
     @PostMapping("saveDraftButton")
     @ApiOperation("保存草稿按钮接口")
     public Result saveDraftButton(@RequestParam String taskId,
@@ -295,7 +297,8 @@ public class SpectrumConciseController {
     public Result luminanceModeConversionPort(@RequestBody FLuminosityConversionDto paramDto){
         return spectrumConciseService.luminanceModeConversionPort(paramDto);
     }
-
+    @ButtonPermission("spectralScanExportData")
+    @OperateLog(module = "实验测试-经典模式-光谱扫描-导出数据", description = "执行实验测试-经典模式-光谱扫描-导出数据记录", recordParams = true)
     @GetMapping("downloadDoc")
     @ApiOperation("多格式文件下载接口（支持word/excel/txt）")
     // 关键修正：1. 修复@ApiParam描述错误 2. 为List参数添加@RequestParam的value和required属性

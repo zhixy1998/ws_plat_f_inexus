@@ -63,14 +63,17 @@ public class RationConciseController {
     public Result<FMeasurementCurrentInfoVO> newDraft(@RequestBody SaveDataDto dto) {
         return rationService.newDraft(dto);
     }
-    @ButtonPermission("quantityApplyMethod")
-    @OperateLog(module = "实验测试-经典模式-定量测量-应用方法", description = "执行实验测试-经典模式-定量测量-应用方法记录", recordParams = true)
+
+    @ButtonPermission("quantityModifyMethodParams")
+    @OperateLog(module = "实验测试-经典模式-光度测量-修改方法参数", description = "执行实验测试-经典模式-光度测量-修改方法参数", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
     public Result<FMethodChangeCheckVO> checkParam(@RequestBody NewRationMethodParamCheckDTO methodParam) {
         return rationService.checkMethodParam(methodParam);
     }
 
+    @ButtonPermission("lumneApplyMethod")
+    @OperateLog(module = "实验测试-经典模式-定量测量-应用方法", description = "执行实验测试-经典模式-定量测量-应用方法记录", recordParams = true)
     @PostMapping("applyMethod")
     @ApiOperation("应用方法接口")
     public Result<FMeasurementCurrentInfoVO> applyMethod(@RequestBody NewRationMethodParamCheckDTO methodParam) {
