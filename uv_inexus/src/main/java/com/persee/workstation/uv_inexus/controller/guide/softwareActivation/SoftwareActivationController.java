@@ -239,7 +239,7 @@ public class SoftwareActivationController {
      * 批量删除
      */
     @DeleteMapping("/batch")
-    @ButtonPermission(value = "revokeActivation",description = "批量删除")
+//    @ButtonPermission(value = "revokeActivation",description = "批量删除")
     @ApiOperation("批量删除软件激活记录")
     public Result<Void> deleteBatch(@RequestBody List<Integer> ids) {
         if (ids.isEmpty()) {
