@@ -32,10 +32,7 @@ import com.persee.workstation.uv_inexus.service.factory_inspection.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
-import com.persee.workstation.uv_inexus.util.ExcelCellComparator;
-import com.persee.workstation.uv_inexus.util.ExcelCellEditor;
-import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
-import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
+import com.persee.workstation.uv_inexus.util.*;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.MessageUtil;
@@ -2037,6 +2034,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         for (BigDecimal aBigDecimal : calcResult) {
                             JSONObject jsonObject = new JSONObject();
                             jsonObject.put("peak", aBigDecimal);
+                            log.info("最大偏移量结果111：{}", jsonObject);
                             res.add(jsonObject);
                         }
                     }
@@ -2062,7 +2060,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 BigDecimal peak = (BigDecimal) re.get("peak");
                 if (peak != null) {
                     // 使用BigDecimal进行科学修约到两位小数
-                    peak = peak.setScale(2, RoundingMode.HALF_UP);
+//                    peak = peak.setScale(2, RoundingMode.HALF_UP);
                     re.put("peak", peak.toString());
                 }
             }
@@ -2832,13 +2830,29 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         }
         if (halt.get(taskId)) {
             log.info("任务停止");
+            if (CollectionUtils.isNotEmpty(res)) {
+                for (JSONObject re : res) {
+                    String s = String.valueOf(re.get("peak"));
+                    String s1 = DataCountUtil.formatValueWithBigDecimal(5, s);
+                    re.put("peak", s1);
+                }
+            }
 //            throw new BusinessException("任务被中断");
             map.put("line", list);
             map.put("res", res);
             return R.fail(map);
         }
+        if (CollectionUtils.isNotEmpty(res)) {
+            for (JSONObject re : res) {
+                String s = String.valueOf(re.get("peak"));
+                String s1 = DataCountUtil.formatValueWithBigDecimal(5, s);
+                re.put("peak", s1);
+            }
+        }
         map.put("line", list);
         map.put("res", res);
+        log.info("最大偏移量结果222：{}", res);
+
         return R.ok(map);
     }
 //
