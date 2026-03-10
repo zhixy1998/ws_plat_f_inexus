@@ -89,8 +89,15 @@ public class RationConciseController {
                                 @RequestParam String sampleKind) {
         return rationService.querySampleList(taskId, sampleKind);
     }
-    @ButtonPermission("quantitySetSample")
-    @OperateLog(module = "实验测试-经典模式-定量测量-设置样品", description = "执行实验测试-经典模式-定量测量-设置样品记录", recordParams = true)
+    @ButtonPermission(
+            description = "实验测试-经典模式-定量测量-设置样品", // 操作描述
+            permissionMapping = "add=quantitySetSample,edit=quantityModifySampleInformation" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式-定量测量-设置样品",
+            description = "执行实验测试-经典模式-定量测量-{operateType}样品操作",
+            recordParams = true
+    )
     @PostMapping("addOrDeleteSample")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSample(@RequestBody FRationAddOrDeleteSampleDTO dto) {

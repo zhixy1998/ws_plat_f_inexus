@@ -9,12 +9,14 @@
 
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.TimeSweepConciseService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -106,6 +108,15 @@ public class TimeSweepConciseController {
         return timeSweepConciseService.querySampleHeads(taskId);
     }
 
+    @ButtonPermission(
+            description = "实验测试-经典模式-时间扫描-设置样品", // 操作描述
+            permissionMapping = "add=timeScanSetSample,edit=timeScanModifySampleInformation" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式-时间扫描-设置样品",
+            description = "执行实验测试-经典模式-时间扫描-{operateType}样品操作",
+            recordParams = true
+    )
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSamplePort(@RequestBody FAddOrDeleteSampleDTO paramDto) {

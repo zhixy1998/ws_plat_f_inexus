@@ -238,7 +238,7 @@ public class SoftwareActivationController {
     /**
      * 批量删除
      */
-    @ButtonPermission("revokeActivation")
+    @ButtonPermission("softwareActivationBatchInstrument")
     @OperateLog(module = "批量删除", description = "批量删除软件激活记录", recordParams = true)
     @DeleteMapping("/batch")
     @ApiOperation("批量删除软件激活记录")

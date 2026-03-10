@@ -122,8 +122,15 @@ public class SpectrumConciseController {
     public Result<List<FHeadVO>> querySampleHeads(@RequestParam String taskId) {
         return spectrumConciseService.querySampleHeads(taskId);
     }
-    @ButtonPermission("spectralScanSetSample")
-    @OperateLog(module = "实验测试-经典模式-光谱扫描-设置样品", description = "执行实验测试-经典模式-光谱扫描-设置样品记录", recordParams = true)
+    @ButtonPermission(
+            description = "实验测试-经典模式-光谱扫描-设置样品", // 操作描述
+            permissionMapping = "add=spectralScanSetSample,edit=spectralScanModifySampleInformation" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式-光谱扫描-设置样品",
+            description = "执行实验测试-经典模式-光谱扫描-{operateType}样品操作",
+            recordParams = true
+    )
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSamplePort(@RequestBody FAddOrDeleteSampleDTO paramDto) {
