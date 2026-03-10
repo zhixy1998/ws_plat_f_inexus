@@ -415,6 +415,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         SetParam setParam = new SetParam();
         setParam.setPhotoMode(Integer.valueOf(paramDto.getLuminosity()));
         setParam.setSetWl(Double.valueOf(paramDto.getWaveLength()));
+        if (paramDto.getMethodName()==null) {
+            return Result.fail("方法名称不能为空");
+        }
         boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
         if (!b) {
             log.error("下发参数失败,请查看是否连接仪器");

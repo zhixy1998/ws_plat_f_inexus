@@ -3300,6 +3300,9 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (paramDto.getScanSpeed().equals("3") && (start > 1100 || start < 380)) {
             return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
         }
+        if (paramDto.getMethodName()==null) {
+            return Result.fail("方法名称不能为空");
+        }
         // 下发参数
         SetParam setParam = new SetParam();
         setParam.setPhotoMode(Integer.valueOf(paramDto.getLuminosity()));
