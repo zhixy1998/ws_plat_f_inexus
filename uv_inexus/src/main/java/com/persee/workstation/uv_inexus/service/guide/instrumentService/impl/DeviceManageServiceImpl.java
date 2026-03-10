@@ -32,6 +32,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
+import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
@@ -955,38 +956,20 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return infoService.queryDeviceTypeInfo(deviceSerialNumber);
     }
 
+
+    @Autowired
+    RestUtil restUtil;
+
     @Override
     public void test() {
-//        List<DeviceTypeInfoPO> deviceTypeInfoPOS = deviceTypeInfoDAO.selectList(null);
-//        for (DeviceTypeInfoPO po : deviceTypeInfoPOS) {
-//            log.info("{}", po);
-//
-//            LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
-//            query.eq(DeviceModelInfoPO::getDevTypeId, po.getId());
-//            List<DeviceModelInfoPO> modelInfoPOS = deviceModelInfoDAO.selectList(query);
-//            for (DeviceModelInfoPO modelInfoPO : modelInfoPOS) {
-//                log.info("{}", modelInfoPO);
-//            }
-//
-//        }
-//
-//        try {
-//            devMessageUtil.zero(new Command("GetWlList", null), "169.254.180.253");
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
 
-//        ChangeParam(wl=500.0, r=491765, s=402424, d=1716)
-
-
-//        ChangeParam(wl=500, r=128337, s=103479, d=128337)
-//        ChangeParam or = new ChangeParam("500", "128337", "103479", "128337");
-//        ChangeParam cu = new ChangeParam("500", "491765", "402424", "1716");
-
-////        ChangeParam changeParam = new ChangeParam("0.01", "123456", "9852", "123456");
-//        String s = DataCountUtil.countTPercent(or, cu, 1.0);
-//        String s1 = DataCountUtil.changeTPercentOrAbs(null, s);
-//        System.out.println("+++" + s + "+++" + s1);
+        String formula = "(A1*m0)/(A0*m1)*w0*100";
+        String identity = "A1, m0, A0, m1, w0";
+        String values = "2.0,3,1.5,1,8";
+        String upperCase = formula.toUpperCase();
+        identity = identity.toUpperCase();
+        String result = restUtil.sum(upperCase, identity, values);
+        System.out.println(result);
 
 
     }

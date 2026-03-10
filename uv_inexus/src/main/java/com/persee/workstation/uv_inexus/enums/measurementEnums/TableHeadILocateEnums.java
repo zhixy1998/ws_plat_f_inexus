@@ -17,6 +17,7 @@ public enum TableHeadILocateEnums {
     sample("sample", "样品表头"),
     location("location", "位置"),
     data("data","测量页用户新增表头"),
+    curve("curve", "曲线表头，用于参数绑定"),
     measure("measure", "后端添加测量表头"),
     other("other", "其他表头,如采样时间，备注等"),
     remark("remark", "备注"),

@@ -543,13 +543,13 @@ public class DeviceConnectionManager {
     public boolean setDevCurrentUseType(String deviceId, String status) {
         DeviceConnectInfo device = deviceMap.get(deviceId);
         if (device == null) {
-            logWarning("设置状态值失败: 设备不存在 %s", deviceId);
+            logWarning("设置使用类型状态值失败: 设备不存在 %s", deviceId);
             return false;
         }
 
         device.setUseType(status);
         device.updateLastUseTime();
-        logInfo("设置当前状态值: %s -> %s", deviceId, status);
+        logInfo("设置当前使用类型状态值: %s -> %s", deviceId, status);
         return true;
     }
 
@@ -637,13 +637,13 @@ public class DeviceConnectionManager {
     public boolean setMeasureValue(String deviceId, String currentMeasureValue) {
         DeviceConnectInfo device = deviceMap.get(deviceId);
         if (device == null) {
-            logWarning("设置当前波长失败: 设备不存在 %s", deviceId);
+            logWarning("设置当前测量结果失败: 设备不存在 %s", deviceId);
             return false;
         }
 
         device.setCurrentMeasureValue(currentMeasureValue);
         device.updateLastUseTime();
-        logInfo("设置当前波长: %s -> %s", deviceId, currentMeasureValue);
+        logInfo("设置当前测量结果: %s -> %s", deviceId, currentMeasureValue);
         return true;
     }
 

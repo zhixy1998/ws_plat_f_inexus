@@ -189,6 +189,17 @@ public class RationController {
         return Result.ok("测试成功");
     }
 
+    @ApiOperation("查询可绑定的表头")
+    @GetMapping("queryTableHead")
+    public Result<List<HeadVO>> queryTableHead(@RequestParam String taskId) {
+        R<List<HeadVO>> r = rationService.queryBindTableHead(taskId);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
     @ApiOperation("查询可绑定的方法参数")
     @GetMapping("queryInputParam")
     public Result<List<InputParam>> queryInputParam(@RequestParam String methodId) {

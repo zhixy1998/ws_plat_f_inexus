@@ -19,6 +19,8 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 
 import java.io.File;
@@ -149,7 +151,7 @@ public interface RationService {
     String fitDataRounding(String fitConcentration, RationParameter parameter);
 
 
-    R<List<RationCountDataInfo>> formula(List<RationWavelengthDataInfo> vo, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Integer digit);
+    R<List<RationCountDataInfo>> formula(List<RationCountDataInfo> countData, List<RationWavelengthDataInfo> wavelengthData,  TMeasureSample sample, TMeasureTask task, RationParameter parameter, Double minuend,Integer digit);
 
     R<Boolean> changeStandSampleDataDigit(String taskId, Integer digit);
 
@@ -158,6 +160,11 @@ public interface RationService {
     Result zero(String deviceSerialNumber, String methodId, String taskId, String updateBy);
 
     Result zero2(String deviceSerialNumber, String methodId, String taskId, String updateBy);
+
+    /**
+     * 获取绑定的表头
+     */
+    R<List<HeadVO>> queryBindTableHead(String taskId);
 
     /**
      * 查询可绑定的方法参数

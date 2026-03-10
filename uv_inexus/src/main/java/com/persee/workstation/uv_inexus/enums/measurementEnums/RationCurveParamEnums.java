@@ -30,6 +30,23 @@ public enum RationCurveParamEnums {
     direct_coefficient("direct","直接系数法"),
     standard_curve("standard","标准曲线法"),
 
+    //一次项系数
+    coefficient_one("k1","一次项系数"),
+    //二次项系数
+    coefficient_two("k2","二次项系数"),
+    //三次项系数
+    coefficient_three("k3","三次项系数"),
+    //四次项系数
+    coefficient_four("k4","四次项系数"),
+    //截距
+    intercept("b","截距"),
+    //Abs值
+    abs("Abs","样品Abs值"),
+    //空白Abs值
+    blank_abs("Blank_Abs","空白Abs值"),
+    //abs和空白差值
+    abs_blank_difference("Abs-Blank","abs和空白差值"),
+
     //单池重复
     single_pool_repeat("单池重复","单池重复"),
     //不重复

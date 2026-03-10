@@ -896,6 +896,23 @@ public class RationMeasureNewWebSocket{
 
                             }
                         }
+                        if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
+                            Double emptyValue = null;
+                            if (empty) {
+                                emptyValue = minuend;
+                            }
+                            R<RationDataVO> formulaCount = formulaCont(deviceSerialNumber, data, sample, task, parameter, emptyValue);
+                            if (!formulaCount.getSuccess()) {
+
+                                sendError(deviceSerialNumber, "公式计算出错，请检查公式配置！");
+                                return;
+                            }
+                            data = formulaCount.getData();
+
+                            measureAbsDataList.addAll(data.getCountData());
+                        }
+
+
                         saveDataInfo.setCountData(measureAbsDataList);
                         rationService.saveAnalyzeData(saveDataInfo);
 
@@ -1040,6 +1057,29 @@ public class RationMeasureNewWebSocket{
         dataList.add(saveData);
         parallelData.setDealDataList(dataList);
         rationService.updateParallelData(dataList);
+    }
+
+    private R<RationDataVO> formulaCont(String deviceSerialNumber, RationDataVO vo, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Double minuend) {
+        R<List<RationCountDataInfo>> countedData = rationService.formula(vo.getCountData(), vo.getWavelengthData(), sample, task, parameter, minuend, digit);
+
+        if (!countedData.getSuccess()) {
+            log.info(countedData.getMessage());
+            sendError(deviceSerialNumber, "请检查公式配置");
+            return R.fail(countedData.getMessage());
+        }
+
+        List<RationCountDataInfo> countDataInfos = countedData.getData();
+        countDataInfos = rationService.dataRounding(countDataInfos, parameter);
+
+        for (RationCountDataInfo countDataInfo : countDataInfos){
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("sampleId", sample.getId());
+            jsonObject.put("key", countDataInfo.getIdentity());
+            jsonObject.put("value", countDataInfo.getColValue());
+            sendMessage(deviceSerialNumber, jsonObject);
+        }
+        vo.setCountData(countDataInfos);
+        return R.ok(vo);
     }
 
     /**
@@ -1542,12 +1582,12 @@ public class RationMeasureNewWebSocket{
                     jsonObject.put("sampleId", sample.getId());
                     jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
                     jsonObject.put("identity", waveLength + "-" + WaveLengthEnum.abs.getCode() + "-" + i);
-                    jsonObject.put("value", originDataInfo.getAbsValue());
+                    jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getAbsValue()));
                     sendMessage(deviceSerialNumber, jsonObject);
 
                     jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
                     jsonObject.put("identity", waveLength + "-" + WaveLengthEnum.tPercent.getCode() + "-" + i);
-                    jsonObject.put("value", originDataInfo.getTPercentValue());
+                    jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getTPercentValue()));
                     sendMessage(deviceSerialNumber, jsonObject);
 
                 }
