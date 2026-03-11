@@ -31,4 +31,42 @@
             and sample_kind = #{sample_kind}
         </if>
     </select>
+
+    <select id="selectHistoryTaskPage" resultType="com.persee.workstation.uv_inexus.vo.instrumentVo.HistoryTaskVO">
+        SELECT
+        t.task_name AS taskName,
+        u.real_name AS userName,
+        p.project_name AS projectName,
+        m.method_name AS methodName,
+        t.device_serial_number AS deviceNumber,
+        t.start_time AS startTime,
+        t.end_time AS endTime,
+        t.task_status AS taskStatus,
+        t.id AS taskId,
+        t.measure_type AS measureType
+        FROM t_measure_task t
+        LEFT JOIN t_measure_method m ON t.method_key = m.id
+        LEFT JOIN t_measure_project p ON t.project_item_key = p.id
+        LEFT JOIN t_sys_user u ON t.user_id = u.id
+        <where>
+            AND t.is_delete = '0'
+
+            <if test="query.search != null and query.search != ''">
+                AND (m.method_name LIKE CONCAT('%', #{query.search}, '%')
+                OR t.task_name LIKE CONCAT('%', #{query.search}, '%'))
+            </if>
+
+            <if test="query.deviceNumber != null and query.deviceNumber != ''">
+                AND t.device_serial_number = #{query.deviceNumber}
+            </if>
+
+            <if test="query.startDateTime != null">
+                AND t.start_time &gt;= #{query.startDateTime}
+            </if>
+            <if test="query.endDateTime != null">
+                AND t.end_time &lt;= #{query.endDateTime}
+            </if>
+        </where>
+        ORDER BY t.create_time DESC
+    </select>
 </mapper>

@@ -11,7 +11,11 @@ package com.persee.workstation.uv_inexus.dao.guide.measurementDao;
 
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceHistoryTaskDTO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.HistoryTaskVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
 import org.apache.ibatis.annotations.Param;
@@ -43,5 +47,7 @@ public interface TMeasureTaskMapper extends BaseMapper<TMeasureTask> {
 
     @Select("select method_key from t_measure_task where user_id = #{userId}")
     Set<String> selectMethodIds(String userId);
+
+    IPage<HistoryTaskVO> selectHistoryTaskPage(Page<HistoryTaskVO> page, @Param("query") DeviceHistoryTaskDTO query);
 }
 

@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.instrumentController;
 
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.model.R;
@@ -31,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/dev/ins")
@@ -481,6 +483,43 @@ public class DeviceController {
     @PostMapping("/test")
     public void test(){
         deviceManageService.test();
+    }
+
+    @PostMapping("/queryHistoryTask")
+    @ApiOperation("查询历史任务")
+    public Result<Page<HistoryTaskVO>> queryHistoryTask(@RequestBody DeviceHistoryTaskDTO queryDto){
+        try {
+            Page<HistoryTaskVO> page = monitorService.getHistoryTask(queryDto);
+            return Result.ok(page);
+        } catch (Exception e) {
+            return Result.fail(e.getMessage());
+        }
+    }
+
+    @GetMapping("/getTypeStatistics")
+    @ApiOperation("检测类型分项统计")
+    public Result<Map<String, Object>> getTypeStatistics(
+            @RequestParam String updateBy,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        try {
+            return monitorService.getTypeStatistics(updateBy, startTime, endTime);
+        } catch (Exception e) {
+            return Result.fail(e.getMessage());
+        }
+    }
+
+    @GetMapping("/getProjectStatistics")
+    @ApiOperation("检测项目分项统计")
+    public Result<Map<String, Object>> getProjectStatistics(
+            @RequestParam String updateBy,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        try {
+            return monitorService.getProjectStatistics(updateBy, startTime, endTime);
+        } catch (Exception e) {
+            return Result.fail(e.getMessage());
+        }
     }
 
 

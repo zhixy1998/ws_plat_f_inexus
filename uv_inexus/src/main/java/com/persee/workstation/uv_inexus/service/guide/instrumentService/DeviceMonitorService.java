@@ -10,11 +10,14 @@
 package com.persee.workstation.uv_inexus.service.guide.instrumentService;
 
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public interface DeviceMonitorService {
 
@@ -52,6 +55,22 @@ public interface DeviceMonitorService {
      * @param id 任务id，任务id应该唯一
      */
 //    void getHistoryDetailed(String id);
+
+    /**
+     * 检测类型分项统计
+     */
+    Result<Map<String, Object>> getTypeStatistics(String updateBy, String startTime, String endTime);
+
+    /**
+     * 检测项目分项统计
+     */
+    Result<Map<String, Object>> getProjectStatistics(String updateBy, String startTime, String endTime);
+
+
+    /**
+     * 查询历史任务
+     */
+    Page<HistoryTaskVO> getHistoryTask(DeviceHistoryTaskDTO queryDto);
 
 
 
