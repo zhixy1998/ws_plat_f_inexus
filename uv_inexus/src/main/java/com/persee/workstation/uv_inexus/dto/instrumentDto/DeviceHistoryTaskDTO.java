@@ -11,14 +11,14 @@ import java.time.LocalDateTime;
 @Data
 public class DeviceHistoryTaskDTO {
 
-    @ApiModelProperty(value = "页码",example = "1")
-    private Integer pageNum=1;
+    @ApiModelProperty(value = "页码", example = "1")
+    private Integer pageNum = 1;
 
-    @ApiModelProperty(value = "每页数量",example = "10")
-    private Integer pageSize=20;
+    @ApiModelProperty(value = "每页数量", example = "10")
+    private Integer pageSize = 20;
 
     @ApiModelProperty("仪器编号")
-    private String deviceNumber;
+    private String deviceSerialNumber;
 
     @ApiModelProperty("搜索条件")
     private String search;

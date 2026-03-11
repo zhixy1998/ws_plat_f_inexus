@@ -53,7 +53,7 @@ public class DeviceController {
 
     @GetMapping("/stop")
     @ApiOperation("新驱动-停止扫描")
-    public Result<Boolean> stop (@RequestParam String deviceSerialNumber) throws InterruptedException {
+    public Result<Boolean> stop(@RequestParam String deviceSerialNumber) throws InterruptedException {
         Boolean r = deviceManageService.stop(deviceSerialNumber).getSuccess();
         if (r) {
             return Result.ok(true);
@@ -64,8 +64,8 @@ public class DeviceController {
 
     @PostMapping("/zero")
     @ApiOperation("新驱动-停止扫描")
-    public Result<Boolean> zero ( @RequestBody DevOperationInputParam inputParam) throws InterruptedException {
-        Boolean r = deviceManageService.zero(inputParam.getDeviceSerialNumber(),inputParam.getWavelength()).getSuccess();
+    public Result<Boolean> zero(@RequestBody DevOperationInputParam inputParam) throws InterruptedException {
+        Boolean r = deviceManageService.zero(inputParam.getDeviceSerialNumber(), inputParam.getWavelength()).getSuccess();
         if (r) {
             return Result.ok(true);
         } else {
@@ -89,7 +89,7 @@ public class DeviceController {
         }
     }
 
-        @PostMapping("/TimeMeasure")
+    @PostMapping("/TimeMeasure")
     @ApiOperation("时间扫描测试")
     @LogPoint(value = "扫描测试", module = "设备管理", recordParams = true, recordResult = true)
     public Result<OperationResultEntity> TimeMeasure(
@@ -104,7 +104,6 @@ public class DeviceController {
             return Result.ok(result.getData());
         }
     }
-
 
 
     @PostMapping("/setParam")
@@ -144,7 +143,7 @@ public class DeviceController {
 
     @GetMapping("/findDevice")
     @ApiOperation("查找仪器的接口")
-    @LogPoint(value = "查找仪器", module = "设备管理", recordParams = true,recordResult = true)
+    @LogPoint(value = "查找仪器", module = "设备管理", recordParams = true, recordResult = true)
     public Result<List<FindDeviceVO>> findDevice() throws Exception {
         R<List<FindDeviceVO>> device = deviceManageService.findDevice();
         if (!device.getSuccess()) {
@@ -157,7 +156,7 @@ public class DeviceController {
 
     @GetMapping("/searchDevice")
     @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
-    @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true,recordResult = true)
+    @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true, recordResult = true)
     public Result<List<SearchInfo>> searchDevice(@RequestParam(required = false) Integer connectType) {
         R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType);
         if (!r.getSuccess()) {
@@ -181,7 +180,7 @@ public class DeviceController {
 
     @PostMapping("/connect")
     @ApiOperation("新驱动-连接仪器")
-    @LogPoint(value = "连接仪器", module = "设备管理", recordParams = true,recordResult = true)
+    @LogPoint(value = "连接仪器", module = "设备管理", recordParams = true, recordResult = true)
     public Result<FindDeviceVO> connect(@RequestBody SearchInfo param) throws Exception {
 
         R<FindDeviceVO> r = deviceManageService.connect(param);
@@ -245,7 +244,7 @@ public class DeviceController {
 
     @GetMapping("/query")
     @ApiOperation("仪器管理查询接口")
-    public Result<DeviceInfoVO> query(@RequestParam String deviceSerialNumber, @RequestParam String updateBy){
+    public Result<DeviceInfoVO> query(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
         R<DeviceInfoVO> infoVO = deviceManageService.queryDeviceInfo(deviceSerialNumber, updateBy);
         if (infoVO.getSuccess()) {
             return Result.ok(infoVO.getData());
@@ -256,11 +255,11 @@ public class DeviceController {
 
     @PostMapping("/init")
     @ApiOperation("仪器初始化接口")
-    public Result<Boolean> deviceInit(@RequestBody DeviceInitDTO initDTO){
+    public Result<Boolean> deviceInit(@RequestBody DeviceInitDTO initDTO) {
         R<Boolean> init = deviceManageService.init(initDTO);
         if (init.getSuccess()) {
             return Result.ok(init.getData());
-        }else {
+        } else {
             return Result.fail(init.getMessage());
         }
     }
@@ -280,7 +279,7 @@ public class DeviceController {
     @ApiOperation("更改仪器名称")
     public Result<Boolean> updateDeviceName(@RequestParam String deviceSerialNumber,
                                             @RequestParam String updateBy,
-                                            @RequestParam String deviceName){
+                                            @RequestParam String deviceName) {
         Boolean r = deviceInfoService.changeDeviceName(deviceSerialNumber, deviceName, updateBy);
         if (r) {
             return Result.ok(true);
@@ -316,7 +315,7 @@ public class DeviceController {
 
     @PostMapping("/start")
     @ApiOperation("仪器开机接口")
-    public Result<Boolean> deviceStart(@RequestBody DeviceStartDTO startDTO){
+    public Result<Boolean> deviceStart(@RequestBody DeviceStartDTO startDTO) {
         deviceManageService.startDevice(startDTO);
         return null;
     }
@@ -330,14 +329,14 @@ public class DeviceController {
 
     @GetMapping("/devMonitor")
     @ApiOperation("查询仪器监控信息")
-    public Result<List<DeviceMonitorVO>> deviceMonitor(@RequestBody DeviceQueryDTO queryDTO){
+    public Result<List<DeviceMonitorVO>> deviceMonitor(@RequestBody DeviceQueryDTO queryDTO) {
         monitorService.queryStatus(queryDTO);
         return null;
     }
 
     @GetMapping("/componentMonitor")
     @ApiOperation("查询器件监控信息")
-    public Result<DeviceComponentMonitorVO> componentMonitor(@RequestBody DeviceQueryDTO dto){
+    public Result<DeviceComponentMonitorVO> componentMonitor(@RequestBody DeviceQueryDTO dto) {
         monitorService.componentQuery(dto);
         return null;
     }
@@ -346,7 +345,7 @@ public class DeviceController {
     @ApiOperation("新--查询仪器配置")
     public Result<DeviceConfigVO> getDevConfig() {
         R<DeviceConfigVO> r = deviceManageService.newQueryDeviceConfig();
-        if (r.getSuccess()){
+        if (r.getSuccess()) {
             return Result.ok(r.getData());
         } else {
             return Result.fail(r.getMessage());
@@ -355,7 +354,7 @@ public class DeviceController {
 
     @PostMapping("/devConfig")
     @ApiOperation("新--仪器配置接口")
-    public Result<Boolean> devConfig(@RequestBody DevConfigDTO dto){
+    public Result<Boolean> devConfig(@RequestBody DevConfigDTO dto) {
         R<Boolean> r = deviceManageService.newDevConfig(dto);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -366,7 +365,7 @@ public class DeviceController {
 
     @GetMapping("/setMessagePort")
     @ApiOperation("设置仪器通讯端口")
-    public Result<Boolean> setMessagePort(@RequestParam Integer messagePort, @RequestParam String updateBy){
+    public Result<Boolean> setMessagePort(@RequestParam Integer messagePort, @RequestParam String updateBy) {
         R<Boolean> r = deviceManageService.setDevMessagePort(messagePort, updateBy);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -378,16 +377,15 @@ public class DeviceController {
 
     @GetMapping("/getBandWidth")
     @ApiOperation("查询光谱带宽")
-    public Result<List<Double>> getBandWidth(@RequestParam String deviceSerialNumber){
+    public Result<List<Double>> getBandWidth(@RequestParam String deviceSerialNumber) {
         List<Double> bandWidth = deviceManageService.getBandWidth(deviceSerialNumber);
         return Result.ok(bandWidth);
     }
 
 
-
     @ApiOperation("设置进样器参数配置")
     @PostMapping("/setInjectorConf")
-    public Result<Boolean> setInjectorConf(@RequestBody DeviceAutoInjectorPO injectorPO){
+    public Result<Boolean> setInjectorConf(@RequestBody DeviceAutoInjectorPO injectorPO) {
         R<Boolean> r = injectorService.setInjectorConf(injectorPO);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -398,7 +396,7 @@ public class DeviceController {
 
     @ApiOperation("设置进样器托盘参数配置")
     @PostMapping("/setInjectorTray")
-    public Result<Boolean> setInjectorTray(@RequestBody List<InjectionTrayParamPO> poList){
+    public Result<Boolean> setInjectorTray(@RequestBody List<InjectionTrayParamPO> poList) {
         R<Boolean> r = injectorService.setInjectorTray(poList);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -409,7 +407,7 @@ public class DeviceController {
 
     @GetMapping("/getInjectorConf")
     @ApiOperation("查询进样器参数配置")
-    public Result<DeviceAutoInjectorPO> getInjectorConf(@RequestParam String deviceSerialNumber){
+    public Result<DeviceAutoInjectorPO> getInjectorConf(@RequestParam String deviceSerialNumber) {
         R<DeviceAutoInjectorPO> r = injectorService.queryInjectorConf(deviceSerialNumber);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -420,7 +418,7 @@ public class DeviceController {
 
     @GetMapping("/checkConnect")
     @ApiOperation("联机")
-    public Result<Integer> checkConnect(@RequestParam String deviceSerialNumber){
+    public Result<Integer> checkConnect(@RequestParam String deviceSerialNumber) {
         R<Integer> r = injectorService.checkConnectStatus(deviceSerialNumber);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -438,7 +436,7 @@ public class DeviceController {
 
     }
 
-//    @PostMapping("/calibration")
+    //    @PostMapping("/calibration")
 //    @ApiOperation("仪器校准")
 //    public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto){
 //        R<Boolean> r = deviceManageService.deviceCalibration(dto);
@@ -450,7 +448,7 @@ public class DeviceController {
 //    }
     @PostMapping("/calibration")
     @ApiOperation("仪器校准")
-    public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto){
+    public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto) {
         R<Boolean> r = deviceManageService.deviceNewCalibration(dto);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -462,7 +460,7 @@ public class DeviceController {
 
     @GetMapping("/usageStatistics")
     @ApiOperation("使用情况统计")
-    public Result<List<DeviceUsageStatisticsVO>> usageStatistics(@RequestBody DeviceUsageCountDTO dto){
+    public Result<List<DeviceUsageStatisticsVO>> usageStatistics(@RequestBody DeviceUsageCountDTO dto) {
 
         monitorService.countUsageInfo(dto);
         return null;
@@ -481,13 +479,13 @@ public class DeviceController {
     }
 
     @PostMapping("/test")
-    public void test(){
+    public void test() {
         deviceManageService.test();
     }
 
     @PostMapping("/queryHistoryTask")
     @ApiOperation("查询历史任务")
-    public Result<Page<HistoryTaskVO>> queryHistoryTask(@RequestBody DeviceHistoryTaskDTO queryDto){
+    public Result<Page<HistoryTaskVO>> queryHistoryTask(@RequestBody DeviceHistoryTaskDTO queryDto) {
         try {
             Page<HistoryTaskVO> page = monitorService.getHistoryTask(queryDto);
             return Result.ok(page);
@@ -500,10 +498,11 @@ public class DeviceController {
     @ApiOperation("检测类型分项统计")
     public Result<Map<String, Object>> getTypeStatistics(
             @RequestParam String updateBy,
+            @RequestParam String deviceSerialNumber,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
         try {
-            return monitorService.getTypeStatistics(updateBy, startTime, endTime);
+            return monitorService.getTypeStatistics(updateBy, startTime, endTime, deviceSerialNumber);
         } catch (Exception e) {
             return Result.fail(e.getMessage());
         }
@@ -513,15 +512,15 @@ public class DeviceController {
     @ApiOperation("检测项目分项统计")
     public Result<Map<String, Object>> getProjectStatistics(
             @RequestParam String updateBy,
+            @RequestParam String deviceSerialNumber,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
         try {
-            return monitorService.getProjectStatistics(updateBy, startTime, endTime);
+            return monitorService.getProjectStatistics(updateBy, startTime, endTime, deviceSerialNumber);
         } catch (Exception e) {
             return Result.fail(e.getMessage());
         }
     }
-
 
 
 }

@@ -20,6 +20,7 @@ import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceQueryDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceUsageCountDTO;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceMonitorEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceTaskStatusEnum;
+import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
@@ -104,10 +105,15 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
     }
 
     @Override
-    public Result<Map<String, Object>> getTypeStatistics(String updateBy, String startTime, String endTime) {
+    public Result<Map<String, Object>> getTypeStatistics(String updateBy, String startTime, String endTime, String deviceNumber) {
+        if (StringUtils.isBlank(deviceNumber)) {
+            log.warn("获取类型统计失败: 仪器编号为空");
+            return Result.fail(YamlMessageSource.getMessageStatic("00205001"));
+        }
+
         if (StringUtils.isBlank(updateBy)) {
             log.warn("获取类型统计失败: 用户名为空");
-            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
+            return Result.fail(YamlMessageSource.getMessageStatic("00205002"));
         }
 
         try {
@@ -117,7 +123,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
 
             if (user == null) {
                 log.warn("获取类型统计失败: 用户 '{}' 不存在", updateBy);
-                return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+                return Result.fail(YamlMessageSource.getMessageStatic("00205003"));
             }
 
             SystemLogSwitchPO po = dao.selectById(userId);
@@ -127,8 +133,9 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
             if (po != null && Boolean.TRUE.equals(po.getStatTypeEnabled())) {
 
                 LambdaQueryWrapper<TMeasureTask> taskWrapper = new LambdaQueryWrapper<TMeasureTask>()
-                        .eq(TMeasureTask::getUserId, user.getId())
-                        .eq(TMeasureTask::getIsDelete, "0"); // 过滤已删除任务
+                        .eq(TMeasureTask::getDeviceSerialNumber, deviceNumber);
+//                        .eq(TMeasureTask::getUserId, user.getId())
+//                        .eq(TMeasureTask::getIsDelete, DeviceTaskStatusEnum.NOT_DELETED.getCode()); // 过滤已删除任务
                 if (StringUtils.isNotBlank(startTime)) {
                     taskWrapper.ge(TMeasureTask::getCreateTime, startTime + " 00:00:00");
                 }
@@ -144,23 +151,28 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
                     statisticsMap.put("taskTypeCounts", counts);
                 }
             } else {
-                log.info("统计开关未开启");
-                return Result.fail("统计开关未开启");
+                log.info("检测类型分项统计功能未开启");
+                return Result.fail(YamlMessageSource.getMessageStatic("00205004"));
             }
             return Result.ok(statisticsMap);
 
 
         } catch (Exception e) {
-            log.error("获取类型统计发生异常: {}", e.getMessage(), e);
-            return Result.fail(YamlMessageSource.getMessageStatic("00000014"));
+            log.error("获取检测类型分项统计异常: {}", e.getMessage(), e);
+            return Result.fail(YamlMessageSource.getMessageStatic("00205006"));
         }
     }
 
     @Override
-    public Result<Map<String, Object>> getProjectStatistics(String updateBy, String startTime, String endTime) {
+    public Result<Map<String, Object>> getProjectStatistics(String updateBy, String startTime, String endTime, String deviceNumber) {
+
+        if (StringUtils.isBlank(deviceNumber)) {
+            log.warn("获取项目统计失败: 仪器编号为空");
+            return Result.fail(YamlMessageSource.getMessageStatic("00205001"));
+        }
         if (StringUtils.isBlank(updateBy)) {
             log.warn("获取项目统计失败: 用户名为空");
-            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
+            return Result.fail(YamlMessageSource.getMessageStatic("00205002"));
         }
 
         try {
@@ -170,7 +182,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
 
             if (user == null) {
                 log.warn("获取项目统计失败: 用户 '{}' 不存在", updateBy);
-                return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+                return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
             }
 
             SystemLogSwitchPO po = dao.selectById(userId);
@@ -178,8 +190,9 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
 
             if (po != null && Boolean.TRUE.equals(po.getStatItemEnabled())) {
                 LambdaQueryWrapper<TMeasureTask> taskWrapper = new LambdaQueryWrapper<TMeasureTask>()
-                        .eq(TMeasureTask::getUserId, user.getId())
-                        .eq(TMeasureTask::getIsDelete, DeviceTaskStatusEnum.NOT_DELETED.getCode());
+                        .eq(TMeasureTask::getDeviceSerialNumber, deviceNumber);
+//                        .eq(TMeasureTask::getUserId, user.getId())
+//                        .eq(TMeasureTask::getIsDelete, DeviceTaskStatusEnum.NOT_DELETED.getCode());
                 if (StringUtils.isNotBlank(startTime)) {
                     taskWrapper.ge(TMeasureTask::getCreateTime, startTime + " 00:00:00");
                 }
@@ -214,24 +227,29 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
                     long validTotal = projectCounts.values().stream().mapToLong(Long::longValue).sum();
                     statisticsMap.put("totalCount", validTotal);
                 } else {
-                    return Result.fail("获取项目统计异常");
+                    return Result.fail(YamlMessageSource.getMessageStatic("00205007"));
                 }
 
                 return Result.ok(statisticsMap);
             }
 
             // 如果po为null或统计功能未开启
-            log.info("项目统计开关未开启");
-            return Result.fail("项目统计开关未开启");
+            log.info("检测项目分项统计功能未开启");
+            return Result.fail(YamlMessageSource.getMessageStatic("00205005"));
 
         } catch (Exception e) {
             log.error("获取项目统计异常: {}", e.getMessage(), e);
-            return Result.fail(YamlMessageSource.getMessageStatic("00000014"));
+            return Result.fail(YamlMessageSource.getMessageStatic("00205007"));
         }
     }
 
     @Override
-    public Page<HistoryTaskVO> getHistoryTask(DeviceHistoryTaskDTO queryDto) {
+    public Page<HistoryTaskVO> getHistoryTask(DeviceHistoryTaskDTO queryDto) throws BusinessException {
+
+        if (StringUtils.isBlank(queryDto.getDeviceSerialNumber())) {
+            log.warn("查询历史任务失败：仪器编号为空");
+            throw new BusinessException(YamlMessageSource.getMessageStatic("00205001"));
+        }
         // 1. 初始化分页
         Page<HistoryTaskVO> page = new Page<>(queryDto.getPageNum(), queryDto.getPageSize());
 

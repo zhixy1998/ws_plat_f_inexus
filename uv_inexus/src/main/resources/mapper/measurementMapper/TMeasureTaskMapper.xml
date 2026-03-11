@@ -12,19 +12,21 @@
 <mapper namespace="com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper">
 
 
-    <select id="getAllTask" resultType="com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO">
+    <select id="getAllTask"
+            resultType="com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO">
         select id as taskId,
-            task_name as taskName
+        task_name as taskName
         from t800_uv_inexus.t_measure_task
         where project_item_key = #{projectId} and measure_type = #{measureType}
     </select>
 
 
-    <select id="getPreHead" resultType="com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO">
+    <select id="getPreHead"
+            resultType="com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO">
         select name as name,
         identity as identity,
-            print_title as printTitle,
-            locate as locate
+        print_title as printTitle,
+        locate as locate
         from t800_uv_inexus.t_measure_preset_head
         where measure_type = #{measure_type}
         <if test="sample_kind != null">
@@ -49,15 +51,15 @@
         LEFT JOIN t_measure_project p ON t.project_item_key = p.id
         LEFT JOIN t_sys_user u ON t.user_id = u.id
         <where>
-            AND t.is_delete = '0'
+            <!--            AND t.is_delete = '0'-->
 
             <if test="query.search != null and query.search != ''">
                 AND (m.method_name LIKE CONCAT('%', #{query.search}, '%')
                 OR t.task_name LIKE CONCAT('%', #{query.search}, '%'))
             </if>
 
-            <if test="query.deviceNumber != null and query.deviceNumber != ''">
-                AND t.device_serial_number = #{query.deviceNumber}
+            <if test="query.deviceSerialNumber != null and query.deviceSerialNumber != ''">
+                AND t.device_serial_number = #{query.deviceSerialNumber}
             </if>
 
             <if test="query.startDateTime != null">
