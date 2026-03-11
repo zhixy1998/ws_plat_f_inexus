@@ -13,6 +13,8 @@ import java.util.List;
 
 import javax.validation.Valid;
 
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -61,12 +63,16 @@ public class GroupController {
         return sysGroupService.getGroupById(id);
     }
 
+    @ButtonPermission("catEditUserAddGroup")
+    @OperateLog(module = "用户管理-用户权限管理", description = "执行用户管理-用户权限管理-新增小组操作", recordParams = true)
     @PostMapping("/addGroup")
     @ApiOperation("新增小组")
     public Result<String> addGroup(@RequestBody @Valid GroupSaveDTO saveDTO) {
         return sysGroupService.addGroup(saveDTO);
     }
 
+    @ButtonPermission("catEditUserEditGroupNameInfo")
+    @OperateLog(module = "用户管理-用户权限管理", description = "执行用户管理-用户权限管理-修改小组信息操作", recordParams = true)
     @PutMapping("/updateGroup")
     @ApiOperation("修改小组")
     public Result<String> updateGroup(@RequestBody @Valid GroupSaveDTO saveDTO) {
@@ -79,6 +85,8 @@ public class GroupController {
         return sysGroupService.deleteBatch(ids);
     }
 
+    @ButtonPermission("catEditUserDeleteGroup")
+    @OperateLog(module = "用户管理-用户权限管理", description = "执行用户管理-用户权限管理-修改小组信息操作", recordParams = true)
     @DeleteMapping("/{id}")
     @ApiOperation("根据ID删除单个小组")
     public Result<String> deleteById(@PathVariable String id) {
