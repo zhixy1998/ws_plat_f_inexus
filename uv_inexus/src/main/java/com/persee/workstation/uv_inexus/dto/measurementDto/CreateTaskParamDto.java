@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 import java.util.List;
@@ -37,4 +38,6 @@ public class CreateTaskParamDto {
     private List<HeadVO> rationUnknowHeads;   // 未知品比例表头列表
     private List<Map<String, String>> rationStandData;    // 标准品比例数据列表，使用Map存储键值对形式的数据
     private List<Map<String, String>> rationUnknowData;   // 未知品比例数据列表，使用Map存储键值对形式的数据
+    @ApiModelProperty("操作类型：lumne/quantity/spectralScan/timeScan")
+    private String operateType;
 }

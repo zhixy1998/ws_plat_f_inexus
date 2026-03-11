@@ -113,8 +113,9 @@ public class ConciseCommonController {
     )
     @GetMapping("delMethod")
     @ApiOperation("删除方法")
-    public Result<String> delMethod(@RequestParam("methodId") String methodId) {
-        return conciseCommonService.delMethod(methodId);
+    public Result delMethod(DelTaskRequestDTO requestDTO) {
+        // 调用服务层，传递需要的参数
+        return conciseCommonService.delTask(requestDTO.getMethodId());
     }
 
     @PostMapping("queryHistoryTask")
@@ -147,8 +148,9 @@ public class ConciseCommonController {
     )
     @GetMapping("delTask")
     @ApiOperation("删除历史文件")
-    public Result delTask(@RequestParam("taskId") String taskId) {
-        return conciseCommonService.delTask(taskId);
+    public Result delTask(DelTaskRequestDTO requestDTO) {
+        // 调用服务层，传递需要的参数
+        return conciseCommonService.delTask(requestDTO.getTaskId());
     }
 
     @ButtonPermission(

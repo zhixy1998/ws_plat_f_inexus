@@ -63,7 +63,7 @@ public class PhotometricConciseController {
 
 
     @ButtonPermission("lumnCreateTask")
-    @OperateLog(module = "实验测试-经典模式-光度测量-新建任务", description = "执行实验测试-经典模式-光度测量-新建任务记录", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-光度测量-新建任务", description = "执行实验测试-经典模式-光度测量-新建任务操作", recordParams = true)
     @PostMapping("newDraft")
     @ApiOperation("新建草稿")
     @SysLog(action = "新建草稿",module = "光度测量",recordResult = true,recordParams = true)
@@ -80,7 +80,7 @@ public class PhotometricConciseController {
     }
 
     @ButtonPermission("lumneApplyMethod")
-    @OperateLog(module = "实验测试-经典模式-光度测量-应用方法", description = "执行实验测试-经典模式-光度测量-应用方法记录", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-光度测量-应用方法", description = "执行实验测试-经典模式-光度测量-应用方法操作", recordParams = true)
     @PostMapping("applyMethod")
     @ApiOperation("应用方法接口")
     public Result<FMeasurementCurrentInfoVO> applyMethod(@RequestBody NewPhotometricMethodParamCheckDTO methodParam) {
@@ -132,15 +132,17 @@ public class PhotometricConciseController {
         return fPhotometricService.getCurrentInfo(updateBy, measureType);
     }
 
-    @ButtonPermission(
-            description = "实验测试-经典模式-光定量测量-设置样品", // 操作描述
-            permissionMapping = "add=lumnsetSample,edit=lumnmodifySampleInformation,delete=lumnDelSample" // 自定义操作类型→驼峰权限标识
-    )
-    @OperateLog(
-            module = "实验测试-经典模式-定量测量-设置样品",
-            description = "执行实验测试-经典模式-光度测量-{operateType}样品操作",
-            recordParams = true
-    )
+//    @ButtonPermission(
+//            description = "实验测试-经典模式-光定测量-设置样品", // 操作描述
+//            permissionMapping = "add=lumnsetSample,edit=lumnmodifySampleInformation,delete=lumnDelSample" // 自定义操作类型→驼峰权限标识
+//    )
+//    @OperateLog(
+//            module = "实验测试-经典模式-光定测量-设置样品",
+//            description = "执行实验测试-经典模式-光度测量-{operateType}样品操作",
+//            recordParams = true
+//    )
+    @ButtonPermission("lumnsetSample")
+    @OperateLog(module = "实验测试-经典模式-光度测量-设置样品", description = "执行实验测试-经典模式-光度测量-设置样品操作", recordParams = true)
     @PostMapping("addOrDeleteSample")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSample(@RequestBody FAddOrDeleteSampleDTO dto) {
@@ -148,7 +150,7 @@ public class PhotometricConciseController {
     }
 
     @ButtonPermission("lumnDelSample")
-    @OperateLog(module = "实验测试-经典模式-光度测量-删除样品", description = "执行实验测试-经典模式-光度测量-删除样品记录", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-光度测量-删除样品", description = "执行实验测试-经典模式-光度测量-删除样品操作", recordParams = true)
     @GetMapping("deleteOneSample")
     @ApiOperation("删除单个样本接口")
     public Result deleteOneSample(String taskId, String sampleId) {
@@ -196,7 +198,7 @@ public class PhotometricConciseController {
     }
 
     @ButtonPermission("lumneZero")
-    @OperateLog(module = "实验测试-经典模式-光度测量-校零", description = "执行实验测试-经典模式-光度测量-校零记录", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-光度测量-校零", description = "执行实验测试-经典模式-光度测量-校零操作", recordParams = true)
     @GetMapping("zero")
     @ApiOperation("校零接口")
     public Result photoZero(@RequestParam String deviceSerialNumber,
@@ -259,7 +261,7 @@ public class PhotometricConciseController {
     }
     */
     @ButtonPermission("lumneExportData")
-    @OperateLog(module = "实验测试-经典模式-光度测量-导出数据", description = "执行实验测试-经典模式-光度测量-导出数据记录", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-光度测量-导出数据", description = "执行实验测试-经典模式-光度测量-导出数据操作", recordParams = true)
     @GetMapping("downloadDoc")
     @ApiOperation("多格式文件下载接口（支持word/excel/txt）- 集成children和option数据")
     public ResponseEntity<?> downloadDoc(

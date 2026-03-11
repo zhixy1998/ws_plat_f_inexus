@@ -14,6 +14,8 @@ import lombok.Data;
 
 @Data
 public class UpdateMethodDto {
+    @ApiModelProperty("操作类型：lumne/quantity/spectralScan/timeScan")
+    private String operateType;
     @ApiModelProperty("方法Id")
     private String methodId;
     @ApiModelProperty("方法名称")

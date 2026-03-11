@@ -109,15 +109,17 @@ public class TimeSweepConciseController {
         return timeSweepConciseService.querySampleHeads(taskId);
     }
 
-    @ButtonPermission(
-            description = "实验测试-经典模式-时间扫描-设置样品", // 操作描述
-            permissionMapping = "add=timeScanSetSample,edit=timeScanModifySampleInformation,delete=timeScanDeleteSample" // 自定义操作类型→驼峰权限标识
-    )
-    @OperateLog(
-            module = "实验测试-经典模式-时间扫描-设置样品",
-            description = "执行实验测试-经典模式-时间扫描-{operateType}样品操作",
-            recordParams = true
-    )
+//    @ButtonPermission(
+//            description = "实验测试-经典模式-时间扫描-设置样品", // 操作描述
+//            permissionMapping = "add=timeScanSetSample,edit=timeScanModifySampleInformation,delete=timeScanDeleteSample" // 自定义操作类型→驼峰权限标识
+//    )
+//    @OperateLog(
+//            module = "实验测试-经典模式-时间扫描-设置样品",
+//            description = "执行实验测试-经典模式-时间扫描-{operateType}样品操作",
+//            recordParams = true
+//    )
+    @ButtonPermission("timeScanSetSample")
+    @OperateLog(module = "实验测试-经典模式-时间扫描-设置样品", description = "执行实验测试-经典模式-时间扫描-设置样品操作", recordParams = true)
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSamplePort(@RequestBody FAddOrDeleteSampleDTO paramDto) {
