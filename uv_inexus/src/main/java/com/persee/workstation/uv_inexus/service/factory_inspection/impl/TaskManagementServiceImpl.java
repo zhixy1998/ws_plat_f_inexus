@@ -70,6 +70,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     private WorkbookCacheManager workbookCacheManager;
     @Autowired
     private EhcacheUtil ehcacheUtil;
+    @Lazy
     @Autowired
     private DeviceManageService deviceManageService;
     @Autowired

@@ -15,14 +15,17 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.*;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.TaskAddDto;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.*;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
+import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
@@ -46,6 +49,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Slf4j
@@ -114,6 +118,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     Integer receivePort;
 
     private static volatile Map<String, Boolean> stopInit = new HashMap<>();
+    @Autowired
+    private TaskManagementService taskManagementService;
 
     @Override
     public R<DeviceInfoVO> queryDeviceInfo(String deviceSerialNumber, String updateBy) {
@@ -397,7 +403,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
 
-
     @Override
     public R<Boolean> closeOrOpenLamp(String lampType, Integer status, String deviceSerialNumber) {
 
@@ -641,7 +646,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             po.setCreateBy(dto.getUpdateBy());
             po.setUpdateBy(dto.getUpdateBy());
-            boolean a = devConfigDAO.insert(po) > 0 ;
+            boolean a = devConfigDAO.insert(po) > 0;
             if (a) {
                 return R.ok();
             }
@@ -651,7 +656,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             BeanUtils.copyProperties(dto, po);
             po.setId(userId);
 
-            boolean a = devConfigDAO.updateById(po) > 0 ;
+            boolean a = devConfigDAO.updateById(po) > 0;
             if (a) {
                 return R.ok();
             }
@@ -679,8 +684,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
         return emptyNames.toArray(new String[0]);
     }
-
-
 
 
     @Override
@@ -901,7 +904,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 i++;
             }
         }
-        if (DeviceCalibrationParamEnum.Start.getType().equals( param) || DeviceCalibrationParamEnum.End.getType().equals(param)){
+        if (DeviceCalibrationParamEnum.Start.getType().equals(param) || DeviceCalibrationParamEnum.End.getType().equals(param)) {
             DataNameValue min = new DataNameValue();
             min.setDataKey("min");
             min.setDataValue(po.getMinWavelength());
@@ -1534,6 +1537,76 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return R.fail(operation.getMessage());
         } else {
             return R.ok(true);
+        }
+    }
+
+    @Override
+    public R connect(List<SearchInfo> params, String updateBy, String templateId) {
+        if (params == null || params.isEmpty()) {
+            return R.fail("参数为空");
+        }
+
+        try {
+            String userId = params.get(0).getUpdateBy();
+            Integer connectType = params.get(0).getConnectType();
+
+            log.info("批量连接设备：userId={}, 设备数量={}", userId, params.size());
+
+//            List<FindDeviceVO> results = new ArrayList<>();
+            int successCount = 0;
+            int failCount = 0;
+            ArrayList<HashMap<String, String>> list = new ArrayList<>();
+
+            for (SearchInfo param : params) {
+                try {
+                    // 确保每个参数都有正确的 userId 和 connectType
+                    param.setUpdateBy(userId);
+                    param.setConnectType(connectType);
+
+                    // 调用单台设备连接方法
+                    R<FindDeviceVO> result = connect(param);
+
+                    if (result.getSuccess()) {
+                        String deviceSerialNumber = result.getData().getDeviceSerialNumber();
+                        R<Boolean> booleanR = startInitDevice(deviceSerialNumber, updateBy);
+                        //这里初始化之后还要创建新的任务，根据当前选定的模板创建任务，其实就是检定校准的任务
+                        if (booleanR.getSuccess()) {
+                            TaskAddDto taskAddDto = new TaskAddDto();
+                            taskAddDto.setDetectName(deviceSerialNumber);
+                            taskAddDto.setUseTemplate(templateId);
+//                            taskAddDto.setContentCategory();
+                            taskAddDto.setCreateBy(updateBy);
+//                            taskAddDto.setUpdateBy(LocalDateTime.now().toString());
+                            taskAddDto.setCreated(LocalDateTime.now());
+//                            taskAddDto.setUpdated();
+                            taskAddDto.setSerialNumber(deviceSerialNumber);
+
+
+                            Result<HashMap<String, String>> task = taskManagementService.newTask(taskAddDto);
+                            list.add(task.getData());
+                        }
+
+
+//                        results.add(result.getData());
+                        successCount++;
+                    } else {
+                        failCount++;
+                        log.warn("批量连接中部分失败：device={}, error={}",
+                                param.getDeviceIp(), result.getMessage());
+                    }
+                } catch (Exception e) {
+                    failCount++;
+                    log.error("批量连接中异常：device={}", param.getDeviceIp(), e);
+                }
+            }
+
+            log.info("批量连接完成：总数={}, 成功={}, 失败={}",
+                    params.size(), successCount, failCount);
+            return R.ok(list);
+
+        } catch (Exception e) {
+            log.error("批量连接异常", e);
+            return R.fail();
         }
     }
 }
