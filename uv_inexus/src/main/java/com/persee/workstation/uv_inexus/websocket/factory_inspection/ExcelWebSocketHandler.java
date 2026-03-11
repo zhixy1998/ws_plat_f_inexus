@@ -177,7 +177,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private FindMaxOffsetUVTestTool findMaxOffsetUVTestTool;
     @Autowired
     private SpectrumResultCalculator calculator;
-//    private volatile Boolean autoSwitchSamplePool = true;
+    //    private volatile Boolean autoSwitchSamplePool = true;
     private final UnknowCountMessageQueue queue = MessageOnTimeDeal.unknowCountMessageQueue;
     //用任务id做主键，任务当前测量的检测项为值，线程安全
     private final Map<String, String> currentMeasureItemMap = new ConcurrentHashMap<>();
@@ -210,6 +210,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, Long> lastActivityTime = new ConcurrentHashMap<>();
     // 记录心跳任务
     private final Map<String, ScheduledFuture<?>> heartbeatTasks = new ConcurrentHashMap<>();
+
+    // 时间扫描停止的控制
+    private static final ConcurrentHashMap<String, Boolean> timeScanStopControl = new ConcurrentHashMap<>();
 
     private static final long HEARTBEAT_INTERVAL = 30000; // 30秒心跳间隔
     private static final long HEARTBEAT_TIMEOUT = 60000;   // 60秒超时
@@ -306,9 +309,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
     private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
-        log.info("我被调用了"+payload.toString());
+        log.info("我被调用了" + payload.toString());
         try {
-            if(originalSession != null && !isSessionValid(originalSession)){
+            if (originalSession != null && !isSessionValid(originalSession)) {
                 originalSession.sendMessage(new TextMessage(payload.toJSONString()));
                 return true;
             }
@@ -553,7 +556,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     // 修改 setTaskMeasuring 方法
     public void setTaskMeasuring(String taskId, boolean isMeasuring) throws BusinessException {
-        if (!isMeasuring){
+        if (!isMeasuring) {
             TaskManagement management = taskService.getById(taskId);
             deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
         }
@@ -856,20 +859,24 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                            sendToActiveSession(session, taskId, confirmMsg);
                         } else if (scanCount != null) {
                             log.info("时间扫描>>>>>停止");
-                            setTaskMeasuring(taskId, false);
-                            TaskManagement management = taskService.getById(taskId);
+                            while (true) {
+                                if (timeScanStopControl.get(taskId)) {
+//                            setTaskMeasuring(taskId, false);
+                                    TaskManagement management = taskService.getById(taskId);
 //                            R<String> device = deviceManageService.getConnectDevice(updateBy);
 //                            if (device.getSuccess()) {
-                                ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
-                                DeviceInfoPO info = infoService.getInfo(management.getOperationInstrument());
-                                Boolean put = timeMeasureIsStop.put(info.getDeviceId(), true);
-                                stopTask(taskId);
-                                // 发送确认消息
-                                JSONObject confirmMsg = new JSONObject();
-                                confirmMsg.put("isMeasuring", false);
-                                sendToActiveSession(session, taskId, confirmMsg);
-                                deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
-
+                                    ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
+                                    DeviceInfoPO info = infoService.getInfo(management.getOperationInstrument());
+                                    Boolean put = timeMeasureIsStop.put(info.getDeviceId(), true);
+                                    stopTask(taskId);
+                                    // 发送确认消息
+                                    JSONObject confirmMsg = new JSONObject();
+                                    confirmMsg.put("isMeasuring", false);
+                                    sendToActiveSession(session, taskId, confirmMsg);
+                                    deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
+                                    break;
+                                }
+                            }
 //                            }
                         } else {
                             log.info("光度扫描>>>>>>>>停止");
@@ -906,7 +913,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     String occupiedTaskId = findTaskByDevice(management1.getOperationInstrument());
                     if (StringUtils.isNotBlank(occupiedTaskId) && !occupiedTaskId.equals(taskId)) {
                         JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("error", "设备正在被其他任务使用中（任务 ID: " + occupiedTaskId + "）！！！");                        sendToActiveSession(session, taskId, jsonObject);
+                        jsonObject.put("error", "设备正在被其他任务使用中（任务 ID: " + occupiedTaskId + "）！！！");
+                        sendToActiveSession(session, taskId, jsonObject);
                         sendToActiveSession(session, taskId, jsonObject);
                         return;
                     }
@@ -1124,6 +1132,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     /**
      * 根据设备序列号查找正在使用该设备的任务 ID
+     *
      * @param deviceSerialNumber 设备序列号
      * @return 任务 ID，如果没有找到则返回 null
      */
@@ -1158,6 +1167,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     /**
      * 获取任务绑定的设备序列号
+     *
      * @param taskId 任务 ID
      * @return 设备序列号，如果没有绑定则返回 null
      */
@@ -1172,6 +1182,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         }
         return device;
     }
+
     private void handleAutoInspection(WebSocketSession session, String taskId, String updateBy) throws BusinessException {
         InspectionRequestDto request = new InspectionRequestDto();
         TaskManagement management = taskService.getById(taskId);
@@ -1478,8 +1489,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                             //获取具体的样品池信息
                             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(string);
-                            Integer samplePoolNum = vo.getSamplePoolNum();
-//                            Integer samplePoolNum = 1;
+//                            Integer samplePoolNum = vo.getSamplePoolNum();
+                            Integer samplePoolNum = 1;
                             if (samplePoolNum <= 0) {
                                 log.info("样品池未识别");
                                 throw new BusinessException("样品池未识别");
@@ -1532,7 +1543,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                                 try {
                                     if (!halt.get(taskId)) {
-                                        if(d==0) {
+                                        if (d == 0) {
                                             JSONObject json1 = new JSONObject();
                                             json1.put("itemName", category + "--" + projectName);
                                             sendToActiveSession(null, taskId, json1);
@@ -3441,6 +3452,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
         boolean isOk;
         String errorMsg = "";
+        timeScanStopControl.put(taskId,true);
         if (d == 0) {
             if ((anEnum == abs || anEnum == tPercent)) {
 
@@ -3496,6 +3508,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                 realTimeEcho(taskId, "时间扫描-开始暗电流矫正");
 
+                //到这里就不能停止了，得等到做完暗电流停止
+                timeScanStopControl.put(taskId,false);
                 log.info("时间扫描-开始暗电流矫正>>>>>>>>>>>>>>>>>>>>");
                 DevOperationInputParam darkParam = new DevOperationInputParam();
                 SetParam setParam1 = new SetParam();
@@ -3509,6 +3523,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 }
                 R<OperationResultEntity> operationDark =
                         devOperationUtilService.operation(darkParam);
+                timeScanStopControl.put(taskId,true);
                 log.info("时间扫描-暗电流矫正结果：{}", operationDark);
 //            operationDark.setSuccess(false);
                 if (operationDark.getSuccess()) {
@@ -3529,7 +3544,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 isOk = true;
             }
 
-
+//            if (halt.get(taskId)) {
+//                return R.fail(map);
+//            }
             realTimeEcho(taskId, "时间扫描-开始设置参数");
             // 设置参数
             R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
@@ -3790,7 +3807,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         EndMarker marker = (EndMarker) o;
                         if (marker.getReason() == EndMarker.Reason.NORMAL) {
                             log.info("i={}, total_time={}", i, totalTime);
-                            if (i<totalTime){
+                            if (i < totalTime) {
                                 log.info("时间扫描未成完，继续接收数据");
                                 continue;
                             }
@@ -4240,12 +4257,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 // }
 
 
-
         setTaskMeasuring(taskId, false);
         map.put("res", res);
         return R.ok(map);
     }
-
 
 
 //    private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
