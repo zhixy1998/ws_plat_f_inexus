@@ -125,7 +125,7 @@ public class SpectrumConciseController {
     }
     @ButtonPermission(
             description = "实验测试-经典模式-光谱扫描-设置样品", // 操作描述
-            permissionMapping = "add=spectralScanSetSample,edit=spectralScanModifySampleInformation" // 自定义操作类型→驼峰权限标识
+            permissionMapping = "add=spectralScanSetSample,edit=spectralScanModifySampleInformation,delete=spectralScanDeleteSample" // 自定义操作类型→驼峰权限标识
     )
     @OperateLog(
             module = "实验测试-经典模式-光谱扫描-设置样品",

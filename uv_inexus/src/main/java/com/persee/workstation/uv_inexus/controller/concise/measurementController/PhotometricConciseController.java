@@ -134,7 +134,7 @@ public class PhotometricConciseController {
 
     @ButtonPermission(
             description = "实验测试-经典模式-光定量测量-设置样品", // 操作描述
-            permissionMapping = "add=lumnsetSample,edit=lumnmodifySampleInformation" // 自定义操作类型→驼峰权限标识
+            permissionMapping = "add=lumnsetSample,edit=lumnmodifySampleInformation,delete=lumnDelSample" // 自定义操作类型→驼峰权限标识
     )
     @OperateLog(
             module = "实验测试-经典模式-定量测量-设置样品",

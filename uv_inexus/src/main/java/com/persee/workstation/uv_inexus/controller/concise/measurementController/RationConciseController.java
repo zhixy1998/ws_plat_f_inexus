@@ -94,7 +94,7 @@ public class RationConciseController {
     }
     @ButtonPermission(
             description = "实验测试-经典模式-定量测量-设置样品", // 操作描述
-            permissionMapping = "add=quantitySetSample,edit=quantityModifySampleInformation" // 自定义操作类型→驼峰权限标识
+            permissionMapping = "add=quantitySetSample,edit=quantityModifySampleInformation,delete=quantityDeleteSample" // 自定义操作类型→驼峰权限标识
     )
     @OperateLog(
             module = "实验测试-经典模式-定量测量-设置样品",
