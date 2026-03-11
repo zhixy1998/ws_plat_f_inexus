@@ -57,6 +57,10 @@ public class ButtonPermissionAspect {
         LoginUserInfoVO currentUser = UserContext.getCurrentUser();
         if (currentUser == null) {
             log.warn("用户未登录，无法执行操作 {}", buttonPermission.description());
+            // 新增：判断是否需要返回布尔值
+            if (buttonPermission.returnBoolean()) {
+                return Result.ok(false); // 未登录 → 返回false
+            }
             return createUnauthorizedResult("用户未登录，无法执行操作 " + buttonPermission.description());
         }
 
@@ -86,10 +90,15 @@ public class ButtonPermissionAspect {
         }
 
         // ========== 3. 校验用户权限 ==========
-        if (!hasButtonPermission(currentUser, actualPermission)) {
+        boolean hasPermission = hasButtonPermission(currentUser, actualPermission);
+        if (!hasPermission) {
             log.warn("用户 {} 没有权限执行操作 {} (权限标识：{})",
                     currentUser.getUsername(), buttonPermission.description(), actualPermission);
-            return createUnauthorizedResult("权限不足，无法执行操作 " + buttonPermission.description());
+            // 新增：判断是否需要返回布尔值
+            if (buttonPermission.returnBoolean()) {
+                return Result.ok(false); // 权限不足 → 返回false
+            }
+            return createUnauthorizedResult("权限不足，无法执行此操作 " + buttonPermission.description());
         }
 
         log.info("用户 {} 执行操作：{} (权限标识：{})",
@@ -100,10 +109,18 @@ public class ButtonPermissionAspect {
         // 新写法：配置了methodMapping则自动调用
         if (!methodMapping.isEmpty()) {
             String operateType = getOperateType(joinPoint, buttonPermission);
+            // 新增：如果是返回布尔值的接口，直接返回true（无需调用业务方法）
+            if (buttonPermission.returnBoolean()) {
+                return Result.ok(true);
+            }
             return invokeBusinessMethod(joinPoint, buttonPermission, operateType);
         }
         // 老写法：未配置methodMapping则执行接口原有代码
         else {
+            // 新增：如果是返回布尔值的接口，直接返回true
+            if (buttonPermission.returnBoolean()) {
+                return Result.ok(true);
+            }
             return joinPoint.proceed();
         }
     }

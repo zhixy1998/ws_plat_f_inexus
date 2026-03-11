@@ -51,4 +51,10 @@ public @interface ButtonPermission {
      * 可选，不配置则执行接口原有代码
      */
     String methodMapping() default "";
+    /**
+     * 新增：是否返回布尔值（true/false），默认false（保留原有逻辑）
+     * true：权限校验接口专用，返回Result.success(true/false)
+     * false：原有逻辑，权限不足返回Result.warn()
+     */
+    boolean returnBoolean() default false;
 }

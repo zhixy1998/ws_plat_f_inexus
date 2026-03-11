@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
 import com.persee.workstation.uv_inexus.config.ButtonPermission;
+import com.persee.workstation.uv_inexus.dto.concise.common.DelTaskRequestDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
 import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
@@ -414,6 +415,23 @@ public class ExperimentTestController {
     @ApiOperation("查询样品默认表头")
     public Result querySampleDefaultHead(@RequestParam String measureType) {
         return experimentTestService.querySampleDefaultHead(measureType);
+    }
+
+
+    @ButtonPermission(
+            description = "实验测试-向导模式-测量", // 操作描述
+            permissionMapping = "lumne=wizardModeLumneMeasurement,quantity=wizardModeQuantityMeasurement,spectralScan=wizardModeSpectralScanScan,timeScan=wizardModeTimeScanScan" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-向导模式",
+            description = "执行实验测试-向导模式-{operateType}-测量操作",
+            recordParams = true
+    )
+    @GetMapping("checkOperatePermission")
+    @ApiOperation("校验操作类型权限（返回true/false）")
+    public Result<Boolean> checkOperatePermission(DelTaskRequestDTO requestDTO) {
+
+        return Result.ok(true);
     }
 
 }

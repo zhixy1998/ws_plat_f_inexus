@@ -28,6 +28,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -270,5 +271,21 @@ public class ConciseCommonController {
     @ApiOperation("检查修约区间是否正确")
     public Result<Boolean> checkApproximateRange(@RequestBody FRoundingVO vo) {
         return conciseCommonService.checkApproximateRange(vo);
+    }
+
+    @ButtonPermission(
+            description = "实验测试-经典模式-光度测量-测量", // 操作描述
+            permissionMapping = "lumne=lumneMeasurement,quantity=quantityMeasurement,spectralScan=spectralScanScan,timeScan=timeScanScan" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-经典模式-{operateType}-测量操作",
+            recordParams = true
+    )
+    @GetMapping("checkOperatePermission")
+    @ApiOperation("校验操作类型权限（返回true/false）")
+    public Result<Boolean> checkOperatePermission(DelTaskRequestDTO requestDTO) {
+
+        return Result.ok(true);
     }
 }
