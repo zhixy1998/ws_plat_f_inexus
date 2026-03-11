@@ -3166,12 +3166,18 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
+        SpectralReportVo vo = new SpectralReportVo();
+        TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+        if (project != null && StringUtils.hasText(project.getProjectName())) {
+            vo.setProject(project.getProjectName());
+        }
+
         if (task.getMeasureType().equals(PHOTOMETRIC_MEASUREMENT.getDescription())) {
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-            SpectralReportVo vo = new SpectralReportVo();
-            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+
+
             SysUserPO user = systemUserManageDAO.selectById(task.getUserId());
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             PhotometricParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
@@ -3291,8 +3297,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         } else if (task.getMeasureType().equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-            SpectralReportVo vo = new SpectralReportVo();
-//            TMeasureProject project =tMeasureProjectService.getById(task.getProjectItemKey());
+
             vo.setTaskName(task.getTaskName());
             SysUserPO user = systemUserManageDAO.selectById(task.getUserId());
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
@@ -3378,11 +3383,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     SystemBusinessParamVO systemBusinessParamVO = systemBusinessParamService.queryBusinessParam();
                     String curveConf = systemBusinessParamVO.getStandardCurveConf();
                     String[] split = curveConf.split(",");
-                    for (int i = 0; i < split.length; i++) {
-                        if (split[i].equals("1")) {
+                    for (String s : split) {
+                        if (s.equals("1")) {
                             vo.setR(fittingReceiveInfo.getRoundR() == null ? "" : fittingReceiveInfo.getRoundR());
                         }
-                        if (split[i].equals("2")) {
+                        if (s.equals("2")) {
                             vo.setR2(fittingReceiveInfo.getRoundR2() == null ? "" : fittingReceiveInfo.getRoundR2());
                         }
                     }
@@ -3468,10 +3473,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     //没有找到该分析数据
                     return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
                 }
-                if (analysisData.getMeasureDataId() != null)
+                if (analysisData.getMeasureDataId() != null) {
                     data = tMeasureDataService.getById(analysisData.getMeasureDataId());
+                }
             }
-            SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
             vo.setStartWaveLength(param.getStartWaveLength() + "nm");
@@ -3545,11 +3550,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     //没有找到该分析数据
                     return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
                 }
-                if (analysisData.getMeasureDataId() != null)
+                if (analysisData.getMeasureDataId() != null) {
                     data = tMeasureDataService.getById(analysisData.getMeasureDataId());
+                }
             }
 
-            SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             TimeSweepParamter param = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
             vo.setInstrumentWavelength(param.getWaveLength() + "nm");
