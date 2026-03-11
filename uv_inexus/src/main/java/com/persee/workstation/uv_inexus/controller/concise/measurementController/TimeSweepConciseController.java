@@ -111,7 +111,7 @@ public class TimeSweepConciseController {
 
     @ButtonPermission(
             description = "实验测试-经典模式-时间扫描-设置样品", // 操作描述
-            permissionMapping = "add=timeScanSetSample,edit=timeScanModifySampleInformation,edit=timeScanDeleteSample" // 自定义操作类型→驼峰权限标识
+            permissionMapping = "add=timeScanSetSample,edit=timeScanModifySampleInformation,delete=timeScanDeleteSample" // 自定义操作类型→驼峰权限标识
     )
     @OperateLog(
             module = "实验测试-经典模式-时间扫描-设置样品",
