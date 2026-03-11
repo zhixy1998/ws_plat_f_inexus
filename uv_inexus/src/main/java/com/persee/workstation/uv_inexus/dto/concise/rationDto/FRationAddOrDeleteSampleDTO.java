@@ -19,7 +19,7 @@ import java.util.Map;
 
 @Data
 public class FRationAddOrDeleteSampleDTO {
-    @ApiModelProperty("操作类型：add/delete")
+    @ApiModelProperty("操作类型：add/edit/delete")
     private String operateType;
 
     @ApiModelProperty("任务id")

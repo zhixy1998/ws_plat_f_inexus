@@ -63,8 +63,8 @@ public class RationController {
         return rationService.queryMethodParam(methodId);
     }
 
-    @ButtonPermission("wizardModeLumneModifyMethodParams")
-    @OperateLog(module = "实验测试-向导模式-光度测量-修改方法参数", description = "执行实验测试-向导模式-光度测量-修改方法参数", recordParams = true)
+    @ButtonPermission("wizardModeQuantityModifySampleInformation")
+    @OperateLog(module = "实验测试-向导模式-定量测量-修改方法参数", description = "执行实验测试-向导模式-定量测量-修改方法参数操作", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
     public Result<MethodChangeCheckVO> checkParam(@RequestBody MethodParamsDto methodParam) {
@@ -86,12 +86,12 @@ public class RationController {
         return rationService.querySampleList(taskId, sampleKind);
     }
     @ButtonPermission(
-            description = "实验测试-向导模式-光度测量-设置样品", // 操作描述
-            permissionMapping = "add=wizardModeLumneSetSample,edit=wizardModeLumneModifySampleInformation" // 自定义操作类型→驼峰权限标识
+            description = "实验测试-向导模式-定量测量-设置样品", // 操作描述
+            permissionMapping = "add=wizardModeLumneSetSample,edit=wizardModeLumneModifySampleInformation,delete=quantityDeleteSample" // 自定义操作类型→驼峰权限标识
     )
     @OperateLog(
-            module = "实验测试-向导模式-光度测量-设置样品",
-            description = "执行实验测试-经典模式-光度测量-{operateType}样品操作",
+            module = "实验测试-向导模式-定量测量-设置样品",
+            description = "执行实验测试-经典模式-定量测量-{operateType}样品操作",
             recordParams = true
     )
     @PostMapping("addOrDeleteSample")
@@ -176,7 +176,7 @@ public class RationController {
     }
 
     @ButtonPermission("wizardModeLumneZero")
-    @OperateLog(module = "实验测试-向导模式-光度测量-校零", description = "执行实验测试-向导模式-光度测量-校零记录", recordParams = true)
+    @OperateLog(module = "实验测试-向导模式-定量测量-校零", description = "执行实验测试-向导模式-定量测量-校零记录", recordParams = true)
     @GetMapping("zero")
     @ApiOperation("校零接口")
     public Result photoZero(@RequestParam String deviceSerialNumber,
@@ -239,7 +239,7 @@ public class RationController {
     }
 
     @ButtonPermission("wizardModeLumneExportData")
-    @OperateLog(module = "实验测试-向导模式-光度测量-导出数据", description = "执行实验测试-向导模式-光度测量-导出数据记录", recordParams = true)
+    @OperateLog(module = "实验测试-向导模式-定量测量-导出数据", description = "执行实验测试-向导模式-定量测量-导出数据记录", recordParams = true)
     @GetMapping("downloadDoc")
     @ApiOperation("多格式文件下载接口（支持word/excel/txt）")
     public ResponseEntity<?> downloadDoc(
