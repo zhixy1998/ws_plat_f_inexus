@@ -38,8 +38,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -136,11 +135,19 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
                         .eq(TMeasureTask::getDeviceSerialNumber, deviceNumber);
 //                        .eq(TMeasureTask::getUserId, user.getId())
 //                        .eq(TMeasureTask::getIsDelete, DeviceTaskStatusEnum.NOT_DELETED.getCode()); // 过滤已删除任务
-                if (StringUtils.isNotBlank(startTime)) {
-                    taskWrapper.ge(TMeasureTask::getCreateTime, startTime + " 00:00:00");
+                // 处理开始时间
+                LocalDateTime start = parseDateTime(startTime, false);
+                if (start != null) {
+                    taskWrapper.ge(TMeasureTask::getCreateTime, start);
                 }
-                if (StringUtils.isNotBlank(endTime)) {
-                    taskWrapper.le(TMeasureTask::getCreateTime, endTime + " 23:59:59");
+
+                // 处理结束时间
+                LocalDateTime end = parseDateTime(endTime, true);
+                if (end != null) {
+                    taskWrapper.le(TMeasureTask::getCreateTime, end);
+                }
+                if (start != null && end != null && start.isAfter(end)) {
+                    return Result.fail(YamlMessageSource.getMessageStatic("00205008"));
                 }
                 List<TMeasureTask> tasks = tMeasureTaskService.list(taskWrapper);
 
@@ -193,12 +200,21 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
                         .eq(TMeasureTask::getDeviceSerialNumber, deviceNumber);
 //                        .eq(TMeasureTask::getUserId, user.getId())
 //                        .eq(TMeasureTask::getIsDelete, DeviceTaskStatusEnum.NOT_DELETED.getCode());
-                if (StringUtils.isNotBlank(startTime)) {
-                    taskWrapper.ge(TMeasureTask::getCreateTime, startTime + " 00:00:00");
+                // 处理开始时间
+                LocalDateTime start = parseDateTime(startTime, false);
+                if (start != null) {
+                    taskWrapper.ge(TMeasureTask::getCreateTime, start);
                 }
-                if (StringUtils.isNotBlank(endTime)) {
-                    taskWrapper.le(TMeasureTask::getCreateTime, endTime + " 23:59:59");
+
+                // 处理结束时间
+                LocalDateTime end = parseDateTime(endTime, true);
+                if (end != null) {
+                    taskWrapper.le(TMeasureTask::getCreateTime, end);
                 }
+                if (start != null && end != null && start.isAfter(end)) {
+                    return Result.fail(YamlMessageSource.getMessageStatic("00205008"));
+                }
+
                 List<TMeasureTask> tasks = tMeasureTaskService.list(taskWrapper);
 
                 if (tasks != null && !tasks.isEmpty()) {
@@ -243,6 +259,34 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
         }
     }
 
+    /**
+     * 兼容性解析时间字符串
+     * @param timeStr   原始时间字符串
+     * @param isEndEdge 是否为结束边界（如果是，则补全为 23:59:59）
+     */
+    public LocalDateTime parseDateTime(String timeStr, boolean isEndEdge) {
+        if (StringUtils.isBlank(timeStr)) return null;
+
+        //处理ISO 8601 格式
+        if (timeStr.contains("T") && timeStr.endsWith("Z")) {
+            try {
+                Instant instant = Instant.parse(timeStr);
+                return LocalDateTime.ofInstant(instant,ZoneId.systemDefault());
+            } catch (Exception e) {
+                timeStr = timeStr.split("T")[0];
+            }
+        }
+        //处理普通日期格式 (yyyy-MM-dd)
+        try {
+            LocalDate date = LocalDate.parse(timeStr.substring(0,10));
+            return isEndEdge ? date.atTime(LocalTime.MAX) : date.atStartOfDay();
+
+        } catch (Exception e) {
+            log.warn("时间格式转换异常: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
     @Override
     public Page<HistoryTaskVO> getHistoryTask(DeviceHistoryTaskDTO queryDto) throws BusinessException {
 
@@ -260,6 +304,10 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
         //2026-03-10 23:59:59
         if (queryDto.getEndTime() != null) {
             queryDto.setEndDateTime(queryDto.getEndTime().atTime(LocalTime.MAX));
+        }
+        if (queryDto.getStartDateTime() != null && queryDto.getEndDateTime() != null && queryDto.getStartDateTime().isAfter(queryDto.getEndDateTime())) {
+            log.warn("查询历史任务失败：开始时间不能大于结束时间");
+            throw new BusinessException(YamlMessageSource.getMessageStatic("00205008"));
         }
 
         IPage<HistoryTaskVO> resultPage = tMeasureTaskMapper.selectHistoryTaskPage(page, queryDto);
