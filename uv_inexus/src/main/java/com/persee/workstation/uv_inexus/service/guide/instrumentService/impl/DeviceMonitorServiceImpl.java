@@ -105,9 +105,12 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
 
     @Override
     public Result<Map<String, Object>> getTypeStatistics(String updateBy, String startTime, String endTime, String deviceNumber) {
+
+        Map<String, Object> statisticsMap = new HashMap<>();
+        statisticsMap.put("taskTypeCounts", new HashMap<String, Long>());
         if (StringUtils.isBlank(deviceNumber)) {
             log.warn("获取类型统计失败: 仪器编号为空");
-            return Result.fail(YamlMessageSource.getMessageStatic("00205001"));
+            return Result.ok(statisticsMap);
         }
 
         if (StringUtils.isBlank(updateBy)) {
@@ -124,13 +127,9 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
                 log.warn("获取类型统计失败: 用户 '{}' 不存在", updateBy);
                 return Result.fail(YamlMessageSource.getMessageStatic("00205003"));
             }
-
             SystemLogSwitchPO po = dao.selectById(userId);
 
-            Map<String, Object> statisticsMap = new HashMap<>();
-
             if (po != null && Boolean.TRUE.equals(po.getStatTypeEnabled())) {
-
                 LambdaQueryWrapper<TMeasureTask> taskWrapper = new LambdaQueryWrapper<TMeasureTask>()
                         .eq(TMeasureTask::getDeviceSerialNumber, deviceNumber);
 //                        .eq(TMeasureTask::getUserId, user.getId())
@@ -173,9 +172,12 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
     @Override
     public Result<Map<String, Object>> getProjectStatistics(String updateBy, String startTime, String endTime, String deviceNumber) {
 
+        Map<String, Object> statisticsMap = new HashMap<>();
+        statisticsMap.put("projectCounts", new HashMap<String, Long>());
+
         if (StringUtils.isBlank(deviceNumber)) {
-            log.warn("获取项目统计失败: 仪器编号为空");
-            return Result.fail(YamlMessageSource.getMessageStatic("00205001"));
+            log.warn("仪器编号为空");
+            return Result.ok(statisticsMap);
         }
         if (StringUtils.isBlank(updateBy)) {
             log.warn("获取项目统计失败: 用户名为空");
@@ -193,7 +195,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
             }
 
             SystemLogSwitchPO po = dao.selectById(userId);
-            Map<String, Object> statisticsMap = new HashMap<>();
+
 
             if (po != null && Boolean.TRUE.equals(po.getStatItemEnabled())) {
                 LambdaQueryWrapper<TMeasureTask> taskWrapper = new LambdaQueryWrapper<TMeasureTask>()
@@ -243,11 +245,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
                     long validTotal = projectCounts.values().stream().mapToLong(Long::longValue).sum();
                     statisticsMap.put("totalCount", validTotal);
                 } else {
-                    log.warn("获取项目统计失败: 无有效数据");
-                    statisticsMap.put("totalCount", 0);
-                    statisticsMap.put("projectCounts", new HashMap<>());
                     return Result.ok(statisticsMap);
-//                    return Result.fail(YamlMessageSource.getMessageStatic("00205007"));
                 }
 
                 return Result.ok(statisticsMap);
@@ -265,6 +263,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
 
     /**
      * 兼容性解析时间字符串
+     *
      * @param timeStr   原始时间字符串
      * @param isEndEdge 是否为结束边界（如果是，则补全为 23:59:59）
      */
@@ -275,14 +274,14 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
         if (timeStr.contains("T") && timeStr.endsWith("Z")) {
             try {
                 Instant instant = Instant.parse(timeStr);
-                return LocalDateTime.ofInstant(instant,ZoneId.systemDefault());
+                return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
             } catch (Exception e) {
                 timeStr = timeStr.split("T")[0];
             }
         }
         //处理普通日期格式 (yyyy-MM-dd)
         try {
-            LocalDate date = LocalDate.parse(timeStr.substring(0,10));
+            LocalDate date = LocalDate.parse(timeStr.substring(0, 10));
             return isEndEdge ? date.atTime(LocalTime.MAX) : date.atStartOfDay();
 
         } catch (Exception e) {
@@ -296,7 +295,11 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
 
         if (StringUtils.isBlank(queryDto.getDeviceSerialNumber())) {
             log.warn("查询历史任务失败：仪器编号为空");
-            throw new BusinessException(YamlMessageSource.getMessageStatic("00205001"));
+            Page<HistoryTaskVO> emptyPage = new Page<>(queryDto.getPageNum(), queryDto.getPageSize());
+            emptyPage.setTotal(0);
+            emptyPage.setRecords(new ArrayList<>());
+            return emptyPage;
+
         }
         // 1. 初始化分页
         Page<HistoryTaskVO> page = new Page<>(queryDto.getPageNum(), queryDto.getPageSize());
