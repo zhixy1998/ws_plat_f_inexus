@@ -312,6 +312,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         log.info("我被调用了" + payload.toString());
         try {
             if (originalSession != null && !isSessionValid(originalSession)) {
+                payload.put("taskId", taskId);
+
                 originalSession.sendMessage(new TextMessage(payload.toJSONString()));
                 return true;
             }
@@ -323,6 +325,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     if (isSessionValid(session)) {
                         log.info("准备发送消息到 sessionId: {}, 前端地址：{}, 消息内容：{}",
                                 session.getId(), getFrontendAddress(session), payload.toJSONString());
+                        payload.put("taskId", taskId);
+
                         session.sendMessage(new TextMessage(payload.toJSONString()));
                         log.info("消息发送成功到 sessionId: {}", session.getId());
                     } else {
@@ -383,7 +387,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     WebSocketSession session = iterator.next();
                     if (isSessionValid(session)) {
 //                        log.info("消息是：" + payload.toJSONString());
-                        session.sendMessage(new TextMessage(payload));
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("taskId", taskId);
+                        jsonObject.put("data", payload);
+                        session.sendMessage(new TextMessage(jsonObject.toJSONString()));
                         log.info("消息发送给了：" + session.getId());
                     } else {
                         iterator.remove();
@@ -653,8 +660,29 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             );
 //            sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
             addSessionToTask(taskId, session);
-            boolean b = workbookCacheManager.acquireEditLock(taskId, updateBy);
+//            boolean b = workbookCacheManager.acquireEditLock(taskId, updateBy);
+            // 检查是否已经获取过编辑锁（checkTaskUsage 时已获取）
+            String currentEditor = workbookCacheManager.getCurrentEditor(taskId);
+            if (currentEditor == null) {
+                log.warn("任务{}没有获取锁，不允许连接（checkTaskUsage 未调用？）", taskId);
+                JSONObject errorMsg = new JSONObject();
+                errorMsg.put("error", "请先检查任务状态");
+                session.sendMessage(new TextMessage(errorMsg.toJSONString()));
+                session.close();
+                return;
+            }
 
+            if (!currentEditor.equals(updateBy)) {
+                log.warn("任务正在被其他用户编辑，拒绝连接：taskId={}, 当前用户={}, 编辑者={}", taskId, updateBy, currentEditor);
+                JSONObject errorMsg = new JSONObject();
+                errorMsg.put("error", "任务正在被其他用户编辑");
+                errorMsg.put("editor", currentEditor);
+                session.sendMessage(new TextMessage(errorMsg.toJSONString()));
+                session.close();
+                return;
+            }
+
+            log.info("获取编辑锁成功：taskId={}, updateBy={}", taskId, updateBy);
             // 为会话创建专属Workbook
             Workbook workbook = workbookCacheManager.createTaskWorkbook(taskId, fileName);
             log.info("WebSocket连接建立，会话ID: {}, 文件: {}", sessionId, fileName);
@@ -1025,7 +1053,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             //判断任务是否正在被编辑中
             boolean edited = workbookCacheManager.isTaskBeingEditedByOthers(taskId, updateBy);
             if (edited) {
-                session.sendMessage(new TextMessage("任务正在被编辑中"));
+                sendToActiveSession(null,taskId, "任务正在被编辑中");
+//                session.sendMessage(new TextMessage("任务正在被编辑中"));
             }
             if (DEFAULT_TASK.getCode().equals(taskId)) {
                 LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
@@ -1114,8 +1143,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             if (historyData != null && historyData.size() > 4) {
                 historyData = historyData.subList(0, 4);
             }
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("data", historyData);
+            sendToActiveSession(null,taskId,jsonObject);
             String s = JSON.toJSONString(historyData);
-            sendToActiveSession(null, taskId, s);
+//            sendToActiveSession(null, taskId, s);
         }
         // 处理用户操作确认
         if (RESUME.getCode().equals(type)) { // 您定义的恢复命令类型
@@ -4568,39 +4600,62 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
         try {
             String sessionId = session.getId();
             String taskId = getTaskIdFromSession(session);
+            String update = getUpdateByFromUrl(session);
             log.info("WebSocket 连接关闭，会话 ID: {}, 任务 ID: {}, 状态：{}", sessionId, taskId, status);
+
             // 清理会话相关资源
             registeredSessionIds.remove(taskId);
-            taskToFrontendAddresses.remove(taskId);
-            // 【新增】如果是最后一个连接，清理任务 - 设备绑定关系
-            Set<WebSocketSession> sessions = sessionTaskMap.get(taskId);
-            if (sessions == null || sessions.isEmpty() || (sessions.size() == 1 && sessions.contains(session))) {
-                // 最后一个连接断开，释放设备绑定
-                String boundDevice = taskDeviceBindingMap.remove(taskId);
-                log.info("任务 {} 的所有连接已断开，释放设备绑定：{}", taskId, boundDevice);
 
-                // 停止心跳任务
-                ScheduledFuture<?> heartbeatTask = heartbeatTasks.remove(taskId);
-                if (heartbeatTask != null && !heartbeatTask.isDone()) {
-                    heartbeatTask.cancel(false);
+            // 【修改】只移除当前关闭的 session，而不是整个任务的所有 session
+            Set<WebSocketSession> sessions = sessionTaskMap.get(taskId);
+            if (sessions != null) {
+                sessions.remove(session);
+                log.info("从任务{}的 session 集合中移除会话{}", taskId, sessionId);
+
+                // 如果是最后一个连接，清理任务相关资源
+                if (sessions.isEmpty()) {
+                    log.info("任务{}的所有连接已断开", taskId);
+                    sessionTaskMap.remove(taskId);  // 此时才移除整个任务的映射
+
+                    // 清理前端地址映射
+                    taskToFrontendAddresses.remove(taskId);
+
+                    // 释放设备绑定
+                    String boundDevice = taskDeviceBindingMap.remove(taskId);
+                    log.info("任务 {} 的所有连接已断开，释放设备绑定：{}", taskId, boundDevice);
+
+                    // 停止心跳任务
+                    ScheduledFuture<?> heartbeatTask = heartbeatTasks.remove(taskId);
+                    if (heartbeatTask != null && !heartbeatTask.isDone()) {
+                        heartbeatTask.cancel(false);
+                    }
+                    // 清理暂停控制
+                    pauseControls.remove(taskId);
+                    taskFutures.remove(taskId);
+                    currentMeasureItemMap.remove(taskId);
+                    measurementStatusMap.remove(taskId);
+                    halt.remove(taskId);
+
+                    // 释放编辑锁
+                    workbookCacheManager.releaseEditLock(taskId, update);
+                    log.info("任务{}的编辑锁已释放", taskId);
                 }
-                // 清理暂停控制
-                pauseControls.remove(taskId);
-                taskFutures.remove(taskId);
-                currentMeasureItemMap.remove(taskId);
-                measurementStatusMap.remove(taskId);
-                halt.remove(taskId);
+            } else {
+                log.warn("任务{}的 session 集合不存在，可能已被清理", taskId);
             }
+
             // 清理会话信息
             sessionMap.remove(sessionId);
             operationCount.remove(sessionId);
             lastActivityTime.remove(sessionId);
 
+            log.info("WebSocket 连接关闭完成，会话 ID: {}", sessionId);
             super.afterConnectionClosed(session, status);
         } catch (Exception e) {
             log.error("WebSocket 连接关闭异常", e);
         }
     }
+
 
 
     // 在停止任务时也清理队列

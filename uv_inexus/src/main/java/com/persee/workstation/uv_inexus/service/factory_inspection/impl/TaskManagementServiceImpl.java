@@ -365,8 +365,30 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             TaskManagement one = this.getOne(wrapper);
             dto.setTaskId(one.getId());
         }
-        return Result.ok(!workbookCacheManager.isTaskBeingEditedByOthers(dto.getTaskId(), dto.getUpdateBy()));
+
+        String taskId = dto.getTaskId();
+        String updateBy = dto.getUpdateBy();
+
+        // 先检查是否正在被其他用户编辑
+        if (workbookCacheManager.isTaskBeingEditedByOthers(taskId, updateBy)) {
+            String editor = workbookCacheManager.getCurrentEditor(taskId);
+            log.info("任务正在被其他用户编辑：taskId={}, 当前用户={}, 编辑者={}", taskId, updateBy, editor);
+            return Result.ok(false);  // 返回 false 表示不能使用
+        }
+
+        // 尝试获取编辑锁
+        boolean acquired = workbookCacheManager.acquireEditLock(taskId, updateBy);
+        if (acquired) {
+            log.info("获取任务编辑锁成功：taskId={}, updateBy={}", taskId, updateBy);
+            return Result.ok(true);  // 返回 true 表示可以使用
+        } else {
+            // 获取失败，说明被其他用户占用了
+            String editor = workbookCacheManager.getCurrentEditor(taskId);
+            log.warn("获取任务编辑锁失败：taskId={}, 当前用户={}, 占用者={}", taskId, updateBy, editor);
+            return Result.ok(false);  // 返回 false 表示不能使用
+        }
     }
+
 
     @Override
     public Result<List<TaskCheckItemDto.Standard>> standardMaterialList(String taskId) {

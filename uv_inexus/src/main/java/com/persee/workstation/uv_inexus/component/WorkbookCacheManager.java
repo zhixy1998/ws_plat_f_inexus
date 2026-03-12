@@ -42,68 +42,107 @@ public class WorkbookCacheManager {
 
     // 替换原有的 Set 结构
     private final Map<String, String> taskEditors = new ConcurrentHashMap<>(); // taskId -> updateBy
+    // 替换原有的 Map 结构，使用更复杂的锁信息类
+    private final Map<String, LockInfo> taskLocks = new ConcurrentHashMap<>();
+
+    // 内部类：锁信息
+    private static class LockInfo {
+        String editor;      // 编辑者
+        long lockTime;      // 上锁时间
+
+        public LockInfo(String editor) {
+            this.editor = editor;
+            this.lockTime = System.currentTimeMillis();
+        }
+    }
 
     /**
      * 尝试获取任务编辑权限
      *
-     * @param taskId   任务ID
+     * @param taskId   任务 ID
      * @param updateBy 操作用户
-     * @return true表示获取成功，false表示已被占用
+     * @return true 表示获取成功，false 表示已被占用（包括被自己占用）
      */
     public boolean acquireEditLock(String taskId, String updateBy) {
-        return taskEditors.putIfAbsent(taskId, updateBy) == null;
+        LockInfo lockInfo = taskLocks.get(taskId);
+
+        // 如果没有锁，创建新锁
+        if (lockInfo == null) {
+            LockInfo newLock = new LockInfo(updateBy);
+            LockInfo existing = taskLocks.putIfAbsent(taskId, newLock);
+            if (existing == null) {
+                log.info("用户{}获取任务{}的编辑锁成功", updateBy, taskId);
+                return true;  // 获取成功
+            } else {
+                // 并发情况下被别人抢先了
+                log.warn("用户{}尝试获取任务{}的编辑锁失败，已被其他用户抢占", updateBy, taskId);
+                return false;
+            }
+        }
+
+        // 锁已经存在，无论是谁都不允许再次获取（包括同一个用户）
+        log.warn("任务{}正在被用户{}编辑，用户{}无法重复获取锁（禁止多窗口）", taskId, lockInfo.editor, updateBy);
+        return false;
     }
 
     /**
      * 释放任务编辑权限
      *
-     * @param taskId   任务ID
+     * @param taskId   任务 ID
      * @param updateBy 操作用户
-     * @return true表示释放成功，false表示不是持有者
+     * @return true 表示释放成功，false 表示不是持有者
      */
     public boolean releaseEditLock(String taskId, String updateBy) {
-        String holder = taskEditors.get(taskId);
-        if (holder != null && holder.equals(updateBy)) {
-            taskEditors.remove(taskId);
-            return true;
+        LockInfo lockInfo = taskLocks.get(taskId);
+
+        if (lockInfo == null) {
+            log.warn("释放锁失败：任务{}没有锁", taskId);
+            return false;
         }
-        return false;
+
+        if (!lockInfo.editor.equals(updateBy)) {
+            log.warn("释放锁失败：任务{}的锁属于用户{}，不是用户{}", taskId, lockInfo.editor, updateBy);
+            return false;
+        }
+
+        taskLocks.remove(taskId);
+        log.info("用户{}释放任务{}的编辑锁", updateBy, taskId);
+        return true;
     }
 
     /**
      * 检查任务是否正在被编辑
      *
-     * @param taskId   任务ID
+     * @param taskId   任务 ID
      * @param updateBy 操作用户
-     * @return true表示正在被编辑
+     * @return true 表示正在被编辑
      */
     public boolean isTaskBeingEdited(String taskId, String updateBy) {
-        if (taskEditors.containsKey(taskId)) {
-            return taskEditors.get(taskId).equals(updateBy);
-        }
-        return false;
+        LockInfo lockInfo = taskLocks.get(taskId);
+        return lockInfo != null && lockInfo.editor.equals(updateBy);
     }
 
     /**
      * 获取当前编辑者
      *
-     * @param taskId 任务ID
-     * @return 编辑者用户ID，null表示未被编辑
+     * @param taskId 任务 ID
+     * @return 编辑者用户 ID，null 表示未被编辑
      */
     public String getCurrentEditor(String taskId) {
-        return taskEditors.get(taskId);
+        LockInfo lockInfo = taskLocks.get(taskId);
+        return lockInfo != null ? lockInfo.editor : null;
     }
 
     /**
      * 检查任务是否正在被其他用户编辑
      *
-     * @param taskId      任务ID
+     * @param taskId      任务 ID
      * @param currentUser 当前用户
-     * @return true表示正在被其他用户编辑
+     * @return true 表示正在被其他用户编辑
      */
     public boolean isTaskBeingEditedByOthers(String taskId, String currentUser) {
-        String editor = taskEditors.get(taskId);
-        return editor != null && !editor.equals(currentUser);
+        LockInfo lockInfo = taskLocks.get(taskId);
+        return lockInfo != null && !lockInfo.editor.equals(currentUser);
     }
 
     /**
@@ -120,11 +159,114 @@ public class WorkbookCacheManager {
         taskFileMap.remove(taskId);
         taskLastAccessTime.remove(taskId);
 
-        boolean b = releaseEditLock(taskId, updateBy);
-        if (b) {
-            log.info("任务结束，释放任务编辑权限：{}", taskId);
-        }
+        // 释放锁
+        releaseEditLock(taskId, updateBy);
     }
+
+
+    /**
+     * 尝试获取任务编辑权限
+     *
+     * @param taskId   任务ID
+     * @param updateBy 操作用户
+     * @return true表示获取成功，false表示已被占用
+     */
+    /**
+     * 尝试获取任务编辑权限
+     *
+     * @param taskId   任务 ID
+     * @param updateBy 操作用户
+     * @return true表示获取成功（或已经是持有者），false表示已被其他用户占用
+     */
+//    public boolean acquireEditLock(String taskId, String updateBy) {
+//        String existingEditor = taskEditors.putIfAbsent(taskId, updateBy);
+//
+//        // 如果返回 null，说明之前没有编辑者，获取成功
+//        if (existingEditor == null) {
+//            return true;
+//        }
+//
+//        // 如果编辑者是当前用户自己，也返回 true（允许重复获取）
+//        if (existingEditor.equals(updateBy)) {
+//            return true;
+//        }
+//
+//        // 编辑者是其他用户，返回 false
+//        return false;
+//    }
+
+
+    /**
+     * 释放任务编辑权限
+     *
+     * @param taskId   任务ID
+     * @param updateBy 操作用户
+     * @return true表示释放成功，false表示不是持有者
+     */
+//    public boolean releaseEditLock(String taskId, String updateBy) {
+//        String holder = taskEditors.get(taskId);
+//        if (holder != null && holder.equals(updateBy)) {
+//            taskEditors.remove(taskId);
+//            return true;
+//        }
+//        return false;
+//    }
+//
+//    /**
+//     * 检查任务是否正在被编辑
+//     *
+//     * @param taskId   任务ID
+//     * @param updateBy 操作用户
+//     * @return true表示正在被编辑
+//     */
+//    public boolean isTaskBeingEdited(String taskId, String updateBy) {
+//        if (taskEditors.containsKey(taskId)) {
+//            return taskEditors.get(taskId).equals(updateBy);
+//        }
+//        return false;
+//    }
+//
+//    /**
+//     * 获取当前编辑者
+//     *
+//     * @param taskId 任务ID
+//     * @return 编辑者用户ID，null表示未被编辑
+//     */
+//    public String getCurrentEditor(String taskId) {
+//        return taskEditors.get(taskId);
+//    }
+//
+//    /**
+//     * 检查任务是否正在被其他用户编辑
+//     *
+//     * @param taskId      任务ID
+//     * @param currentUser 当前用户
+//     * @return true表示正在被其他用户编辑
+//     */
+//    public boolean isTaskBeingEditedByOthers(String taskId, String currentUser) {
+//        String editor = taskEditors.get(taskId);
+//        return editor != null && !editor.equals(currentUser);
+//    }
+
+    /**
+     * 任务结束时清理缓存
+     */
+//    public void cleanupTask(String taskId, String updateBy) {
+//        // 从 Ehcache 移除缓存
+//        ehcacheUtil.remove(WORKBOOK_CACHE, taskId, String.class, SerializableWorkbook.class);
+//
+//        // 移除数据库中的持久化数据
+//        updateWorkbookDataToDB(taskId, null, updateBy);
+//
+//        // 移除内存中的任务信息
+//        taskFileMap.remove(taskId);
+//        taskLastAccessTime.remove(taskId);
+//
+//        boolean b = releaseEditLock(taskId, updateBy);
+//        if (b) {
+//            log.info("任务结束，释放任务编辑权限：{}", taskId);
+//        }
+//    }
 
     /**
      * 为任务创建Workbook实例
