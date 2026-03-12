@@ -360,7 +360,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     public Result<Boolean> checkTaskUsage(TaskUsageDto dto) {
         if (StringUtils.equals(dto.getTaskId(), DEFAULT_TASK.getCode())) {
             LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode());
+            wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode())
+                    .eq(TaskManagement::getCreateBy, dto.getUpdateBy());
             //这里查询出内置任务
             TaskManagement one = this.getOne(wrapper);
             dto.setTaskId(one.getId());
