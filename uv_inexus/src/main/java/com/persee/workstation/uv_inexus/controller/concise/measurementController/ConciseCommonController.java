@@ -27,6 +27,7 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveD
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -114,7 +115,7 @@ public class ConciseCommonController {
     )
     @GetMapping("delMethod")
     @ApiOperation("删除方法")
-    public Result delMethod(DelTaskRequestDTO requestDTO) {
+    public Result delMethod(PermLogOccupyDTO requestDTO) {
         // 调用服务层，传递需要的参数
         return conciseCommonService.delTask(requestDTO.getMethodId());
     }
@@ -149,7 +150,7 @@ public class ConciseCommonController {
     )
     @GetMapping("delTask")
     @ApiOperation("删除历史文件")
-    public Result delTask(DelTaskRequestDTO requestDTO) {
+    public Result delTask(PermLogOccupyDTO requestDTO) {
         // 调用服务层，传递需要的参数
         return conciseCommonService.delTask(requestDTO.getTaskId());
     }
@@ -274,18 +275,17 @@ public class ConciseCommonController {
     }
 
     @ButtonPermission(
-            description = "实验测试-经典模式-光度测量-测量", // 操作描述
-            permissionMapping = "lumne=lumneMeasurement,quantity=quantityMeasurement,spectralScan=spectralScanScan,timeScan=timeScanScan" // 自定义操作类型→驼峰权限标识
+            description = "通用websocket前置判断接口",
+            permissionMapping = "lumne=lumneMeasurement,quantity=quantityMeasurement,spectralScan=spectralScanScan,timeScan=timeScanScan,spectralScanBaseline=spectralScanBaseline,timeScanBaseline=timeScanBaseline"
     )
     @OperateLog(
-            module = "实验测试-经典模式",
-            description = "执行实验测试-经典模式-{operateType}-测量操作",
+            module = "实验测试-经典模式或向导模式",
+            description = "执行实验测试-{operateTypeExt}-{operateType}-操作",
             recordParams = true
     )
     @GetMapping("checkOperatePermission")
     @ApiOperation("校验操作类型权限（返回true/false）")
-    public Result<Boolean> checkOperatePermission(DelTaskRequestDTO requestDTO) {
-
+    public Result<Boolean> checkOperatePermission(PermLogOccupyDTO requestDTO) {
         return Result.ok(true);
     }
 }

@@ -9,7 +9,9 @@ import javax.validation.constraints.NotBlank;
  * 适配@RequestParam转对象的场景
  */
 @Data
-public class DelTaskRequestDTO {
+public class PermLogOccupyDTO {
+    @ApiModelProperty("日志占位字段")
+    private String operateTypeExt;
 
     @ApiModelProperty("任务id")
     private String taskId;

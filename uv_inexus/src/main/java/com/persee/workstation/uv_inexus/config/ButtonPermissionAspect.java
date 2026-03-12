@@ -61,7 +61,7 @@ public class ButtonPermissionAspect {
             if (buttonPermission.returnBoolean()) {
                 return Result.ok(false); // 未登录 → 返回false
             }
-            return createUnauthorizedResult("用户未登录，无法执行操作 " + buttonPermission.description());
+            return createUnauthorizedResult("用户未登录，无法执行操作");
         }
 
         // ========== 2. 核心兼容逻辑：解析权限标识 ==========
@@ -98,7 +98,7 @@ public class ButtonPermissionAspect {
             if (buttonPermission.returnBoolean()) {
                 return Result.ok(false); // 权限不足 → 返回false
             }
-            return createUnauthorizedResult("权限不足，无法执行此操作 " + buttonPermission.description());
+            return createUnauthorizedResult("权限不足，无法执行此操作");
         }
 
         log.info("用户 {} 执行操作：{} (权限标识：{})",

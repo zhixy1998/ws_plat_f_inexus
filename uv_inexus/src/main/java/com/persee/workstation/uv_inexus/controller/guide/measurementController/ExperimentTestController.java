@@ -10,7 +10,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
 import com.persee.workstation.uv_inexus.config.ButtonPermission;
-import com.persee.workstation.uv_inexus.dto.concise.common.DelTaskRequestDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.PermLogOccupyDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
 import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
@@ -429,7 +429,7 @@ public class ExperimentTestController {
     )
     @GetMapping("checkOperatePermission")
     @ApiOperation("校验操作类型权限（返回true/false）")
-    public Result<Boolean> checkOperatePermission(DelTaskRequestDTO requestDTO) {
+    public Result<Boolean> checkOperatePermission(PermLogOccupyDTO requestDTO) {
 
         return Result.ok(true);
     }
