@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.instrumentController;
 
 
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
@@ -17,10 +18,7 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceAutoInjectorPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InjectionTrayParamPO;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceAutoInjectorService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMonitorService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
@@ -50,6 +48,9 @@ public class DeviceController {
 
     @Autowired
     private DeviceAutoInjectorService injectorService;
+
+    @Autowired
+    private DeviceUsageLogService deviceUsageLogService;
 
     @GetMapping("/stop")
     @ApiOperation("新驱动-停止扫描")
@@ -465,6 +466,20 @@ public class DeviceController {
         monitorService.countUsageInfo(dto);
         return null;
 
+    }
+
+    @GetMapping("/deviceUsageStatistics")
+    @ApiOperation("仪器使用情况统计")
+    public Result<List<DeviceUsageLogVO> > deviceUsageStatistics(@RequestParam(required = false) String startTime, @RequestParam(required = false) String endTime){
+        List<DeviceUsageLogVO> list = deviceUsageLogService.deviceUsageLogStatistics(startTime, endTime);
+        return Result.ok(list);
+    }
+
+    @GetMapping("/userUsageStatistics")
+    @ApiOperation("用户使用情况统计")
+    public Result<JSONObject> userUsageStatistics(@RequestParam(required = false) String startTime, @RequestParam(required = false) String endTime){
+        JSONObject list = deviceUsageLogService.userUsageLogStatistics(startTime, endTime);
+        return Result.ok(list);
     }
 
     @PostMapping("/addDevice")

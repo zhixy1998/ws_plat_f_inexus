@@ -179,5 +179,13 @@ public class Constants {
     public static final Pattern PARAM_PATTERN = Pattern.compile("^[A-Z]{1,2}\\d{1,10}$");
 
 
+    /*
+    消息来源分类：系统消息:system,仪器：device，远程： remote,未知：unknown
+     */
+    public static final String MESSAGE_SOURCE_SYSTEM = "system";
+    public static final String MESSAGE_SOURCE_DEVICE = "device";
+    public static final String MESSAGE_SOURCE_REMOTE = "remote";
+    public static final String MESSAGE_SOURCE_UNKNOWN = "unknown";
+
 
 }

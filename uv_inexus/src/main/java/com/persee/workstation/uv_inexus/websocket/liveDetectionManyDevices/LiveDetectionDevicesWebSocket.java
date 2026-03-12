@@ -15,9 +15,12 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.enums.messageEnums.MessageTypeEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.MessageInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.MessageInfoService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
@@ -115,6 +118,9 @@ public class LiveDetectionDevicesWebSocket {
     @Autowired
     ConciseRationMeasureNewWebSocket conciseRationMeasureNewWebSocket;
 
+    @Autowired
+    MessageInfoService messageInfoService;
+
     private static final DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
     // ==================== 配置参数 ====================
@@ -123,6 +129,9 @@ public class LiveDetectionDevicesWebSocket {
 
     @Value("/topic/device")
     private String deviceTopic;
+
+    @Value("/topic/message")
+    private String messageTopic;
 
 
     @Value("${websocket.measurement.interval:2000}")
@@ -671,6 +680,11 @@ public class LiveDetectionDevicesWebSocket {
                             taskInfo.consecutiveFailures++;
                             taskInfo.isRunning = false;
                             webSocketSendUtil.sendDeviceDisConnectMessage(taskInfo.deviceSerialNumber);
+
+                            String message = "仪器无响应，请检查仪器状态和网线连接后，重新查找并联接仪器！";
+
+                            saveMessageInfo(message);
+
                         }
                         scheduleNextMeasurement(taskInfo, startTime);
                         return;
@@ -750,6 +764,15 @@ public class LiveDetectionDevicesWebSocket {
         vo.setData(data);
 
         webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
+    }
+
+    private void saveMessageInfo(String message) {
+        MessageInfoPO messageInfoPO = new MessageInfoPO();
+        messageInfoPO.setMessageType(MessageTypeEnum.TYPE_INSTRUMENT_MESSAGE.getCode());
+        messageInfoPO.setMessageSource(Constants.MESSAGE_SOURCE_DEVICE);
+        messageInfoPO.setMessageContent(message);
+        messageInfoPO.setMessageSummary("设备无响应!");
+        messageInfoService.saveMessageInfo(messageInfoPO);
     }
 
     /**
@@ -845,6 +868,7 @@ public class LiveDetectionDevicesWebSocket {
 
         log.info("WebSocket{}订阅: {}", sessionId, destination);
 
+
         if (StringUtils.hasText(destination) && destination.startsWith(deviceTopic)) {
             String[] split = destination.split("/");
             String deviceSerialNumber = split[split.length - 1];
@@ -852,11 +876,26 @@ public class LiveDetectionDevicesWebSocket {
             // 检查此会话是否已经订阅了此设备
             boolean isNewSubscription = addSubscription(sessionId, deviceSerialNumber);
 
+
             if (isNewSubscription) {
                 log.info("新增订阅: 会话={} -> 设备={}", sessionId, deviceSerialNumber);
                 handleSubscribe(deviceSerialNumber);
             } else {
                 log.debug("重复订阅忽略: 会话={} -> 设备={}", sessionId, deviceSerialNumber);
+            }
+        }
+
+        if (StringUtils.hasText(destination) && destination.startsWith(messageTopic)) {
+            String[] split = destination.split("/");
+            String deviceSerialNumber = split[split.length - 1];
+
+            // 检查此会话是否已经订阅了此设备
+            boolean isNewSubscription = addSubscription(sessionId, deviceSerialNumber);
+
+            if (isNewSubscription) {
+                log.info("新增消息订阅: 会话={}", sessionId);
+            } else {
+                log.debug("重复消息订阅忽略: 会话={} ", sessionId);
             }
         }
     }
@@ -893,15 +932,21 @@ public class LiveDetectionDevicesWebSocket {
 
 
         log.info("WebSocket{}取消订阅消息: {}", sessionId, destination);
+
         if (StringUtils.hasText(destination) && destination.startsWith(deviceTopic)) {
             String[] split = destination.split("/");
             String deviceSerialNumber = split[split.length - 1];
 
             boolean removed = removeSubscription(sessionId, deviceSerialNumber);
+
             if (removed) {
                 log.info("移除订阅: 会话={} -> 设备={}", sessionId, deviceSerialNumber);
                 handleUnsubscribe(deviceSerialNumber);
             }
+        }
+        if (StringUtils.hasText(destination) && destination.startsWith(messageTopic)) {
+
+            log.info("移除消息订阅: 会话={}", sessionId);
         }
     }
 

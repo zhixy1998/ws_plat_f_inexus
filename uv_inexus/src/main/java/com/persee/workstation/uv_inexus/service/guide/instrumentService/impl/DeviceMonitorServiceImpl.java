@@ -243,7 +243,11 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
                     long validTotal = projectCounts.values().stream().mapToLong(Long::longValue).sum();
                     statisticsMap.put("totalCount", validTotal);
                 } else {
-                    return Result.fail(YamlMessageSource.getMessageStatic("00205007"));
+                    log.warn("获取项目统计失败: 无有效数据");
+                    statisticsMap.put("totalCount", 0);
+                    statisticsMap.put("projectCounts", new HashMap<>());
+                    return Result.ok(statisticsMap);
+//                    return Result.fail(YamlMessageSource.getMessageStatic("00205007"));
                 }
 
                 return Result.ok(statisticsMap);

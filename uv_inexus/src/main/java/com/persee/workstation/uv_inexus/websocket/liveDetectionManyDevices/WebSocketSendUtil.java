@@ -31,6 +31,9 @@ public class WebSocketSendUtil {
 //@Value("/topic/detection")
     private String deviceTopic;
 
+    @Value("/topic/message")
+    private String messageTopic;
+
     /**
      * 获取设备消息主题
      */
@@ -97,6 +100,7 @@ public class WebSocketSendUtil {
         JSONObject errorMsg = new JSONObject();
         try {
 
+
             errorMsg.put("error", "仪器无响应！");
             errorMsg.put("disconnect", "仪器无响应，请检查仪器状态和网线连接后，重新查找并联接仪器！");
             Result<JSONObject> errorResult = Result.fail(ResultCodeEnum.DEVICE_DISCONNECT.getCode(), errorMsg.toString());
@@ -107,5 +111,14 @@ public class WebSocketSendUtil {
         } catch (Exception e) {
             log.error("发送消息失败: {} {}", deviceSerialNumber, errorMsg, e);
         }
+    }
+
+    //新消息通知
+    public void newMessageReport() {
+        JSONObject message = new JSONObject();
+        message.put("newMessageReport", "新消息提醒");
+
+        messagingTemplate.convertAndSend(messageTopic, message);
+
     }
 }

@@ -1,0 +1,27 @@
+/*
+ * *
+ *  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
+ *  * 本软件受商业机密法和版权法保护。
+ *  * 本代码仅限与北京普析通用仪器有限责任公司签订有效协议的授权用户内部使用。
+ *  * 任何未经明确许可的复制、使用、修改、分发或公开均被严格禁止。
+ *
+ */
+
+package com.persee.workstation.uv_inexus.vo.instrumentVo;
+
+import com.alibaba.fastjson.JSONObject;
+import io.swagger.annotations.ApiModelProperty;
+import lombok.Data;
+
+/**
+ * @author xudian
+ */
+@Data
+public class DeviceUsageLogVO {
+
+    @ApiModelProperty("设备编号")
+    private String deviceSerialNumber;
+
+    @ApiModelProperty("使用信息，key是月份，value是次数或比例")
+    private JSONObject usageStatistics;
+}
