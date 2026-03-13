@@ -112,7 +112,7 @@ public class TimeSweepController {
         return timeSweepService.changeTheListPort(taskId,type, digit);
     }
 
-    @DeleteMapping("deleteChangeListPort")
+    @GetMapping("deleteChangeListPort")
     @ApiOperation("删除变换列表接口")
     public Result deleteChangeListPort(@RequestParam String analysisId) {
         return timeSweepService.deleteChangeListPort(analysisId);
