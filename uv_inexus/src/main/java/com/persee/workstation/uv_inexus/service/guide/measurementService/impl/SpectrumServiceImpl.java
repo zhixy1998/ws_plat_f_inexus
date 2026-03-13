@@ -1107,7 +1107,11 @@ public class SpectrumServiceImpl implements SpectrumService {
         wrapper.eq("device_serial_number", deviceSerialNumber);
         SamplePoolConfigPO configPO = samplePoolConfigService.getOne(wrapper);
         if (configPO == null) {
-            return Result.ok("没有找到对应的附件配置信息");
+            // 返回空List，而非String！保证数据类型统一
+            List<SampleListVo> emptyList = new ArrayList<>();
+            return Result.ok(emptyList);
+            // 可选：加日志提示
+            // log.warn("未找到设备{}的附件配置信息，返回空数据", deviceSerialNumber);
         }
         Boolean isAutoChangePool = configPO.getIsAutoChangePool();
         SpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
@@ -3046,12 +3050,17 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 2.1 获取两个来源的数据
         List<SampleListVo> allSamples = new ArrayList<>();
         // 处理sampleListPort数据
-        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, digit,deviceSerialNumber);
+        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, digit, deviceSerialNumber);
         if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
-            // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
-            allSamples.addAll(sampleListResult.getData());
+            // ========== 新增类型校验 ==========
+            if (sampleListResult.getData() instanceof List) {
+                allSamples.addAll(sampleListResult.getData());
+            } else {
+                log.warn("sampleListPort返回数据类型异常，不是List：{}", sampleListResult.getData());
+            }
+            // ========== 新增结束 ==========
         } else {
-            // log.warn("【步骤2/5】sampleListPort查询异常：{}", sampleListResult.getMessage());
+            log.warn("【步骤2/5】sampleListPort查询异常：{}", sampleListResult.getMessage());
         }
 
         // 处理changeTheListPort数据（与sampleListPort逻辑相同）
