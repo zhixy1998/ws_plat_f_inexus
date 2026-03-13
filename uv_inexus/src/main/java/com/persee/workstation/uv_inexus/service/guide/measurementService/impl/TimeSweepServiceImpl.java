@@ -2472,7 +2472,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @param fileType 导出格式（word/txt/xlsx）
      * @return 生成的文件对象
      */
-    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds,String deviceSerialNumber) {
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds,String deviceSerialNumber, Integer digit) {
         // log.info("===== 导出流程开始 =====");
         // log.info("开始导出，taskId: {}, fileType: {}, 需要筛选的analysisId数量: {}",
         // taskId, fileType, analysisIds != null ? analysisIds.size() : 0);
@@ -2521,7 +2521,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         List<SampleListVo> allSamples = new ArrayList<>();
 
         // 处理sampleListPort数据
-        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, null,deviceSerialNumber);
+        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, digit,deviceSerialNumber);
         if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
             // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
             allSamples.addAll(sampleListResult.getData());
@@ -3411,8 +3411,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     // 保留原有的downloadWord方法，并适配新参数
-    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds,String deviceSerialNumber) {
-        return downloadFile(taskId, allDisplay, "word", analysisIds,deviceSerialNumber);
+    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds,String deviceSerialNumber,Integer digit) {
+        return downloadFile(taskId, allDisplay, "word", analysisIds,deviceSerialNumber,digit);
     }
 
 

@@ -291,10 +291,11 @@ public class TimeSweepController {
             @RequestParam(value = "analysisIds", required = false) List<String> analysisIds,
             @ApiParam(value = "导出格式（word/excel/txt，默认word）", required = false) 
             @RequestParam(required = false) String fileType,
+            @RequestParam Integer digit,
             @RequestParam String deviceSerialNumber) throws Exception {
         
         // 调用 Service 层的多格式导出方法
-        R<File> result = timeSweepService.downloadFile(taskId, allDisplay, fileType, analysisIds,deviceSerialNumber);
+        R<File> result = timeSweepService.downloadFile(taskId, allDisplay, fileType, analysisIds,deviceSerialNumber,digit);
         
         if (result.getSuccess()) {
             File file = result.getData();
