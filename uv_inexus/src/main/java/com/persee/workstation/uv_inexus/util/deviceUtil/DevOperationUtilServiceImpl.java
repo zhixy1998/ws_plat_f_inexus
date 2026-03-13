@@ -1072,7 +1072,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     return R.fail("当前仪器无法连接！");
                 }
 
-                if (comId.equals(ConnectEnum.Connect.getComId())) {
+                if (comId.equals(ConnectEnum.Connect.getComId()) || comId.equals(ConnectEnum.TestConnect.getComId())) {
 
                     String s = deviceManager.convertToPermanentByDeviceId(deviceInfo.getDeviceId());
                     result.setIp(deviceInfo.getDeviceIp());

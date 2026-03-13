@@ -20,7 +20,7 @@ public enum ConnectEnum {
     //, "连接设备"
     // 连接设备
     Connect("Connect"),
-//    Connect("TestConnect"),
+    TestConnect("TestConnect"),
     // 获取设备SN
     GetSn("GetSn"),
     // 获取设备配件类型
