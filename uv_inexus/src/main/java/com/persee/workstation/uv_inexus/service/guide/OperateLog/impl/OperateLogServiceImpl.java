@@ -44,6 +44,7 @@ public class OperateLogServiceImpl implements OperateLogService {
         "description", // 操作描述
         "ip",          // 操作IP
         "status",      // 操作状态
+        "log_type",
         "method"       // 调用方法
     );
 
