@@ -93,8 +93,9 @@ public class TimeSweepController {
     @ApiOperation("获取样本列表接口")
     public Result sampleListPort(@RequestParam String taskId,
                                  @RequestParam(required = false) String type,
-                                 @RequestParam(required = false) Integer digit) {
-        return timeSweepService.sampleListPort(taskId,type, digit);
+                                 @RequestParam(required = false) Integer digit,
+                                 @RequestParam String deviceSerialNumber) {
+        return timeSweepService.sampleListPort(taskId,type, digit,deviceSerialNumber);
     }
 
     @GetMapping("deleteSampleListPort")
@@ -279,10 +280,11 @@ public class TimeSweepController {
             @ApiParam(value = "筛选的analysisId列表（多个ID用逗号分隔，如123,456）", required = false) 
             @RequestParam(value = "analysisIds", required = false) List<String> analysisIds,
             @ApiParam(value = "导出格式（word/excel/txt，默认word）", required = false) 
-            @RequestParam(required = false) String fileType) throws Exception {
+            @RequestParam(required = false) String fileType,
+            @RequestParam String deviceSerialNumber) throws Exception {
         
         // 调用 Service 层的多格式导出方法
-        R<File> result = timeSweepService.downloadFile(taskId, allDisplay, fileType, analysisIds);
+        R<File> result = timeSweepService.downloadFile(taskId, allDisplay, fileType, analysisIds,deviceSerialNumber);
         
         if (result.getSuccess()) {
             File file = result.getData();

@@ -28,6 +28,7 @@ import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
@@ -1083,7 +1084,7 @@ public class SpectrumServiceImpl implements SpectrumService {
      * @return
      */
     @Override
-    public Result sampleListPort(String taskId, String type, Integer digit) {
+    public Result sampleListPort(String taskId, String type, Integer digit,String deviceSerialNumber) {
         System.out.println("sampleListPort实际参数：taskId=" + taskId + ", type=" + type + ", digit=" + digit);
         if (taskId == null) {
             //方法id不能为空,请创建方法
@@ -1101,6 +1102,14 @@ public class SpectrumServiceImpl implements SpectrumService {
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
+        // 根据序列号查询对应的附件配置表信息
+        QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
+        wrapper.eq("device_serial_number", deviceSerialNumber);
+        SamplePoolConfigPO configPO = samplePoolConfigService.getOne(wrapper);
+        if (configPO == null) {
+            return Result.ok("没有找到对应的附件配置信息");
+        }
+        Boolean isAutoChangePool = configPO.getIsAutoChangePool();
         SpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<SampleListVo> listVos = new ArrayList<>();
@@ -1136,7 +1145,11 @@ public class SpectrumServiceImpl implements SpectrumService {
                     vo.setTitle(sample.getSampleName());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
                     vo.setAnalysisId(null);
-                    vo.setSampleLocation(sample.getSampleLocation());
+                    if (isAutoChangePool){
+                        vo.setSampleLocation(sample.getSampleLocation());
+                    }else{
+                        vo.setSampleLocation(null);
+                    }
                     vo.setAnalysisNumber(1);
                     vo.setColor(null);
                     vo.setData(null);
@@ -1145,7 +1158,11 @@ public class SpectrumServiceImpl implements SpectrumService {
                     vo.setTitle(sample.getSampleName());
                     vo.setAnalysisId(measureData.getId());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
-                    vo.setSampleLocation(sample.getSampleLocation());
+                    if (isAutoChangePool){
+                        vo.setSampleLocation(sample.getSampleLocation());
+                    }else{
+                        vo.setSampleLocation(null);
+                    }
                     vo.setAnalysisNumber(measureData.getAnalysisNumber());
                     vo.setColor(measureData.getColor());
                     if (measureData.getAnalysisResult() == null) {
@@ -1195,7 +1212,11 @@ public class SpectrumServiceImpl implements SpectrumService {
                         vo.setAnalysisId(null);
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
                         vo.setAnalysisNumber(i + 1);
-                        vo.setSampleLocation(sample.getSampleLocation());
+                        if (isAutoChangePool){
+                            vo.setSampleLocation(sample.getSampleLocation());
+                        }else{
+                            vo.setSampleLocation(null);
+                        }
                         vo.setColor(null);
                         vo.setData(null);
                         vo.setDeleteType("0");
@@ -1207,7 +1228,11 @@ public class SpectrumServiceImpl implements SpectrumService {
                         vo.setAnalysisId(measureData.getId());
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
                         vo.setAnalysisNumber(measureData.getAnalysisNumber());
-                        vo.setSampleLocation(sample.getSampleLocation());
+                        if (isAutoChangePool){
+                            vo.setSampleLocation(sample.getSampleLocation());
+                        }else{
+                            vo.setSampleLocation(null);
+                        }
                         vo.setColor(measureData.getColor());
                         if (measureData.getAnalysisResult() == null) {
                             vo.setData(null);
@@ -2973,7 +2998,7 @@ public class SpectrumServiceImpl implements SpectrumService {
      * @param fileType   导出格式（word/txt/xlsx）
      * @return 生成的文件对象
      */
-    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit) {
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit,String deviceSerialNumber) {
         // log.info("===== 导出流程开始 =====");
         // log.info("开始导出，taskId: {}, fileType: {}, 需要筛选的analysisId数量: {}",
         //         taskId, fileType, analysisIds != null ? analysisIds.size() : 0);
@@ -3021,7 +3046,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 2.1 获取两个来源的数据
         List<SampleListVo> allSamples = new ArrayList<>();
         // 处理sampleListPort数据
-        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, digit);
+        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, digit,deviceSerialNumber);
         if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
             // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
             allSamples.addAll(sampleListResult.getData());
@@ -3944,8 +3969,8 @@ public class SpectrumServiceImpl implements SpectrumService {
      * @param analysisIds
      * @return
      */
-    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds, Integer digit) {
-        return downloadFile(taskId, allDisplay, "word", analysisIds, digit);
+    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds, Integer digit,String deviceSerialNumber) {
+        return downloadFile(taskId, allDisplay, "word", analysisIds, digit,deviceSerialNumber);
     }
 
     /**

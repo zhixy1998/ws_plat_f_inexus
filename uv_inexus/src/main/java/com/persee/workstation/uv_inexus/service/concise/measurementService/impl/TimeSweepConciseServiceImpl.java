@@ -1260,7 +1260,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @return
      */
     @Override
-    public Result querySampleDataList(String taskId, String type, Integer digit) {
+    public Result querySampleDataList(String taskId, String type, Integer digit, String deviceSerialNumber) {
         // 先对前端传过来的数据进行校验
         if (taskId == null || taskId.equals("")) {
             //任务id不能为空
@@ -1273,7 +1273,14 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         List<FSampleListVo> listVos = new ArrayList<>();
-
+        // 根据序列号查询对应的附件配置表信息
+        QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
+        wrapper.eq("device_serial_number", deviceSerialNumber);
+        SamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+        if (configPO == null) {
+            return Result.ok("没有找到对应的附件配置信息");
+        }
+        Boolean isAutoChangePool = configPO.getIsAutoChangePool();
         if (taskSpecimen != null) {
             for (FTaskSpecimen taskSpeciman : taskSpecimen) {
                 if (taskSpeciman.getDeleteType().equals("1") && type == null) {
@@ -1301,7 +1308,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
                     vo.setAnalysisId(null);
                     vo.setAnalysisNumber(1);
-                    vo.setSampleLocation(sample.getSampleLocation());
+                    if (isAutoChangePool){
+                        vo.setSampleLocation(sample.getSampleLocation());
+                    }else{
+                        vo.setSampleLocation(null);
+                    }
                     vo.setColor(null);
                     vo.setData(null);
                     vo.setDeleteType("0");
@@ -1310,7 +1321,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     vo.setAnalysisId(measureData.getId());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
                     vo.setSampleLocation(sample.getSampleLocation());
-                    vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                    if (isAutoChangePool){
+                        vo.setSampleLocation(sample.getSampleLocation());
+                    }else{
+                        vo.setSampleLocation(null);
+                    }
                     vo.setColor(measureData.getColor());
                     if (measureData.getAnalysisResult() == null) {
                         vo.setData(null);
@@ -3071,7 +3086,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @param fileType   导出格式（word/txt/xlsx）
      * @return 生成的文件对象
      */
-    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit) {
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit, String deviceSerialNumber) {
         // log.info("===== 导出流程开始 =====");
         // log.info("开始导出，taskId: {}, fileType: {}, 需要筛选的analysisId数量: {}", 
         // taskId, fileType, analysisIds != null ? analysisIds.size() : 0);
@@ -3120,7 +3135,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         List<FSampleListVo> allSamples = new ArrayList<>();
 
         // 处理sampleListPort数据
-        Result<List<FSampleListVo>> sampleListResult = querySampleDataList(taskId, null, digit);
+        Result<List<FSampleListVo>> sampleListResult = querySampleDataList(taskId, null, digit,deviceSerialNumber);
         if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
             // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
             allSamples.addAll(sampleListResult.getData());
@@ -3341,8 +3356,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
 
     // 保留原有的downloadWord方法，并适配新参数
-    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds, Integer digit) {
-        return downloadFile(taskId, allDisplay, "word", analysisIds, digit);
+    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds, Integer digit,String deviceSerialNumber) {
+        return downloadFile(taskId, allDisplay, "word", analysisIds, digit,deviceSerialNumber);
     }
 
 

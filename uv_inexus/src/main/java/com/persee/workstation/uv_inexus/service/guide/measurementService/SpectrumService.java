@@ -68,7 +68,7 @@ public interface SpectrumService {
     Result deleteSamplePort(String sampleId, String taskId);
 
     // 获取样本列表接口
-    Result sampleListPort(String taskId,String type,Integer digit);
+    Result sampleListPort(String taskId,String type,Integer digit,String deviceSerialNumber);
 
     // 删除样品列表接口
     Result deleteSampleListPort(String taskId, String sampleId,String analysisId);
@@ -146,7 +146,7 @@ public interface SpectrumService {
     Result testCompare(String taskId, SpectrumParameter spectrumParameter);
 
     // 多格式文件下载接口（支持word/excel/txt）
-    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit);
+    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit,String deviceSerialNumber);
 
     // (实验测试)创建方法接口
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter);

@@ -146,8 +146,9 @@ public class SpectrumConciseController {
     @ApiOperation("查询样品数据列表")
     public Result queryNearestSampleData(@RequestParam String taskId,
                                          @RequestParam(required = false) String type,
-                                         @RequestParam(required = false) Integer digit) {
-        return spectrumConciseService.querySampleDataList(taskId,type,digit);
+                                         @RequestParam(required = false) Integer digit,
+                                         @RequestParam String deviceSerialNumber) {
+        return spectrumConciseService.querySampleDataList(taskId,type,digit,deviceSerialNumber);
     }
 
     @GetMapping("deleteSampleListPort")
@@ -298,10 +299,11 @@ public class SpectrumConciseController {
             @RequestParam(required = false) String fileType,
             // 新增 digit 参数（根据实际需求调整 required 和描述）
             @ApiParam(value = "修约", required = false) 
-            @RequestParam(value = "digit", required = false) Integer digit) throws Exception {
+            @RequestParam(value = "digit", required = false) Integer digit,
+            @RequestParam String deviceSerialNumber) throws Exception {
         
         // 调用 Service 层的多格式导出方法
-        R<File> result = spectrumConciseService.downloadFile(taskId, allDisplay, fileType, analysisIds, digit);
+        R<File> result = spectrumConciseService.downloadFile(taskId, allDisplay, fileType, analysisIds, digit,deviceSerialNumber);
         
         if (result.getSuccess()) {
             File file = result.getData();

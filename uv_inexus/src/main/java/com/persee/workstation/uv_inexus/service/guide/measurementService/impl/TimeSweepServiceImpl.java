@@ -32,6 +32,7 @@ import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
@@ -486,7 +487,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @return
      */
     @Override
-    public Result sampleListPort(String taskId,String type,Integer digit) {
+    public Result sampleListPort(String taskId,String type,Integer digit,String deviceSerialNumber) {
         // 先对前端传过来的数据进行校验
         if (taskId == null || taskId.equals("")) {
             //任务id不能为空
@@ -499,7 +500,14 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<SampleListVo> listVos = new ArrayList<>();
-
+        // 根据序列号查询对应的附件配置表信息
+        QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
+        wrapper.eq("device_serial_number", deviceSerialNumber);
+        SamplePoolConfigPO configPO = samplePoolConfigService.getOne(wrapper);
+        if (configPO == null) {
+            return Result.ok("没有找到对应的附件配置信息");
+        }
+        Boolean isAutoChangePool = configPO.getIsAutoChangePool();
         if (taskSpecimen != null) {
             for (TaskSpecimen taskSpeciman : taskSpecimen) {
                 if (taskSpeciman.getDeleteType().equals("1") && type == null) {
@@ -526,7 +534,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
                     vo.setAnalysisId(null);
                     vo.setAnalysisNumber(1);
-                    vo.setSampleLocation(sample.getSampleLocation());
+                    if (isAutoChangePool){
+                        vo.setSampleLocation(sample.getSampleLocation());
+                    }else{
+                        vo.setSampleLocation(null);
+                    }
                     vo.setColor(null);
                     vo.setData(null);
                     vo.setDeleteType("0");
@@ -534,7 +546,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                     vo.setTitle(sample.getSampleName());
                     vo.setAnalysisId(measureData.getId());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
-                    vo.setSampleLocation(sample.getSampleLocation());
+                    if (isAutoChangePool){
+                        vo.setSampleLocation(sample.getSampleLocation());
+                    }else{
+                        vo.setSampleLocation(null);
+                    }
                     vo.setAnalysisNumber(measureData.getAnalysisNumber());
                     vo.setColor(measureData.getColor());
                     if (measureData.getAnalysisResult() == null) {
@@ -2447,7 +2463,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @param fileType 导出格式（word/txt/xlsx）
      * @return 生成的文件对象
      */
-    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds) {
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds,String deviceSerialNumber) {
         // log.info("===== 导出流程开始 =====");
         // log.info("开始导出，taskId: {}, fileType: {}, 需要筛选的analysisId数量: {}",
         // taskId, fileType, analysisIds != null ? analysisIds.size() : 0);
@@ -2496,7 +2512,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         List<SampleListVo> allSamples = new ArrayList<>();
 
         // 处理sampleListPort数据
-        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, null);
+        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, null,deviceSerialNumber);
         if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
             // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
             allSamples.addAll(sampleListResult.getData());
@@ -3386,8 +3402,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     // 保留原有的downloadWord方法，并适配新参数
-    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds) {
-        return downloadFile(taskId, allDisplay, "word", analysisIds);
+    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds,String deviceSerialNumber) {
+        return downloadFile(taskId, allDisplay, "word", analysisIds,deviceSerialNumber);
     }
 
 
