@@ -1106,14 +1106,13 @@ public class SpectrumServiceImpl implements SpectrumService {
         QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
         wrapper.eq("device_serial_number", deviceSerialNumber);
         SamplePoolConfigPO configPO = samplePoolConfigService.getOne(wrapper);
+        Boolean isAutoChangePool;
         if (configPO == null) {
-            // 返回空List，而非String！保证数据类型统一
-            List<SampleListVo> emptyList = new ArrayList<>();
-            return Result.ok(emptyList);
-            // 可选：加日志提示
-            // log.warn("未找到设备{}的附件配置信息，返回空数据", deviceSerialNumber);
+            isAutoChangePool=false;
+        }else{
+            isAutoChangePool= configPO.getIsAutoChangePool();
         }
-        Boolean isAutoChangePool = configPO.getIsAutoChangePool();
+
         SpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<SampleListVo> listVos = new ArrayList<>();
@@ -1652,7 +1651,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail(YamlMessageSource.getMessageStatic("00100011"));
         }
         if (paramDto.getHeight() == null) {
-            paramDto.setHeight(Double.parseDouble(confVO.getPeakValleyDiff()));
+            paramDto.setHeight(confVO.getPeakValleyDiff());
         }
         if (paramDto.getDistance() == null || paramDto.getDistance().isEmpty()) {
             paramDto.setDistance(confVO.getPeakInterval());
@@ -1663,10 +1662,11 @@ public class SpectrumServiceImpl implements SpectrumService {
             //峰谷间距不可以小于1
             return Result.fail(YamlMessageSource.getMessageStatic("00100012"));
         }
-        if (paramDto.getHeight() > 100) {
+        Double height = Double.valueOf(paramDto.getHeight());
+        if (height > 100) {
             return Result.fail(YamlMessageSource.getMessageStatic("00100027"));
         }
-        paramDto.setHeight(paramDto.getHeight() / 100);
+        paramDto.setHeight(String.valueOf(height / 100));
         TMeasureAnalysisData tMeasureAnalysisData = tMeasureAnalysisDataService.getById(paramDto.getDataId());
         if (tMeasureAnalysisData == null) {
             //测量数据不存在
@@ -1829,6 +1829,13 @@ public class SpectrumServiceImpl implements SpectrumService {
             //没有找到该分析数据
             return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
         }
+
+        // 波长范围校验
+        Result validateResult = validateGaugePointsRange(paramDto.getGaugePoints(), analysisData);
+        if (validateResult != null) {
+            return validateResult; // 校验失败，返回错误信息
+        }
+
         gaugePointJson = analysisData.getGaugePoint();
         rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
 
@@ -3050,17 +3057,12 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 2.1 获取两个来源的数据
         List<SampleListVo> allSamples = new ArrayList<>();
         // 处理sampleListPort数据
-        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, digit, deviceSerialNumber);
+        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, digit,deviceSerialNumber);
         if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
-            // ========== 新增类型校验 ==========
-            if (sampleListResult.getData() instanceof List) {
-                allSamples.addAll(sampleListResult.getData());
-            } else {
-                log.warn("sampleListPort返回数据类型异常，不是List：{}", sampleListResult.getData());
-            }
-            // ========== 新增结束 ==========
+            // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
+            allSamples.addAll(sampleListResult.getData());
         } else {
-            log.warn("【步骤2/5】sampleListPort查询异常：{}", sampleListResult.getMessage());
+            // log.warn("【步骤2/5】sampleListPort查询异常：{}", sampleListResult.getMessage());
         }
 
         // 处理changeTheListPort数据（与sampleListPort逻辑相同）
@@ -4871,6 +4873,53 @@ public class SpectrumServiceImpl implements SpectrumService {
                 Objects.equals(oldParam.getTimeInterval(), newParam.getTimeInterval()) &&
                 Objects.equals(oldParam.getLadderCorrection(), newParam.getLadderCorrection()) &&
                 Objects.equals(oldParam.getScanSpeed(), newParam.getScanSpeed());
+    }
+
+
+    /**
+     * 校验波长范围是否超限
+     * @param gaugePoints
+     * @param analysisData
+     * @return
+     */
+    private Result validateGaugePointsRange(List<String> gaugePoints, TMeasureAnalysisData analysisData) {
+        // 从原始数据中解析波长范围
+        List<String> rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+        if (rawData == null || rawData.isEmpty()) {
+            return Result.fail("原始数据为空");
+        }
+
+        // 获取所有波长点并找出最小和最大值
+        double minWave = Double.MAX_VALUE;
+        double maxWave = -Double.MAX_VALUE;
+
+        for (String dataPoint : rawData) {
+            String[] split = dataPoint.split(",");
+            try {
+                double wave = Double.parseDouble(split[0]);
+                minWave = Math.min(minWave, wave);
+                maxWave = Math.max(maxWave, wave);
+            } catch (NumberFormatException e) {
+                return Result.fail("原始数据格式错误：" + dataPoint);
+            }
+        }
+
+        // 验证每个标记点
+        for (String xStr : gaugePoints) {
+            try {
+                double x = Double.parseDouble(xStr);
+                // 允许有0.01的浮点数误差
+                if (x < minWave - 0.01 || x > maxWave + 0.01) {
+                    String message = String.format("标记点 %.2f 超出波长范围 [%.2f, %.2f]",
+                            x, minWave, maxWave);
+                    return Result.fail(message);
+                }
+            } catch (NumberFormatException e) {
+                return Result.fail("标记点格式错误：" + xStr);
+            }
+        }
+
+        return null; // 校验通过
     }
 
 }

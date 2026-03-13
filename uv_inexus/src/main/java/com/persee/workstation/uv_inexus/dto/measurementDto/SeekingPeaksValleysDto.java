@@ -9,7 +9,12 @@
 
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
+import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+
+import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.Digits;
+import javax.validation.constraints.Pattern;
 
 /**
  * 寻找峰谷差参数
@@ -19,7 +24,13 @@ public class SeekingPeaksValleysDto {
     // 参数id(测量id和分析id共用一个)
     private String dataId;
     // 峰谷差阈值
-    private Double height;
+    @ApiModelProperty("峰谷差阈值")
+    @Digits(integer = 10, fraction = 2, message = "峰谷差阈值必须是数字，最多保留2位小数")
+    @DecimalMin(value = "0.0", inclusive = false, message = "峰谷差阈值必须大于0")
+    private String height;  // 可以为空，有值时才验证
+
     // 峰间距
-    private String distance;
+    @ApiModelProperty("峰间距")
+    @Pattern(regexp = "^\\d+(\\.\\d+)?$", message = "峰间距必须是有效的数字")
+    private String distance;  // 可以为空，有值时才验证
 }

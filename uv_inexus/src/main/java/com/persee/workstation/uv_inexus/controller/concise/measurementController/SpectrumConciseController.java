@@ -214,7 +214,14 @@ public class SpectrumConciseController {
 
     @PostMapping("seekingPeaksAndValleysPort")
     @ApiOperation("寻峰寻谷接口")
-    public Result seekingPeaksAndValleysPort(@RequestBody FSeekingPeaksValleysDto paramDto){
+    public Result seekingPeaksAndValleysPort(@Valid @RequestBody FSeekingPeaksValleysDto paramDto,
+                                             BindingResult bindingResult){
+        if (bindingResult.hasErrors()) {
+            String errorMsg = bindingResult.getFieldErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .collect(Collectors.joining("; "));
+            return Result.fail("参数校验失败: " + errorMsg);
+        }
         return spectrumConciseService.peakSearchingPort(paramDto);
     }
 

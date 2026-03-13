@@ -120,7 +120,10 @@ public class TimeSweepController {
 
     @GetMapping("restoreDeletedListData")
     @ApiOperation("恢复已删除数据接口")
-    public Result restoreDeletedListData(@RequestParam String taskId,@RequestParam String sampleId,@RequestParam String type,@RequestParam String analysisId){
+    public Result restoreDeletedListData(@RequestParam String taskId,
+                                         @RequestParam(required = false) String sampleId,
+                                         @RequestParam String type,
+                                         @RequestParam String analysisId){
         return timeSweepService.restoreDeletedListData(taskId,sampleId,type,analysisId);
     }
 
@@ -171,7 +174,14 @@ public class TimeSweepController {
 
     @PostMapping("seekingPeaksAndValleysPort")
     @ApiOperation("寻峰寻谷接口")
-    public Result seekingPeaksAndValleysPort(@RequestBody SeekingPeaksValleysDto paramDto){
+    public Result seekingPeaksAndValleysPort(@Valid @RequestBody SeekingPeaksValleysDto paramDto,
+                                             BindingResult bindingResult){
+        if (bindingResult.hasErrors()) {
+            String errorMsg = bindingResult.getFieldErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .collect(Collectors.joining("; "));
+            return Result.fail("参数校验失败: " + errorMsg);
+        }
         return timeSweepService.seekingPeaksAndValleysPort(paramDto);
     }
 

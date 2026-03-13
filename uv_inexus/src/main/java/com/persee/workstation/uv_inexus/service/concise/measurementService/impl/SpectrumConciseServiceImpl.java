@@ -1431,10 +1431,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
         wrapper.eq("device_serial_number", deviceSerialNumber);
         SamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+        Boolean isAutoChangePool;
         if (configPO == null) {
-            return Result.ok("没有找到对应的附件配置信息");
+            isAutoChangePool=false;
+        }else{
+            isAutoChangePool= configPO.getIsAutoChangePool();
         }
-        Boolean isAutoChangePool = configPO.getIsAutoChangePool();
         // 判断是否是重复模式
         if ("不重复".equals(parameter.getRepetitionPattern())) {
             // 不重复模式
@@ -1930,6 +1932,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             //没有找到该分析数据
             return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
         }
+        // 波长范围校验
+        Result validateResult = validateGaugePointsRange(paramDto.getGaugePoints(), analysisData);
+        if (validateResult != null) {
+            return validateResult; // 校验失败，返回错误信息
+        }
         gaugePointJson = analysisData.getGaugePoint();
         rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
 
@@ -2083,7 +2090,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return Result.fail(YamlMessageSource.getMessageStatic("00100011"));
         }
         if (paramDto.getHeight() == null) {
-            paramDto.setHeight(Double.parseDouble(confVO.getPeakValleyDiff()));
+            paramDto.setHeight(confVO.getPeakValleyDiff());
         }
         if (paramDto.getDistance() == null || paramDto.getDistance().isEmpty()) {
             paramDto.setDistance(confVO.getPeakInterval());
@@ -2094,10 +2101,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             //峰谷间距不可以小于1
             return Result.fail(YamlMessageSource.getMessageStatic("00100012"));
         }
-        if (paramDto.getHeight() > 100) {
+        Double height = Double.valueOf(paramDto.getHeight());
+        if (height> 100) {
             return Result.fail(YamlMessageSource.getMessageStatic("00100027"));
         }
-        paramDto.setHeight(paramDto.getHeight() / 100);
+        paramDto.setHeight(String.valueOf(height / 100));
         FMeasureAnalysisData fMeasureAnalysisData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
         if (fMeasureAnalysisData == null) {
             //测量数据不存在
@@ -4498,6 +4506,52 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             // 兜底异常（包括上面 throw 的 RuntimeException）
             throw e;
         }
+    }
+
+    /**
+     * 校验波长范围是否超限
+     * @param gaugePoints
+     * @param analysisData
+     * @return
+     */
+    private Result validateGaugePointsRange(List<String> gaugePoints, FMeasureAnalysisData analysisData) {
+        // 从原始数据中解析波长范围
+        List<String> rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+        if (rawData == null || rawData.isEmpty()) {
+            return Result.fail("原始数据为空");
+        }
+
+        // 获取所有波长点并找出最小和最大值
+        double minWave = Double.MAX_VALUE;
+        double maxWave = -Double.MAX_VALUE;
+
+        for (String dataPoint : rawData) {
+            String[] split = dataPoint.split(",");
+            try {
+                double wave = Double.parseDouble(split[0]);
+                minWave = Math.min(minWave, wave);
+                maxWave = Math.max(maxWave, wave);
+            } catch (NumberFormatException e) {
+                return Result.fail("原始数据格式错误：" + dataPoint);
+            }
+        }
+
+        // 验证每个标记点
+        for (String xStr : gaugePoints) {
+            try {
+                double x = Double.parseDouble(xStr);
+                // 允许有0.01的浮点数误差
+                if (x < minWave - 0.01 || x > maxWave + 0.01) {
+                    String message = String.format("标记点 %.2f 超出波长范围 [%.2f, %.2f]",
+                            x, minWave, maxWave);
+                    return Result.fail(message);
+                }
+            } catch (NumberFormatException e) {
+                return Result.fail("标记点格式错误：" + xStr);
+            }
+        }
+
+        return null; // 校验通过
     }
 
 }
