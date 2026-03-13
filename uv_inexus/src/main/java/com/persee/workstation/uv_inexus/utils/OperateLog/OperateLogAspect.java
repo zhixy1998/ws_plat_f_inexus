@@ -147,7 +147,15 @@ public class OperateLogAspect {
                         operateDescMap.put("timeScan", "时间扫描-扫描");
                         operateDescMap.put("spectralScanBaseline", "光谱扫描-基线");
                         operateDescMap.put("timeScanBaseline", "时间扫描-基线");
-                        operateDescMap.put("generateReport", "生成报告");
+                        operateDescMap.put("lumnePreviewReport", "光度测量-预览报告");
+                        operateDescMap.put("quantityPreviewReport", "定量测量-预览报告");
+                        operateDescMap.put("spectralPreviewReport", "光谱扫描-预览报告");
+                        operateDescMap.put("timeScanPreviewReport", "时间扫描-预览报告");
+                        operateDescMap.put("wmlumneGenerationReport", "光度测量-生成报告");
+                        operateDescMap.put("wmquantityGenerationReport", "定量测量-生成报告");
+                        operateDescMap.put("wmspectralGenerationReport", "光谱扫描-生成报告");
+                        operateDescMap.put("wmtimeScanGenerationReport", "时间扫描-生成报告");
+
                         // 替换描述中的operateType占位符
                         String operateName = operateDescMap.getOrDefault(currentOperateType, currentOperateType);
                         dynamicDesc = dynamicDesc.replace("{operateType}", operateName);
