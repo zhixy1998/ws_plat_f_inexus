@@ -662,25 +662,25 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             addSessionToTask(taskId, session);
 //            boolean b = workbookCacheManager.acquireEditLock(taskId, updateBy);
             // 检查是否已经获取过编辑锁（checkTaskUsage 时已获取）
-            String currentEditor = workbookCacheManager.getCurrentEditor(taskId);
-            if (currentEditor == null) {
-                log.warn("任务{}没有获取锁，不允许连接（checkTaskUsage 未调用？）", taskId);
-                JSONObject errorMsg = new JSONObject();
-                errorMsg.put("error", "请先检查任务状态");
-                session.sendMessage(new TextMessage(errorMsg.toJSONString()));
-                session.close();
-                return;
-            }
+//            String currentEditor = workbookCacheManager.getCurrentEditor(taskId);
+//            if (currentEditor == null) {
+//                log.warn("任务{}没有获取锁，不允许连接（checkTaskUsage 未调用？）", taskId);
+//                JSONObject errorMsg = new JSONObject();
+//                errorMsg.put("error", "请先检查任务状态");
+//                session.sendMessage(new TextMessage(errorMsg.toJSONString()));
+//                session.close();
+//                return;
+//            }
 
-            if (!currentEditor.equals(updateBy)) {
-                log.warn("任务正在被其他用户编辑，拒绝连接：taskId={}, 当前用户={}, 编辑者={}", taskId, updateBy, currentEditor);
-                JSONObject errorMsg = new JSONObject();
-                errorMsg.put("error", "任务正在被其他用户编辑");
-                errorMsg.put("editor", currentEditor);
-                session.sendMessage(new TextMessage(errorMsg.toJSONString()));
-                session.close();
-                return;
-            }
+//            if (!currentEditor.equals(updateBy)) {
+//                log.warn("任务正在被其他用户编辑，拒绝连接：taskId={}, 当前用户={}, 编辑者={}", taskId, updateBy, currentEditor);
+//                JSONObject errorMsg = new JSONObject();
+//                errorMsg.put("error", "任务正在被其他用户编辑");
+//                errorMsg.put("editor", currentEditor);
+//                session.sendMessage(new TextMessage(errorMsg.toJSONString()));
+//                session.close();
+//                return;
+//            }
 
             log.info("获取编辑锁成功：taskId={}, updateBy={}", taskId, updateBy);
             // 为会话创建专属Workbook
