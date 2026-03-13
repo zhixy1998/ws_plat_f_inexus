@@ -34,7 +34,7 @@ public enum OperationTypeEnums {
     Zero(885, "零点校准", "deviceIp,connectType", "", Constants.DEVICE_STATUS_ZERO),
     Calibration(886, "校准", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
     LiveDetection(887, "实时检测", "deviceIp,connectType", "", Constants.DEVICE_STATUS_ECHO),
-    Disconnect(888, "断开连接", "deviceIp,connectType", "", Constants.DEVICE_STATUS_DisConnect),
+    Disconnect(888, "断开连接", "deviceIp,connectType", "", Constants.DEVICE_STATUS_DIS_CONNECT),
     T800Connect(889, "T800连接", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
     End(999, "枚举最后标志量，不做操作，方便添加", "deviceIp,connectType", "", 999);
 

@@ -1020,6 +1020,10 @@ public class UdpSendUtil {
         log.info("时间扫描数据处理成功");
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
 
+        String xmlKey = device.getXmlKey();
+
+
+
         String currentWavelength = device.getCurrentWavelength() == null ? "" : device.getCurrentWavelength();
         ChangeParam measureResult = parse.getMeasureResult();
         ChangeParam zeroRsd = deviceManager.getZeroResult(deviceId, currentWavelength);
@@ -1045,11 +1049,20 @@ public class UdpSendUtil {
         point.setMeasureRsd(measureResult);
         point.setTimestamp(System.currentTimeMillis());
 
+        int abs = 1;
+        int tpercent = 2;
+        if (xmlKey != null && xmlKey.equals(DevXmlEnums.T800.getDevType())) {
+
+            abs = 5;
+            tpercent = 6;
+        }
+
+
         SpectrumCalcResult absResult =
-                calculator.calculate(1, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
+                calculator.calculate(abs, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
 
         SpectrumCalcResult tResult =
-                calculator.calculate(2, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
+                calculator.calculate(tpercent, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
 
         SpectrumCalcResult esResult =
                 calculator.calculate(3, point, SpectrumSourceType.SINGLE, deviceSerialNumber);

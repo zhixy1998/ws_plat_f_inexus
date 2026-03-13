@@ -93,7 +93,8 @@ public class SpectrumResultCalculator {
             double d1 = Double.parseDouble(real.getD());
             double r1 = Double.parseDouble(real.getR());
             double s1 = Double.parseDouble(real.getS());
-            String wl = String.valueOf(sp.getWavelength());
+            BigDecimal w = BigDecimal.valueOf(sp.getWavelength());
+            String wl = w.stripTrailingZeros().toPlainString();
 
 //            Double Zobj = sp.getDarkZ();
 //            double Z = (Zobj == null) ? 1.0 : Zobj;
@@ -133,13 +134,14 @@ public class SpectrumResultCalculator {
             double d1 = Double.parseDouble(real.getD());
             double r1 = Double.parseDouble(real.getR());
             double s1 = Double.parseDouble(real.getS());
-            String wl = String.valueOf(sp.getWavelength());
+            BigDecimal w = BigDecimal.valueOf(sp.getWavelength());
+            String wl = w.stripTrailingZeros().toPlainString();
 
 //            Double Zobj = sp.getDarkZ();
 //            double Z = (Zobj == null) ? 1.0 : Zobj;
 
             Double Z = getZFromDatabase(deviceSerialNumber, wl);
-            Z = (Z == null) ? 1.0 : Z;
+            Z = (Z == null) ? 0.1 : Z;
 
 
             double a1;

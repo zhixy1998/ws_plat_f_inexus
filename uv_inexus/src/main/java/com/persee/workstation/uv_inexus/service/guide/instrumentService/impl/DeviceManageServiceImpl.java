@@ -40,6 +40,7 @@ import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
@@ -1352,7 +1353,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public R<Boolean> deviceNewCalibration(DeviceCalibrationDTO dto) {
 
-        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
+        String deviceSerialNumber = dto.getDeviceSerialNumber();
+        if (!StringUtils.hasText(deviceSerialNumber)) {
             log.info("缺少序列号");
             //缺少序列号
             return R.fail(YamlMessageSource.getMessageStatic("00203003"));
@@ -1364,6 +1366,46 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return R.fail(YamlMessageSource.getMessageStatic("00203004"));
         }
 
+        LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber)
+                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+
+        List<CalibrationTempPO> poList = tempDao.selectList(queryWrapper);
+        if (poList.isEmpty()) {
+            for (DataNameValue data : dto.getData()) {
+                CalibrationTempPO po = new CalibrationTempPO();
+                po.setDeviceSerialNumber(deviceSerialNumber);
+                po.setCreateBy(dto.getUpdateBy());
+                po.setCalibrationType(dto.getCalibrationType());
+                po.setParam(data.getDataKey());
+                po.setParamValue(data.getDataValue());
+                tempDao.insert(po);
+            }
+        } else {
+            for (DataNameValue data : dto.getData()) {
+                LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber)
+                        .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+
+                wrapper.eq(CalibrationTempPO::getParam, data.getDataKey());
+                CalibrationTempPO calibrationTempPO = tempDao.selectOne(wrapper);
+                if (calibrationTempPO == null) {
+                    CalibrationTempPO po = new CalibrationTempPO();
+                    po.setDeviceSerialNumber(deviceSerialNumber);
+                    po.setCreateBy(dto.getUpdateBy());
+                    po.setCalibrationType(dto.getCalibrationType());
+                    po.setParam(data.getDataKey());
+                    po.setParamValue(data.getDataValue());
+                    tempDao.insert(po);
+                } else {
+                    calibrationTempPO.setUpdateBy(dto.getUpdateBy());
+                    calibrationTempPO.setParamValue(data.getDataValue());
+                    tempDao.update(calibrationTempPO, wrapper);
+                }
+            }
+        }
+
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.Calibration.getOperation(), Constants.DEVICE_STATUS_CALIBRATION);
         if (Objects.equals(dto.getCalibrationType(), DeviceCalibrationInfoEnum.T800Dark.getType())) {
             double start = 900.0;
             double end = 190.0;
@@ -1411,9 +1453,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             param.setEndWl(end);
             param.setScanSpeed(scanSpeed);
             param.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
-            inputParam.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+            inputParam.setDeviceSerialNumber(deviceSerialNumber);
 
-            Boolean needSetSit = infoService.isNeedSetSit(dto.getDeviceSerialNumber());
+            Boolean needSetSit = infoService.isNeedSetSit(deviceSerialNumber);
             if (needSetSit) {
                 param.setSlit1(darkBand);
             }
@@ -1431,7 +1473,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Calibration.getType());
         inputParam.setCalibrationType(dto.getCalibrationType());
-        inputParam.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setUpdateBy(dto.getUpdateBy());
         if (dto.getData() != null) {
             inputParam.setCalibrationData(dto.getData());
@@ -1439,47 +1481,33 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return R.fail(operation.getMessage());
         }
         log.info("校准成功");
-        LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
-                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
 
-        List<CalibrationTempPO> poList = tempDao.selectList(queryWrapper);
-        if (poList.isEmpty()) {
-            for (DataNameValue data : dto.getData()) {
-                CalibrationTempPO po = new CalibrationTempPO();
-                po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
-                po.setCreateBy(dto.getUpdateBy());
-                po.setCalibrationType(dto.getCalibrationType());
-                po.setParam(data.getDataKey());
-                po.setParamValue(data.getDataValue());
-                tempDao.insert(po);
-            }
+        if (Objects.equals(dto.getCalibrationType(), DeviceCalibrationInfoEnum.T800Dark.getType())) {
+           new Thread(() -> {
+               DeviceConnectionManager deviceConnectionManager = DeviceConnectionManager.getInstance();
+               DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+               String deviceId = info.getDeviceId();
+               DeviceConnectInfo device = deviceConnectionManager.getDevice(deviceId);
+               Boolean isIdle = device.getIsIdle();
+               while (!isIdle) {
+                   try {
+                       Thread.sleep(200);
+                       device = deviceConnectionManager.getDevice(deviceId);
+                       isIdle = device.getIsIdle();
+                   } catch (Exception e) {
+                       log.info("线程异常");
+                   }
+               }
+               infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+           }).start();
         } else {
-            for (DataNameValue data : dto.getData()) {
-                LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
-                        .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
-
-                wrapper.eq(CalibrationTempPO::getParam, data.getDataKey());
-                CalibrationTempPO calibrationTempPO = tempDao.selectOne(wrapper);
-                if (calibrationTempPO == null) {
-                    CalibrationTempPO po = new CalibrationTempPO();
-                    po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
-                    po.setCreateBy(dto.getUpdateBy());
-                    po.setCalibrationType(dto.getCalibrationType());
-                    po.setParam(data.getDataKey());
-                    po.setParamValue(data.getDataValue());
-                    tempDao.insert(po);
-                } else {
-                    calibrationTempPO.setUpdateBy(dto.getUpdateBy());
-                    calibrationTempPO.setParamValue(data.getDataValue());
-                    tempDao.update(calibrationTempPO, wrapper);
-                }
-            }
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         }
+
         return R.ok();
     }
 

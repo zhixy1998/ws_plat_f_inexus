@@ -240,7 +240,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             return R.fail(YamlMessageSource.getMessageStatic("00202007"));
         }
 
-        if (!status.equals(Constants.DEVICE_STATUS_DisConnect)) {
+        if (!status.equals(Constants.DEVICE_STATUS_DIS_CONNECT)) {
             Integer isActivated = info.getIsActivated();
             if (isActivated == null || isActivated == 0) {
                 //请先激活仪器

@@ -45,7 +45,6 @@ import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSo
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
 import com.persee.workstation.uv_inexus.websocket.measure.param.PhotoAndRationMetricWebsocketParam;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -473,21 +472,8 @@ public class GuidePhotometricWebSocket {
 
 
             machineData.add(changeParam);
-            ChangeParam originRsd = new ChangeParam();
-            List<ChangeParam> params = new ArrayList<>();
-            if (StringUtils.hasText(task.getZeroParam())) {
-                params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-                if (params != null) {
-                    for (ChangeParam zero : params) {
-                        if (zero.getWl().equals(waveLength)) {
-                            BeanUtils.copyProperties(zero, originRsd);
-                            break;
-                        }
-                    }
-                }
-            }
 
-            PhotometricOriginDataInfo dataInfo =  dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), changeParam, params, null, sample.getSampleNumber());
+            PhotometricOriginDataInfo dataInfo =  dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), changeParam, null);
             dataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
 
             originDataList.add(dataInfo);
@@ -580,21 +566,9 @@ public class GuidePhotometricWebSocket {
 
 
                     machineData.add(changeParam);
-                    ChangeParam originRsd = new ChangeParam();
-                    List<ChangeParam> params = new ArrayList<>();
-                    if (StringUtils.hasText(task.getZeroParam())) {
-                        params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-                        if (params != null) {
-                            for (ChangeParam zero : params) {
-                                if (zero.getWl().equals(waveLength)) {
-                                    BeanUtils.copyProperties(zero, originRsd);
-                                    break;
-                                }
-                            }
-                        }
-                    }
+
                     //处理数据
-                    PhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), changeParam, params, DataIdentityEnums.middle.getIdentity() + "-" + i, sample.getSampleNumber());
+                    PhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), changeParam, DataIdentityEnums.middle.getIdentity() + "-" + i);
                     dataInfo.setMeasureTime(time);
                     dataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
 
@@ -775,7 +749,7 @@ public class GuidePhotometricWebSocket {
 
     }
 
-    private PhotometricOriginDataInfo dealAndSendMessage(String deviceSerialNumber, String waveLength, String sampleKey, String luminosity, ChangeParam response,List<ChangeParam> params, String identity, String sampleNo) {
+    private PhotometricOriginDataInfo dealAndSendMessage(String deviceSerialNumber, String waveLength, String sampleKey, String luminosity, ChangeParam response, String identity) {
         PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();
         originDataInfo.setMode(luminosity);
         originDataInfo.setWavelength(waveLength);
@@ -788,7 +762,7 @@ public class GuidePhotometricWebSocket {
         }
         Map<String, String> measureData = new HashMap<>();
         if (luminosity.equals(WaveLengthEnum.er.getCode())) {
-            String s = DataCountUtil.countErOrEs(response, WaveLengthEnum.er.getCode());
+            String s = response.getValue();
             measureData.put(waveLength + "-" + WaveLengthEnum.er.getCode(), s);
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.er.getCode());
@@ -801,7 +775,7 @@ public class GuidePhotometricWebSocket {
 
         }
         else if (luminosity.equals(WaveLengthEnum.es.getCode())) {
-            String s = DataCountUtil.countErOrEs(response, WaveLengthEnum.es.getCode());
+            String s = response.getValue();
             measureData.put(waveLength + "-" + WaveLengthEnum.es.getCode(), s);
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.es.getCode());
@@ -814,24 +788,21 @@ public class GuidePhotometricWebSocket {
 
         }
         else {
-            ChangeParam originRsd = new ChangeParam();
-            if (params != null) {
-                for (ChangeParam param : params) {
-                    if (param.getWl().equals(waveLength)) {
-                        BeanUtils.copyProperties(param, originRsd);
-                        break;
-                    }
-                }
+
+            String abs = response.getValue();
+            String tPercent = response.getOtherData();
+
+            if (luminosity.equals(WaveLengthEnum.tPercent.getCode())){
+                abs = response.getOtherData();
+                tPercent = response.getValue();
             }
 
-            String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);
-            String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
-            measureData.put(waveLength + "-" + WaveLengthEnum.abs.getCode(), data);
+            measureData.put(waveLength + "-" + WaveLengthEnum.abs.getCode(), abs);
             measureData.put(waveLength + "-" + WaveLengthEnum.tPercent.getCode(), tPercent);
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
 
-            Double v = DataCountUtil.formatValue(digit, Double.valueOf(data));
+            Double v = DataCountUtil.formatValue(digit, Double.valueOf(abs));
             String absData = DataCountUtil.addZero(v, digit);
             jsonObject.put("value", absData);
 

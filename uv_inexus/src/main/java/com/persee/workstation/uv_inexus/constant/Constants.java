@@ -83,7 +83,8 @@ public class Constants {
     public final static Integer DEVICE_STATUS_ECHO = 3;
     public final static Integer DEVICE_STATUS_OTHER = 4;
     public final static Integer DEVICE_STATUS_ZERO = 5;
-    public final static Integer DEVICE_STATUS_DisConnect = 6;
+    public final static Integer DEVICE_STATUS_DIS_CONNECT = 6;
+    public final static Integer DEVICE_STATUS_CALIBRATION = 7;
 
 
 

@@ -1380,6 +1380,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         Map<String, String> darkInfo = info.getDarkInfo();
         String z = "1";
+        if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+            z = "0.1";
+        }
         if (darkInfo != null && StringUtils.hasText(darkInfo.get(device.getCurrentWavelength()))) {
             z = darkInfo.get(device.getCurrentWavelength());
         }
@@ -1403,8 +1406,14 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 String s;
                 if (!Objects.isNull(zeroParam)) {
                     s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z));
+                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z));
+                    }
                 } else {
                     s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z));
+                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z));
+                    }
                 }
                 String abs = DataCountUtil.changeTPercentOrAbs(null, s);
                 resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, abs));
@@ -1740,6 +1749,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())){
                         Map<String, String> darkInfo = info.getDarkInfo();
                         String z = "1";
+                        if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                            z = "0.1";
+                        }
                         if (darkInfo != null && StringUtils.hasText(darkInfo.get(s))) {
                             z = darkInfo.get(s);
                         }
@@ -1841,6 +1853,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())){
                     Map<String, String> darkInfo = info.getDarkInfo();
                     String z = "1";
+                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        z = "0.1";
+                    }
                     if (darkInfo != null && StringUtils.hasText(darkInfo.get(wavelength))) {
                         z = darkInfo.get(wavelength);
                     }
