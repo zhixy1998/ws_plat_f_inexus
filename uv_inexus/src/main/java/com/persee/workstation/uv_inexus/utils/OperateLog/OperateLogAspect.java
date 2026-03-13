@@ -137,7 +137,6 @@ public class OperateLogAspect {
                     String dynamicDesc = operateLog.description();
                     String dynamicPermission = "";
                     if (StringUtils.hasText(currentOperateType)) {
-                        // ========== 原有operateType映射（不变） ==========
                         Map<String, String> operateDescMap = new HashMap<>();
                         operateDescMap.put("add", "设置");
                         operateDescMap.put("edit", "修改");
@@ -148,7 +147,7 @@ public class OperateLogAspect {
                         operateDescMap.put("timeScan", "时间扫描-扫描");
                         operateDescMap.put("spectralScanBaseline", "光谱扫描-基线");
                         operateDescMap.put("timeScanBaseline", "时间扫描-基线");
-
+                        operateDescMap.put("generateReport", "生成报告");
                         // 替换描述中的operateType占位符
                         String operateName = operateDescMap.getOrDefault(currentOperateType, currentOperateType);
                         dynamicDesc = dynamicDesc.replace("{operateType}", operateName);

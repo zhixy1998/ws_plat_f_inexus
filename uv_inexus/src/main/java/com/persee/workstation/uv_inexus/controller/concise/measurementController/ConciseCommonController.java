@@ -276,7 +276,28 @@ public class ConciseCommonController {
 
     @ButtonPermission(
             description = "通用websocket前置判断接口",
-            permissionMapping = "lumne=lumneMeasurement,quantity=quantityMeasurement,spectralScan=spectralScanScan,timeScan=timeScanScan,spectralScanBaseline=spectralScanBaseline,timeScanBaseline=timeScanBaseline"
+            permissionMapping =
+                    "lumne=lumneMeasurement," +
+                    "quantity=quantityMeasurement," +
+                    "spectralScan=spectralScanScan," +
+                    "timeScan=timeScanScan," +
+                    "spectralScanBaseline=spectralScanBaseline," +
+                    "wmLumne=wizardModeLumneMeasurement," +
+                    "wmQuantity=wizardModeQuantityMeasurement," +
+                    "wmSpectralScan=wizardModeSpectralScanScan," +
+                    "wmTimeScan=wizardModeTimeScanScan," +
+                    "spectralScanBaseline=spectralScanBaseline," +
+                    "timeScanBaseline=timeScanBaseline," +
+                    "wmSpectralScanBaseline=wizardModeSpectralScanBaseline," +
+                    "wmTimeScanBaseline=wizardModeTimeScanBaseline," +
+                    "lumnePreviewReport=lumnePreviewReport," +
+                    "quantityPreviewReport=quantityPreviewReport," +
+                    "spectralPreviewReport=spectralPreviewReport," +
+                    "timeScanPreviewReport=timeScanPreviewReport," +
+                    "wmlumneGenerationReport=wmlumneGenerationReport," +
+                    "wmquantityGenerationReport=wmquantityGenerationReport," +
+                    "wmspectralGenerationReport=wmspectralGenerationReport," +
+                    "wmtimeScanGenerationReport=wmtimeScanGenerationReport,"
     )
     @OperateLog(
             module = "实验测试-经典模式或向导模式",
