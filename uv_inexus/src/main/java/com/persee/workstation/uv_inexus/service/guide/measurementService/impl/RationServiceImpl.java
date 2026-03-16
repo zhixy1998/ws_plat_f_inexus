@@ -26,6 +26,7 @@ import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.guide.SampleCreateHeadConf;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
+import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -5745,7 +5746,7 @@ public class RationServiceImpl implements RationService {
      * @param fileType   导出格式（word/txt/xlsx）
      * @return 生成的文件对象
      */
-    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit) {
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit) throws BusinessException {
         // log.info("开始导出11111111，taskId: {}, fileType: {}", taskId, fileType);
         // 1. 基础参数校验（复用原逻辑）
         if (!StringUtils.hasText(taskId)) {
@@ -5809,10 +5810,11 @@ public class RationServiceImpl implements RationService {
         // 2. 仅提取标准样品数据（standSampleData）
         List<Map<String, Object>> data = dataVO.getStandSampleData();
         // 3. 校验标准样品数据是否为空
-        if (data == null || data.isEmpty()) {
-            //没有可导出的标准样品数据
-            return R.fail(YamlMessageSource.getMessageStatic("00303016"));
-        }
+//        if (data == null || data.isEmpty()) {
+//            //没有可导出的标准样品数据
+//            throw new BusinessException(YamlMessageSource.getMessageStatic("00303016"));
+////            return R.fail(YamlMessageSource.getMessageStatic("00303016"));
+//        }
         // 给数据加序号（与序号列对应）
         for (int i = 0; i < data.size(); i++) {
             data.get(i).put("serialNumber", i + 1);
@@ -5858,9 +5860,9 @@ public class RationServiceImpl implements RationService {
     }
 
     // ---------------------- 原有downloadWord方法（可保留或删除，建议用上面的downloadFile替代） ----------------------
-    public R<File> downloadWord(String taskId, Boolean allDisplay) {
+    public R<File> downloadWord(String taskId, Boolean allDisplay) throws BusinessException{
         // 直接调用多格式方法，指定格式为word
-        return downloadFile(taskId, allDisplay, "word", null, null);
+        return downloadFile(taskId, allDisplay, "word", null, null) ;
     }
 
     /**

@@ -12,6 +12,7 @@ package com.persee.workstation.uv_inexus.service.guide.measurementService;
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
@@ -185,7 +186,7 @@ public interface RationService {
     /**
      * 导出到word
      */
-    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit);
+    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit) throws BusinessException;
 
     void test(String a, String b);
 
