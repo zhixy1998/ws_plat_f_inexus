@@ -14,10 +14,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupQuickConfigMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysQuickConfigMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.*;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigGrantPermDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigSaveDTO;
@@ -25,10 +22,7 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigTree
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupQuickConfigPO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysPermissionPO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysQuickConfigPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.*;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysQuickConfigService;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.UserPermissionService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
@@ -37,7 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-
+import lombok.extern.slf4j.Slf4j;
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -46,6 +40,7 @@ import java.util.stream.Collectors;
 /**
  * 快捷配置Service实现类
  */
+@Slf4j
 @Service
 public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper, SysQuickConfigPO> implements SysQuickConfigService {
     @Autowired
@@ -58,6 +53,9 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
 
     @Autowired
     private UserPermissionService userPermissionService;
+
+    @Autowired
+    private SysGroupPermissionMapper sysGroupPermissionMapper;
 
     @Override
     public Result<PageView<SysQuickConfigPO>> getQuickConfigPage(Page<SysQuickConfigPO> page, QuickConfigQueryDTO queryDTO) {
@@ -333,55 +331,166 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
     @Transactional(rollbackFor = Exception.class)
     public Result<Boolean> grantQuickConfigToGroup(QuickConfigGrantPermDTO grantDTO) {
         try {
-            // ========== 步骤1：基础校验 ==========
             if (!StringUtils.hasText(grantDTO.getGroupId())) {
                 return Result.fail("小组ID不能为空");
             }
-            // 兼容「可空」需求：如果Map为空（size=0），则跳过权限更新逻辑
+            String groupId = grantDTO.getGroupId();
             Map<String, List<Long>> quickConfigPermMap = grantDTO.getQuickConfigIds();
+
+            // ========== 新增核心步骤：查询该小组已绑定的所有快捷配置ID ==========
+            Set<String> boundQuickConfigIds = new HashSet<>();
+            QueryWrapper<SysGroupQuickConfigPO> groupConfigQuery = new QueryWrapper<>();
+            groupConfigQuery.select("quick_config_ids")
+                    .eq("group_id", groupId)
+                    .eq("deleted", 0); // 排除逻辑删除的记录
+            SysGroupQuickConfigPO groupConfigPO = sysGroupQuickConfigMapper.selectOne(groupConfigQuery);
+            if (groupConfigPO != null && StringUtils.hasText(groupConfigPO.getQuickConfigIds())) {
+                // 解析已绑定的快捷配置ID（如"1,2,3" → [1,2,3]）
+                boundQuickConfigIds = Arrays.stream(groupConfigPO.getQuickConfigIds().split(","))
+                        .map(String::trim)
+                        .filter(StringUtils::hasText)
+                        .collect(Collectors.toSet());
+            }
+            log.info("小组{}已绑定的快捷配置ID：{}", groupId, boundQuickConfigIds);
+
+            // ========== 处理空值场景（前端传递空的quickConfigIds） ==========
             if (quickConfigPermMap.isEmpty()) {
-                log.warn("快捷配置权限映射为空，仅更新小组快捷配置关联关系，不更新权限");
+                log.warn("快捷配置权限映射为空，清空小组所有快捷配置关联关系和对应权限");
 
-                // 若Map为空，快捷配置ID列表也为空，直接更新t_sys_group_quick_config为空
+                // 1. 清空已绑定的所有快捷配置的perm_ids_have，并删除对应权限
+                if (!boundQuickConfigIds.isEmpty()) {
+                    List<SysQuickConfigPO> boundConfigList = this.list(
+                            new LambdaQueryWrapper<SysQuickConfigPO>()
+                                    .in(SysQuickConfigPO::getId, boundQuickConfigIds)
+                    );
+                    for (SysQuickConfigPO configPO : boundConfigList) {
+                        // 清空perm_ids_have
+                        configPO.setPermIdsHave("");
+                        baseMapper.updateById(configPO);
+                        // 删除该配置下的所有权限
+                        if (StringUtils.hasText(configPO.getPermIds())) {
+                            try {
+                                Set<Long> scopeIds = Arrays.stream(configPO.getPermIds().split(","))
+                                        .map(String::trim)
+                                        .filter(StringUtils::hasText)
+                                        .map(Long::parseLong)
+                                        .collect(Collectors.toSet());
+                                LambdaQueryWrapper<SysGroupPermissionPO> delWrapper = new LambdaQueryWrapper<>();
+                                delWrapper.eq(SysGroupPermissionPO::getGroupId, groupId)
+                                        .in(SysGroupPermissionPO::getPermId, scopeIds.stream().map(String::valueOf).collect(Collectors.toSet()));
+                                sysGroupPermissionMapper.delete(delWrapper);
+                                log.info("清空小组{}下快捷配置{}的所有权限，权限范围：{}", groupId, configPO.getId(), scopeIds);
+                            } catch (NumberFormatException e) {
+                                log.error("快捷配置ID={}的perm_ids格式错误，无法删除对应权限", configPO.getId(), e);
+                            }
+                        }
+                    }
+                }
+
+                // 2. 更新t_sys_group_quick_config表
                 String quickConfigIdsStr = "";
-                QueryWrapper<SysGroupQuickConfigPO> queryWrapper = new QueryWrapper<>();
-                queryWrapper.select("id", "group_id", "quick_config_ids")
-                        .eq("group_id", grantDTO.getGroupId());
-                SysGroupQuickConfigPO existPO = sysGroupQuickConfigMapper.selectOne(queryWrapper);
-
-                if (existPO != null) {
-                    existPO.setQuickConfigIds(quickConfigIdsStr);
-                    sysGroupQuickConfigMapper.updateById(existPO);
+                if (groupConfigPO != null) {
+                    groupConfigPO.setQuickConfigIds(quickConfigIdsStr);
+//                    groupConfigPO.setUpdateUser(grantDTO.getUpdateBy());
+                    sysGroupQuickConfigMapper.updateById(groupConfigPO);
                 } else {
                     SysGroupQuickConfigPO newPO = new SysGroupQuickConfigPO();
-                    newPO.setGroupId(grantDTO.getGroupId());
+                    newPO.setGroupId(groupId);
                     newPO.setQuickConfigIds(quickConfigIdsStr);
+//                    newPO.setCreateUser(grantDTO.getUpdateBy());
+//                    newPO.setUpdateUser(grantDTO.getUpdateBy());
                     sysGroupQuickConfigMapper.insert(newPO);
                 }
-                return Result.ok(true).message("快捷配置权限映射为空，仅更新小组关联关系成功");
+                return Result.ok(true).message("快捷配置权限映射为空，已清空小组所有快捷配置关联关系和对应权限");
             }
 
-            // ========== 步骤2：提取所有快捷配置ID，校验并更新perm_ids_have字段 ==========
-            Set<String> quickConfigIds = quickConfigPermMap.keySet();
+            // ========== 步骤2：提取前端传递的快捷配置ID，并找出「整体取消的ID」 ==========
+            Set<String> currentQuickConfigIds = quickConfigPermMap.keySet();
+            // 整体取消的ID = 已绑定的ID - 本次传递的ID
+            Set<String> cancelAllConfigIds = new HashSet<>(boundQuickConfigIds);
+            cancelAllConfigIds.removeAll(currentQuickConfigIds);
+            log.info("小组{}整体取消的快捷配置ID：{}", groupId, cancelAllConfigIds);
+
+            // ========== 处理「整体取消的快捷配置」：清空perm_ids_have + 删除对应权限 ==========
+            if (!cancelAllConfigIds.isEmpty()) {
+                List<SysQuickConfigPO> cancelConfigList = this.list(
+                        new LambdaQueryWrapper<SysQuickConfigPO>()
+                                .in(SysQuickConfigPO::getId, cancelAllConfigIds)
+                );
+                for (SysQuickConfigPO configPO : cancelConfigList) {
+                    // 1. 清空该配置的perm_ids_have
+                    configPO.setPermIdsHave("");
+                    baseMapper.updateById(configPO);
+                    log.info("清空快捷配置{}的perm_ids_have（整体取消）", configPO.getId());
+
+                    // 2. 删除该配置下的所有权限（基于perm_ids范围）
+                    if (StringUtils.hasText(configPO.getPermIds())) {
+                        try {
+                            Set<Long> scopeIds = Arrays.stream(configPO.getPermIds().split(","))
+                                    .map(String::trim)
+                                    .filter(StringUtils::hasText)
+                                    .map(Long::parseLong)
+                                    .collect(Collectors.toSet());
+                            LambdaQueryWrapper<SysGroupPermissionPO> delWrapper = new LambdaQueryWrapper<>();
+                            delWrapper.eq(SysGroupPermissionPO::getGroupId, groupId)
+                                    .in(SysGroupPermissionPO::getPermId, scopeIds.stream().map(String::valueOf).collect(Collectors.toSet()));
+                            int deleteCount = sysGroupPermissionMapper.delete(delWrapper);
+                            log.info("删除小组{}下快捷配置{}的所有权限，删除条数：{}，权限范围：{}",
+                                    groupId, configPO.getId(), deleteCount, scopeIds);
+                        } catch (NumberFormatException e) {
+                            log.error("快捷配置ID={}的perm_ids格式错误，无法删除对应权限", configPO.getId(), e);
+                        }
+                    }
+                }
+            }
+
+            // ========== 步骤3：校验前端传递的快捷配置ID ==========
             List<SysQuickConfigPO> configList = this.list(
                     new LambdaQueryWrapper<SysQuickConfigPO>()
-                            .in(SysQuickConfigPO::getId, quickConfigIds)
+                            .in(SysQuickConfigPO::getId, currentQuickConfigIds)
             );
-            if (configList.size() != quickConfigIds.size()) {
+            if (configList.size() != currentQuickConfigIds.size()) {
                 Set<String> existConfigIds = configList.stream()
-                        .map(SysQuickConfigPO::getId)
+                        .map(p -> p.getId().toString())
                         .collect(Collectors.toSet());
-                Set<String> notExistIds = quickConfigIds.stream()
+                Set<String> notExistIds = currentQuickConfigIds.stream()
                         .filter(id -> !existConfigIds.contains(id))
                         .collect(Collectors.toSet());
                 return Result.fail("快捷配置ID不存在：" + String.join(",", notExistIds));
             }
 
-            // 遍历更新perm_ids_have
+            // ========== 核心：解析权限范围+选择的权限（原有逻辑保留，添加日志+异常捕获） ==========
+            Set<Long> configPermScopeIds = new HashSet<>(); // 所有快捷配置的perm_ids范围
+            Set<Long> currentSelectPermIds = new HashSet<>(); // 本次选择的权限
+
             for (SysQuickConfigPO configPO : configList) {
-                String configId = configPO.getId().toString(); // 修复：Long转String，避免类型不匹配
+                String configId = configPO.getId().toString();
                 List<Long> permIdList = quickConfigPermMap.get(configId);
-                // 兼容空权限列表：置空perm_ids_have
+
+                // 1. 解析perm_ids（添加异常捕获）
+                if (StringUtils.hasText(configPO.getPermIds())) {
+                    try {
+                        Set<Long> scopeIds = Arrays.stream(configPO.getPermIds().split(","))
+                                .map(String::trim)
+                                .filter(StringUtils::hasText)
+                                .map(Long::parseLong)
+                                .collect(Collectors.toSet());
+                        configPermScopeIds.addAll(scopeIds);
+                        log.info("快捷配置ID={}，perm_ids解析结果：{}", configId, scopeIds);
+                    } catch (NumberFormatException e) {
+                        log.error("快捷配置ID={}的perm_ids格式错误，值为：{}，无法解析", configId, configPO.getPermIds(), e);
+                        continue;
+                    }
+                } else {
+                    log.warn("快捷配置ID={}的perm_ids为空，无法限定权限范围", configId);
+                }
+
+                // 2. 收集本次选择的权限
+                if (permIdList != null && !permIdList.isEmpty()) {
+                    currentSelectPermIds.addAll(permIdList);
+                }
+
+                // 3. 原有逻辑：更新perm_ids_have
                 String permIdsHaveStr = permIdList == null || permIdList.isEmpty()
                         ? ""
                         : permIdList.stream().map(String::valueOf).collect(Collectors.joining(","));
@@ -389,45 +498,66 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
                 baseMapper.updateById(configPO);
             }
 
-            // ========== 步骤3：汇总所有权限ID，更新小组权限 ==========
-            // ========== 【注释掉更新SysGroupPermissionPO的逻辑】==========
-        /*
-        Set<String> allPermIds = new HashSet<>();
-        quickConfigPermMap.values().forEach(permIdList -> {
-            if (permIdList != null && !permIdList.isEmpty()) {
-                allPermIds.addAll(permIdList.stream().map(String::valueOf).collect(Collectors.toSet()));
+            // ========== 调试日志：打印关键集合 ==========
+            log.info("所有快捷配置的权限范围（configPermScopeIds）：{}", configPermScopeIds);
+            log.info("本次选择的权限ID（currentSelectPermIds）：{}", currentSelectPermIds);
+
+            // ========== 计算需要删除的权限 ==========
+            Set<Long> needDeletePermIds = new HashSet<>();
+            for (Long scopeId : configPermScopeIds) {
+                if (!currentSelectPermIds.contains(scopeId)) {
+                    needDeletePermIds.add(scopeId);
+                }
             }
-        });
+            log.info("需要删除的权限ID（needDeletePermIds）：{}", needDeletePermIds);
 
-        if (!allPermIds.isEmpty()) {
-            Result<Boolean> result = userPermissionService.updateGroupPermissions(
-                    grantDTO.getGroupId(),
-                    new ArrayList<>(allPermIds)
-            );
-            if (!ResultCodeEnum.SUCCESS.getCode().equals(result.getCode()) || !Boolean.TRUE.equals(result.getData())) {
-                return Result.fail("更新小组权限失败：" + result.getMessage());
+            // ========== 精准删除取消的权限 ==========
+            if (!needDeletePermIds.isEmpty()) {
+                LambdaQueryWrapper<SysGroupPermissionPO> delWrapper = new LambdaQueryWrapper<>();
+                delWrapper.eq(SysGroupPermissionPO::getGroupId, groupId)
+                        .in(SysGroupPermissionPO::getPermId, needDeletePermIds.stream().map(String::valueOf).collect(Collectors.toSet()));
+                int deleteCount = sysGroupPermissionMapper.delete(delWrapper);
+                log.info("删除小组{}下的权限条数：{}，删除的权限ID：{}", groupId, deleteCount, needDeletePermIds);
+            } else {
+                log.info("无需要删除的权限（needDeletePermIds为空）");
             }
-        }
-        */
 
-            // ========== 步骤4：更新t_sys_group_quick_config表 ==========
-            String quickConfigIdsStr = String.join(",", quickConfigIds);
-            QueryWrapper<SysGroupQuickConfigPO> queryWrapper = new QueryWrapper<>();
-            queryWrapper.select("id", "group_id", "quick_config_ids")
-                    .eq("group_id", grantDTO.getGroupId());
-            SysGroupQuickConfigPO existPO = sysGroupQuickConfigMapper.selectOne(queryWrapper);
+            // ========== 新增选择的权限（去重） ==========
+            List<SysGroupPermissionPO> insertList = new ArrayList<>();
+            for (Long permId : currentSelectPermIds) {
+                if (configPermScopeIds.contains(permId)) { // 仅处理perm_ids范围内的权限
+                    LambdaQueryWrapper<SysGroupPermissionPO> existWrapper = new LambdaQueryWrapper<>();
+                    existWrapper.eq(SysGroupPermissionPO::getGroupId, groupId)
+                            .eq(SysGroupPermissionPO::getPermId, permId.toString());
+                    if (sysGroupPermissionMapper.selectCount(existWrapper) == 0) {
+                        SysGroupPermissionPO groupPermPO = new SysGroupPermissionPO();
+                        groupPermPO.setGroupId(groupId);
+                        groupPermPO.setPermId(permId.toString());
+                        insertList.add(groupPermPO);
+                    }
+                }
+            }
+            if (!insertList.isEmpty()) {
+                int insertCount = sysGroupPermissionMapper.insertBatch(insertList);
+                log.info("新增小组{}下的权限条数：{}，新增的权限ID：{}", groupId, insertCount, insertList.stream().map(p -> p.getPermId()).collect(Collectors.toList()));
+            }
 
-            if (existPO != null) {
-                existPO.setQuickConfigIds(quickConfigIdsStr);
-                sysGroupQuickConfigMapper.updateById(existPO);
+            // ========== 原有逻辑：更新t_sys_group_quick_config ==========
+            String quickConfigIdsStr = String.join(",", currentQuickConfigIds);
+            if (groupConfigPO != null) {
+                groupConfigPO.setQuickConfigIds(quickConfigIdsStr);
+//                groupConfigPO.setUpdateUser(grantDTO.getUpdateBy());
+                sysGroupQuickConfigMapper.updateById(groupConfigPO);
             } else {
                 SysGroupQuickConfigPO newPO = new SysGroupQuickConfigPO();
-                newPO.setGroupId(grantDTO.getGroupId());
+                newPO.setGroupId(groupId);
                 newPO.setQuickConfigIds(quickConfigIdsStr);
+//                newPO.setCreateUser(grantDTO.getUpdateBy());
+//                newPO.setUpdateUser(grantDTO.getUpdateBy());
                 sysGroupQuickConfigMapper.insert(newPO);
             }
 
-            return Result.ok(true).message("快捷配置权限授权成功，已同步更新perm_ids_have字段");
+            return Result.ok(true).message("快捷配置权限授权成功，已同步更新t_sys_group_permission表");
 
         } catch (Exception e) {
             log.error("快捷配置权限给小组失败", e);

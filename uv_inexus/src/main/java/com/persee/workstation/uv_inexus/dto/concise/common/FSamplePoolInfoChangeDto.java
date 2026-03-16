@@ -14,6 +14,9 @@ import lombok.Data;
 
 @Data
 public class FSamplePoolInfoChangeDto {
+    @ApiModelProperty("操作类型：lumne/quantity/spectralScan/timeScan")
+    private String operateType;
+
     @ApiModelProperty("设备序列号")
     private String deviceSerialNumber;
 

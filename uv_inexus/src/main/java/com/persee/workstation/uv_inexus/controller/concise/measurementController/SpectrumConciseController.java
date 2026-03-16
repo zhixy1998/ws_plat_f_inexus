@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidationDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
@@ -17,6 +18,7 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.ExperimentTestService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -78,7 +80,8 @@ public class SpectrumConciseController {
         return spectrumConciseService.parameterValidation(paramDto);
     }
 
-
+    @ButtonPermission("spectralScanApplyMethod")
+    @OperateLog(module = "实验测试-经典模式-光谱扫描-应用方法", description = "执行实验测试-经典模式-光谱扫描-应用方法记录", recordParams = true)
     @PostMapping("applyMethod")
     @ApiOperation("应用接口")
     public Result applyMethod(@Valid @RequestBody FUseMethodDto paramDto,
@@ -120,7 +123,17 @@ public class SpectrumConciseController {
     public Result<List<FHeadVO>> querySampleHeads(@RequestParam String taskId) {
         return spectrumConciseService.querySampleHeads(taskId);
     }
-
+//    @ButtonPermission(
+//            description = "实验测试-经典模式-光谱扫描-设置样品", // 操作描述
+//            permissionMapping = "add=spectralScanSetSample,edit=spectralScanModifySampleInformation,delete=spectralScanDeleteSample" // 自定义操作类型→驼峰权限标识
+//    )
+//    @OperateLog(
+//            module = "实验测试-经典模式-光谱扫描-设置样品",
+//            description = "执行实验测试-经典模式-光谱扫描-{operateType}样品操作",
+//            recordParams = true
+//    )
+    @ButtonPermission("spectralScanSetSample")
+    @OperateLog(module = "实验测试-经典模式-光谱扫描-设置样品", description = "执行实验测试-经典模式-光谱扫描-设置样品操作", recordParams = true)
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSamplePort(@RequestBody FAddOrDeleteSampleDTO paramDto) {
@@ -133,7 +146,8 @@ public class SpectrumConciseController {
         return spectrumConciseService.detectionTaskStatus(taskId);
     }
 
-
+    @ButtonPermission("quantityCreateTask")
+    @OperateLog(module = "实验测试-经典模式-定量测量-新建任务", description = "执行实验测试-经典模式-定量测量-新建任务记录", recordParams = true)
     @PostMapping("saveDraftButton")
     @ApiOperation("保存草稿按钮接口")
     public Result saveDraftButton(@RequestParam String taskId,
@@ -293,7 +307,8 @@ public class SpectrumConciseController {
     public Result luminanceModeConversionPort(@RequestBody FLuminosityConversionDto paramDto){
         return spectrumConciseService.luminanceModeConversionPort(paramDto);
     }
-
+    @ButtonPermission("spectralScanExportData")
+    @OperateLog(module = "实验测试-经典模式-光谱扫描-导出数据", description = "执行实验测试-经典模式-光谱扫描-导出数据记录", recordParams = true)
     @GetMapping("downloadDoc")
     @ApiOperation("多格式文件下载接口（支持word/excel/txt）")
     // 关键修正：1. 修复@ApiParam描述错误 2. 为List参数添加@RequestParam的value和required属性

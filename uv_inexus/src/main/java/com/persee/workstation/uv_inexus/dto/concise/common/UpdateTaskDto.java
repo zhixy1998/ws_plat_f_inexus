@@ -14,6 +14,8 @@ import lombok.Data;
 
 @Data
 public class UpdateTaskDto {
+    @ApiModelProperty("操作类型：lumne/quantity/spectralScan/timeScan")
+    private String operateType;
     @ApiModelProperty("方法Id")
     private String taskId;
     @ApiModelProperty("方法名称")
