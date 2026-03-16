@@ -224,7 +224,7 @@ public class GuidePhotometricWebSocket {
 
                   if (!setParams.getSuccess()) {
 
-                      sendError(deviceSerialNumber, "参数设置异常！");
+                      sendError(deviceSerialNumber, setParams.getMessage());
                       return;
                   }
 
@@ -308,7 +308,7 @@ public class GuidePhotometricWebSocket {
              R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
              if (!setParams.getSuccess()) {
 
-                 sendError(deviceSerialNumber, "参数设置异常！");
+                 sendError(deviceSerialNumber, setParams.getMessage());
                  return;
              }
              for (TaskSpecimen specimen : taskSpecimen) {
@@ -860,7 +860,7 @@ public class GuidePhotometricWebSocket {
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
 
         if (!operation.getSuccess()) {
-            return R.fail("参数设置出错！");
+            return R.fail(operation.getMessage());
         }
 
         return R.ok(true);

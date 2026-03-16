@@ -248,7 +248,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             }
 
             if (!status.equals(Constants.DEVICE_STATUS_INIT) && !info.getDeviceCurrentStatus().equals(Constants.CONNECT_DEVICE_STOP)) {
-                if (isInited == null || isInited == 0) {
+                if (isInited == null || isInited.equals(Constants.INIT_STATUS_NO)) {
                     log.info("未初始化");
                     //未初始化
                     return R.fail(YamlMessageSource.getMessageStatic("00202004"));

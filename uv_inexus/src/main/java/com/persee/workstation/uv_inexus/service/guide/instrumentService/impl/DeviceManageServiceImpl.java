@@ -170,6 +170,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
         vo.setIntMessage(infoList);
 
+        DeviceAttachmentTypeVO attachmentInfo = infoService.getAttachmentInfo(deviceSerialNumber);
+        vo.setAttachmentName(attachmentInfo.getAttachmentName());
+        vo.setTotalPoolNum(attachmentInfo.getSamplePoolNum());
+        vo.setAttachmentKind(attachmentInfo.getAttachmentKind());
+
 
         return R.ok(vo);
     }

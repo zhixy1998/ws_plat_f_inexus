@@ -24,6 +24,7 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.MessageI
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import com.persee.workstation.uv_inexus.websocket.measure.*;
 import com.persee.workstation.uv_inexus.websocket.measure.concise.*;
 import com.persee.workstation.uv_inexus.websocket.measure.param.*;
@@ -701,6 +702,11 @@ public class LiveDetectionDevicesWebSocket {
                         if (device != null) {
                             BeanUtils.copyProperties(device, vo);
                         }
+
+                        DeviceAttachmentTypeVO attachmentInfo = infoService.getAttachmentInfo(taskInfo.getDeviceSerialNumber());
+                        vo.setAttachmentName(attachmentInfo.getAttachmentName());
+                        vo.setTotalPoolNum(attachmentInfo.getSamplePoolNum());
+                        vo.setAttachmentKind(attachmentInfo.getAttachmentKind());
 
                         // 5. 推送测量结果
                         WebSocketResponseVO webSocketResponseVO = new WebSocketResponseVO();

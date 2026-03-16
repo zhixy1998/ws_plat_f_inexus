@@ -47,6 +47,15 @@ public class DeviceInfoVO {
     @ApiModelProperty("附加信息")
     private String appendMessage;
 
+    @ApiModelProperty("附件类型名")
+    private String attachmentName;
+
+    @ApiModelProperty("附件种类")
+    private Integer attachmentKind;
+
+    @ApiModelProperty("总池数")
+    private Integer totalPoolNum;
+
     @ApiModelProperty("初始化信息表")
     private List<DeviceInitInfo> intMessage;
 
