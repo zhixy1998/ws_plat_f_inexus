@@ -21,7 +21,7 @@ import java.util.*;
 public enum DevXmlEnums {
 
     T800("T800", "newFile/T800.xml", "T800", 8000,
-            Arrays.asList("TestConnect", "GetSn", "GetAccessoryType", "GetInitStatus", "GetCellPos"), new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
+            Arrays.asList("Connect", "GetSn", "GetAccessoryType", "GetInitStatus", "GetCellPos"), new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A},
 
