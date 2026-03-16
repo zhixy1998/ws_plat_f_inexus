@@ -98,7 +98,7 @@ public class SysQuickConfigController {
     }
 
     @PostMapping("/grant-group-perm")
-    @ApiOperation("快捷配置权限给小组")
+    @ApiOperation("快捷配置权限给小组配置操作权限")
     @OperateLog(module = "快捷配置管理", description = "快捷配置权限", recordParams = true)
     public Result<Boolean> grantQuickConfigToGroup(@RequestBody @Valid QuickConfigGrantPermDTO grantDTO) {
         return sysQuickConfigService.grantQuickConfigToGroup(grantDTO);
