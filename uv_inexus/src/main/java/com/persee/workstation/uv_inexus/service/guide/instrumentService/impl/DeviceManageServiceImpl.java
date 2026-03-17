@@ -656,7 +656,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             if (a) {
                 return R.ok();
             }
-            return R.fail();
         } else {
 
             BeanUtils.copyProperties(dto, po);
@@ -666,8 +665,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             if (a) {
                 return R.ok();
             }
-            return R.fail();
         }
+        return R.fail();
     }
 
     @Override

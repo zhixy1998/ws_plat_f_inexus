@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -896,18 +897,20 @@ public class DeviceConnectionManager {
 
     private static void logInfo(String format, Object... args) {
         String msg = String.format(format, args);
-        String time = LocalDateTime.now().toString().substring(11, 19);
+        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
         System.out.printf("[%s][DeviceManager] %s%n", time, msg);
+
     }
 
     private static void logWarning(String format, Object... args) {
         String msg = String.format(format, args);
-        String time = LocalDateTime.now().toString().substring(11, 19);
+        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
         System.out.printf("[%s][DeviceManager][WARN] %s%n", time, msg);
     }
 
     private void logError(Exception e) {
-        String time = LocalDateTime.now().toString().substring(11, 19);
+        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
         System.err.printf("[%s][DeviceManager][ERROR] %s: %s%n", time, "清理过程异常", e.getMessage());
+
     }
 }
