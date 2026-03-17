@@ -1893,12 +1893,12 @@ public class RationServiceImpl implements RationService {
                         empty = true;
                     }
                 }
-                if (StringUtils.hasText(sample.getHeads())) {
-                    List<HeadVO> heads = JSON.parseArray(sample.getHeads(), HeadVO.class);
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
+//                if (StringUtils.hasText(sample.getHeads())) {
+//                    List<HeadVO> heads = JSON.parseArray(sample.getHeads(), HeadVO.class);
+//                    if (heads != null && !heads.isEmpty()) {
+//                        ans.addAll(heads);
+//                    }
+//                }
             }
         }
 
@@ -1910,7 +1910,8 @@ public class RationServiceImpl implements RationService {
 
     private List<HeadVO> dealHeads(List<HeadVO> heads, RationParameter parameter, String sampleKind, Boolean allDisplay, Boolean empty, String deviceSerialNumber) {
         List<String> waveLength = parameter.getWaveLength();
-        Map<String, HeadVO> map = heads.stream().collect(Collectors.toMap(HeadVO::getIdentity, head -> head));
+        Map<String, HeadVO> map  = heads.stream().collect(Collectors.toMap(HeadVO::getIdentity, head -> head));
+
 
         Map<String, List<HeadVO>> headsMap = new HashMap<>();
 
@@ -2155,12 +2156,12 @@ public class RationServiceImpl implements RationService {
                         empty = true;
                     }
                 }
-                if (StringUtils.hasText(sample.getHeads())) {
-                    List<HeadVO> heads = JSON.parseArray(sample.getHeads(), HeadVO.class);
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
+//                if (StringUtils.hasText(sample.getHeads())) {
+//                    List<HeadVO> heads = JSON.parseArray(sample.getHeads(), HeadVO.class);
+//                    if (heads != null && !heads.isEmpty()) {
+//                        ans.addAll(heads);
+//                    }
+//                }
 
                 if (StringUtils.hasText(sample.getParallelGroupId())) {
                     HeadVO parallelGroupHead = new HeadVO(SampleTableEnum.Parallel_ID.getName(), SampleTableEnum.Parallel_ID.getIdentity(), TableHeadILocateEnums.analyze.getIdentity());
@@ -5628,7 +5629,7 @@ public class RationServiceImpl implements RationService {
             String key = SampleTableEnum.Abs.getIdentity();
 
             double v = Double.parseDouble(value);
-            if (param.getControlType().equals(qcType.getCode())) {
+            if (param.getControlType() != null && param.getControlType().equals(qcType.getCode())) {
 
                 if (param.getIsUpperLimitIncluded() != null && param.getIsUpperLimitIncluded()) {
                     if (v >= param.getUpperLimit()) {

@@ -161,6 +161,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Value("文件数据")
     String newTaskName;
 
+    @Value("方法")
+    String newMethodName;
+
     private R<Boolean> checkParam(FPhotometricParameter parameter) {
         // 1. 校验光度模式
         if (parameter.getLuminosity() == null || parameter.getLuminosity().trim().isEmpty()) {
@@ -368,7 +371,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         String userId = sysUserPO.getId();
 
         FMeasureTask task = new FMeasureTask();
-        task.setTaskName("新建光度测量草稿" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        task.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         task.setIsDelete(createType);
         task.setMeasureType(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription());
         task.setMethodKey(methodId);
@@ -669,7 +672,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 String[] split = methodDTO.getMethodName().split("-");
                 method.setMethodName(split[0] + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
             } else {
-                method.setMethodName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+                method.setMethodName(newMethodName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
             }
             method.setMeasurementType(methodDTO.getMeasureType());
             method.setProjectItemKey(defaultProjectId);

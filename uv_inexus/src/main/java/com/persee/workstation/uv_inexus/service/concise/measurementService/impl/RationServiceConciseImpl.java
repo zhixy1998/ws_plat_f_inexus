@@ -179,7 +179,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Value("文件数据")
     String newTaskName;
 
-    @Value("默认方法")
+    @Value("方法")
     String defaultMethodName;
 
     @Override
@@ -275,7 +275,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         String userId = sysUserPO.getId();
 
         FMeasureTask task = new FMeasureTask();
-        task.setTaskName(newTaskName + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        task.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         task.setIsDelete(createType);
         task.setMeasureType(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription());
         task.setMethodKey(methodId);
@@ -2064,12 +2064,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                         empty = true;
                     }
                 }
-                if (StringUtils.hasText(sample.getHeads())){
-                    List<FHeadVO> heads = JSON.parseArray(sample.getHeads(), FHeadVO.class);
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
+//                if (StringUtils.hasText(sample.getHeads())){
+//                    List<FHeadVO> heads = JSON.parseArray(sample.getHeads(), FHeadVO.class);
+//                    if (heads != null && !heads.isEmpty()) {
+//                        ans.addAll(heads);
+//                    }
+//                }
             }
         }
         List<FHeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_stand.getIdentity(), allDisplay, empty, deviceSerialNumber);
@@ -2325,12 +2325,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                         empty = true;
                     }
                 }
-                if (StringUtils.hasText(sample.getHeads())){
-                    List<FHeadVO> heads = JSON.parseArray(sample.getHeads(), FHeadVO.class);
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
+//                if (StringUtils.hasText(sample.getHeads())){
+//                    List<FHeadVO> heads = JSON.parseArray(sample.getHeads(), FHeadVO.class);
+//                    if (heads != null && !heads.isEmpty()) {
+//                        ans.addAll(heads);
+//                    }
+//                }
             }
         }
         List<FHeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_unknown.getIdentity(), allDisplay, empty, deviceSerialNumber);
