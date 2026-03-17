@@ -2848,7 +2848,6 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         Integer sdDigits = vo.getSdDigits();
 
 
-
         if (wlData.getMode().equals(WaveLengthEnum.abs.getCode()) || wlData.getMode().equals(WaveLengthEnum.tPercent.getCode())) {
 
             if (!option.isEmpty()) {
@@ -2867,9 +2866,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getSd());
                         String sdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getSd());
 
+                        if (isNumber(sdA)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), sdA);
+                        }
+                        if (isNumber(sdT)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(sdT), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), sdT);
+                        }
 
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(sdT), sdDigits));
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
@@ -2878,11 +2885,23 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getRsd());
                         String rsdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getRsd());
 
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(rsdT), sdDigits));
+                        if (isNumber(rsdA)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), rsdA);
+                        }
+
+                        if (isNumber(rsdT)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(rsdT), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), rsdT);
+                        }
+
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.rsd.getIdentity(), children);
                     }
                 }
+
+
             }
         } else {
             if (!option.isEmpty()) {
@@ -2899,8 +2918,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         FRepeatMeasureData measureData = wlData.getOtherData().get(mapName);
 
                         String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, measureData.getRsd());
+                        if (isNumber(sdA)) {
+                            children.put(mapName, DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                        } else {
+                            children.put(mapName, sdA);
+                        }
 
-                        children.put(mapName, DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
@@ -2908,8 +2931,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         FRepeatMeasureData measureData = wlData.getOtherData().get(mapName);
 
                         String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, measureData.getRsd());
+                        if (isNumber(rsdA)) {
+                            children.put(mapName, DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                        } else {
+                            children.put(mapName, rsdA);
+                        }
 
-                        children.put(mapName, DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.rsd.getIdentity(), children);
                     }
                 }
@@ -2917,6 +2944,19 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         return ans;
+    }
+
+
+    private Boolean isNumber(String str) {
+        if (str == null || str.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            Double v = Double.parseDouble(str);
+            return !v.isNaN() && !v.isInfinite();
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     @Override

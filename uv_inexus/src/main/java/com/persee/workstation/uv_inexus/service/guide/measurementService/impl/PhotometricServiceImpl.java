@@ -40,6 +40,7 @@ import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardPretreatmentService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -53,6 +54,7 @@ import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
@@ -121,6 +123,9 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Autowired
     DevMessageUtil devMessageUtil;
+    @Autowired
+    SystemBusinessParamService businessParamService;
+
 
     @Autowired
     RestUtil restUtil;
@@ -2055,6 +2060,9 @@ public class PhotometricServiceImpl implements PhotometricService {
         RepeatMeasureData tPercentData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode());
         String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
 
+        SystemBusinessParamVO vo = businessParamService.queryBusinessParam();
+        Integer sdDigits = vo.getSdDigits();
+
         if (wlData.getMode().equals(WaveLengthEnum.abs.getCode()) || wlData.getMode().equals(WaveLengthEnum.tPercent.getCode())) {
 
             if (!option.isEmpty()) {
@@ -2070,14 +2078,39 @@ public class PhotometricServiceImpl implements PhotometricService {
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
 
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
+                        String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getSd());
+                        String sdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getSd());
+
+                        if (isNumber(sdA)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), sdA);
+                        }
+                        if (isNumber(sdT)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(sdT), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), sdT);
+                        }
+
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
+
+                        String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getRsd());
+                        String rsdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getRsd());
+
+                        if (isNumber(rsdA)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), rsdA);
+                        }
+
+                        if (isNumber(rsdT)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(rsdT), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), rsdT);
+                        }
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.rsd.getIdentity(), children);
                     }
                 }
@@ -2094,12 +2127,27 @@ public class PhotometricServiceImpl implements PhotometricService {
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
                         RepeatMeasureData measureData = wlData.getOtherData().get(mapName);
+
+                        String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, measureData.getRsd());
+                        if (isNumber(sdA)) {
+                            children.put(mapName, DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                        } else {
+                            children.put(mapName, sdA);
+                        }
+
                         children.put(mapName, measureData.getSd());
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
                         RepeatMeasureData measureData = wlData.getOtherData().get(mapName);
+
+                        String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, measureData.getRsd());
+                        if (isNumber(rsdA)) {
+                            children.put(mapName, DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                        } else {
+                            children.put(mapName, rsdA);
+                        }
                         children.put(mapName, measureData.getRsd());
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.rsd.getIdentity(), children);
                     }
@@ -2109,6 +2157,19 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         return ans;
     }
+
+    private Boolean isNumber(String str) {
+        if (str == null || str.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            Double v = Double.parseDouble(str);
+            return !v.isNaN() && !v.isInfinite();
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
 
     @Override
     public R<String> savePhotometricMeasureData(PhotometricSampleAndDataVO sampleAndDataVO) {
