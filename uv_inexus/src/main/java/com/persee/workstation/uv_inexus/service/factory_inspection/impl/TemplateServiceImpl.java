@@ -358,7 +358,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 rebuildSheetWithRetainedRows(sheet, rowsToKeep);
             }
             //获取以 检测类别 分组的数据，检测类别就是sheet名
-            Map<String, List<Map<String, Object>>> map = getGroupedData(template.getTemplateCode(), "检测类别").getData();
+            Map<String, List<Map<String, Object>>> map = getGroupedData(template.getTemplateCode(), "检测类别", null).getData();
 
             for (Map.Entry<String, List<Map<String, Object>>> entry : map.entrySet()) {
                 String sheetName = entry.getKey();
@@ -413,8 +413,8 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                     int lastRow = sheet.getLastRowNum();
                     Map<Integer, List<Object>> columnData = this.buildColumnData(row, headerColumns);
                     log.info("列数据: {}", columnData);
-                    System.out.println("855555555555555555555555555"+row);
-                    excelDynamicMerger.insertDynamicMergedRow(workbook,sheetName,lastRow+1,columnData);
+                    System.out.println("855555555555555555555555555" + row);
+                    excelDynamicMerger.insertDynamicMergedRow(workbook, sheetName, lastRow + 1, columnData);
                     log.info("表头映射: {}", headerColumns);
                 }
             }
@@ -445,6 +445,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         }
         return Result.fail("文件处理失败");
     }
+
     private Map<Integer, List<Object>> buildColumnData(Map<String, Object> row, Map<String, List<Integer>> headerColumns) {
         if (MapUtils.isEmpty(headerColumns)) {
             return new HashMap<>();
@@ -469,10 +470,10 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             // 从 row 中获取对应的值，测量值就是空，所以就要赋空，行数按照最大行，也就是特征值数
 //            Object cellValueObj = row.get(headerName);
             Object cellValueObj = findFlexibleValue(row, headerName);
-            if (Objects.isNull(cellValueObj)){
+            if (Objects.isNull(cellValueObj)) {
                 for (Integer columnIndex : columnIndices) {
-                    if (maxCommaCount>0){
-                        rowNum = maxCommaCount+1;
+                    if (maxCommaCount > 0) {
+                        rowNum = maxCommaCount + 1;
                     }
                     //最大有几行
                     data.put(columnIndex, Collections.nCopies(rowNum, ""));
@@ -494,6 +495,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 
     /**
      * 从输入的行中，根据给定的列名，尝试从行中获取最匹配的值。
+     *
      * @param row
      * @param headerName
      * @return
@@ -596,6 +598,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         data.put(10, Collections.nCopies(6, ""));
         return data;
     }*/
+
     /**
      * 解析表头结构，包含合并单元格处理
      */
@@ -1262,7 +1265,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                             .isNull(ExcelTemplate::getCreateBy)
                     )
                     .orderByAsc(ExcelTemplate::getLastUsed);
-        }else {
+        } else {
             queryWrapper.like(ExcelTemplate::getTemplateName, templateQeqDto.getQuery())
                     .and(wrapper -> wrapper
                             .like(ExcelTemplate::getCreateBy, templateQeqDto.getUpdateBy())
@@ -1385,15 +1388,15 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             if (CollectionUtils.isNotEmpty(structuredData)) {
                 for (Map<String, Object> map : structuredData) {
                     String s = MapUtils.getString(map, "是否为光谱扫描");
-                    if (YES.getDescription().equals(s)){
+                    if (YES.getDescription().equals(s)) {
                         //光谱扫描
-                        map.put("measureType",0);
-                    }else {
+                        map.put("measureType", 0);
+                    } else {
                         //时间扫描
                         String timeScanCount = MapUtils.getString(map, "扫描个数");
                         if (StringUtils.isNotBlank(timeScanCount)) {
                             map.put("measureType", 1);
-                        }else {
+                        } else {
                             //光度测量
                             map.put("measureType", 2);
                         }
@@ -1408,37 +1411,57 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     }
 
     @Override
-    public Result<Map<String, List<Map<String, Object>>>> getGroupedData(String templateCode, String groupByField) {
+    public Result<Map<String, List<Map<String, Object>>>> getGroupedData(String templateCode, String groupByField, String checkCategory) {
         try {
-            LambdaQueryWrapper<ExcelTemplate> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(ExcelTemplate::getTemplateCode, templateCode);
-            List<ExcelTemplate> list = this.list(wrapper);
-
-
-            // 获取结构化数据
-            Result<List<Map<String, Object>>> structuredDataResult = getStructuredData(templateCode);
-            if (structuredDataResult.getCode() != 200) {
-                return Result.fail("获取数据失败: " + structuredDataResult.getMessage());
+            List<ExcelTemplate> list = new ArrayList<>();
+            if (StringUtils.isBlank(groupByField)) {
+                LambdaQueryWrapper<ExcelTemplate> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(ExcelTemplate::getTemplateCode, templateCode);
+                list = this.list(wrapper);
+            } else {
+                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+                //查找的是开箱验证任务
+                wrapper.eq(TaskManagement::getTaskType, "2");
+                List<TaskManagement> list1 = taskManagementService.list(wrapper);
+                if (CollectionUtils.isEmpty(list1)) {
+                    return Result.fail("未找到开箱验证任务");
+                } else {
+                    TaskManagement management = list1.get(0);
+                    ExcelTemplate excelTemplate = this.getById(management.getUseTemplate());
+                    list.add(excelTemplate);
+                }
             }
 
-            List<Map<String, Object>> dataList = structuredDataResult.getData();
+            if (CollectionUtils.isNotEmpty(list)) {
+                ExcelTemplate excelTemplate = list.get(0);
 
-            // 按指定字段分组
-            Map<String, List<Map<String, Object>>> groupedData = dataList.stream()
-                    .collect(Collectors.groupingBy(
-                            map -> String.valueOf(map.getOrDefault(groupByField, "未知")),
-                            LinkedHashMap::new,
-                            Collectors.toList()
-                    ));
-            List<Map<String, Object>> maps = generateDropdownOptions();
-            groupedData.put("dropdownOptions", maps);
-            Result<Map<String, List<Map<String, Object>>>> result = new Result<>();
-            if (!list.isEmpty()) {
-                result.setObj(new Object[]{list.get(0)});
+                // 获取结构化数据
+                Result<List<Map<String, Object>>> structuredDataResult = getStructuredData(excelTemplate.getTemplateCode());
+                if (structuredDataResult.getCode() != 200) {
+                    return Result.fail("获取数据失败: " + structuredDataResult.getMessage());
+                }
+
+                List<Map<String, Object>> dataList = structuredDataResult.getData();
+
+                // 按指定字段分组
+                Map<String, List<Map<String, Object>>> groupedData = dataList.stream()
+                        .collect(Collectors.groupingBy(
+                                map -> String.valueOf(map.getOrDefault(groupByField, "未知")),
+                                LinkedHashMap::new,
+                                Collectors.toList()
+                        ));
+                List<Map<String, Object>> maps = generateDropdownOptions();
+                groupedData.put("dropdownOptions", maps);
+                Result<Map<String, List<Map<String, Object>>>> result = new Result<>();
+                if (!list.isEmpty()) {
+                    result.setObj(new Object[]{list.get(0)});
+                }
+                result.setData(groupedData);
+                result.setCode(200);
+                return result;
+            }else {
+                return Result.fail("未找到模板");
             }
-            result.setData(groupedData);
-            result.setCode(200);
-            return result;
         } catch (Exception e) {
             log.error("获取分组数据失败", e);
             return Result.fail("获取分组数据失败: " + e.getMessage());
