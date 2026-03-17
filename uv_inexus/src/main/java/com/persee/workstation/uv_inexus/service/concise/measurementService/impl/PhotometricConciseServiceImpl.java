@@ -2179,24 +2179,19 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         StringBuilder identity = new StringBuilder();
 
-        for (FInputParam inputParam : parameter.getSampleInputParams()) {
+        List<FInputParamMapTableHead> mapRelation = snapshot.getMapRelation();
+        for (FInputParamMapTableHead relation : mapRelation) {
 
-            Optional<FInputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
-                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
-            if (!mapTableHead.isPresent()) {
-                log.info("该参数未添加映射，跳过");
-                continue;
-            }
-
-            String s = allData.getString(mapTableHead.get().getHeadIdentity());
+            String s = allData.getString(relation.getHeadIdentity());
             if (!StringUtils.hasText(s)) {
-                //"变量" + inputParam.getParamName() + "缺少数据！"
-                return R.fail(YamlMessageSource.getMessageStatic("00302007",inputParam.getParamName()));
+                //缺少数据！
+                return R.fail(YamlMessageSource.getMessageStatic("00300006"));
             }
-            identity.append(mapTableHead.get().getParamIdentity()).append(",");
+            identity.append(relation.getParamIdentity()).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
         }
+
         identity.deleteCharAt(identity.length()-1);
         values.deleteCharAt(values.length()-1);
 

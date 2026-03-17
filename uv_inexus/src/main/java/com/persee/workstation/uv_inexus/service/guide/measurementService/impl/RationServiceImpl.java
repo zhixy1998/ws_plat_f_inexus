@@ -3048,11 +3048,6 @@ public class RationServiceImpl implements RationService {
 
                 if (StringUtils.hasText(countData.getColValue())) {
                     String value = countData.getColValue();
-                    try {
-                        Double v = Double.valueOf(value);
-                        value = DataCountUtil.addZero(v, digit);
-                    } catch (Exception ignored) {
-                    }
 
                     map.put(countData.getIdentity(), value);
 
@@ -4506,22 +4501,15 @@ public class RationServiceImpl implements RationService {
 
         StringBuilder identity = new StringBuilder();
 
-        for (InputParam inputParam : parameter.getSampleInputParams()) {
-            boolean b = snapshot.getMapRelation().stream().anyMatch(
-                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity()));
+        List<InputParamMapTableHead> mapRelation = snapshot.getMapRelation();
+        for (InputParamMapTableHead relation : mapRelation) {
 
-            Optional<InputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
-                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
-            if (!mapTableHead.isPresent()) {
-                //"缺少参数映射：" + inputParam.getParamName()
-                return R.fail(YamlMessageSource.getMessageStatic("00300005", inputParam.getParamName()));
-            }
-            identity.append(mapTableHead.get().getParamIdentity().toUpperCase()).append(",");
-            String s = allData.getString(mapTableHead.get().getHeadIdentity());
+            String s = allData.getString(relation.getHeadIdentity());
             if (!StringUtils.hasText(s)) {
                 //缺少数据！
                 return R.fail(YamlMessageSource.getMessageStatic("00300006"));
             }
+            identity.append(relation.getParamIdentity()).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
         }

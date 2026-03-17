@@ -447,6 +447,11 @@ public class RationMeasureNewWebSocket{
                      * 区分重复与不重复测，测量 + 计算出abs值一起
                      */
                     R<RationDataVO> r;
+
+                    if (!isAutoChangePool) {
+                        sample.setSampleLocation(null);
+                    }
+
                     if (repeat) {
                         //重复测量，单独处理！
                         r = singleSampleRepeatMeasure(sample, parameter, task, deviceSerialNumber);
@@ -768,6 +773,12 @@ public class RationMeasureNewWebSocket{
                      * 区分重复与不重复测，测量 + 计算出abs值一起
                      */
                     R<RationDataVO> r;
+
+
+                    if (!isAutoChangePool) {
+                        sample.setSampleLocation(null);
+                    }
+
                     if (repeat) {
                         //重复测量，单独处理！
                         r = singleSampleRepeatMeasure(sample, parameter, task, deviceSerialNumber);

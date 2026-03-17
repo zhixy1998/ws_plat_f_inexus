@@ -1162,12 +1162,23 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public R<Boolean> startInitDevice(String deviceSerialNumber, String updateBy) {
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+
+        if (info == null) {
+            return R.fail("未找到该设备");
+        }
+
+        if (!info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_IDLE) && !info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_ECHO)) {
+            return R.fail("设备正在使用中，请等待！");
+        }
+
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Init.getType());
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setUpdateBy(updateBy);
         inputParam.setIsInitFromHead(true);
-        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+
         info.setIsInited(Constants.INIT_STATUS_RUNNING);
 
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
