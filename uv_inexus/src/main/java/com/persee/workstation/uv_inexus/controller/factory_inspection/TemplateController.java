@@ -100,7 +100,7 @@ public class TemplateController {
     public Result<Map<String, List<Map<String, Object>>>> getGroupedData(
             @RequestParam("templateCode") String templateCode,
             @RequestParam("groupByField") String groupByField) {
-        return templateService.getGroupedData(templateCode, groupByField);
+        return templateService.getGroupedData(templateCode, groupByField,null);
     }
 
     @GetMapping("/data/list")
@@ -108,14 +108,15 @@ public class TemplateController {
     public Result<Map<String, List<Map<String, Object>>>> getGroupedData(
             @RequestParam("templateCode") String templateCode,
             @RequestParam(value = "type",required = false) String type,
-            @RequestParam("updateBy") String updateBy) {
+            @RequestParam("updateBy") String updateBy,
+            @RequestParam(required = false, value = "checkCategory") String checkCategory) {
         if (type==null){
             type="1";
         }
         if (type.equals("0")){
             return templateService.getGroupedData(templateCode);
         }else {
-            return templateService.getGroupedData(templateCode, TEST_CATEGORY.getDescription());
+            return templateService.getGroupedData(templateCode, TEST_CATEGORY.getDescription(),checkCategory);
         }
     }
 

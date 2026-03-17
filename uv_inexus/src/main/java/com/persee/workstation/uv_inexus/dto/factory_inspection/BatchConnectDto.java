@@ -19,5 +19,5 @@ import java.util.List;
 public class BatchConnectDto {
     private List<SearchInfo> searchInfos;
     private String updateBy;
-    private String templateId;
+    private String templateCode;
 }

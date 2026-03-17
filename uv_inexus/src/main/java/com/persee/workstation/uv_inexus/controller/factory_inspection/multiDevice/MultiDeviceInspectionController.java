@@ -57,7 +57,7 @@ public class MultiDeviceInspectionController {
 
         List<SearchInfo> searchInfos = batchConnectDto.getSearchInfos();
         String updateBy = batchConnectDto.getUpdateBy();
-        String templateId = batchConnectDto.getTemplateId();
+        String templateCode = batchConnectDto.getTemplateCode();
         if (searchInfos == null || searchInfos.isEmpty()) {
             return Result.fail("设备列表不能为空");
         }
@@ -67,7 +67,7 @@ public class MultiDeviceInspectionController {
             info.setUpdateBy(updateBy);
         }
 
-        R<FindDeviceVO> result = deviceManageService.connect(searchInfos,updateBy,templateId);
+        R<FindDeviceVO> result = deviceManageService.connect(searchInfos,updateBy,templateCode);
 
         if (result.getSuccess()) {
             List<FindDeviceVO> connectedDevices = new ArrayList<>();
