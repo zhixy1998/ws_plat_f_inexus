@@ -1858,6 +1858,32 @@
         <string>181:255:0:14</string>
     </HeadReceiveBytes>
 </ProtocolItem>
+<!--    <ProtocolItem>-->
+<!--        <ID>Dark</ID>-->
+<!--        <Describe>暗电流校正</Describe>-->
+<!--        <Timeout>30000</Timeout>-->
+<!--        <ACK>Y</ACK>-->
+<!--        <InputString>-->
+<!--            <string/>-->
+<!--        </InputString>-->
+<!--        <OutputString>-->
+<!--            <string>波长步数:AJ45:7</string>-->
+<!--            <string>S:AJ46:7</string>-->
+<!--            <string>D:AJ47:7</string>-->
+<!--            <string>R:AJ48:7</string>-->
+<!--        </OutputString>-->
+<!--        <SendBytes>-->
+<!--            <string>181:255:19:5:0:0:0:0:0:0:0:Check</string>-->
+<!--        </SendBytes>-->
+<!--        <ReadBytes>-->
+<!--            <string>254:181:19:5:0:AJ45:AJ45:0:AJ46:AJ46:AJ46:Check:254:181:19:6:AJ47:AJ47:AJ47:0:AJ48:AJ48:AJ48:Check</string>-->
+<!--        </ReadBytes>-->
+<!--        <ReplyNumber>-1</ReplyNumber>-->
+<!--        <HeadReceiveBytes>-->
+<!--            <string>255:181:19:5</string>-->
+<!--            <string>255:181:19:6</string>-->
+<!--        </HeadReceiveBytes>-->
+<!--    </ProtocolItem>-->
 <ProtocolItem>
 <ID>Measure</ID>
 <Describe>读取测量值</Describe>

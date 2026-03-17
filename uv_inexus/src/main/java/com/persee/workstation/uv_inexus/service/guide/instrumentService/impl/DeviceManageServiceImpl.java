@@ -170,6 +170,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
         vo.setIntMessage(infoList);
 
+        DeviceAttachmentTypeVO attachmentInfo = infoService.getAttachmentInfo(deviceSerialNumber);
+        vo.setAttachmentName(attachmentInfo.getAttachmentName());
+        vo.setTotalPoolNum(attachmentInfo.getSamplePoolNum());
+        vo.setAttachmentKind(attachmentInfo.getAttachmentKind());
+
 
         return R.ok(vo);
     }
@@ -1487,23 +1492,23 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         log.info("校准成功");
 
         if (Objects.equals(dto.getCalibrationType(), DeviceCalibrationInfoEnum.T800Dark.getType())) {
-           new Thread(() -> {
-               DeviceConnectionManager deviceConnectionManager = DeviceConnectionManager.getInstance();
-               DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
-               String deviceId = info.getDeviceId();
-               DeviceConnectInfo device = deviceConnectionManager.getDevice(deviceId);
-               Boolean isIdle = device.getIsIdle();
-               while (!isIdle) {
-                   try {
-                       Thread.sleep(200);
-                       device = deviceConnectionManager.getDevice(deviceId);
-                       isIdle = device.getIsIdle();
-                   } catch (Exception e) {
-                       log.info("线程异常");
-                   }
-               }
-               infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-           }).start();
+            new Thread(() -> {
+                DeviceConnectionManager deviceConnectionManager = DeviceConnectionManager.getInstance();
+                DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+                String deviceId = info.getDeviceId();
+                DeviceConnectInfo device = deviceConnectionManager.getDevice(deviceId);
+                Boolean isIdle = device.getIsIdle();
+                while (!isIdle) {
+                    try {
+                        Thread.sleep(200);
+                        device = deviceConnectionManager.getDevice(deviceId);
+                        isIdle = device.getIsIdle();
+                    } catch (Exception e) {
+                        log.info("线程异常");
+                    }
+                }
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+            }).start();
         } else {
             infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         }
@@ -1569,7 +1574,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R connect(List<SearchInfo> params, String updateBy, String templateId) {
+    public R connect(List<SearchInfo> params, String updateBy, String templateCode) {
         if (params == null || params.isEmpty()) {
             return R.fail("参数为空");
         }
@@ -1600,22 +1605,15 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                         //这里初始化之后还要创建新的任务，根据当前选定的模板创建任务，其实就是检定校准的任务
                         if (booleanR.getSuccess()) {
                             TaskAddDto taskAddDto = new TaskAddDto();
-                            taskAddDto.setDetectName(deviceSerialNumber);
-                            taskAddDto.setUseTemplate(templateId);
-//                            taskAddDto.setContentCategory();
+                            String randomSuffix = generateRandomSuffix();
+                            taskAddDto.setDetectName(deviceSerialNumber + "_" + randomSuffix);
+                            taskAddDto.setUseTemplate(templateCode);
                             taskAddDto.setCreateBy(updateBy);
-//                            taskAddDto.setUpdateBy(LocalDateTime.now().toString());
                             taskAddDto.setCreated(LocalDateTime.now());
-//                            taskAddDto.setUpdated();
                             taskAddDto.setSerialNumber(deviceSerialNumber);
-
-
                             Result<HashMap<String, String>> task = taskManagementService.newTask(taskAddDto);
                             list.add(task.getData());
                         }
-
-
-//                        results.add(result.getData());
                         successCount++;
                     } else {
                         failCount++;
@@ -1636,5 +1634,25 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             log.error("批量连接异常", e);
             return R.fail();
         }
+    }
+
+    private String generateRandomSuffix() {
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        String nums = "23456789";
+        StringBuilder suffix = new StringBuilder();
+
+        // 第 1 位：大写字母
+        suffix.append(chars.charAt((int) (Math.random() * chars.length())));
+
+        // 第 2-4 位：数字或字母混合
+        for (int i = 0; i < 3; i++) {
+            if (Math.random() > 0.5) {
+                suffix.append(chars.charAt((int) (Math.random() * chars.length())));
+            } else {
+                suffix.append(nums.charAt((int) (Math.random() * nums.length())));
+            }
+        }
+
+        return suffix.toString();
     }
 }

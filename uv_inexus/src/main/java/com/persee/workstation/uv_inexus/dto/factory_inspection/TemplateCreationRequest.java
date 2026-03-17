@@ -30,4 +30,6 @@ public class TemplateCreationRequest extends BasePO {
     private String type;
     @ApiModelProperty("模板id(修改模板的时候传)")
     private String id;
+    @ApiModelProperty("任务id")
+    private String taskId;
 }

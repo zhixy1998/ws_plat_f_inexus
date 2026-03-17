@@ -1065,29 +1065,32 @@
         <string>254:101:241:3</string>
     </HeadReceiveBytes>
 </ProtocolItem>
-<!--<ProtocolItem>-->
-<!--<ID>Connect</ID>-->
-<!--<Describe>联机</Describe>-->
-<!--<Timeout>5000</Timeout>-->
-<!--<ACK>Y</ACK>-->
-<!--<InputString>-->
-<!--<string>PCMac1:I79:0</string>-->
-<!--<string>PCMac2:I80:0</string>-->
-<!--<string>PCMac3:I81:0</string>-->
-<!--<string>PCMac4:I82:0</string>-->
-<!--<string>PCMac5:I83:0</string>-->
-<!--<string>PCMac6:I84:0</string>-->
-<!--</InputString>-->
-<!--<OutputString>-->
-<!--<string>连接状态:AJ79:4</string>-->
-<!--</OutputString>-->
-<!--<SendBytes>-->
-<!--<string>101:254:241:1:0:I79:I80:I81:I82:I83:I84:Check</string>-->
-<!--</SendBytes>-->
-<!--<ReadBytes>-->
-<!--<string>254:101:241:1:AJ79:255:0:Check</string>-->
-<!--</ReadBytes>-->
-<!--</ProtocolItem>-->
+    <ProtocolItem>
+        <ID>Connect</ID>
+        <Describe>联机</Describe>
+        <Timeout>5000</Timeout>
+        <ACK>Y</ACK>
+        <InputString>
+            <string>PCMac1:I79:0</string>
+            <string>PCMac2:I80:0</string>
+            <string>PCMac3:I81:0</string>
+            <string>PCMac4:I82:0</string>
+            <string>PCMac5:I83:0</string>
+            <string>PCMac6:I84:0</string>
+        </InputString>
+        <OutputString>
+            <string>连接状态:AJ79:4</string>
+        </OutputString>
+        <SendBytes>
+            <string>101:255:241:1:0:I79:I80:I81:I82:I83:I84:Check</string>
+        </SendBytes>
+        <ReadBytes>
+            <ReplyNumber>20</ReplyNumber>
+            <HeadReceiveBytes>
+                <string>255:101:241:1</string>
+            </HeadReceiveBytes>
+        </ReadBytes>
+    </ProtocolItem>
 <ProtocolItem>
 <ID>ConnectIAP</ID>
 <Describe>IAP联机</Describe>

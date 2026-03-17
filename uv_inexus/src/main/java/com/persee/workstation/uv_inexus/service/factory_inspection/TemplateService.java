@@ -81,7 +81,7 @@ public interface TemplateService extends IService<ExcelTemplate> {
      * @param type
      * @return 分组数据
      */
-    Result<Map<String, List<Map<String, Object>>>> getGroupedData(String templateCode, String groupByField);
+    Result<Map<String, List<Map<String, Object>>>> getGroupedData(String templateCode, String groupByField,String checkCategory);
     Result<Map<String, List<Map<String, Object>>>> getGroupedData(String templateCode);
 
     Result<List<Map<String, Object>>> getCustomStructuredData(String templateCode, List<String> selectedFields);

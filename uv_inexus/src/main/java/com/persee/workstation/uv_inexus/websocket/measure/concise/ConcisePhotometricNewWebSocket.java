@@ -231,7 +231,7 @@ public class ConcisePhotometricNewWebSocket {
                 R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
                 if (!setParams.getSuccess()) {
 
-                    sendError(deviceSerialNumber, "参数设置异常！");
+                    sendError(deviceSerialNumber, setParams.getMessage());
                     return;
                 }
 
@@ -310,7 +310,7 @@ public class ConcisePhotometricNewWebSocket {
             R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
             if (!setParams.getSuccess()) {
 
-                sendError(deviceSerialNumber, "参数设置异常！");
+                sendError(deviceSerialNumber, setParams.getMessage());
                 return;
             }
 
@@ -765,7 +765,7 @@ public class ConcisePhotometricNewWebSocket {
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
 
         if (!operation.getSuccess()) {
-            return R.fail("参数设置出错！");
+            return R.fail(operation.getMessage());
         }
 
         return R.ok(true);

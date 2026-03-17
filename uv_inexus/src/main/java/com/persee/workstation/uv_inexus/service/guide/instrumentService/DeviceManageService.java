@@ -150,5 +150,5 @@ public interface DeviceManageService {
 
     R<Boolean> addDevice(SearchInfo info);
 
-    R<FindDeviceVO> connect(List<SearchInfo> param,String updateBy,String templateId);
+    R<FindDeviceVO> connect(List<SearchInfo> param,String updateBy,String templateCode);
 }

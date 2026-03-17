@@ -51,6 +51,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -89,7 +90,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
     private final static DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
-    private volatile static int newIpEnd = 253;
+    private static final AtomicInteger newIpEnd = new AtomicInteger(253);
+    private static final int ipEndMax = 254;
+    private static final int ipEndMin = 1;
+    private static final int size = ipEndMax - ipEndMin + 1;
 
     private final ExecutorService actionExecutor = Executors.newSingleThreadExecutor();
 
@@ -982,7 +986,15 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     newIp.append(deviceIpParts[i]).append(".");
                 }
 
-                param[param.length - 1] = String.valueOf(newIpEnd);
+
+                String baseIp = newIp.toString();
+                Integer s = allocateIp(baseIp, connectPort);
+                if (s == null) {
+                    deviceManager.removeDevice(deviceInfo.getDeviceId());
+                    return R.fail("仪器连接超数量！");
+                }
+
+                param[param.length - 1] = String.valueOf(s);
                 newIp.append(param[param.length - 1]);
 
                 String comId = T600ComIdEnums.NewIP.getComId();
@@ -1116,6 +1128,34 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         }
 
         return R.ok(result);
+    }
+
+    /**
+     * 获取ip最后一位
+     */
+    private Integer allocateIp(String baseIp, Integer connectPort) {
+        int attempts = 0;
+        while (attempts < size) {
+            // 原子地获取当前候选值，并更新计数器为下一个值
+            int candidate = newIpEnd.getAndUpdate(prev ->
+                    prev <= ipEndMin ? ipEndMax : prev - 1
+            );
+
+            String ip = baseIp + candidate;
+            String localIp = connectUtil.getEthernetLocalIp();
+            if (ip.equals(localIp)) {
+                attempts++;
+                continue;
+            }
+
+            // 检查设备是否存在（仅检查，不占用）
+            boolean exists = deviceManager.checkDeviceExist(ip, connectPort);
+            if (!exists) {
+                return candidate;
+            }
+            attempts++;
+        }
+        return null;
     }
 
     private void initDevice(String deviceSerialNumber, Boolean isInitFromHead) {

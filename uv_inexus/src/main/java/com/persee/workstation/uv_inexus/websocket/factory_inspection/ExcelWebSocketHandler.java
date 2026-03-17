@@ -2649,7 +2649,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             return R.fail(map);
                         }
 
-                        promptUserToPlaceMaterial(taskId, "光谱-基线-请保持样品池为空");
+                        promptUserToPlaceMaterial(taskId, "空气");
                         if (halt.get(taskId)) {
                             map.put("line", list);
                             return R.fail(map);
@@ -3809,8 +3809,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         if (halt.get(taskId)) {
             return R.fail(map);
         }
+
         R<OperationResultEntity> measure = devOperationUtilService.operation(param1);
-//        UnknowCountMessageQueue queue = MessageOnTimeDeal.unknowCountMessageQueue;
         int i = 0;
         waveformCache.clear();
         while (true) {

@@ -77,6 +77,18 @@ public class DeviceConnectionManager {
         return createNewDevice(connectIdentity, port, key, connectType);
     }
 
+    public boolean checkDeviceExist(String connectIdentity, Integer port) {
+        String key = connectIdentity + ":" + port;
+
+        String existingId = identityMap.get(key);
+        if (existingId == null) {
+            return false;
+        } else {
+            DeviceConnectInfo device = deviceMap.get(existingId);
+            return device != null;
+        }
+    }
+
     private String createNewDevice(String connectIdentity, Integer port, String key, Integer connectType) {
         DeviceConnectInfo newDevice = new DeviceConnectInfo(connectIdentity, port, connectType);
         newDevice.recordMessage();

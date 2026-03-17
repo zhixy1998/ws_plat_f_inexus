@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.po.guide.instrumentPo;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.persee.workstation.uv_inexus.model.BasePO;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -35,7 +36,7 @@ public class MessageInfoPO extends BasePO {
     private String messageSource;
 
     @ApiModelProperty("消息内容")
-    @TableField("message_content")
+    @TableField(value = "message_content", typeHandler = JacksonTypeHandler.class)
     private String messageContent;
 
     @ApiModelProperty("消息状态")
