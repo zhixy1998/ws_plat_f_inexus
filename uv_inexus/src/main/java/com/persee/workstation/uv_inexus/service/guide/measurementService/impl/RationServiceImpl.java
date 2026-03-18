@@ -1893,12 +1893,12 @@ public class RationServiceImpl implements RationService {
                         empty = true;
                     }
                 }
-                if (StringUtils.hasText(sample.getHeads())) {
-                    List<HeadVO> heads = JSON.parseArray(sample.getHeads(), HeadVO.class);
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
+//                if (StringUtils.hasText(sample.getHeads())) {
+//                    List<HeadVO> heads = JSON.parseArray(sample.getHeads(), HeadVO.class);
+//                    if (heads != null && !heads.isEmpty()) {
+//                        ans.addAll(heads);
+//                    }
+//                }
             }
         }
 
@@ -1910,7 +1910,8 @@ public class RationServiceImpl implements RationService {
 
     private List<HeadVO> dealHeads(List<HeadVO> heads, RationParameter parameter, String sampleKind, Boolean allDisplay, Boolean empty, String deviceSerialNumber) {
         List<String> waveLength = parameter.getWaveLength();
-        Map<String, HeadVO> map = heads.stream().collect(Collectors.toMap(HeadVO::getIdentity, head -> head));
+        Map<String, HeadVO> map  = heads.stream().collect(Collectors.toMap(HeadVO::getIdentity, head -> head));
+
 
         Map<String, List<HeadVO>> headsMap = new HashMap<>();
 
@@ -2155,12 +2156,12 @@ public class RationServiceImpl implements RationService {
                         empty = true;
                     }
                 }
-                if (StringUtils.hasText(sample.getHeads())) {
-                    List<HeadVO> heads = JSON.parseArray(sample.getHeads(), HeadVO.class);
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
+//                if (StringUtils.hasText(sample.getHeads())) {
+//                    List<HeadVO> heads = JSON.parseArray(sample.getHeads(), HeadVO.class);
+//                    if (heads != null && !heads.isEmpty()) {
+//                        ans.addAll(heads);
+//                    }
+//                }
 
                 if (StringUtils.hasText(sample.getParallelGroupId())) {
                     HeadVO parallelGroupHead = new HeadVO(SampleTableEnum.Parallel_ID.getName(), SampleTableEnum.Parallel_ID.getIdentity(), TableHeadILocateEnums.analyze.getIdentity());
@@ -2811,8 +2812,18 @@ public class RationServiceImpl implements RationService {
                     String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getSd());
                     String sdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getSd());
 
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(sdT), sdDigits));
+                    if (isNumber(sdA)) {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                    } else {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), sdA);
+                    }
+
+                    if (isNumber(sdT)) {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(sdT), sdDigits));
+                    } else {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), sdT);
+                    }
+
                     ans.putIfAbsent(pre + DataIdentityEnums.sd.getIdentity(), children);
                 }
                 if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
@@ -2820,14 +2831,35 @@ public class RationServiceImpl implements RationService {
                     String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getRsd());
                     String rsdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getRsd());
 
+                    if (isNumber(rsdA)) {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                    } else {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), rsdA);
+                    }
 
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(rsdT), sdDigits));
+                    if (isNumber(rsdT)) {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(rsdT), sdDigits));
+                    } else {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), rsdT);
+                    }
+
                     ans.putIfAbsent(pre + DataIdentityEnums.rsd.getIdentity(), children);
                 }
             }
         }
         return ans;
+    }
+
+    private Boolean isNumber(String str) {
+        if (str == null || str.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            double v = Double.parseDouble(str);
+            return !Double.isNaN(v) && !Double.isInfinite(v);
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     public Map<String, Object> getSingleSampleData(TMeasureTask task, TMeasureSample sample, Boolean repeat, List<String> option, Integer digit, Integer otherDigit) {
@@ -3016,11 +3048,6 @@ public class RationServiceImpl implements RationService {
 
                 if (StringUtils.hasText(countData.getColValue())) {
                     String value = countData.getColValue();
-                    try {
-                        Double v = Double.valueOf(value);
-                        value = DataCountUtil.addZero(v, digit);
-                    } catch (Exception ignored) {
-                    }
 
                     map.put(countData.getIdentity(), value);
 
@@ -4474,22 +4501,15 @@ public class RationServiceImpl implements RationService {
 
         StringBuilder identity = new StringBuilder();
 
-        for (InputParam inputParam : parameter.getSampleInputParams()) {
-            boolean b = snapshot.getMapRelation().stream().anyMatch(
-                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity()));
+        List<InputParamMapTableHead> mapRelation = snapshot.getMapRelation();
+        for (InputParamMapTableHead relation : mapRelation) {
 
-            Optional<InputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
-                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
-            if (!mapTableHead.isPresent()) {
-                //"缺少参数映射：" + inputParam.getParamName()
-                return R.fail(YamlMessageSource.getMessageStatic("00300005", inputParam.getParamName()));
-            }
-            identity.append(mapTableHead.get().getParamIdentity().toUpperCase()).append(",");
-            String s = allData.getString(mapTableHead.get().getHeadIdentity());
+            String s = allData.getString(relation.getHeadIdentity());
             if (!StringUtils.hasText(s)) {
                 //缺少数据！
                 return R.fail(YamlMessageSource.getMessageStatic("00300006"));
             }
+            identity.append(relation.getParamIdentity()).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
         }
@@ -5597,7 +5617,7 @@ public class RationServiceImpl implements RationService {
             String key = SampleTableEnum.Abs.getIdentity();
 
             double v = Double.parseDouble(value);
-            if (param.getControlType().equals(qcType.getCode())) {
+            if (param.getControlType() != null && param.getControlType().equals(qcType.getCode())) {
 
                 if (param.getIsUpperLimitIncluded() != null && param.getIsUpperLimitIncluded()) {
                     if (v >= param.getUpperLimit()) {

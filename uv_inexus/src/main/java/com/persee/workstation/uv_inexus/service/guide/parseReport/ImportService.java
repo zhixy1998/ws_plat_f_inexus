@@ -92,20 +92,20 @@ public class ImportService {
             try {
                 standardCurveList = EasyExcel.read(file.getInputStream())
                         .head(StandardDetectionUVVISCurveExcelModel.class)
-                        .sheet("UV-VIS-标曲法-检测参数表")
+                        .sheet("UV-VIS-定量测量-检测参数表")
                         .doReadSync();
             } catch (Exception e) {
-                errorMessages.add("标准信息表：未找到UV-VIS-标曲法-检测参数表，忽略该部分数据");
+                errorMessages.add("标准信息表：未找到UV-VIS-定量测量-检测参数表，忽略该部分数据");
             }
 
             List<StandardDetectionUVVISPhotometryExcelModel> photometryList = null;
             try {
                 photometryList = EasyExcel.read(file.getInputStream())
                         .head(StandardDetectionUVVISPhotometryExcelModel.class)
-                        .sheet("UV-VIS-光度法-检测参数表")
+                        .sheet("UV-VIS-光度测量-检测参数表")
                         .doReadSync();
             } catch (Exception e) {
-                errorMessages.add("标准信息表：未找到UV-VIS-光度法-检测参数表，忽略该部分数据");
+                errorMessages.add("标准信息表：未找到UV-VIS-光度测量-检测参数表，忽略该部分数据");
             }
 
             // 合并检测参数
@@ -414,9 +414,9 @@ public class ImportService {
                     if (model.getInputParam1Identity() == null || model.getInputParam1Identity().isEmpty()) {
                         throw new IllegalArgumentException("输入参数标识1不能为空");
                     }
-                    if (model.getUnit() == null || model.getUnit().isEmpty()) {
-                        throw new IllegalArgumentException("单位不能为空");
-                    }
+//                    if (model.getUnit() == null || model.getUnit().isEmpty()) {
+//                        throw new IllegalArgumentException("单位不能为空");
+//                    }
                     if (model.getFormulaText() == null || model.getFormulaText().isEmpty()) {
                         throw new IllegalArgumentException("公式文本不能为空");
                     }

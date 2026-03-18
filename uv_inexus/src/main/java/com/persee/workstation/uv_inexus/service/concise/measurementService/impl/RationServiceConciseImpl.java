@@ -179,7 +179,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Value("文件数据")
     String newTaskName;
 
-    @Value("默认方法")
+    @Value("方法")
     String defaultMethodName;
 
     @Override
@@ -275,7 +275,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         String userId = sysUserPO.getId();
 
         FMeasureTask task = new FMeasureTask();
-        task.setTaskName(newTaskName + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        task.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         task.setIsDelete(createType);
         task.setMeasureType(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription());
         task.setMethodKey(methodId);
@@ -2064,12 +2064,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                         empty = true;
                     }
                 }
-                if (StringUtils.hasText(sample.getHeads())){
-                    List<FHeadVO> heads = JSON.parseArray(sample.getHeads(), FHeadVO.class);
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
+//                if (StringUtils.hasText(sample.getHeads())){
+//                    List<FHeadVO> heads = JSON.parseArray(sample.getHeads(), FHeadVO.class);
+//                    if (heads != null && !heads.isEmpty()) {
+//                        ans.addAll(heads);
+//                    }
+//                }
             }
         }
         List<FHeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_stand.getIdentity(), allDisplay, empty, deviceSerialNumber);
@@ -2325,12 +2325,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                         empty = true;
                     }
                 }
-                if (StringUtils.hasText(sample.getHeads())){
-                    List<FHeadVO> heads = JSON.parseArray(sample.getHeads(), FHeadVO.class);
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
+//                if (StringUtils.hasText(sample.getHeads())){
+//                    List<FHeadVO> heads = JSON.parseArray(sample.getHeads(), FHeadVO.class);
+//                    if (heads != null && !heads.isEmpty()) {
+//                        ans.addAll(heads);
+//                    }
+//                }
             }
         }
         List<FHeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_unknown.getIdentity(), allDisplay, empty, deviceSerialNumber);
@@ -3388,6 +3388,9 @@ public class RationServiceConciseImpl implements RationConciseService {
         FRepeatMeasureData tPercentData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode());
         String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
 
+        SystemBusinessParamVO vo = businessParamService.queryBusinessParam();
+        Integer sdDigits = vo.getSdDigits();
+
         if (option != null && !option.isEmpty()) {
             for (String s : option) {
                 Map<String, String> children = new HashMap<>();
@@ -3401,19 +3404,57 @@ public class RationServiceConciseImpl implements RationConciseService {
                 if (DataIdentityEnums.sd.getIdentity().equals(s)) {
                     children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
 
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
+                    String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getSd());
+                    String sdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getSd());
+
+                    if (isNumber(sdA)) {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                    } else {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), sdA);
+                    }
+                    if (isNumber(sdT)) {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(sdT), sdDigits));
+                    } else {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), sdT);
+                    }
+
                     ans.putIfAbsent(pre + DataIdentityEnums.sd.getIdentity(), children);
                 }
                 if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
                     children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
+
+                    String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getRsd());
+                    String rsdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getRsd());
+
+                    if (isNumber(rsdA)) {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                    } else {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), rsdA);
+                    }
+
+                    if (isNumber(rsdT)) {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(rsdT), sdDigits));
+                    } else {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), rsdT);
+                    }
+
                     ans.putIfAbsent(pre + DataIdentityEnums.rsd.getIdentity(), children);
                 }
             }
         }
         return ans;
+    }
+
+    private Boolean isNumber(String str) {
+        if (str == null || str.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            double v = Double.parseDouble(str);
+            return !Double.isNaN(v) && !Double.isInfinite(v);
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     public Map<String, Object> getSingleSampleData(FMeasureTask task, FMeasureSample sample, Boolean repeat, List<String> option, Integer digit, Integer otherDigit) {
