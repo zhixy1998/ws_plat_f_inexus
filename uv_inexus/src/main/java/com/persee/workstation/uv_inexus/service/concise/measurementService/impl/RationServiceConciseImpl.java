@@ -6583,20 +6583,24 @@ public class RationServiceConciseImpl implements RationConciseService {
                     continue;
                 }
                 // 处理单元格数据
-                String cellData = "-";
+                Object cellData = "-";
                 if (head != null && head.getIdentity() != null) {
                     Object value = map.get(head.getIdentity());
                     if (value != null) {
-                        cellData = String.valueOf(value)
+                        // 尝试将数字字符串转换为 Double，让 Excel 识别为数值类型
+                                cellData = convertToNumberIfNeeded(String.valueOf(value)
                                 .replace("\r", "")
                                 .replace("\n", "")
-                                .replace("\t", " ");
-                        if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                            cellData = "-";
-                        }
-                        // 样品位置特殊处理
-                        if ("sampleLocation".equals(head.getIdentity())) {
-                            cellData = "样品" + cellData;
+                                .replace("\t", " "));
+                        if (cellData instanceof String) {
+                            String strValue = (String) cellData;
+                            if (strValue.isEmpty() || "null".equalsIgnoreCase(strValue)) {
+                                cellData = "-";
+                            }
+                            // 样品位置特殊处理
+                            if ("sampleLocation".equals(head.getIdentity())) {
+                                cellData = "样品" + strValue;
+                            }
                         }
                     }
                 }
@@ -6653,20 +6657,26 @@ public class RationServiceConciseImpl implements RationConciseService {
                     continue;
                 }
                 // 处理单元格数据
-                String cellData = "-";
+                Object cellData = "-";
                 if (head != null && head.getIdentity() != null) {
                     Object value = map.get(head.getIdentity());
                     if (value != null) {
-                        cellData = String.valueOf(value)
+                        // 尝试将数字字符串转换为 Double，让 Excel 识别为数值类型
+                        cellData = convertToNumberIfNeeded(String.valueOf(value)
                                 .replace("\r", "")
                                 .replace("\n", "")
-                                .replace("\t", " ");
-                        if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                            cellData = "-";
-                        }
-                        // 样品位置特殊处理
-                        if ("sampleLocation".equals(head.getIdentity())) {
-                            cellData = "样品" + cellData;
+                                .replace("\t", " "));
+
+                        // 只有字符串类型才需要处理空值和特殊逻辑
+                        if (cellData instanceof String) {
+                            String strValue = (String) cellData;
+                            if (strValue.isEmpty() || "null".equalsIgnoreCase(strValue)) {
+                                cellData = "-";
+                            }
+                            // 样品位置特殊处理
+                            if ("sampleLocation".equals(head.getIdentity())) {
+                                cellData = "样品" + strValue;
+                            }
                         }
                     }
                 }
@@ -6697,7 +6707,21 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
     }
 
+    private Object convertToNumberIfNeeded(String value) {
+        if (value == null || value.trim().isEmpty() || "-".equals(value)) {
+            return value;
+        }
 
+        try {
+            // 尝试去除空格
+            String trimmed = value.trim();
+            // 尝试转换为 Double
+            return Double.parseDouble(trimmed);
+        } catch (NumberFormatException e) {
+            // 转换失败，返回原字符串
+            return value;
+        }
+    }
     // ---------------------- 工具方法 ----------------------
     /**
      * 获取文件后缀（Java 8兼容）
