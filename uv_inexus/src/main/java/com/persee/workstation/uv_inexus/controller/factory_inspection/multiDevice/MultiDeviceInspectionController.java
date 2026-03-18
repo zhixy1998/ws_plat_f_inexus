@@ -1,9 +1,14 @@
 package com.persee.workstation.uv_inexus.controller.factory_inspection.multiDevice;
 
+import com.persee.workstation.uv_inexus.component.EhcacheUtil;
 import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.BatchConnectDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateDto;
+import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
+import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
@@ -15,7 +20,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+
+import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CACHE;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.OutFactoryCheckEnum.OUT_FACTORY_CHECK_LIST;
 
 /*
  * *
@@ -32,7 +41,11 @@ import java.util.List;
 @Slf4j
 public class MultiDeviceInspectionController {
     @Autowired
-    private DeviceManageService deviceManageService;
+    DeviceManageService deviceManageService;
+    @Autowired
+    TemplateService templateService;
+    @Autowired
+    EhcacheUtil ehcacheUtil;
 
     /*
      * 查找设备
@@ -51,7 +64,7 @@ public class MultiDeviceInspectionController {
 
     //批量连接并初始化设备
     @PostMapping("/batch-connect")
-    @ApiOperation("批量连接多台仪器并初始化")
+    @ApiOperation("批量连接多台仪器")
     public Result<List<FindDeviceVO>> batchConnectDevices(
             @RequestBody BatchConnectDto batchConnectDto) throws InterruptedException {
 
@@ -67,7 +80,7 @@ public class MultiDeviceInspectionController {
             info.setUpdateBy(updateBy);
         }
 
-        R<FindDeviceVO> result = deviceManageService.connect(searchInfos,updateBy,templateCode);
+        R<FindDeviceVO> result = deviceManageService.connect(searchInfos, updateBy, templateCode);
 
         if (result.getSuccess()) {
             List<FindDeviceVO> connectedDevices = new ArrayList<>();
@@ -79,7 +92,29 @@ public class MultiDeviceInspectionController {
             return Result.fail(result.getMessage());
         }
     }
-    //批量断开连接
+
+    /**
+     * 初始化仪器并创建任务
+     *
+     * @param
+     * @param updateBy
+     * @return
+     * @throws InterruptedException
+     */
+    @PostMapping("/init")
+    @ApiOperation("初始化仪器并创建任务")
+    public Result<HashMap<String, String>> initDevice(@RequestParam String deviceSerialNumber, @RequestParam String templateCode, @RequestParam String updateBy) throws InterruptedException, BusinessException {
+        return deviceManageService.createTaskAfterInstrumentInit(deviceSerialNumber, updateBy, templateCode);
+    }
+
+    /**
+     * 批量断开连接
+     *
+     * @param deviceSerialNumbers
+     * @param updateBy
+     * @return
+     * @throws InterruptedException
+     */
     @GetMapping("/disconnect")
     @ApiOperation("批量断开连接")
     public Result<Boolean> disconnectDevice(@RequestParam List<String> deviceSerialNumbers, @RequestParam String updateBy) throws InterruptedException {
@@ -94,6 +129,43 @@ public class MultiDeviceInspectionController {
             }
         }
         return Result.fail(false);
+    }
+
+    /**
+     * 列出所有模板
+     */
+    @GetMapping("/listTemplate")
+    @ApiOperation("列出所有模板")
+    public Result<List<TemplateDto>> listTemplate() {
+        List<ExcelTemplate> list = templateService.list();
+        ArrayList<TemplateDto> dtos = new ArrayList<>();
+        for (ExcelTemplate template : list) {
+            TemplateDto dto = new TemplateDto();
+            dto.setId(template.getId());
+            dto.setTemplateCode(template.getTemplateCode());
+            dto.setTemplateName(template.getTemplateName());
+            dtos.add(dto);
+        }
+        return Result.ok(dtos);
+    }
+
+    /**
+     * 列出所有已连接的仪器和任务
+     */
+    @GetMapping("/listConnectedDevice")
+    @ApiOperation("列出所有已连接的仪器和任务")
+    public Result<List<HashMap<String, String>>> listConnectedDevice() {
+        Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
+
+        List<HashMap<String, String>> dtoList;
+        if (cachedObject instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<HashMap<String, String>> checkedList = (List<HashMap<String, String>>) cachedObject;
+            dtoList = checkedList;
+        } else {
+            dtoList = new ArrayList<HashMap<String, String>>();
+        }
+        return Result.ok(dtoList);
     }
 
 }
