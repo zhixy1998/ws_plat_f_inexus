@@ -962,6 +962,21 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //            management.set
             taskService.updateById(management);
             InspectionRequestDto request = mapper.readValue(payload, InspectionRequestDto.class);
+            TaskManagement management2 = taskService.getById(taskId);
+            //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
+            if (management2 != null && StringUtils.isBlank(management2.getOperationInstrument())) {
+                R<String> device = deviceManageService.getConnectDevice(updateBy);
+
+//                            String deviceSerialNumber = "30-U1602-01-0022";
+                String deviceSerialNumber = device.getData();
+
+                LambdaUpdateWrapper<TaskManagement> updateWrapper = new LambdaUpdateWrapper<>();
+                updateWrapper.eq(TaskManagement::getId, taskId)  // 根据taskId匹配
+                        .set(TaskManagement::getOperationInstrument, deviceSerialNumber); // 设置新序列号
+
+                // 执行更新
+                taskService.update(updateWrapper);
+            }
             deviceInfoService.updateDeviceCurrentStatus(management1.getOperationInstrument(), DEVICE_STATUS_MEASURE);
             handleSingleItemInspection(session, request, taskId, updateBy, false);
         }
@@ -1053,7 +1068,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             //判断任务是否正在被编辑中
             boolean edited = workbookCacheManager.isTaskBeingEditedByOthers(taskId, updateBy);
             if (edited) {
-                sendToActiveSession(null,taskId, "任务正在被编辑中");
+                sendToActiveSession(null, taskId, "任务正在被编辑中");
 //                session.sendMessage(new TextMessage("任务正在被编辑中"));
             }
             if (DEFAULT_TASK.getCode().equals(taskId)) {
@@ -1145,7 +1160,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("data", historyData);
-            sendToActiveSession(null,taskId,jsonObject);
+            sendToActiveSession(null, taskId, jsonObject);
             String s = JSON.toJSONString(historyData);
 //            sendToActiveSession(null, taskId, s);
         }
@@ -1492,21 +1507,21 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                    String deviceSerialNumber = management.getOperationInstrument();
                             //更新任务对应的序列号为当前连接的仪器
 
-                            TaskManagement management = taskService.getById(taskId);
-                            //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
-                            if (management != null && StringUtils.isBlank(management.getOperationInstrument())) {
-                                R<String> device = deviceManageService.getConnectDevice(updateBy);
-
-//                            String deviceSerialNumber = "30-U1602-01-0022";
-                                String deviceSerialNumber = device.getData();
-
-                                LambdaUpdateWrapper<TaskManagement> updateWrapper = new LambdaUpdateWrapper<>();
-                                updateWrapper.eq(TaskManagement::getId, taskId)  // 根据taskId匹配
-                                        .set(TaskManagement::getOperationInstrument, deviceSerialNumber); // 设置新序列号
-
-                                // 执行更新
-                                taskService.update(updateWrapper);
-                            }
+//                            TaskManagement management = taskService.getById(taskId);
+//                            //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
+//                            if (management != null && StringUtils.isBlank(management.getOperationInstrument())) {
+//                                R<String> device = deviceManageService.getConnectDevice(updateBy);
+//
+////                            String deviceSerialNumber = "30-U1602-01-0022";
+//                                String deviceSerialNumber = device.getData();
+//
+//                                LambdaUpdateWrapper<TaskManagement> updateWrapper = new LambdaUpdateWrapper<>();
+//                                updateWrapper.eq(TaskManagement::getId, taskId)  // 根据taskId匹配
+//                                        .set(TaskManagement::getOperationInstrument, deviceSerialNumber); // 设置新序列号
+//
+//                                // 执行更新
+//                                taskService.update(updateWrapper);
+//                            }
                             TaskManagement taskManagement = taskService.getById(taskId);
                             //获取序列号
                             String string = taskManagement.getOperationInstrument();
@@ -3484,7 +3499,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
         boolean isOk;
         String errorMsg = "";
-        timeScanStopControl.put(taskId,true);
+        timeScanStopControl.put(taskId, true);
         if (d == 0) {
             if ((anEnum == abs || anEnum == tPercent)) {
 
@@ -3541,7 +3556,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 realTimeEcho(taskId, "时间扫描-开始暗电流矫正");
 
                 //到这里就不能停止了，得等到做完暗电流停止
-                timeScanStopControl.put(taskId,false);
+                timeScanStopControl.put(taskId, false);
                 log.info("时间扫描-开始暗电流矫正>>>>>>>>>>>>>>>>>>>>");
                 DevOperationInputParam darkParam = new DevOperationInputParam();
                 SetParam setParam1 = new SetParam();
@@ -3555,7 +3570,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 }
                 R<OperationResultEntity> operationDark =
                         devOperationUtilService.operation(darkParam);
-                timeScanStopControl.put(taskId,true);
+                timeScanStopControl.put(taskId, true);
                 log.info("时间扫描-暗电流矫正结果：{}", operationDark);
 //            operationDark.setSuccess(false);
                 if (operationDark.getSuccess()) {
@@ -4655,7 +4670,6 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
             log.error("WebSocket 连接关闭异常", e);
         }
     }
-
 
 
     // 在停止任务时也清理队列
