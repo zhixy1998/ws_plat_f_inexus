@@ -6179,30 +6179,44 @@ public class RationServiceImpl implements RationService {
 
                 // 提取字段值，防护null
                 Object value = map.get(head.getIdentity());
-                String cellData = "-"; // 默认空值
+                Object cellData = "-"; // 默认空值
+
 
                 if (value != null) {
-                    cellData = String.valueOf(value);
-                    // 特殊字段格式化（增加null防护）
-                    if ("sampleType".equals(head.getIdentity())) {
-                        // 防护：cellData为null/空
-                        if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                    // 先转换为字符串并清除特殊字符
+                    String strValue = String.valueOf(value)
+                            .replace("\r", "")
+                            .replace("\n", "")
+                            .replace("\t", " ");
+
+                    // 尝试将数字字符串转换为 Double，让 Excel 识别为数值类型
+                    cellData = convertToNumberIfNeeded(strValue);
+
+                    // 只有字符串类型才需要处理空值和特殊逻辑
+                    if (cellData instanceof String) {
+                        String strCellData = (String) cellData;
+
+                        // 特殊字段格式化（增加 null 防护）
+                        if ("sampleType".equals(head.getIdentity())) {
+                            // 防护：cellData 为 null/空
+                            if (strCellData == null || strCellData.trim().isEmpty() || "null".equalsIgnoreCase(strCellData)) {
+                                cellData = "-";
+                            } else {
+                                // 防护：枚举方法返回 null
+                                String typeName = SampleTypeEnum.getName(strCellData);
+                                cellData = typeName == null ? "-" : typeName;
+                            }
+                        }
+                        if ("sampleLocation".equals(head.getIdentity())) {
+                            // 防护：避免拼接"样品 null"
+                            cellData = (strCellData == null || "null".equalsIgnoreCase(strCellData)) ? "-" : ("样品" + strCellData);
+                        }
+                        // 处理空字符串或"null"
+                        if (strCellData.isEmpty() || "null".equalsIgnoreCase(strCellData)) {
                             cellData = "-";
-                        } else {
-                            // 防护：枚举方法返回null
-                            String typeName = SampleTypeEnum.getName(cellData);
-                            cellData = typeName == null ? "-" : typeName;
                         }
                     }
-                    if ("sampleLocation".equals(head.getIdentity())) {
-                        // 防护：避免拼接"样品null"
-                        cellData = (cellData == null || "null".equalsIgnoreCase(cellData)) ? "-" : ("样品" + cellData);
-                    }
-                    // 清除特殊字符，防护空字符串
-                    cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
-                    if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                        cellData = "-";
-                    }
+                    // 如果是 Double 类型，直接保留，不做字符串处理
                 }
 
                 rowData.add(cellData);
@@ -6224,7 +6238,26 @@ public class RationServiceImpl implements RationService {
             throw e; // 向上抛出，由外层处理
         }
     }
+    /**
+     * 尝试将字符串转换为数值类型
+     * @param value 待转换的字符串
+     * @return 如果是有效数字则返回 Double，否则返回原字符串
+     */
+    private Object convertToNumberIfNeeded(String value) {
+        if (value == null || value.trim().isEmpty() || "-".equals(value)) {
+            return value;
+        }
 
+        try {
+            // 尝试去除空格
+            String trimmed = value.trim();
+            // 尝试转换为 Double
+            return Double.parseDouble(trimmed);
+        } catch (NumberFormatException e) {
+            // 转换失败，返回原字符串
+            return value;
+        }
+    }
 
     // ---------------------- 工具方法 ----------------------
 
