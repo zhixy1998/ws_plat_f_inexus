@@ -1663,34 +1663,25 @@ public class PhotometricServiceImpl implements PhotometricService {
             digit = Constants.DEFAULT_DECIMAL_NUM;
             queryDataDTO.setDigit(digit);
         }
-        TMeasureTaskAttachment attachment;
+
         R<TMeasureTaskAttachment> attachmentResult = tMeasureTaskAttachmentService.queryByTaskId(taskId);
         if (!attachmentResult.getSuccess()) {
-            attachment = new TMeasureTaskAttachment();
+            TMeasureTaskAttachment attachment = new TMeasureTaskAttachment();
             attachment.setTaskId(taskId);
             attachment.setDataParam(JSON.toJSONString(queryDataDTO));
             tMeasureTaskAttachmentService.save(attachment);
+            attachmentResult = tMeasureTaskAttachmentService.queryByTaskId(taskId);
 
-        } else {
-            attachment = attachmentResult.getData();
-            if (!StringUtils.hasText(attachment.getDataParam())) {
-                attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                tMeasureTaskAttachmentService.saveOrUpdate(attachment);
-
-            } else {
-                QueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
-                if (dataDTO.getDigit() == null || !dataDTO.getDigit().equals(digit)) {
-                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                    tMeasureTaskAttachmentService.saveOrUpdate(attachment);
-                } else if (dataDTO.getOtherDigit() == null || !dataDTO.getOtherDigit().equals(otherDigit)) {
-
-                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                    tMeasureTaskAttachmentService.saveOrUpdate(attachment);
-                }
-            }
         }
 
+        TMeasureTaskAttachment attachment = attachmentResult.getData();
+        if (attachment == null) {
+            attachment = new TMeasureTaskAttachment();
+        }
 
+        attachment.setTaskId(taskId);
+        attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+        tMeasureTaskAttachmentService.saveOrUpdate(attachment);
 
         boolean repeat = false;
         PhotometricParameter parameter = null;

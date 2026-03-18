@@ -2644,6 +2644,11 @@ public class RationServiceImpl implements RationService {
             queryDataDTO.setDigit(digit);
         }
 
+        if (otherDigit==null || otherDigit <0) {
+            otherDigit = Constants.DEFAULT_DECIMAL_NUM;
+            queryDataDTO.setOtherDigit(otherDigit);
+        }
+
         if (queryDataDTO.getAllDisplay() == null) {
             allDisplay = false;
         }
