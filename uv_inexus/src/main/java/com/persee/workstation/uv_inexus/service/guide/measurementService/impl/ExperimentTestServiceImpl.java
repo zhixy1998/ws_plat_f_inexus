@@ -1671,7 +1671,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.ok(new ArrayList<>());
         }
         // 根据项目id和方法类型查询方法表数据
-        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", methodType).eq("method_creator", updateBy));
+        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", methodType));
         if (list == null || list.size() == 0) {
             return Result.ok(new ArrayList<>());
         }

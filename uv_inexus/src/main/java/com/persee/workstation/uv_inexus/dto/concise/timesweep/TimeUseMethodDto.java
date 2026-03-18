@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.dto.concise.timesweep;
 
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
 import com.persee.workstation.uv_inexus.vo.concise.timesweep.FTimeSweepParamterVo;
 import lombok.Data;
 
@@ -17,7 +16,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
 @Data
-public class TimeUseMethodDto extends FTimeSweepParamter {
+public class TimeUseMethodDto {
     // 方法id
     private String methodId;
     // 方法id2

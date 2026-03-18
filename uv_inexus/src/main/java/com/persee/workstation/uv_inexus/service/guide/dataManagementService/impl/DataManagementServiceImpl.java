@@ -691,8 +691,8 @@ public class DataManagementServiceImpl implements DataManagementService {
         pageWrapper.eq("user_id", user.getId());
 
         // 根据测量模式筛选
-        if (StringUtils.isNotBlank(vo.getMeasureMode())) {
-            pageWrapper.eq("measure_mode", vo.getMeasureMode());
+        if (StringUtils.isNotBlank(vo.getMeasureType())) {
+            pageWrapper.eq("measure_type", vo.getMeasureType());
         }
 
         // 根据任务名称模糊查询
