@@ -12,20 +12,26 @@ package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.persee.workstation.uv_inexus.component.EhcacheUtil;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.*;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TaskAddDto;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.enums.factoryInspection.OutFactoryCheckEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
+import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.*;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
+import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
@@ -48,10 +54,15 @@ import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
+
+import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CACHE;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.OutFactoryCheckEnum.OUT_FACTORY_CHECK_LIST;
 
 @Slf4j
 @Service
@@ -59,7 +70,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
     DevConfigDAO devConfigDAO;
-
+    @Autowired
+    TemplateService templateService;
+    @Autowired
+    EhcacheUtil ehcacheUtil;
     @Autowired
     CalibrationTempDAO tempDao;
 
@@ -1598,8 +1612,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 //            List<FindDeviceVO> results = new ArrayList<>();
             int successCount = 0;
             int failCount = 0;
-            ArrayList<HashMap<String, String>> list = new ArrayList<>();
-
+            ArrayList<R<FindDeviceVO>> vos = new ArrayList<>();
             for (SearchInfo param : params) {
                 try {
                     // 确保每个参数都有正确的 userId 和 connectType
@@ -1608,24 +1621,24 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
                     // 调用单台设备连接方法
                     R<FindDeviceVO> result = connect(param);
-
                     if (result.getSuccess()) {
-                        String deviceSerialNumber = result.getData().getDeviceSerialNumber();
-                        R<Boolean> booleanR = startInitDevice(deviceSerialNumber, updateBy);
-                        //这里初始化之后还要创建新的任务，根据当前选定的模板创建任务，其实就是检定校准的任务
-                        if (booleanR.getSuccess()) {
-                            TaskAddDto taskAddDto = new TaskAddDto();
-                            String randomSuffix = generateRandomSuffix();
-                            taskAddDto.setDetectName(deviceSerialNumber + "_" + randomSuffix);
-                            taskAddDto.setUseTemplate(templateCode);
-                            taskAddDto.setCreateBy(updateBy);
-                            taskAddDto.setCreated(LocalDateTime.now());
-                            taskAddDto.setSerialNumber(deviceSerialNumber);
-                            Result<HashMap<String, String>> task = taskManagementService.newTask(taskAddDto);
-                            list.add(task.getData());
-                        }
+                        vos.add(result);
+                        //                        R<Boolean> booleanR = startInitDevice(deviceSerialNumber, updateBy);
+//                        //这里初始化之后还要创建新的任务，根据当前选定的模板创建任务，其实就是检定校准的任务
+//                        if (booleanR.getSuccess()) {
+//                            TaskAddDto taskAddDto = new TaskAddDto();
+//                            String randomSuffix = generateRandomSuffix();
+//                            taskAddDto.setDetectName(deviceSerialNumber + "_" + randomSuffix);
+//                            taskAddDto.setUseTemplate(templateCode);
+//                            taskAddDto.setCreateBy(updateBy);
+//                            taskAddDto.setCreated(LocalDateTime.now());
+//                            taskAddDto.setSerialNumber(deviceSerialNumber);
+//                            Result<HashMap<String, String>> task = taskManagementService.newTask(taskAddDto);
+//                            list.add(task.getData());
+//                        }
                         successCount++;
                     } else {
+                        vos.add(result);
                         failCount++;
                         log.warn("批量连接中部分失败：device={}, error={}",
                                 param.getDeviceIp(), result.getMessage());
@@ -1638,12 +1651,89 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             log.info("批量连接完成：总数={}, 成功={}, 失败={}",
                     params.size(), successCount, failCount);
-            return R.ok(list);
+            return R.ok(vos);
 
         } catch (Exception e) {
             log.error("批量连接异常", e);
             return R.fail();
         }
+    }
+
+    @Override
+    public Result<HashMap<String, String>> createTaskAfterInstrumentInit(String deviceSerialNumber, String updateBy,String templateCode) throws BusinessException {
+        R<Boolean> booleanR = startInitDevice(deviceSerialNumber, updateBy);
+
+        DeviceInfoPO deviceInfoPO = infoService.getInfo(deviceSerialNumber);
+        if (deviceInfoPO == null || deviceInfoPO.getId() == null) {
+            log.info("未找到连接仪器信息！");
+            //未查找到仪器信息
+            throw new BusinessException("未找到连接仪器信息！");
+        }
+
+        List<InitRecordPO> initList = initRecordService.searchInitStatus(deviceSerialNumber, deviceInfoPO.getId());
+
+
+
+        //这里初始化之后还要创建新的任务，根据当前选定的模板创建任务，其实就是检定校准的任务
+        if (booleanR.getSuccess()) {
+            LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(TaskManagement::getOperationInstrument, deviceSerialNumber);
+            List<TaskManagement> list = taskManagementService.list(wrapper);
+            if (!CollectionUtils.isEmpty(list)){
+                TaskManagement taskManagement = list.get(0);
+                HashMap<String, String> map = new HashMap<>();
+                map.put("taskId", taskManagement.getId());
+                ExcelTemplate excelTemplate = templateService.getById(taskManagement.getUseTemplate());
+                if (ObjectUtils.isEmpty(excelTemplate)){
+                    log.info("未找到模板！");
+                    throw new BusinessException("未找到模板！");
+                }
+                map.put("templateCode", excelTemplate.getTemplateCode());
+                map.put("deviceSerialNumber",deviceSerialNumber);
+                Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
+
+                List<HashMap<String, String>> dtoList;
+                if (cachedObject instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<HashMap<String, String>> checkedList = (List<HashMap<String, String>>) cachedObject;
+                    dtoList = checkedList;
+                } else {
+                    dtoList = new ArrayList<HashMap<String, String>>();
+                }
+                dtoList.add(map);
+                ehcacheUtil.put(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), dtoList, String.class, Object.class);
+
+                return Result.ok(map);
+            }
+            TaskAddDto taskAddDto = new TaskAddDto();
+            String randomSuffix = generateRandomSuffix();
+            taskAddDto.setDetectName(deviceSerialNumber + "_" + randomSuffix);
+            taskAddDto.setUseTemplate(templateCode);
+            taskAddDto.setCreateBy(updateBy);
+            taskAddDto.setCreated(LocalDateTime.now());
+            taskAddDto.setSerialNumber(deviceSerialNumber);
+            Result<HashMap<String, String>> task = taskManagementService.newTask(taskAddDto);
+            if (ObjectUtils.isEmpty(task)){
+                throw new BusinessException("创建任务失败！");
+            }
+            Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST, OutFactoryCheckEnum.class, Object.class);
+
+            List<HashMap<String, String>> dtoList;
+            if (cachedObject instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<HashMap<String, String>> checkedList = (List<HashMap<String, String>>) cachedObject;
+                dtoList = checkedList;
+            } else {
+                dtoList = new ArrayList<HashMap<String, String>>();
+            }
+            HashMap<String, String> data = task.getData();
+            data.put("deviceSerialNumber", deviceSerialNumber);
+            dtoList.add(task.getData());
+            ehcacheUtil.put(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST, dtoList, OutFactoryCheckEnum.class, Object.class);
+
+            return Result.ok(task.getData());
+        }
+        return Result.fail();
     }
 
     private String generateRandomSuffix() {

@@ -11,13 +11,16 @@ package com.persee.workstation.uv_inexus.service.guide.instrumentService;
 
 
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 
+import java.util.HashMap;
 import java.util.List;
 
 public interface DeviceManageService {
@@ -151,4 +154,6 @@ public interface DeviceManageService {
     R<Boolean> addDevice(SearchInfo info);
 
     R<FindDeviceVO> connect(List<SearchInfo> param,String updateBy,String templateCode);
+
+    Result<HashMap<String, String>> createTaskAfterInstrumentInit(String deviceSerialNumber, String updateBy, String templateCode) throws BusinessException;
 }
