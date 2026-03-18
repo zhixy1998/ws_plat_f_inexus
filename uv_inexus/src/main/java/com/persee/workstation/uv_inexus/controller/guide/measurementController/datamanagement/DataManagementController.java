@@ -11,12 +11,16 @@ package com.persee.workstation.uv_inexus.controller.guide.measurementController.
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.Box;
+import com.persee.workstation.uv_inexus.dto.guide.ProjectExportRequestDto;
+import com.persee.workstation.uv_inexus.dto.guide.ProjectImportDto;
+import com.persee.workstation.uv_inexus.dto.guide.ProjectImportResultDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.UnFinishTasksAndNumParam;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.UnFinishTasksAndNum;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
 import com.persee.workstation.uv_inexus.vo.concise.common.MethodStatisticVo;
@@ -25,9 +29,13 @@ import com.persee.workstation.uv_inexus.vo.concise.common.TaskStatisticVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.TaskDetailVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
+import java.util.Map;
 
 @RestController
 @Api("数据管理接口")
@@ -57,6 +65,27 @@ public class DataManagementController {
         return dataManagementService.queryProjectDetail(projectId);
     }
 
+    @ApiOperation("导出项目为Excel")
+    @PostMapping("/exportProjects")
+    public void exportProjects(
+            @RequestBody @Valid ProjectExportRequestDto requestDto,
+            HttpServletResponse response) {
+        dataManagementService.exportProjects(requestDto, response);
+    }
+
+    @ApiOperation("从Excel导入项目")
+    @PostMapping("/importProjects")
+    public Result<ProjectImportResultDto> importProjects(
+            @RequestParam("file") MultipartFile file,
+            @Valid ProjectImportDto importDto) {
+        return dataManagementService.importProjects(file, importDto);
+    }
+
+    @ApiOperation("下载导入模板")
+    @GetMapping("/template")
+    public void downloadTemplate(HttpServletResponse response) {
+        dataManagementService.downloadTemplate(response);
+    }
 
 
     @PostMapping("/queryUserTaskStatistics")
@@ -101,7 +130,7 @@ public class DataManagementController {
     //任务
     @PostMapping("/getTasksManagementList")
     @ApiOperation("任务分页分类查询")
-    public Result<Page<TaskManagementDto>> getTasksManagementList(@RequestBody TaskQueryParam taskQueryParam) {
+    public Result<Map<String,Object>> getTasksManagementList(@RequestBody TaskQueryParam taskQueryParam) {
         return dataManagementService.getTasksManagementList(taskQueryParam);
     }
 

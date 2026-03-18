@@ -397,4 +397,11 @@ public class ExperimentTestController {
         return experimentTestService.querySampleDefaultHead(measureType);
     }
 
+
+    @GetMapping("taskTermination")
+    @ApiOperation("任务终止")
+    public Result taskTermination(@RequestParam String taskId) {
+        return experimentTestService.taskTermination(taskId);
+    }
+
 }

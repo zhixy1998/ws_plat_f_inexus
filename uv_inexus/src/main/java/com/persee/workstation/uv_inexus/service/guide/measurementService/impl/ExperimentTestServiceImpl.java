@@ -4511,4 +4511,30 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         vo.setProjectName(project.getProjectName());
         return Result.ok(vo);
     }
+
+    /**
+     * 任务终止
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result taskTermination(String taskId) {
+        // 判断任务id是否为空
+        if (StringUtils.isEmpty(taskId)) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+        task.setTaskStatus(Constants.PARAM_TWO);
+        task.setEndTime(LocalDateTime.now());
+        boolean b = tMeasureTaskService.updateById(task);
+        if (b) {
+            return Result.ok();
+        }else{
+            return Result.fail("任务结束失败");
+        }
+
+    }
 }

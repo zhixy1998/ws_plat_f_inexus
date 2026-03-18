@@ -18,6 +18,7 @@ import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
@@ -564,7 +565,10 @@ public class TimeNewWebSocket {
 
         inputParam.setTotalTime(scanTime);
         inputParam.setIntervalSeconds(Double.parseDouble(param.getIntervalTime()));
-        devOperationUtilService.operation(inputParam);
+        R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
+        if (!r.getSuccess()) {
+            sendError(deviceSerialNumber,r.getMessage());
+        }
     }
 
     private void calculateAndPushData(String deviceSerialNumber, TimeScanContext context,

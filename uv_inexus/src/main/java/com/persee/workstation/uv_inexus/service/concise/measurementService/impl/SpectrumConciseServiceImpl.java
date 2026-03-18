@@ -178,6 +178,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     @Value("0")
     String noTested;
 
+    @Value("文件数据")
+    String newTaskName;
+
+    @Value("默认方法")
+    String defaultMethodName;
+
+
+
     /**
      * 校验光谱扫描参数
      * @param parameter 光谱扫描参数
@@ -218,8 +226,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         double minWaveLength = 190.0;
         double maxWaveLength = 1100.0;
 
+        double startWave = 0;
+        double endWave = 0;
+
         try {
-            double startWave = Double.parseDouble(startWaveStr);
+            startWave = Double.parseDouble(startWaveStr);
             if (startWave < minWaveLength || startWave > maxWaveLength) {
                 return R.fail(YamlMessageSource.getMessageStatic("00102006",
                         1, startWave, minWaveLength, maxWaveLength));
@@ -228,7 +239,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return R.fail(YamlMessageSource.getMessageStatic("00105005", startWaveStr));
             }
 
-            double endWave = Double.parseDouble(endWaveStr);
+            endWave = Double.parseDouble(endWaveStr);
             if (endWave < minWaveLength || endWave > maxWaveLength) {
                 return R.fail(YamlMessageSource.getMessageStatic("00102006",
                         2, endWave, minWaveLength, maxWaveLength));
@@ -308,7 +319,55 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 6. 阶梯校正校验（Boolean类型无需复杂校验，只需确保有值？但可为null代表不启用）
         // 这里不做强制要求，Boolean允许为null
 
-        // 7. 父类 MeasurePublicParameters 字段校验
+        // 7. 消除尖刺校验（新增）
+        Boolean spikeRemoval = parameter.getSpikeRemoval();
+        if (spikeRemoval != null && spikeRemoval) {
+            // 校验光度模式是否为Abs(1)或T%(2)
+            if (!"1".equals(luminosity) && !"2".equals(luminosity)) {
+                return R.fail("消除尖刺功能只能在Abs或T%光度模式下使用，当前光度模式：" +
+                        getLuminosityDesc(luminosity));
+            }
+
+            List<String> spikeArray = parameter.getSpikeArray();
+            if (spikeArray == null || spikeArray.isEmpty()) {
+                return R.fail("启用消除尖刺功能时，尖刺数组不能为空");
+            }
+
+            try {
+                for (int i = 0; i < spikeArray.size(); i++) {
+                    String spikeStr = spikeArray.get(i);
+                    if (!StringUtils.hasText(spikeStr)) {
+                        return R.fail("尖刺数组中存在空值，请检查第" + (i + 1) + "个尖刺点");
+                    }
+
+                    double spikeValue = Double.parseDouble(spikeStr.trim());
+
+                    // 校验尖刺点是否在波长范围内
+                    if (spikeValue > startWave || spikeValue < endWave) {
+                        return R.fail("尖刺点" + spikeStr + "不在波长范围内，请检查");
+                    }
+
+                    // 校验小数点后最多1位（根据业务需求调整）
+                    if (spikeStr.contains(".") && spikeStr.split("\\.")[1].length() > 1) {
+                        return R.fail("尖刺点" + spikeStr + "小数点后最多保留1位");
+                    }
+                }
+
+
+                Set<String> uniqueSpikes = new HashSet<>(spikeArray);
+                if (uniqueSpikes.size() < spikeArray.size()) {
+                    return R.fail("尖刺数组中存在重复的尖刺点，请检查");
+                }
+
+                // 校验尖刺点数量限制
+                if (spikeArray.size() > 10) { // 假设最多10个尖刺点
+                    return R.fail("尖刺点数量不能超过10个，当前：" + spikeArray.size());
+                }
+
+            } catch (NumberFormatException e) {
+                return R.fail("尖刺数组格式错误，必须为数字，当前值：" + spikeArray);
+            }
+        }
         // 7.1 光谱带宽校验
         if (!StringUtils.hasText(parameter.getSpectralBandwidth())) {
             return R.fail("光谱带宽不能为空");
@@ -359,6 +418,26 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
 
         return R.ok(true);
+    }
+
+    /**
+     * 获取光度模式描述
+     * @param luminosity 光度模式编码
+     * @return 光度模式描述
+     */
+    private String getLuminosityDesc(String luminosity) {
+        switch (luminosity) {
+            case "1":
+                return "Abs";
+            case "2":
+                return "T%";
+            case "3":
+                return "Es";
+            case "4":
+                return "Er";
+            default:
+                return "未知";
+        }
     }
 
     // 内部工具方法：判断字符串是否为空（适配JDK1.8）
@@ -644,6 +723,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (paramDto.getParameter().getScanSpeed().equals("3") && (start > 1100 || start < 380)) {
             return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
         }
+        if (param.getSpikeRemoval()==null){
+            paramDto.getParameter().setSpikeRemoval(false);
+        }
         // 下发参数
         SetParam setParam = new SetParam();
         setParam.setPhotoMode(Integer.valueOf(paramDto.getParameter().getLuminosity()));
@@ -925,9 +1007,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 //请先创建方法
                 return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
             }
-            fMeasureTask.setTaskName(method.getMethodName() + "草稿");
+            fMeasureTask.setTaskName(newTaskName + "-" +
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         } else {
-            fMeasureTask.setTaskName(task.getTaskName() + "草稿");
+            fMeasureTask.setTaskName(newTaskName + "-" +
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         }
         fMeasureTask.setUserId(userId);
         fMeasureTask.setMethodKey(methodId);
@@ -3629,12 +3713,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      */
     private FMeasureMethod createNewMethod(FUseMethodDto paramDto) {
         FMeasureMethod fMeasureMethod = new FMeasureMethod();
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        String collect = new Random().ints(8, 0, chars.length())
-                .mapToObj(i -> String.valueOf(chars.charAt(i)))
-                .collect(Collectors.joining());
 
-        fMeasureMethod.setMethodName(paramDto.getMeasureType() + collect);
+        fMeasureMethod.setMethodName(defaultMethodName + "-" +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
 
         FSpectrumParameter parameter = new FSpectrumParameter();
         // 将前端参数复制给数据库参数

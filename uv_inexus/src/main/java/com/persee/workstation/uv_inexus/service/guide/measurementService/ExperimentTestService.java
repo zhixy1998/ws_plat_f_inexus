@@ -131,4 +131,8 @@ public interface ExperimentTestService {
      */
     Result<MeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType);
 
+    /**
+     * 任务终止
+     */
+    Result taskTermination(String taskId);
 }

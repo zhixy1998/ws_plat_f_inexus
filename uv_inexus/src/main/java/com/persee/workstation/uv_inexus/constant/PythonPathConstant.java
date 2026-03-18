@@ -39,8 +39,10 @@ public class PythonPathConstant {
     private String spectrumFourOperation;
     // 光谱变换接口路径
     private String spectrumTransformation;
-    // 消除台阶或者倒刺
+    // 消除台阶
     private String removeStepOrSpikes;
+    // 消除尖刺
+    private String removeSpikes;
     // 微分
     private String differentiated;
     // 平滑
@@ -61,6 +63,7 @@ public class PythonPathConstant {
         this.spectrumFourOperation = buildUrl("spectral_arithmetic_operations");
         this.spectrumTransformation = buildUrl("spectrum_transform");
         this.removeStepOrSpikes = buildUrl("detect_step_skipe");
+        this.removeSpikes = buildUrl("remove_spikes");
         this.differentiated = buildUrl("differentiated");
         this.smoothed = buildUrl("smoothed");
 
@@ -114,6 +117,8 @@ public class PythonPathConstant {
         System.out.println("最小二乘拟合: " + leastSquareFit);
         System.out.println("寻峰接口: " + peakSearching);
         System.out.println("寻谷接口: " + valleySearching);
+        System.out.println("消除台阶: " + removeStepOrSpikes);
+        System.out.println("消除尖刺: " + removeSpikes);
         System.out.println("=== 初始化结束 ===");
     }
 

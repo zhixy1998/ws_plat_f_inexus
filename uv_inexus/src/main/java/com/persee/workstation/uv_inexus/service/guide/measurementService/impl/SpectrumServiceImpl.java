@@ -472,6 +472,9 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
+        if (spectrumParameter.getSpikeRemoval()==null){
+            spectrumParameter.setSpikeRemoval(false);
+        }
         // 创建测量方法表
         TMeasureMethod tMeasureMethod = new TMeasureMethod();
         if (methodDto.getPretreatmentIds() != null) {
@@ -4712,8 +4715,11 @@ public class SpectrumServiceImpl implements SpectrumService {
         double minWaveLength = 190.0;
         double maxWaveLength = 1100.0;
 
+        double startWave = 0;
+        double endWave = 0;
+
         try {
-            double startWave = Double.parseDouble(startWaveStr);
+            startWave = Double.parseDouble(startWaveStr);
             if (startWave < minWaveLength || startWave > maxWaveLength) {
                 return R.fail(YamlMessageSource.getMessageStatic("00102006",
                         1, startWave, minWaveLength, maxWaveLength));
@@ -4722,7 +4728,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 return R.fail(YamlMessageSource.getMessageStatic("00105005", startWaveStr));
             }
 
-            double endWave = Double.parseDouble(endWaveStr);
+            endWave = Double.parseDouble(endWaveStr);
             if (endWave < minWaveLength || endWave > maxWaveLength) {
                 return R.fail(YamlMessageSource.getMessageStatic("00102006",
                         2, endWave, minWaveLength, maxWaveLength));
@@ -4802,8 +4808,58 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 6. 阶梯校正校验（Boolean类型无需复杂校验，只需确保有值？但可为null代表不启用）
         // 这里不做强制要求，Boolean允许为null
 
-        // 7. 父类 MeasurePublicParameters 字段校验
-        // 7.1 光谱带宽校验
+        // 7. 消除尖刺校验（新增）
+        Boolean spikeRemoval = parameter.getSpikeRemoval();
+        if (spikeRemoval != null && spikeRemoval) {
+            // 校验光度模式是否为Abs(1)或T%(2)
+            if (!"1".equals(luminosity) && !"2".equals(luminosity)) {
+                return R.fail("消除尖刺功能只能在Abs或T%光度模式下使用，当前光度模式：" +
+                        getLuminosityDesc(luminosity));
+            }
+
+            List<String> spikeArray = parameter.getSpikeArray();
+            if (spikeArray == null || spikeArray.isEmpty()) {
+                return R.fail("启用消除尖刺功能时，尖刺数组不能为空");
+            }
+
+            try {
+                for (int i = 0; i < spikeArray.size(); i++) {
+                    String spikeStr = spikeArray.get(i);
+                    if (!StringUtils.hasText(spikeStr)) {
+                        return R.fail("尖刺数组中存在空值，请检查第" + (i + 1) + "个尖刺点");
+                    }
+
+                    double spikeValue = Double.parseDouble(spikeStr.trim());
+
+                    // 校验尖刺点是否在波长范围内
+                    if (spikeValue > startWave || spikeValue < endWave) {
+                        return R.fail("尖刺点" + spikeStr + "不在波长范围内，请检查");
+                    }
+
+                    // 校验小数点后最多1位（根据业务需求调整）
+                    if (spikeStr.contains(".") && spikeStr.split("\\.")[1].length() > 1) {
+                        return R.fail("尖刺点" + spikeStr + "小数点后最多保留1位");
+                    }
+                }
+
+
+                Set<String> uniqueSpikes = new HashSet<>(spikeArray);
+                if (uniqueSpikes.size() < spikeArray.size()) {
+                    return R.fail("尖刺数组中存在重复的尖刺点，请检查");
+                }
+
+                // 校验尖刺点数量限制
+                if (spikeArray.size() > 10) { // 假设最多10个尖刺点
+                    return R.fail("尖刺点数量不能超过10个，当前：" + spikeArray.size());
+                }
+
+            } catch (NumberFormatException e) {
+                return R.fail("尖刺数组格式错误，必须为数字，当前值：" + spikeArray);
+            }
+        }
+
+        // 8. 父类 MeasurePublicParameters 字段校验
+        // 8.1 光谱带宽校验
         if (!StringUtils.hasText(parameter.getSpectralBandwidth())) {
             return R.fail("光谱带宽不能为空");
         }
@@ -4821,10 +4877,10 @@ public class SpectrumServiceImpl implements SpectrumService {
             return R.fail("光谱带宽格式错误，必须为数字");
         }
 
-        // 7.2 响应时间校验（如果有业务规则）
+        // 8.2 响应时间校验（如果有业务规则）
         // 目前没有明确规则，如果有需要可补充
 
-        // 7.3 换灯波长校验
+        // 8.3 换灯波长校验
         String changeLampWave = parameter.getChangeLampWaveLength();
         if (!StringUtils.hasText(changeLampWave)) {
             return R.fail(YamlMessageSource.getMessageStatic("00105003"));
@@ -4838,7 +4894,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             return R.fail("换灯波长格式错误");
         }
 
-        // 7.4 能量灯校验
+        // 8.4 能量灯校验
         String energyLamp = parameter.getEnergyLamp();
         if (!StringUtils.hasText(energyLamp)) {
             return R.fail("能量灯不能为空");
@@ -4847,18 +4903,38 @@ public class SpectrumServiceImpl implements SpectrumService {
             return R.fail("能量灯值无效（可选值：0-钨灯、1-氘灯、2-汞灯），当前值：" + energyLamp);
         }
 
-        // 7.5 增益校验
+        // 8.5 增益校验
         if (parameter.getGain() != null && parameter.getGain() < 0) {
             return R.fail("增益不能小于0，当前值：" + parameter.getGain());
         }
 
-        // 7.6 参考标准名称校验（长度限制等）
+        // 8.6 参考标准名称校验（长度限制等）
         if (parameter.getReferenceStandardName() != null &&
                 parameter.getReferenceStandardName().length() > 100) {
             return R.fail("参考标准名称长度不能超过100字符");
         }
 
         return R.ok(true);
+    }
+
+    /**
+     * 获取光度模式描述
+     * @param luminosity 光度模式编码
+     * @return 光度模式描述
+     */
+    private String getLuminosityDesc(String luminosity) {
+        switch (luminosity) {
+            case "1":
+                return "Abs";
+            case "2":
+                return "T%";
+            case "3":
+                return "Es";
+            case "4":
+                return "Er";
+            default:
+                return "未知";
+        }
     }
 
     /**
@@ -4893,7 +4969,9 @@ public class SpectrumServiceImpl implements SpectrumService {
                 Objects.equals(oldParam.getRepetitionTime(), newParam.getRepetitionTime()) &&
                 Objects.equals(oldParam.getTimeInterval(), newParam.getTimeInterval()) &&
                 Objects.equals(oldParam.getLadderCorrection(), newParam.getLadderCorrection()) &&
-                Objects.equals(oldParam.getScanSpeed(), newParam.getScanSpeed());
+                Objects.equals(oldParam.getScanSpeed(), newParam.getScanSpeed())&&
+                Objects.equals(oldParam.getSpikeRemoval(), newParam.getSpikeRemoval())&&
+                Objects.equals(oldParam.getSpikeArray(), newParam.getSpikeArray());
     }
 
 

@@ -172,6 +172,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    @Value("文件数据")
+    String newTaskName;
+
+    @Value("默认方法")
+    String defaultMethodName;
+
 
     @Value("1")
     String deleteType;
@@ -851,9 +857,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 //请先创建方法
                 return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
             }
-            fMeasureTask.setTaskName(method.getMethodName() + "草稿");
+            fMeasureTask.setTaskName(newTaskName + "-" +
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         } else {
-            fMeasureTask.setTaskName(task.getTaskName() + "草稿");
+            fMeasureTask.setTaskName(newTaskName + "-" +
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         }
         fMeasureTask.setUserId(userId);
         fMeasureTask.setMethodKey(methodId);
@@ -3063,13 +3071,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      */
     private FMeasureMethod createNewMethod(TimeUseMethodDto paramDto) {
         FMeasureMethod fMeasureMethod = new FMeasureMethod();
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        String collect = new Random().ints(8, 0, chars.length())
-                .mapToObj(i -> String.valueOf(chars.charAt(i)))
-                .collect(Collectors.joining());
 
-        fMeasureMethod.setMethodName(paramDto.getMeasureType() + collect);
-
+        fMeasureMethod.setMethodName(defaultMethodName + "-" +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         FTimeSweepParamter parameter = new FTimeSweepParamter();
         // 将前端参数复制给数据库参数
         BeanUtils.copyProperties(paramDto.getParameter(), parameter);

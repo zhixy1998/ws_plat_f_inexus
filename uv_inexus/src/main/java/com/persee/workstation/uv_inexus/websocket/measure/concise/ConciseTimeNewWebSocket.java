@@ -15,6 +15,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
@@ -219,7 +220,7 @@ public class ConciseTimeNewWebSocket {
 
             FMeasureTask task = tMeasureTaskService.getById(taskId);
             if (task == null) {
-                sendError(sessionId,"任务不存在");
+                sendError(deviceSerialNumber,"任务不存在");
                 return;
             }
             context.task = task;
@@ -227,14 +228,14 @@ public class ConciseTimeNewWebSocket {
             // 设置参数
             Result paramResult = timeSweepConciseService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
             if (paramResult.getCode() != 200) {
-                sendError(sessionId,paramResult.getMessage());
+                sendError(deviceSerialNumber,paramResult.getMessage());
                 return;
             }
 
             // 查询方法参数
             FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
-                sendError(sessionId, "方法不存在");
+                sendError(deviceSerialNumber, "方法不存在");
                 return;
             }
 
@@ -557,7 +558,10 @@ public class ConciseTimeNewWebSocket {
         }
         inputParam.setTotalTime(scanTime);
         inputParam.setIntervalSeconds(Double.parseDouble(param.getIntervalTime()));
-        devOperationUtilService.operation(inputParam);
+        R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
+        if (!r.getSuccess()) {
+            sendError(deviceSerialNumber,r.getMessage());
+        }
     }
 
     private void calculateAndPushData(String deviceSerialNumber, TimeScanContext context,
