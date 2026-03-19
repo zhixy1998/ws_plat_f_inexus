@@ -1685,6 +1685,7 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         boolean repeat = false;
         PhotometricParameter parameter = null;
+        String luminosity = WaveLengthEnum.abs.getCode();
         if (StringUtils.hasText(task.getMethodKey())) {
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             if (method != null && StringUtils.hasText(method.getMeasurementParamInfo())) {
@@ -1692,6 +1693,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 if (StringUtils.hasText(parameter.getRepetitionPattern()) && parameter.getRepetitionPattern().equals("单池重复")) {
                     repeat = true;
                 }
+                luminosity = parameter.getLuminosity();
             }
         }
 
@@ -1765,8 +1767,13 @@ public class PhotometricServiceImpl implements PhotometricService {
                             Map<String, String> formattedData = new HashMap<>();
                             // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
                             for (Map.Entry<String, String> entry : originData.entrySet()) {
-                                Double v = DataCountUtil.formatValue(digit, Double.valueOf(entry.getValue()));
-                                String s = DataCountUtil.addZero(v, digit);
+
+                                int currentDigit = digit;
+                                if (!entry.getKey().endsWith(luminosity)) {
+                                    currentDigit = otherDigit;
+                                }
+                                Double v = DataCountUtil.formatValue(currentDigit, Double.valueOf(entry.getValue()));
+                                String s = DataCountUtil.addZero(v, currentDigit);
                                 formattedData.put(entry.getKey(), s);
                             }
                             map.putAll(formattedData);
@@ -1822,8 +1829,21 @@ public class PhotometricServiceImpl implements PhotometricService {
                         List<PhotometricOriginDataInfo> dataInfo = reCountData(wlDataList, digit);
                         for (PhotometricOriginDataInfo wlData : dataInfo) {
 
+                            Map<String, String> originData = wlData.getData();
+                            Map<String, String> formattedData = new HashMap<>();
                             if (wlData.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
-                                map.putAll(wlData.getData());
+
+                                for (Map.Entry<String, String> entry : originData.entrySet()) {
+//                                String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
+                                    int currentDigit = digit;
+                                    if (!entry.getKey().endsWith(luminosity)) {
+                                        currentDigit = otherDigit;
+                                    }
+                                    Double v = DataCountUtil.formatValue(currentDigit, Double.valueOf(entry.getValue()));
+                                    String s = DataCountUtil.addZero(v, currentDigit);
+                                    formattedData.put(entry.getKey(), s);
+                                }
+                                map.putAll(formattedData);
                                 Map<String, String> qcAns = checkValueQuantity(parameter, wlData, QualityConfEnums.value_qc);
                                 Object object = map.get(SampleTableEnum.QUALITY.getIdentity());
                                 if (object != null) {
@@ -1851,9 +1871,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                                     }
                                 }
                             } else {
-                                Map<String, String> originData = wlData.getData();
-                                // 创建一个新的Map来存储格式化后的数据
-                                Map<String, String> formattedData = new HashMap<>();
+
                                 // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
                                 for (Map.Entry<String, String> entry : originData.entrySet()) {
 //                                    String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());

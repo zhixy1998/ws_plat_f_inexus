@@ -2219,6 +2219,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     public Result<List<Map<String, Object>>> queryData(FQueryDataDTO queryDataDTO) {
         String taskId = queryDataDTO.getTaskId();
         Boolean allDisplay = queryDataDTO.getAllDisplay();
+        Integer otherDigit = queryDataDTO.getOtherDigit();
         List<String> option = queryDataDTO.getOption();
 
         if (!StringUtils.hasText(taskId) || allDisplay == null) {
@@ -2236,6 +2237,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (digit == null || digit < 0) {
             digit = Constants.DEFAULT_DECIMAL_NUM;
             queryDataDTO.setDigit(digit);
+        }
+        if (otherDigit==null || otherDigit <0) {
+            otherDigit = Constants.DEFAULT_DECIMAL_NUM;
+            queryDataDTO.setOtherDigit(otherDigit);
         }
 
         R<FMeasureTaskAttachment> attachmentResult = fMeasureTaskAttachmentService.queryByTaskId(taskId);
@@ -2257,6 +2262,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         boolean repeat = false;
         FPhotometricParameter parameter = null;
+        String luminosity = WaveLengthEnum.abs.getCode();
         if (StringUtils.hasText(task.getMethodKey())) {
             FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
             if (method != null && StringUtils.hasText(method.getMeasurementParamInfo())) {
@@ -2264,9 +2270,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 if (StringUtils.hasText(parameter.getRepetitionPattern()) && parameter.getRepetitionPattern().equals("单池重复")) {
                     repeat = true;
                 }
+                luminosity = parameter.getLuminosity();
             }
         }
         List<Integer> usefulLocation = new ArrayList<>();
+
 
         if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
             usefulLocation = fSamplePoolConfigService.getUsefulLocation(queryDataDTO.getDeviceSerialNumber());
@@ -2323,10 +2331,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                             // 创建一个新的Map来存储格式化后的数据
                             Map<String, String> formattedData = new HashMap<>();
                             // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
+
                             for (Map.Entry<String, String> entry : originData.entrySet()) {
 //                                String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
-                                Double v = DataCountUtil.formatValue(digit, Double.valueOf(entry.getValue()));
-                                String s = DataCountUtil.addZero(v, digit);
+                                int currentDigit = digit;
+                                if (!entry.getKey().endsWith(luminosity)) {
+                                    currentDigit = otherDigit;
+                                }
+                                Double v = DataCountUtil.formatValue(currentDigit, Double.valueOf(entry.getValue()));
+                                String s = DataCountUtil.addZero(v, currentDigit);
                                 formattedData.put(entry.getKey(), s);
                             }
                             map.putAll(formattedData);
@@ -2386,8 +2399,25 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         List<FPhotometricOriginDataInfo> dataInfo = reCountData(wlDataList, digit);
                         for (FPhotometricOriginDataInfo wlData : dataInfo) {
 
+                            Map<String, String> originData = wlData.getData();
+                            Map<String, String> formattedData = new HashMap<>();
+
                             if (wlData.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
-                                map.putAll(wlData.getData());
+                                // 创建一个新的Map来存储格式化后的数据
+                                // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
+                                for (Map.Entry<String, String> entry : originData.entrySet()) {
+//                                String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
+                                    int currentDigit = digit;
+                                    if (!entry.getKey().endsWith(luminosity)) {
+                                        currentDigit = otherDigit;
+                                    }
+                                    Double v = DataCountUtil.formatValue(currentDigit, Double.valueOf(entry.getValue()));
+                                    String s = DataCountUtil.addZero(v, currentDigit);
+                                    formattedData.put(entry.getKey(), s);
+                                }
+                                map.putAll(formattedData);
+
+//                                map.putAll(wlData.getData());
 
                                 Map<String, String> qcAns = checkValueQuantity(parameter, wlData, QualityConfEnums.value_qc);
                                 Object object = map.get(SampleTableEnum.QUALITY.getIdentity());
@@ -2417,14 +2447,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                                     }
                                 }
                             } else {
-                                Map<String, String> originData = wlData.getData();
                                 // 创建一个新的Map来存储格式化后的数据
-                                Map<String, String> formattedData = new HashMap<>();
                                 // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
+
                                 for (Map.Entry<String, String> entry : originData.entrySet()) {
+                                    int currentDigit = digit;
 //                                    String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
-                                    Double v = DataCountUtil.formatValue(digit, Double.valueOf(entry.getValue()));
-                                    String s = DataCountUtil.addZero(v, digit);
+                                    if (!entry.getKey().endsWith(luminosity)) {
+                                        currentDigit = otherDigit;
+                                    }
+                                    Double v = DataCountUtil.formatValue(currentDigit, Double.valueOf(entry.getValue()));
+                                    String s = DataCountUtil.addZero(v, currentDigit);
                                     formattedData.put(entry.getKey(), s);
                                 }
 
