@@ -916,12 +916,29 @@ public class ConciseSpectrumOneNewWebSocket {
                 log.info("开始处理剩余数据，批次大小配置: {}", state.getBatchSize());
 
                 // 处理剩余的批次数据
-                BatchData remainingBatch = state.getRemainingBatchBuffer(count, sampleId, state.digit,
+                BatchData batchData = state.getRemainingBatchBuffer(count, sampleId, state.digit,
                         spectrumParameter, task);
 
-                if (remainingBatch != null && !remainingBatch.xBatch.isEmpty()) {
-                    log.info("处理剩余批次数据，点数: {}", remainingBatch.xBatch.size());
-                    processBatchDataAsync(remainingBatch);
+                if (batchData != null && !batchData.xBatch.isEmpty()) {
+                    log.info("处理剩余批次数据，点数: {}", batchData.xBatch.size());
+                    String key = batchData.sessionId + "_" + batchData.sampleId + "_" + batchData.count;
+                    synchronized (originalYValues) {
+                        // 获取已存在的处理后的数据
+                        List<Double> existingData = originalYValues.get(key);
+                        if (existingData == null) {
+                            // 如果没有，创建新的列表
+                            existingData = new ArrayList<>();
+                        }
+
+                        // 追加当前批次的数据
+                        existingData.addAll(batchData.yBatch);
+
+                        // 存储回 originalYValues
+                        originalYValues.put(key, existingData);
+
+                        log.info("追加数据到 originalYValues, key: {}, 当前总点数: {}, 本次追加: {}",
+                                key, existingData.size(), batchData.yBatch.size());
+                    }
                 }
 
                 // 等待所有异步处理完成
@@ -1178,7 +1195,7 @@ public class ConciseSpectrumOneNewWebSocket {
 
                     // 更新记录
                     existingMeasureData.setOriginalCalculationData(JSON.toJSONString(existingData));
-                    tMeasureDataService.updateById(existingMeasureData);
+                    tMeasureDataService.saveOrUpdate(existingMeasureData);
 
                     log.info("追加数据到测量记录: 原有{}点, 新增{}点, 总计{}点",
                             existingData.size() - batchResult.size(), batchResult.size(), existingData.size());
@@ -1222,7 +1239,7 @@ public class ConciseSpectrumOneNewWebSocket {
 
                     // 更新记录
                     existingAnalysisData.setAnalysisResult(JSON.toJSONString(existingResult));
-                    tMeasureAnalysisDataService.updateById(existingAnalysisData);
+                    tMeasureAnalysisDataService.saveOrUpdate(existingAnalysisData);
 
                     log.info("追加数据到分析记录: 原有{}点, 新增{}点, 总计{}点",
                             existingResult.size() - batchResult.size(), batchResult.size(), existingResult.size());
@@ -2046,7 +2063,7 @@ public class ConciseSpectrumOneNewWebSocket {
                 measureData.setMeasurementEndTime(endTime);
                 measureData.setIsDelete("0");
                 measureData.setIsSave("1");
-                traceDataService.updateById(measureData);
+                traceDataService.saveOrUpdate(measureData);
                 FMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<FMeasureAnalysisData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("analysis_number", number).last("limit 1"));
                 analysisData.setAnalysisNumber(1);
                 analysisData.setAnalysisName(sample.getSampleName() + "(" + analysisData.getAnalysisNumber() + ")");
@@ -2065,10 +2082,10 @@ public class ConciseSpectrumOneNewWebSocket {
                 analysisData.setColor(ColorUtil.getRandomColor());
                 analysisData.setIsDelete("0");
                 analysisData.setIsSave("1");
-                tMeasureAnalysisDataService.updateById(analysisData);
+                tMeasureAnalysisDataService.saveOrUpdate(analysisData);
                 FMeasureAnalysisImage tMeasureAnalysisImage = tMeasureAnalysisImageService.getOne(new QueryWrapper<FMeasureAnalysisImage>().eq("analysis_id", analysisData.getId()));
                 tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
-                tMeasureAnalysisImageService.updateById(tMeasureAnalysisImage);
+                tMeasureAnalysisImageService.saveOrUpdate(tMeasureAnalysisImage);
             } else {
                 // 重复模式
                 FMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(
@@ -2090,7 +2107,7 @@ public class ConciseSpectrumOneNewWebSocket {
                     measureData.setMeasurementStartTime(startTime);
                     measureData.setMeasurementEndTime(endTime);
                     measureData.setIsSave("1");
-                    traceDataService.updateById(measureData);
+                    traceDataService.saveOrUpdate(measureData);
                     analysisData.setAnalysisParam(JSON.toJSONString(changeParams));
                     analysisData.setAnalysisResult(JSON.toJSONString(result));
                     if (peakValleys != null) {
@@ -2101,7 +2118,7 @@ public class ConciseSpectrumOneNewWebSocket {
                     }
                     analysisData.setColor(ColorUtil.getRandomColor());
                     analysisData.setIsSave("1");
-                    tMeasureAnalysisDataService.updateById(analysisData);
+                    tMeasureAnalysisDataService.saveOrUpdate(analysisData);
                 } else {
                     // 新增分析数据
                     FMeasureData measureData = new FMeasureData();
@@ -2189,7 +2206,7 @@ public class ConciseSpectrumOneNewWebSocket {
                 }
                 task.setSampleKey(JSON.toJSONString(specimen));
                 task.setDeviceSerialNumber(deviceSerialNumber);
-                boolean update = tMeasureTaskService.updateById(task);
+                boolean update = tMeasureTaskService.saveOrUpdate(task);
                 if (!update) {
                     log.error("更新任务失败: " + taskId);
                 }
@@ -2222,7 +2239,7 @@ public class ConciseSpectrumOneNewWebSocket {
                     }
                     task.setSampleKey(JSON.toJSONString(specimen));
                     task.setDeviceSerialNumber(deviceSerialNumber);
-                    boolean update = tMeasureTaskService.updateById(task);
+                    boolean update = tMeasureTaskService.saveOrUpdate(task);
                     if (!update) {
                         log.error("更新任务失败: " + taskId);
                     }

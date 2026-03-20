@@ -1042,6 +1042,7 @@ public class SpectrumNewWebSocket {
                                 }
                             }
                         }
+
                     }
 
                     try {
@@ -1057,12 +1058,29 @@ public class SpectrumNewWebSocket {
                 log.info("开始处理剩余数据，批次大小配置: {}", state.getBatchSize());
 
                 // 处理剩余的批次数据
-                BatchData remainingBatch = state.getRemainingBatchBuffer(count, sampleId, state.digit,
+                BatchData batchData = state.getRemainingBatchBuffer(count, sampleId, state.digit,
                         spectrumParameter, task);
 
-                if (remainingBatch != null && !remainingBatch.xBatch.isEmpty()) {
-                    log.info("处理剩余批次数据，点数: {}", remainingBatch.xBatch.size());
-                    processBatchDataAsync(remainingBatch);
+                if (batchData != null && !batchData.xBatch.isEmpty()) {
+                    log.info("处理剩余批次数据，点数: {}", batchData.xBatch.size());
+                    String key = batchData.sessionId + "_" + batchData.sampleId + "_" + batchData.count;
+                    synchronized (originalYValues) {
+                        // 获取已存在的处理后的数据
+                        List<Double> existingData = originalYValues.get(key);
+                        if (existingData == null) {
+                            // 如果没有，创建新的列表
+                            existingData = new ArrayList<>();
+                        }
+
+                        // 追加当前批次的数据
+                        existingData.addAll(batchData.yBatch);
+
+                        // 存储回 originalYValues
+                        originalYValues.put(key, existingData);
+
+                        log.info("追加数据到 originalYValues, key: {}, 当前总点数: {}, 本次追加: {}",
+                                key, existingData.size(), batchData.yBatch.size());
+                    }
                 }
 
                 // 等待所有异步处理完成
@@ -1103,6 +1121,7 @@ public class SpectrumNewWebSocket {
         // 数据完整性检查
         log.info("=== 测量结果统计 ===");
         log.info("总数据点数 - X: " + x.size() + ", Y: " + y.size());
+        log.info("总数据点数2 - X: " + x.size() + ", Y: " + processedYForReturn.size());
         log.info("测量时间 - 开始: " + Constants.startTime + ", 结束: " + Constants.endTime);
         log.info("仪器数据快照大小: " + Constants.instrumentData.size());
         log.info("原始计算数据快照大小: " + Constants.originalCalculationData.size());
@@ -2075,7 +2094,7 @@ public class SpectrumNewWebSocket {
                 measureData.setMeasurementEndTime(endTime);
                 measureData.setIsDelete("0");
                 measureData.setIsSave("1");
-                traceDataService.updateById(measureData);
+                traceDataService.saveOrUpdate(measureData);
                 TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("analysis_number", number).last("limit 1"));
                 if (analysisData == null) {
                     analysisData = new TMeasureAnalysisData();
@@ -2097,13 +2116,13 @@ public class SpectrumNewWebSocket {
                 analysisData.setColor(ColorUtil.getRandomColor());
                 analysisData.setIsDelete("0");
                 analysisData.setIsSave("1");
-                tMeasureAnalysisDataService.updateById(analysisData);
+                tMeasureAnalysisDataService.saveOrUpdate(analysisData);
                 TMeasureAnalysisImage tMeasureAnalysisImage = tMeasureAnalysisImageService.getOne(new QueryWrapper<TMeasureAnalysisImage>().eq("analysis_id", analysisData.getId()));
                 if (tMeasureAnalysisImage == null) {
                     tMeasureAnalysisImage = new TMeasureAnalysisImage();
                 }
                 tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
-                tMeasureAnalysisImageService.updateById(tMeasureAnalysisImage);
+                tMeasureAnalysisImageService.saveOrUpdate(tMeasureAnalysisImage);
             } else {
                 // 重复模式
                 TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(
@@ -2125,7 +2144,7 @@ public class SpectrumNewWebSocket {
                     measureData.setMeasurementStartTime(startTime);
                     measureData.setMeasurementEndTime(endTime);
                     measureData.setIsSave("1");
-                    traceDataService.updateById(measureData);
+                    traceDataService.saveOrUpdate(measureData);
                     analysisData.setAnalysisParam(JSON.toJSONString(changeParamList));
                     analysisData.setAnalysisResult(JSON.toJSONString(result));
                     if (peakValleys != null) {
@@ -2136,7 +2155,7 @@ public class SpectrumNewWebSocket {
                     }
                     analysisData.setColor(ColorUtil.getRandomColor());
                     analysisData.setIsSave("1");
-                    tMeasureAnalysisDataService.updateById(analysisData);
+                    tMeasureAnalysisDataService.saveOrUpdate(analysisData);
                 } else {
                     // 新增分析数据
                     TMeasureData measureData = new TMeasureData();
@@ -2186,7 +2205,7 @@ public class SpectrumNewWebSocket {
                 task.setSampleKey(JSON.toJSONString(specimen));
                 task.setDeviceSerialNumber(deviceSerialNumber);
                 task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
-                boolean update = tMeasureTaskService.updateById(task);
+                boolean update = tMeasureTaskService.saveOrUpdate(task);
                 if (!update) {
                     log.error("更新任务失败: " + taskId);
                 }
@@ -2216,12 +2235,12 @@ public class SpectrumNewWebSocket {
                     }
                     task.setSampleKey(JSON.toJSONString(specimen));
                     task.setDeviceSerialNumber(deviceSerialNumber);
-                    boolean update = tMeasureTaskService.updateById(task);
+                    boolean update = tMeasureTaskService.saveOrUpdate(task);
                     if (!update) {
                         log.error("更新任务失败: " + taskId);
                     }
                 }
-                boolean update = tMeasureTaskService.updateById(task);
+                boolean update = tMeasureTaskService.saveOrUpdate(task);
                 if (!update) {
                     log.error("更新任务失败: " + taskId);
                 }
