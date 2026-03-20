@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.util.deviceUtil;
 
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceModelInfoDAO;
+import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceTypeInfoDAO;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceAttachmentKindEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationInfoEnum;
@@ -22,13 +23,13 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInitEntryInfo;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InitRecordPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.ConnectEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.DefaultStatusCmdEnum;
-import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.LiveDetectionCmdIdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.*;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionCmdEnum;
@@ -72,6 +73,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
     @Autowired
     DeviceModelInfoDAO deviceModelInfoDAO;
+
+    @Autowired
+    DeviceTypeInfoDAO typeInfoDAO;
 
     @Autowired
     ProtocolItemUtil protocolItemUtil;
@@ -384,6 +388,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             case T800Connect:
                 t800Connect(inputParam);
                 break;
+            case QueryLifeTime:
+                result = queryLifeTime(inputParam);
+                break;
             default:
                 infoService.newReleaseDevice(deviceSerialNumber);
                 break;
@@ -393,6 +400,83 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             infoService.newReleaseDevice(deviceSerialNumber);
         }
         return result;
+    }
+
+    private R<OperationResultEntity> queryLifeTime(DevOperationInputParam inputParam) {
+
+        OperationResultEntity result = new OperationResultEntity();
+        result.setDeviceSerialNumber(inputParam.getDeviceSerialNumber());
+        List<WorkTimeInfo> workTimeInfo = inputParam.getWorkTimeInfo();
+        if (workTimeInfo == null || workTimeInfo.isEmpty()) {
+            return R.fail("当前仪器无法统计时间！");
+        }
+
+
+        List<WorkTimeInfo> entity = new ArrayList<>();
+
+
+        for (WorkTimeInfo timeInfo : workTimeInfo) {
+
+            String cmdId = timeInfo.getWorkTime();
+
+            R<OperationResultEntity> r = sendTime(cmdId, inputParam.getDeviceSerialNumber());
+            if (!r.getSuccess()) {
+                return r;
+            }
+
+            OperationResultEntity data = r.getData();
+            float useTime = data.getUseTime();
+            timeInfo.setWorkTime(String.valueOf(useTime));
+
+            cmdId = timeInfo.getTotalWorkTime();
+            r = sendTime(cmdId, inputParam.getDeviceSerialNumber());
+            if (!r.getSuccess()) {
+                return r;
+            }
+            data = r.getData();
+            float totalWorkTime = data.getUseTime();
+            timeInfo.setTotalWorkTime(String.valueOf(totalWorkTime));
+            timeInfo.setUpdateTime(LocalDateTime.now());
+
+            entity.add(timeInfo);
+
+        }
+
+        result.setWorkTimeInfo(entity);
+        return R.ok(result);
+    }
+
+    private R<OperationResultEntity> sendTime(String cmdId, String deviceSerialNumber) {
+
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        String deviceId = info.getDeviceId();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        Integer connectType = device.getConnectType();
+        String xmlKey = device.getXmlKey();
+        Object[] param = new Object[]{};
+
+        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+        Transition transition = xml.get(cmdId);
+        int ReplyNumber = transition.getReplyNumber();
+        int Timeout = transition.getTimeout();
+        List<String> headReceiveBytes = transition.getHeadReceiveBytes();
+
+        byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
+
+        R<Object> r;
+
+        if (ReplyNumber < 0) {
+            r = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, Timeout, false, deviceSerialNumber, null, headReceiveBytes);
+        } else {
+            r = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
+        }
+
+        if (!r.getSuccess()) {
+            return R.fail(r.getMessage());
+        }
+        OperationResultEntity data = (OperationResultEntity)r.getData();
+        return R.ok(data);
     }
 
     private R<OperationResultEntity> t800Connect(DevOperationInputParam inputParam) {
@@ -442,14 +526,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         if (Stop) {
             if (ReplyNumber < 0) {
                 stop = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, Timeout, false, deviceSerialNumber, null, headReceiveBytes);
-                if (!stop.getSuccess()) {
-                    return R.fail("停止失败！");
-                }
             } else {
                 stop = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
-                if (!stop.getSuccess()) {
-                    return R.fail("停止失败！");
-                }
+            }
+            if (!stop.getSuccess()) {
+                return R.fail("停止失败！");
             }
         }
         return R.ok();
@@ -1316,9 +1397,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         Integer connectType = device.getConnectType();
 
         Object[] param = new Object[]{};
+        DevXmlEnums devXmlEnums = DevXmlEnums.getEnum(xmlKey);
+        List<String> detectionCommands = devXmlEnums.getDetectionCommands();
 
-        for (LiveDetectionCmdIdEnum anEnum : LiveDetectionCmdIdEnum.values()) {
-            String comId = anEnum.getComId();
+        for (String comId : detectionCommands) {
             Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
             Transition transition = xml.get(comId);
             int replyNumber = transition.getReplyNumber();

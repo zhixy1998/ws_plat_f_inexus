@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.GetParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
@@ -70,5 +71,8 @@ public class DevOperationInputParam {
 
     @ApiModelProperty("扫描总时间")
     private Double totalTime;
+
+    @ApiModelProperty("获取仪器、灯工作时长，指令")
+    private List<WorkTimeInfo> workTimeInfo;
 
 }

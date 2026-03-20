@@ -29,6 +29,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.*;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
@@ -985,13 +986,40 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public void test() {
 
-        String formula = "(A1*m0)/(A0*m1)*w0*100";
-        String identity = "A1, m0, A0, m1, w0";
-        String values = "2.0,3,1.5,1,8";
-        String upperCase = formula.toUpperCase();
-        identity = identity.toUpperCase();
-        String result = restUtil.sum(upperCase, identity, values);
-        System.out.println(result);
+//        String formula = "(A1*m0)/(A0*m1)*w0*100";
+//        String identity = "A1, m0, A0, m1, w0";
+//        String values = "2.0,3,1.5,1,8";
+//        String upperCase = formula.toUpperCase();
+//        identity = identity.toUpperCase();
+//        String result = restUtil.sum(upperCase, identity, values);
+//        System.out.println(result);
+
+//        String json = "[\n" +
+//                "  {\n" +
+//                "    \"type\": \"仪器\",\n" +
+//                "    \"workTime\": \"GetDeviceCurrentTime\",\n" +
+//                "    \"totalWorkTime\": \"GetDeviceTotalTime\",\n" +
+//                "    \"updateTime\": \"\"\n" +
+//                "  },\n" +
+//                "  {\n" +
+//                "    \"type\": \"钨灯\",\n" +
+//                "    \"workTime\": \"GetWLampCurrentTime\",\n" +
+//                "    \"totalWorkTime\": \"GetWLampTotalTime\",\n" +
+//                "    \"updateTime\": \"\"\n" +
+//                "  },\n" +
+//                "  {\n" +
+//                "    \"type\": \"氘灯\",\n" +
+//                "    \"workTime\": \"GetDLampCurrentTime\",\n" +
+//                "    \"totalWorkTime\": \"GetDLampTotalTime\",\n" +
+//                "    \"updateTime\": \"\"\n" +
+//                "  }\n" +
+//                "]\n";
+//        List<WorkTimeInfo> workTimeInfos = JSON.parseArray(json, WorkTimeInfo.class);
+//        LambdaQueryWrapper<DeviceTypeInfoPO> wrapper = new LambdaQueryWrapper<>();
+//        wrapper.eq(DeviceTypeInfoPO::getDevType, "T800");
+//        DeviceTypeInfoPO po = deviceTypeInfoDAO.selectOne(wrapper);
+//        po.setWorkTimeCount(workTimeInfos);
+//        deviceTypeInfoDAO.update(po, wrapper);
 
 
     }
@@ -1538,6 +1566,84 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
 
         return R.ok();
+    }
+
+    @Override
+    public R<List<WorkTimeInfo>> queryLampLifeInfo(String deviceSerialNumber, Boolean isUpdate) {
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        if (info == null) {
+            return R.fail("未找到该设备");
+        }
+
+        if (info.getWorkTimeInfo() == null || info.getWorkTimeInfo().isEmpty() || isUpdate) {
+            //查询信息
+            String type = deviceModelInfoDAO.getDevTypeByDevModel(info.getDeviceModel());
+
+            if (type == null) {
+                log.info("该设备不支持查询使用寿命信息");
+                return R.fail("该设备不支持查询使用寿命");
+            }
+
+            LambdaQueryWrapper<DeviceTypeInfoPO> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(DeviceTypeInfoPO::getDevType, type);
+            DeviceTypeInfoPO deviceTypeInfoPO = deviceTypeInfoDAO.selectOne(wrapper);
+
+            if (deviceTypeInfoPO == null || deviceTypeInfoPO.getWorkTimeCount() == null || deviceTypeInfoPO.getWorkTimeCount().isEmpty()) {
+                log.info("该设备不支持查询使用寿命信息");
+                return R.fail("该设备不支持查询使用寿命");
+            }
+
+            DevOperationInputParam inputParam = new DevOperationInputParam();
+            inputParam.setOperationType(OperationTypeEnums.QueryLifeTime.getType());
+            inputParam.setDeviceSerialNumber(deviceSerialNumber);
+
+            inputParam.setWorkTimeInfo(deviceTypeInfoPO.getWorkTimeCount());
+
+
+            R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+            if (!operation.getSuccess()) {
+                return R.fail(operation.getMessage());
+            }
+            OperationResultEntity data = operation.getData();
+            List<WorkTimeInfo> workTimeInfo = data.getWorkTimeInfo();
+
+            info.setWorkTimeInfo(workTimeInfo);
+            infoService.saveOrUpdateInfo(info);
+
+            return R.ok(workTimeInfo);
+
+        } else {
+            return R.ok(info.getWorkTimeInfo());
+        }
+    }
+
+    @Override
+    public R<Boolean> hasWorkTime(String deviceSerialNumber) {
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        if (info == null) {
+            return R.ok(false);
+        }
+
+
+        String type = deviceModelInfoDAO.getDevTypeByDevModel(info.getDeviceModel());
+
+        if (type == null) {
+            log.info("该设备不支持查询使用寿命信息");
+            return R.ok(false);
+        }
+
+        LambdaQueryWrapper<DeviceTypeInfoPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(DeviceTypeInfoPO::getDevType, type);
+        DeviceTypeInfoPO typeInfoPO = deviceTypeInfoDAO.selectOne(wrapper);
+        if (typeInfoPO == null || typeInfoPO.getWorkTimeCount() == null || typeInfoPO.getWorkTimeCount().isEmpty()) {
+            log.info("该设备不支持查询使用寿命信息");
+            return R.ok(false);
+        }
+
+
+        return R.ok(true);
     }
 
     @Override

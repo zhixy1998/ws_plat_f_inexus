@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
@@ -153,5 +154,8 @@ public class OperationResultEntity {
 
     @ApiModelProperty("获取仪器当前负高压")
     private float currentNegativeHighVoltage;
+
+    @ApiModelProperty("获取仪器、灯工作时长")
+    private List<WorkTimeInfo> workTimeInfo;
 
 }

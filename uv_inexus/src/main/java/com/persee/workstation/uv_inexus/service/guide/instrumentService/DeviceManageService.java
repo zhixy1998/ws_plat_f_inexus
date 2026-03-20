@@ -14,6 +14,7 @@ import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
@@ -146,6 +147,10 @@ public interface DeviceManageService {
     R<Boolean> newStopInit(String deviceSerialNumber, String updateBy);
 
     R<Boolean> deviceNewCalibration(DeviceCalibrationDTO calibrationDTO);
+
+    R<List<WorkTimeInfo>> queryLampLifeInfo(String deviceSerialNumber, Boolean isUpdate);
+
+    R<Boolean> hasWorkTime(String deviceSerialNumber);
 
     R<OperationResultEntity> TimeMeasure(DevOperationInputParam param);
 

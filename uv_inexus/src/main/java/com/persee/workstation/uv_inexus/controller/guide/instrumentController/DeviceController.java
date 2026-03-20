@@ -18,6 +18,7 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceAutoInjectorPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InjectionTrayParamPO;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
@@ -363,6 +364,30 @@ public class DeviceController {
             return Result.fail(r.getMessage());
         }
     }
+
+    @GetMapping("/getWorkTime")
+    @ApiOperation("新--查询仪器以及各灯工作时长")
+    public Result<List<WorkTimeInfo>> getWorkTime(@RequestParam String deviceSerialNumber, @RequestParam Boolean isUpdate) {
+        R<List<WorkTimeInfo>> r = deviceManageService.queryLampLifeInfo(deviceSerialNumber, isUpdate);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @GetMapping("/hasWorkTime")
+    @ApiOperation("新--仪器是否具有查询灯时长的功能")
+    public Result<Boolean> hasWorkTime(@RequestParam String deviceSerialNumber) {
+        R<Boolean> r = deviceManageService.hasWorkTime(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+
 
     @GetMapping("/setMessagePort")
     @ApiOperation("设置仪器通讯端口")

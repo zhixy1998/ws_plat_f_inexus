@@ -23,6 +23,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -85,5 +86,9 @@ public class DeviceTypeInfoPO {
     @ApiModelProperty("校正方式")
     @TableField(value = "calibration_type", typeHandler = JacksonTypeHandler.class)
     private List<Integer> calibrationType;
+
+    @ApiModelProperty("使用时长统计指令")
+    @TableField(value = "work_time_count", typeHandler = JacksonTypeHandler.class)
+    private List<WorkTimeInfo>  workTimeCount;
 
 }
