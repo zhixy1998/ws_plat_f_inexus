@@ -1917,6 +1917,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     if (zVal != null) {
                         z = String.valueOf(zVal);
                     }
+
                     String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
 
                     if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {

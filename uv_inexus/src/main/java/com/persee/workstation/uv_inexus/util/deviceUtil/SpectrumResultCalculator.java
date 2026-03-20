@@ -273,7 +273,6 @@ public class SpectrumResultCalculator {
                 }
             }
 
-
             //边界处理
             if (right < 0) {
                 // x 比最小波长还小
@@ -310,6 +309,7 @@ public class SpectrumResultCalculator {
             return null;
         }
     }
+
 
     private List<Double> getSortedWavelengths(String deviceSerialNumber, Map<String, String> darkInfo) {
 
