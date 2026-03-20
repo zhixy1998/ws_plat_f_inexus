@@ -22,8 +22,10 @@ import com.persee.workstation.uv_inexus.dto.factory_inspection.QueryCalStdCatsDt
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalArtifacts;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalStdCats;
+import com.persee.workstation.uv_inexus.po.factory_inspection.TaskExecutionDetail;
 import com.persee.workstation.uv_inexus.service.factory_inspection.CalArtifactsService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.CalStdCatsService;
+import com.persee.workstation.uv_inexus.service.factory_inspection.TaskExecutionDetailService;
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
 import org.apache.poi.util.StringUtil;
 import org.springframework.beans.BeanUtils;
@@ -49,6 +51,8 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
 
     @Autowired
     private CalArtifactsService calArtifactsService;
+    @Autowired
+    private TaskExecutionDetailService taskExecutionDetailService;
 
     @Override
     public Result addCalStdCats(CalStdCatsSaveDto cats) {
@@ -113,6 +117,29 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
         } else if (count(wrapper) > 0) {
             return Result.fail("该标准物质类型为内置，不可删除!!!");
         } else {
+            LambdaQueryWrapper<TaskExecutionDetail> queryWrapper5 = new LambdaQueryWrapper<>();
+            queryWrapper5.eq(TaskExecutionDetail::getStandardId, id);
+            long count1 = taskExecutionDetailService.count(queryWrapper5);
+            if (count1 > 0){
+                return Result.fail("有任务正在使用该标准物类型!!!");
+            }
+
+            LambdaUpdateWrapper<CalStdCats> wrapper2 = new LambdaUpdateWrapper<>();
+//        UpdateChainWrapper<CalStdCats> wrapper = new UpdateChainWrapper<>(calStdCatsMapper);
+            wrapper2.set(CalStdCats::getIsDelete, DELETED.getCode())
+//                    .notIn(CalStdCats::getMaterialType, BASE_FIXED_SUBSTANCE.getCode())
+                    .eq(CalStdCats::getId, id);
+            boolean update = update(wrapper2);
+
+            if (update) {
+                return Result.ok();
+            }
+            LambdaQueryWrapper<TaskExecutionDetail> queryWrapper1 = new LambdaQueryWrapper<>();
+            queryWrapper1.eq(TaskExecutionDetail::getStandardId, id);
+            long count = taskExecutionDetailService.count(queryWrapper1);
+            if (count > 0) {
+                return Result.fail("有任务正在使用该标准物!!!");
+            }
             LambdaUpdateWrapper<CalStdCats> wrapper1 = new LambdaUpdateWrapper<>();
             wrapper1.eq(CalStdCats::getId, id)
                     .notIn(CalStdCats::getMaterialType, BASE_FIXED_SUBSTANCE.getCode())
@@ -121,12 +148,7 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
             return b ? Result.ok() : calArtifactsService.delCalArtifacts(id) ? Result.ok() : Result.fail();
         }
 
-//        LambdaUpdateWrapper<CalStdCats> wrapper = new LambdaUpdateWrapper<>();
-////        UpdateChainWrapper<CalStdCats> wrapper = new UpdateChainWrapper<>(calStdCatsMapper);
-//        wrapper.set(CalStdCats::getIsDelete, DELETED.getCode())
-//                .notIn(CalStdCats::getMaterialType, BASE_FIXED_SUBSTANCE.getCode())
-//                .eq(CalStdCats::getId, id);
-//        boolean update = update(wrapper);
+
 //
     }
 
