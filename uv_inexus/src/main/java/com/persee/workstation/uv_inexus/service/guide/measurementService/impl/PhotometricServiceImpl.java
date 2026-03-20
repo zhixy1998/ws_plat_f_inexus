@@ -222,7 +222,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 return R.fail(YamlMessageSource.getMessageStatic("00105010"));
             }
         }
-        if (parameter.getSampleInputParams() != null && parameter.getSampleInputParams().size() > 10) {
+        if (parameter.getSampleInputParams() != null && parameter.getSampleInputParams().size() > 40) {
             return R.fail(YamlMessageSource.getMessageStatic("0010300E"));
         }
         if (parameter.getResultParams() != null && parameter.getResultParams().size() > 5) {

@@ -268,7 +268,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         // 8. 校验输入参数（数量限制）
-        if (parameter.getSampleInputParams() != null && parameter.getSampleInputParams().size() > 10) {
+        if (parameter.getSampleInputParams() != null && parameter.getSampleInputParams().size() > 40) {
             //输入参数数量不能超过10个
             return R.fail(YamlMessageSource.getMessageStatic("0010300E"));
         }
