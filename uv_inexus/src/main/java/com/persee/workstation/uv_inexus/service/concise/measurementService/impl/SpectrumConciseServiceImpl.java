@@ -2861,7 +2861,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             //请输入点数
             return Result.fail(YamlMessageSource.getMessageStatic("00000039"));
         }
-        if (valueOf(paramDto.getCoefficient()) > valueOf(paramDto.getPointNum())) {
+        if (valueOf(paramDto.getCoefficient()) >= valueOf(paramDto.getPointNum())) {
             //系数不能大于点数
             return Result.fail(YamlMessageSource.getMessageStatic("0000003A"));
         }
@@ -3004,7 +3004,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             //请输入点数
             return Result.fail(YamlMessageSource.getMessageStatic("00000038"));
         }
-        if (valueOf(paramDto.getCoefficient()) > valueOf(paramDto.getPointNum())) {
+        if (valueOf(paramDto.getCoefficient()) >= valueOf(paramDto.getPointNum())) {
             //系数不能大于点数
             return Result.fail(YamlMessageSource.getMessageStatic("0000003A"));
         }

@@ -1195,7 +1195,11 @@ public class DataManagementServiceImpl implements DataManagementService {
             }
             if (record.getMethodKey()!=null){
                 TMeasureMethod tMeasureMethod = methodManagementMapper.selectById(record.getMethodKey());
-                methodName=tMeasureMethod.getMethodName();
+                if (tMeasureMethod!=null){
+                    methodName=tMeasureMethod.getMethodName();
+                }else{
+                    methodName="";
+                }
             }else {
                 methodName="";
             }

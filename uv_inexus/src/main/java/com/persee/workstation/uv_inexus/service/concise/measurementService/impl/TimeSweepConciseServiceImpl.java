@@ -2447,7 +2447,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             //请输入点数
             return Result.fail(YamlMessageSource.getMessageStatic("00000039"));
         }
-        if (Double.valueOf(paramDto.getCoefficient()) > Double.valueOf(paramDto.getPointNum())) {
+        if (Double.valueOf(paramDto.getCoefficient()) >= Double.valueOf(paramDto.getPointNum())) {
             //系数不能大于点数
             return Result.fail(YamlMessageSource.getMessageStatic("0000003A"));
         }
@@ -2588,7 +2588,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             //请输入点数
             return Result.fail(YamlMessageSource.getMessageStatic("00000039"));
         }
-        if (Double.valueOf(paramDto.getCoefficient()) > Double.valueOf(paramDto.getPointNum())) {
+        if (Double.valueOf(paramDto.getCoefficient()) >= Double.valueOf(paramDto.getPointNum())) {
             //系数不能大于点数
             return Result.fail(YamlMessageSource.getMessageStatic("0000003A"));
         }
