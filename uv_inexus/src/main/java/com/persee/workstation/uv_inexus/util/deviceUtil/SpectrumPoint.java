@@ -41,6 +41,30 @@ public class SpectrumPoint {
         return wavelength;
     }
 
+    public String getBaselineRsdR() {
+        return baselineRsd.getR();
+    }
+
+    public String getBaselineRsdS() {
+        return baselineRsd.getS();
+    }
+
+    public String getBaselineRsdD() {
+        return baselineRsd.getD();
+    }
+
+    public String getScanRsdR() {
+        return scanRsd.getR();
+    }
+
+    public String getScanRsdS() {
+        return scanRsd.getS();
+    }
+
+    public String getScanRsdD() {
+        return scanRsd.getD();
+    }
+
     public ChangeParam getBaselineRsd() {
         return baselineRsd;
     }
