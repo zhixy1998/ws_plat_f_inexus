@@ -54,6 +54,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
+
 /**
  * 仪器操作工具类，定义所有的仪器操作，根据业务层传参来组装发送报文，然后 从队列里取接收报文并处理
  * 将处理后的结果返给业务层
@@ -83,6 +84,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
     @Autowired
     UdpSendUtil udpSendUtil;
+
+    @Autowired
+    SpectrumResultCalculator spectrumResultCalculator;
 
     private final static ConnectUtil connectUtil = ConnectUtil.getInstance();
 
@@ -877,6 +881,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     xmlManage.setDevice(info.getDeviceMac(), anEnum.getDevType());
                     deviceManager.updateDeviceInfo(info.getDeviceId(), Constants.CONNECT_DEVICE_NO, info.getDeviceMac(), anEnum.getDevType());
 
+
                 }
             }
         }
@@ -1423,8 +1428,13 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
             z = "0.1";
         }
-        if (darkInfo != null && StringUtils.hasText(darkInfo.get(device.getCurrentWavelength()))) {
-            z = darkInfo.get(device.getCurrentWavelength());
+//        if (darkInfo != null && StringUtils.hasText(darkInfo.get(device.getCurrentWavelength()))) {
+//            z = darkInfo.get(device.getCurrentWavelength());
+//        }
+
+        Double zVal = spectrumResultCalculator.getZFromDatabase2(deviceSerialNumber, device.getCurrentWavelength());
+        if (zVal != null) {
+            z = String.valueOf(zVal);
         }
 
         ChangeParam measureParam = resultEntity.getMeasureResult();
@@ -1792,8 +1802,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                             z = "0.1";
                         }
-                        if (darkInfo != null && StringUtils.hasText(darkInfo.get(s))) {
-                            z = darkInfo.get(s);
+//                        if (darkInfo != null && StringUtils.hasText(darkInfo.get(s))) {
+//                            z = darkInfo.get(s);
+//                        }
+                        Double zVal = spectrumResultCalculator.getZFromDatabase2(deviceSerialNumber, device.getCurrentWavelength());
+                        if (zVal != null) {
+                            z = String.valueOf(zVal);
                         }
                         String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
 
@@ -1896,8 +1910,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         z = "0.1";
                     }
-                    if (darkInfo != null && StringUtils.hasText(darkInfo.get(wavelength))) {
-                        z = darkInfo.get(wavelength);
+//                    if (darkInfo != null && StringUtils.hasText(darkInfo.get(wavelength))) {
+//                        z = darkInfo.get(wavelength);
+//                    }
+                    Double zVal = spectrumResultCalculator.getZFromDatabase2(deviceSerialNumber, device.getCurrentWavelength());
+                    if (zVal != null) {
+                        z = String.valueOf(zVal);
                     }
                     String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
 
@@ -1923,6 +1941,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         return R.ok(resultEntity);
     }
+
 //private R<OperationResultEntity> executeTimeMeasure(DevOperationInputParam inputParam) throws InterruptedException {
 //
 //    OperationResultEntity resultEntity = new OperationResultEntity();
@@ -2169,6 +2188,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 //            }
 //        }, "Measure-Calc-" + deviceSerialNumber);
 //        calcThread.start();
+
         return R.ok(resultEntity);
     }
 
