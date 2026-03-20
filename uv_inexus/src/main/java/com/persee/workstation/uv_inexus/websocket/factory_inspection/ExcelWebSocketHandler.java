@@ -989,7 +989,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
             if (management1 != null && StringUtils.isBlank(management1.getOperationInstrument())) {
                 R<String> device = deviceManageService.getConnectDevice(updateBy);
-
 //                            String deviceSerialNumber = "30-U1602-01-0022";
                 String deviceSerialNumber = device.getData();
 
@@ -1006,6 +1005,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             if (StringUtils.isNotBlank(management1 != null ? management1.getOperationInstrument() : null)) {
                 DeviceInfoPO info = deviceInfoService.getInfo(management1.getOperationInstrument());
                 Integer status = info.getDeviceCurrentStatus();
+//                if (info.getIsActivated() == 0) {
+//                    JSONObject jsonObject = new JSONObject();
+//                    jsonObject.put("error", "设备未激活！！！");
+//                    sendToActiveSession(session, taskId, jsonObject);
+//                }
                 if (status != 0) {
                     // 【改造】检查设备是否被其他任务占用
                     String occupiedTaskId = findTaskByDevice(management1.getOperationInstrument());
@@ -1013,17 +1017,20 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         JSONObject jsonObject = new JSONObject();
                         jsonObject.put("error", "设备正在被其他任务使用中（任务 ID: " + occupiedTaskId + "）！！！");
                         sendToActiveSession(null, taskId, jsonObject);
+//                        throw new BusinessException("设备正在被其他任务使用中（任务 ID: " + occupiedTaskId + "）！！！");
                         return;
                     }
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("error", "设备正在使用中！！！");
                     sendToActiveSession(session, taskId, jsonObject);
+//                    throw new BusinessException("设备正在使用中！！！");
                     return;
                 }
             } else {
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("error", "找不到该任务！！！");
                 sendToActiveSession(null, taskId, jsonObject);
+//                throw new BusinessException("找不到该任务！！！");
                 return;
             }
             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(management1.getOperationInstrument());
@@ -1034,12 +1041,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 sendToActiveSession(null, taskId, jsonObject);
                 return;
             }
-            if (vo.getSamplePoolNum() < 1) {
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", "未知样品池！！！");
-                sendToActiveSession(null, taskId, jsonObject);
-                return;
-            }
+//            if (vo.getSamplePoolNum() < 1) {
+//                JSONObject jsonObject = new JSONObject();
+//                jsonObject.put("error", "未知样品池！！！");
+//                sendToActiveSession(null, taskId, jsonObject);
+//                return;
+//            }
             TaskManagement management = new TaskManagement();
             management.setId(taskId);
             management.setUpdateBy(updateBy);
@@ -1049,8 +1056,15 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             taskService.updateById(management);
             // 添加这一行：设置停止标志，与单项测量保持一致
             taskStopFlag.put(taskId, false);
+            try {
+                handleAutoInspection(session, taskId, updateBy);
+            } catch (Exception e) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("error", e.getMessage());
+                sendToActiveSession(null, taskId, jsonObject);
+                setTaskMeasuring(taskId, false);
+            }
 
-            handleAutoInspection(session, taskId, updateBy);
         }
         if (SET_STANDARD.getCode().equals(type)) {
             WebSocketMessageDto<StdMaterialSelectionDto> messageWrapper =
@@ -1258,20 +1272,31 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         TaskManagement taskManagement = taskService.getById(taskId);
         //获取序列号
         String string = taskManagement.getOperationInstrument();
-
+        DeviceInfoPO info = deviceInfoService.getInfo(string);
         R<String> device = deviceManageService.getConnectDevice(updateBy);
+
         if (StringUtils.isBlank(device.getData())) {
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("error", "请检查当前仪器是否连接");
-            sendToActiveSession(null, taskId, jsonObject);
+//            JSONObject jsonObject = new JSONObject();
+//            jsonObject.put("error", "请检查当前仪器是否连接");
+//            sendToActiveSession(null, taskId, jsonObject);
             throw new BusinessException("请检查当前仪器是否连接！！！");
         }
         if (!StringUtils.equals(device.getData(), string)) {
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("error", "设备已切换,请检查当前仪器与任务是否匹配！！！");
-            sendToActiveSession(null, taskId, jsonObject);
+//            JSONObject jsonObject = new JSONObject();
+//            jsonObject.put("error", "设备已切换,请检查当前仪器与任务是否匹配！！！");
+//            sendToActiveSession(null, taskId, jsonObject);
             throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
         }
+        if (info.getIsActivated() == 0) {
+            throw new BusinessException("设备未激活！！！");
+        }
+        if (info.getIsInited() != 1 && info.getIsInited() != 3) {
+            throw new BusinessException("请检查当前仪器是否初始化！！！");
+        }
+        if (info.getIsInited() == 3) {
+            throw new BusinessException("设备正在初始化！！！");
+        }
+
         halt.put(taskId, false);
         //得到所有的检测项
         if (CollectionUtils.isNotEmpty(list)) {
@@ -1530,10 +1555,21 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             if (StringUtils.isBlank(device.getData())) {
                                 throw new BusinessException("请检查当前仪器是否连接！！！");
                             }
+
+                            DeviceInfoPO info = deviceInfoService.getInfo(string);
+
                             if (!StringUtils.equals(device.getData(), string)) {
                                 throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
                             }
-
+                            if (info.getIsActivated() == 0) {
+                                throw new BusinessException("设备未激活！！！");
+                            }
+                            if (info.getIsInited() != 1 && info.getIsInited() != 3) {
+                                throw new BusinessException("请检查当前仪器是否初始化！！！");
+                            }
+                            if (info.getIsInited() == 3) {
+                                throw new BusinessException("设备正在初始化！！！");
+                            }
                             //获取具体的样品池信息
                             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(string);
                             Integer samplePoolNum = vo.getSamplePoolNum();
