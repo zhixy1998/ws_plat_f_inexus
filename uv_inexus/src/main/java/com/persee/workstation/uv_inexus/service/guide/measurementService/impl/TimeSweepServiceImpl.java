@@ -443,7 +443,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
         // 3. 比较参数
         if (compareParam(oldParam, newParam)) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00104001"));
+            return Result.ok();
         }
 
         boolean methodBoolean = false;

@@ -3371,7 +3371,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
         // 3. 比较参数
         if (compareParam(oldParam, newParam)) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00104001"));
+            return Result.ok();
         }
 
         // 根据任务id查询任务数据
