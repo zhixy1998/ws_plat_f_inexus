@@ -9,89 +9,48 @@
 
 package com.persee.workstation.uv_inexus.service.guide.activationKeyService;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import workstation.utils.AESUtils; // 项目 B 的工具类
+import com.persee.workstation.uv_inexus.utils.AESencryption.AESEncryptionUtil;
+
+import workstation.utils.AESUtils;
 
 @Service
 public class DecryptService {
 
-    // 解密方法
-    public String decryptActivationKey(String encryptedKey) {
-        try {
-            // System.out.println("11111111111111111111111"+encryptedKey);
-            // 1. 先移除激活码中的所有 "-" 字符
-            String keyWithoutHyphen = encryptedKey.replaceAll("-", "");
-            // System.out.println("222222222222222222222"+keyWithoutHyphen);
-
-            // 调用项目 B 的解密方法
-            String decryptedContent = AESUtils.decrypt(keyWithoutHyphen);
-            System.out.println("解密成功：" + decryptedContent);
-            return decryptedContent;
-        } catch (Exception e) {
-            // 处理解密失败的情况（如密钥不匹配、加密串格式错误等）
-            throw new RuntimeException("激活码解密失败：" + e.getMessage(), e);
-        }
-    }
-
-    // 解密激活文件方法
+    // 解密激活文件方法（直接使用activation_key依赖）
     public String decryptActivationFile(MultipartFile activationFile) {
         try {
-            // 读取文件内容
-            byte[] fileBytes = activationFile.getBytes();
-            String fileContent = new String(fileBytes, "UTF-8").trim();
-            
-            if (fileContent.isEmpty()) {
-                throw new RuntimeException("激活文件内容为空");
-            }
-            
-            // 提取激活码：查找"激活码："后面的内容
-            String encryptedKey = extractActivationKey(fileContent);
-            
-            if (encryptedKey.isEmpty()) {
-                throw new RuntimeException("激活文件中未找到激活码");
-            }
-            
-            // 清理激活码：移除所有非Base64字符（只保留A-Za-z0-9+/=）
-            encryptedKey = encryptedKey.replaceAll("[^A-Za-z0-9+/=]", "");
-            
-            if (encryptedKey.isEmpty()) {
-                throw new RuntimeException("激活文件中无有效激活码");
+            if (activationFile == null || activationFile.isEmpty()) {
+                throw new RuntimeException("激活文件不能为空");
             }
 
-            // 调用解密方法
-            return decryptActivationKey(encryptedKey);
+            // 读取文件内容
+            byte[] fileContent = activationFile.getBytes();
+            if (fileContent == null || fileContent.length == 0) {
+                throw new RuntimeException("文件内容为空");
+            }
+
+            // 使用activation_key依赖中的AESEncryptionUtil解密文件
+            String aesKeyBase64 = "wUnjmObQly0V3M3hsUd33RjW5pp2GVmFVMihl+wiLTU=";
+            byte[] decryptedContent = AESEncryptionUtil.decrypt(fileContent, aesKeyBase64);
+            String encryptedKey = new String(decryptedContent, StandardCharsets.UTF_8);
+
+            if (encryptedKey == null || encryptedKey.trim().isEmpty()) {
+                throw new RuntimeException("解密后的激活码为空");
+            }
+
+            // 使用activation_key依赖中的AESUtils解密激活码
+            String plainText = AESUtils.decrypt(encryptedKey);
+
+            System.out.println("解密成功：" + plainText);
+            return plainText;
         } catch (Exception e) {
             throw new RuntimeException("激活文件解密失败：" + e.getMessage(), e);
         }
-    }
-    
-    // 从文件内容中提取激活码
-    private String extractActivationKey(String fileContent) {
-        // 查找"激活码："后面的内容
-        int startIndex = fileContent.indexOf("激活码：");
-        if (startIndex == -1) {
-            // 如果找不到"激活码："，尝试查找"激活码:"（英文冒号）
-            startIndex = fileContent.indexOf("激活码:");
-        }
-        
-        if (startIndex != -1) {
-            // 从激活码标记后开始提取
-            startIndex += "激活码：".length();
-            // 提取到下一行或文件结束
-            int endIndex = fileContent.indexOf("\n", startIndex);
-            if (endIndex == -1) {
-                endIndex = fileContent.length();
-            }
-            return fileContent.substring(startIndex, endIndex).trim();
-        }
-        
-        // 如果没有找到激活码标记，尝试整个文件内容
-        return fileContent;
     }
 
 }
