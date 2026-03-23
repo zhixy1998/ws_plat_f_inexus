@@ -75,7 +75,18 @@ public class OperateLogAspect {
 
             // -------------------------- 4. 记录请求参数 --------------------------
             if (operateLog.recordParams()) {
-                String paramsJson = JSON.toJSONString(joinPoint.getArgs(), SerializerFeature.DisableCircularReferenceDetect);
+                Object[] args = joinPoint.getArgs();
+                Object[] safeArgs = new Object[args.length];
+                for (int i = 0; i < args.length; i++) {
+                    Object arg = args[i];
+                    if (arg != null && arg.getClass().getName().contains("MultipartFile")) {
+                        // 过滤掉MultipartFile类型，避免序列化错误
+                        safeArgs[i] = "[MultipartFile: " + arg.toString() + "]";
+                    } else {
+                        safeArgs[i] = arg;
+                    }
+                }
+                String paramsJson = JSON.toJSONString(safeArgs, SerializerFeature.DisableCircularReferenceDetect);
                 logPO.setParams(paramsJson);
             }
 
