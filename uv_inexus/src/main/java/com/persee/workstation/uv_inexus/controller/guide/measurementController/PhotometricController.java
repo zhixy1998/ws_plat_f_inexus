@@ -37,7 +37,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/photometricMeasurement/")
-@Api("光度测量")
+@Api("向导模式-光度测量")
 public class PhotometricController {
 
     @Autowired
