@@ -1906,6 +1906,9 @@ public class SpectrumOneNewWebSocket {
 
             if ("不重复".equals(spectrumParameter.getRepetitionPattern())) {
                 TMeasureData measureData = traceDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("serial_number", number).last("limit 1"));
+                if (measureData == null) {
+                    measureData = new TMeasureData();
+                }
                 measureData.setSerialNumber(1);
                 measureData.setTaskId(taskId);
                 measureData.setSampleKey(sampleId);
@@ -1922,6 +1925,9 @@ public class SpectrumOneNewWebSocket {
                 }
 
                 TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("analysis_number", number).last("limit 1"));
+                if (analysisData == null) {
+                    analysisData = new TMeasureAnalysisData();
+                }
                 analysisData.setAnalysisNumber(1);
                 analysisData.setAnalysisName(sample.getSampleName() + "(" + analysisData.getAnalysisNumber() + ")");
                 analysisData.setTaskId(taskId);
@@ -1942,6 +1948,9 @@ public class SpectrumOneNewWebSocket {
                 }
 
                 TMeasureAnalysisImage tMeasureAnalysisImage = tMeasureAnalysisImageService.getOne(new QueryWrapper<TMeasureAnalysisImage>().eq("analysis_id", analysisData.getId()));
+                if (tMeasureAnalysisImage == null) {
+                    tMeasureAnalysisImage = new TMeasureAnalysisImage();
+                }
                 tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
                 boolean saveImage = tMeasureAnalysisImageService.saveOrUpdate(tMeasureAnalysisImage);
                 if (!saveImage) {

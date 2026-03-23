@@ -1319,7 +1319,7 @@ public class ConciseSpectrumNewWebSocket {
                 // 其他字段暂时不设置
                 measureData.setIsDelete("0");
                 measureData.setIsSave("0"); // 标记为未完成
-                tMeasureDataService.save(measureData);
+                tMeasureDataService.saveOrUpdate(measureData);
 
                 // 2. 获取样品名称用于分析数据名称
                 FMeasureSample sample = tMeasureSampleService.getById(sampleId);
@@ -1337,12 +1337,12 @@ public class ConciseSpectrumNewWebSocket {
                 analysisData.setColor(ColorUtil.getRandomColor());
                 analysisData.setIsDelete("0");
                 analysisData.setIsSave("0"); // 标记为未完成
-                tMeasureAnalysisDataService.save(analysisData);
+                tMeasureAnalysisDataService.saveOrUpdate(analysisData);
 
                 // 4. 创建关联的图片记录（空记录）
                 FMeasureAnalysisImage analysisImage = new FMeasureAnalysisImage();
                 analysisImage.setAnalysisId(analysisData.getId());
-                tMeasureAnalysisImageService.save(analysisImage);
+                tMeasureAnalysisImageService.saveOrUpdate(analysisImage);
 
                 log.info("首次创建数据记录: measureDataId={}, analysisDataId={}",
                         measureData.getId(), analysisData.getId());
@@ -1390,7 +1390,7 @@ public class ConciseSpectrumNewWebSocket {
                     newMeasureData.setOriginalCalculationData(JSON.toJSONString(batchResult));
                     newMeasureData.setIsDelete("0");
                     newMeasureData.setIsSave("0");
-                    tMeasureDataService.save(newMeasureData);
+                    tMeasureDataService.saveOrUpdate(newMeasureData);
                 }
 
                 // 2. 查询已存在的分析数据记录
@@ -1440,7 +1440,7 @@ public class ConciseSpectrumNewWebSocket {
                     newAnalysisData.setColor(ColorUtil.getRandomColor());
                     newAnalysisData.setIsDelete("0");
                     newAnalysisData.setIsSave("0");
-                    tMeasureAnalysisDataService.save(newAnalysisData);
+                    tMeasureAnalysisDataService.saveOrUpdate(newAnalysisData);
                 }
             }
 
@@ -2117,6 +2117,9 @@ public class ConciseSpectrumNewWebSocket {
             if ("不重复".equals(spectrumParameter.getRepetitionPattern())) {
                 // 普通模式
                 FMeasureData measureData = traceDataService.getOne(new QueryWrapper<FMeasureData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("serial_number", number).last("limit 1"));
+                if (measureData == null) {
+                    measureData = new FMeasureData();
+                }
                 measureData.setSerialNumber(1);
                 measureData.setTaskId(taskId);
                 measureData.setSampleKey(sampleId);
@@ -2128,6 +2131,9 @@ public class ConciseSpectrumNewWebSocket {
                 measureData.setIsSave("1");
                 traceDataService.saveOrUpdate(measureData);
                 FMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<FMeasureAnalysisData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("analysis_number", number).last("limit 1"));
+                if (analysisData == null) {
+                    analysisData = new FMeasureAnalysisData();
+                }
                 analysisData.setAnalysisNumber(1);
                 analysisData.setAnalysisName(sample.getSampleName() + "(" + analysisData.getAnalysisNumber() + ")");
                 analysisData.setTaskId(taskId);
@@ -2147,6 +2153,9 @@ public class ConciseSpectrumNewWebSocket {
                 analysisData.setIsSave("1");
                 tMeasureAnalysisDataService.saveOrUpdate(analysisData);
                 FMeasureAnalysisImage tMeasureAnalysisImage = tMeasureAnalysisImageService.getOne(new QueryWrapper<FMeasureAnalysisImage>().eq("analysis_id", analysisData.getId()));
+                if (tMeasureAnalysisImage == null) {
+                    tMeasureAnalysisImage = new FMeasureAnalysisImage();
+                }
                 tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
                 tMeasureAnalysisImageService.saveOrUpdate(tMeasureAnalysisImage);
             } else {
@@ -2194,7 +2203,7 @@ public class ConciseSpectrumNewWebSocket {
                     measureData.setMeasurementEndTime(endTime);
                     measureData.setIsDelete("0");
                     measureData.setIsSave("1");
-                    traceDataService.save(measureData);
+                    traceDataService.saveOrUpdate(measureData);
                     FMeasureAnalysisData analysis = new FMeasureAnalysisData();
                     analysis.setAnalysisNumber(number);
                     analysis.setAnalysisName(sample.getSampleName() + "-" + number);
@@ -2213,10 +2222,10 @@ public class ConciseSpectrumNewWebSocket {
                     analysis.setColor(ColorUtil.getRandomColor());
                     analysis.setIsDelete("0");
                     analysis.setIsSave("1");
-                    tMeasureAnalysisDataService.save(analysis);
+                    tMeasureAnalysisDataService.saveOrUpdate(analysis);
                     FMeasureAnalysisImage tMeasureAnalysisImage = new FMeasureAnalysisImage();
                     tMeasureAnalysisImage.setAnalysisId(analysis.getId());
-                    tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
+                    tMeasureAnalysisImageService.saveOrUpdate(tMeasureAnalysisImage);
                 }
             }
 
