@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 
 
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.component.EhcacheUtil;
@@ -915,14 +916,17 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         String param = paramPO.getParam();
         List<DataNameValue> ans = new ArrayList<>();
         if (DeviceCalibrationParamEnum.ScanSpeed.getType().equals(param)) {
-            int i = 0;
-            for (String speed : po.getScanSpeed()) {
+
+            JSONObject scanSpeed = po.getScanSpeed();
+
+            List<DataNameValue> finalAns = new ArrayList<>();
+            scanSpeed.forEach((k, v) -> {
                 DataNameValue value = new DataNameValue();
-                value.setDataKey(speed);
-                value.setDataValue(String.valueOf(i));
-                ans.add(value);
-                i++;
-            }
+                value.setDataKey(v.toString());
+                value.setDataValue(k);
+                finalAns.add(value);
+            });
+            ans.addAll(finalAns);
         }
         if (DeviceCalibrationParamEnum.Start.getType().equals(param) || DeviceCalibrationParamEnum.End.getType().equals(param)) {
             DataNameValue min = new DataNameValue();

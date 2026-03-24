@@ -321,20 +321,7 @@ public class ConnectUtil {
      * 判断是否为以太网接口
      */
     private boolean isEthernetInterface(String name, String displayName, String os) {
-        if (os.contains("win")) {
-            // Windows系统
-            if (displayName.contains("ethernet") ||
-                    displayName.contains("以太网") ||
-                    (displayName.contains("adapter") &&
-                            !displayName.contains("wireless") &&
-                            !displayName.contains("wlan") &&
-                            !displayName.contains("wi-fi") &&
-                            !displayName.contains("virtual") &&
-                            !displayName.contains("vmware") &&
-                            !displayName.contains("vbox"))) {
-                return true;
-            }
-        } else if (os.contains("linux") || os.contains("mac")) {
+        if (os.contains("linux") || os.contains("mac")) {
             // Linux/Mac系统
             return name.startsWith("eth") ||
                     name.startsWith("eno") ||
@@ -343,6 +330,20 @@ public class ConnectUtil {
                     name.startsWith("enx") ||
                     name.contains("ethernet") ||
                     displayName.contains("ethernet");
+        } else{
+            // Windows系统
+            if (displayName.contains("ethernet") ||
+                    displayName.contains("以太网") ||
+                    displayName.contains("adapter") ||
+                    (displayName.contains("realtek") &&
+                            !displayName.contains("wireless") &&
+                            !displayName.contains("wlan") &&
+                            !displayName.contains("wi-fi") &&
+                            !displayName.contains("virtual") &&
+                            !displayName.contains("vmware") &&
+                            !displayName.contains("vbox"))) {
+                return true;
+            }
         }
 
         return false;
@@ -663,7 +664,7 @@ public class ConnectUtil {
                     if (!isWireless && !isVirtual &&
                             (displayName.contains("ethernet") ||
                                     displayName.contains("以太网") ||
-                                    (displayName.contains("adapter") && !displayName.contains("wireless")))) {
+                                    (displayName.contains("adapter") || displayName.contains("realtek") && !displayName.contains("wireless")))) {
 
                         Enumeration<InetAddress> addresses = ni.getInetAddresses();
                         while (addresses.hasMoreElements()) {
