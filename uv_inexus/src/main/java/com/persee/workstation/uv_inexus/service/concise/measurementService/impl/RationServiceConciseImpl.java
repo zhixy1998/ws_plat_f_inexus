@@ -736,7 +736,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         // 6.1 样品输入参数校验（最多10个）
         List<FInputParam> sampleInputParams = parameter.getSampleInputParams();
         if (sampleInputParams != null && !sampleInputParams.isEmpty()) {
-            if (sampleInputParams.size() > 10) {
+            if (sampleInputParams.size() > 20) {
                 //"样品输入参数最多支持10个，当前数量：" + sampleInputParams.size()
                 return R.fail(YamlMessageSource.getMessageStatic("0010201E",sampleInputParams.size()));
             }

@@ -9,9 +9,29 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.softwareActivation;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.softwareActivation.DeviceInfoDTO;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -22,20 +42,9 @@ import com.persee.workstation.uv_inexus.service.guide.softwareActivation.DeviceD
 import com.persee.workstation.uv_inexus.service.guide.softwareActivation.SoftwareActivationService;
 import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/softwareActivation")
@@ -60,12 +69,17 @@ public class SoftwareActivationController {
     @ButtonPermission("softwareActivationsoftwareActivationDevice")
     @OperateLog(module = "激活仪器", description = "执行激活仪器", recordParams = true)
     @PostMapping("/activate")
-    @ApiOperation("软件激活接口（通过ID查询设备，验证激活码并更新状态）")
+    @ApiOperation("软件激活接口（通过ID查询设备，解密激活文件并更新状态）")
     public Result<String> activateSoftware(
             @RequestParam Integer id,  // 接收设备记录ID
-            @RequestParam String activationCode) {  // 接收激活码
+            @RequestParam("activationFile") org.springframework.web.multipart.MultipartFile activationFile) {  // 接收激活文件
         try {
-            System.out.println("111111111111111111111111"+id+activationCode);
+            System.out.println("111111111111111111111111"+id+activationFile.getOriginalFilename());
+            
+            if (activationFile.isEmpty()) {
+                return Result.fail(400, YamlMessageSource.getMessageStatic("00701006","激活文件不能为空"));
+            }
+            
             // 1. 通过ID查询设备记录（优先使用ID查询，确保唯一性）
             SoftwareActivationPO activationPO = softwareActivationService.getById(id);
             if (activationPO == null) {
@@ -74,8 +88,8 @@ public class SoftwareActivationController {
             }
             System.out.println("查询到的设备记录:" + activationPO);
 
-            // 2. 解密激活码
-            String decryptedText = decryptService.decryptActivationKey(activationCode);
+            // 2. 解密激活文件获取激活码
+            String decryptedText = decryptService.decryptActivationFile(activationFile);
             System.out.println("解密后的激活码内容:" + decryptedText);
 
             // 3. 解析解密后的参数

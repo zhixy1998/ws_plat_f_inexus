@@ -9,28 +9,47 @@
 
 package com.persee.workstation.uv_inexus.service.guide.activationKeyService;
 
-import org.springframework.stereotype.Service;
+import java.nio.charset.StandardCharsets;
 
-import workstation.utils.AESUtils; // 项目 B 的工具类
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.persee.workstation.uv_inexus.utils.AESencryption.AESEncryptionUtil;
+
+import workstation.utils.AESUtils;
 
 @Service
 public class DecryptService {
 
-    // 解密方法
-    public String decryptActivationKey(String encryptedKey) {
+    // 解密激活文件方法（直接使用activation_key依赖）
+    public String decryptActivationFile(MultipartFile activationFile) {
         try {
-            // System.out.println("11111111111111111111111"+encryptedKey);
-            // 1. 先移除激活码中的所有 "-" 字符
-            String keyWithoutHyphen = encryptedKey.replaceAll("-", "");
-            // System.out.println("222222222222222222222"+keyWithoutHyphen);
+            if (activationFile == null || activationFile.isEmpty()) {
+                throw new RuntimeException("激活文件不能为空");
+            }
 
-            // 调用项目 B 的解密方法
-            String decryptedContent = AESUtils.decrypt(keyWithoutHyphen);
-            System.out.println("解密成功：" + decryptedContent);
-            return decryptedContent;
+            // 读取文件内容
+            byte[] fileContent = activationFile.getBytes();
+            if (fileContent == null || fileContent.length == 0) {
+                throw new RuntimeException("文件内容为空");
+            }
+
+            // 使用activation_key依赖中的AESEncryptionUtil解密文件
+            String aesKeyBase64 = "wUnjmObQly0V3M3hsUd33RjW5pp2GVmFVMihl+wiLTU=";
+            byte[] decryptedContent = AESEncryptionUtil.decrypt(fileContent, aesKeyBase64);
+            String encryptedKey = new String(decryptedContent, StandardCharsets.UTF_8);
+
+            if (encryptedKey == null || encryptedKey.trim().isEmpty()) {
+                throw new RuntimeException("解密后的激活码为空");
+            }
+
+            // 使用activation_key依赖中的AESUtils解密激活码
+            String plainText = AESUtils.decrypt(encryptedKey);
+
+            System.out.println("解密成功：" + plainText);
+            return plainText;
         } catch (Exception e) {
-            // 处理解密失败的情况（如密钥不匹配、加密串格式错误等）
-            throw new RuntimeException("激活码解密失败：" + e.getMessage(), e);
+            throw new RuntimeException("激活文件解密失败：" + e.getMessage(), e);
         }
     }
 

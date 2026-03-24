@@ -31,6 +31,7 @@ public enum OperationTypeEnums {
     TimeMeasure(9, "定时测量", "deviceIp,connectType,InputParam", "", Constants.DEVICE_STATUS_OTHER),
     SingWaveLengthMeasure(10, "单波长测量", "deviceIp,connectType", "", Constants.DEVICE_STATUS_MEASURE),
     SingWaveLengthZero(11, "单波长校零", "deviceIp,connectType", "", Constants.DEVICE_STATUS_ZERO),
+    QueryLifeTime(12, "查询灯使用寿命", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
     Zero(885, "零点校准", "deviceIp,connectType", "", Constants.DEVICE_STATUS_ZERO),
     Calibration(886, "校准", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
     LiveDetection(887, "实时检测", "deviceIp,connectType", "", Constants.DEVICE_STATUS_ECHO),

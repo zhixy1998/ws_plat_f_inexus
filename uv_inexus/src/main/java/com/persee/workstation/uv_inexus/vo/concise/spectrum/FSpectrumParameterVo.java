@@ -78,4 +78,8 @@ public class FSpectrumParameterVo {
     @NotNull(message = "增益不能为空")
     @Min(value = 0, message = "增益不能小于0")
     private Integer gain;
+    // 消除尖刺(false.不启用 true.启用)
+    private Boolean spikeRemoval;
+    // 尖刺数组
+    private List<String> spikeArray;
 }

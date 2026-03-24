@@ -14,14 +14,12 @@ import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.enums.messageEnums.MessageTypeEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.MessageInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.MessageInfoService;
-import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
@@ -651,7 +649,7 @@ public class LiveDetectionDevicesWebSocket {
                     if (device != null && Boolean.FALSE.equals(device.getIsIdle())) {
                         log.debug("设备正忙，跳过本次实时回显: {}", taskInfo.deviceSerialNumber);
                         // 关键修复2：设备忙时等待固定间隔再重试，不立即重试
-//                        sendBusyInfo(deviceId, info.getDeviceSerialNumber());
+                        sendBusyInfo(deviceId, info.getDeviceSerialNumber());
                         scheduleNextMeasurement(taskInfo, startTime);
                         return;
                     }
@@ -659,7 +657,7 @@ public class LiveDetectionDevicesWebSocket {
                     info = infoService.getInfo(taskInfo.deviceSerialNumber);
                     if (!Constants.DEVICE_STATUS_IDLE.equals(info.getDeviceCurrentStatus())) {
                         log.debug("设备状态非空闲，跳过本次测量: {}", taskInfo.deviceSerialNumber);
-//                        sendBusyInfo(deviceId, info.getDeviceSerialNumber());
+                        sendBusyInfo(deviceId, info.getDeviceSerialNumber());
                         scheduleNextMeasurement(taskInfo, startTime);
                         return;
                     }
@@ -675,7 +673,7 @@ public class LiveDetectionDevicesWebSocket {
                         info = infoService.getInfo(taskInfo.deviceSerialNumber);
                         if (info != null && Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
                             log.info("设备状态非空闲，跳过本次测量: {}", taskInfo.deviceSerialNumber);
-//                            sendBusyInfo(deviceId, info.getDeviceSerialNumber());
+                            sendBusyInfo(deviceId, info.getDeviceSerialNumber());
                         } else {
                             log.warn("实时回显测量失败: {}, 错误: {}", taskInfo.deviceSerialNumber, operation.getMessage());
                             taskInfo.consecutiveFailures++;
@@ -707,6 +705,10 @@ public class LiveDetectionDevicesWebSocket {
                         vo.setAttachmentName(attachmentInfo.getAttachmentName());
                         vo.setTotalPoolNum(attachmentInfo.getSamplePoolNum());
                         vo.setAttachmentKind(attachmentInfo.getAttachmentKind());
+
+                        String jsonString = JSONObject.toJSONString(vo);
+                        JSONObject json = JSONObject.parseObject(jsonString);
+                        deviceManager.partialUpdateCurrentStatus(deviceId, json);
 
                         // 5. 推送测量结果
                         WebSocketResponseVO webSocketResponseVO = new WebSocketResponseVO();
@@ -750,26 +752,18 @@ public class LiveDetectionDevicesWebSocket {
         if (device == null) {
             return;
         }
-        String luminosityMode = device.getLuminosityMode();
         Integer devCurrentStatus = device.getDevCurrentStatus();
-        if (devCurrentStatus.equals(Constants.DEVICE_STATUS_ZERO)) {
-            data.setLuminosity(WaveLengthEnum.getName(luminosityMode));
-            String waveLength = StringUtils.hasText(device.getZeroWavelength())? device.getZeroWavelength() : device.getCurrentWavelength();
+        if(devCurrentStatus.equals(Constants.DEVICE_STATUS_MEASURE)) {
+            DetectionManyDevicesResponseInfoVO currentStatus = device.getCurrentStatus();
+            BeanUtils.copyProperties(currentStatus, data);
+            data.setX(null);
+            data.setY(null);
+            vo.setData(data);
 
-            data.setX(waveLength + "nm");
-
-        } else if(devCurrentStatus.equals(Constants.DEVICE_STATUS_MEASURE) && devCurrentStatus.equals(Constants.DEVICE_STATUS_MEASURE)) {
-            data.setLuminosity(WaveLengthEnum.getName(luminosityMode));
-            data.setX(device.getCurrentWavelength() + "nm");
-            String value = device.getCurrentMeasureValue();
-            String s = DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, value);
-            String ans = DataCountUtil.addZero(Double.parseDouble(s), Constants.DEFAULT_DECIMAL_NUM);
-            data.setY(ans + data.getLuminosity());
+            webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
         }
 
-        vo.setData(data);
 
-        webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
     }
 
     private void saveMessageInfo(String message) {

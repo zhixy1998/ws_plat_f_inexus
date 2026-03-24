@@ -16,5 +16,5 @@ public class TaskStatisticVo {
     // 长度
     private Integer pageSize;
     // 测量模式
-    private String measureMode;
+    private String measureType;
 }

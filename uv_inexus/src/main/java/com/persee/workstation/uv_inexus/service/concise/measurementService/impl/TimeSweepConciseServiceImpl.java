@@ -172,6 +172,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    @Value("文件数据")
+    String newTaskName;
+
+    @Value("默认方法")
+    String defaultMethodName;
+
 
     @Value("1")
     String deleteType;
@@ -271,9 +277,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             if (totalNumber <= 0) {
                 return R.fail("扫描总个数必须大于0，当前值：" + totalNumber);
             }
-            if (totalNumber > 9999) {
-                return R.fail("扫描总个数不能超过9999，当前值：" + totalNumber);
-            }
 
             // 验证扫描总时长、时间间隔和总个数的关系
             if (parameter.getScanUnit().equals("1")) { // 秒模式
@@ -298,12 +301,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
             // 根据单位设置最大扫描时长限制
             if ("0".equals(scanUnit)) { // 分
-                if (scanTime > 1440) { // 最大24小时
-                    return R.fail("扫描总时长（分）不能超过1440分钟（24小时），当前值：" + scanTime);
+                if (scanTime > 10000) {
+                    return R.fail("扫描总时长（分）不能超过10000分钟，当前值：" + scanTime);
                 }
             } else { // 秒
-                if (scanTime > 3600) { // 最大1小时
-                    return R.fail("扫描总时长（秒）不能超过3600秒（1小时），当前值：" + scanTime);
+                if (scanTime > 10000) {
+                    return R.fail("扫描总时长（秒）不能超过10000秒，当前值：" + scanTime);
                 }
             }
 
@@ -851,9 +854,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 //请先创建方法
                 return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
             }
-            fMeasureTask.setTaskName(method.getMethodName() + "草稿");
+            fMeasureTask.setTaskName(newTaskName + "-" +
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         } else {
-            fMeasureTask.setTaskName(task.getTaskName() + "草稿");
+            fMeasureTask.setTaskName(newTaskName + "-" +
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         }
         fMeasureTask.setUserId(userId);
         fMeasureTask.setMethodKey(methodId);
@@ -2442,7 +2447,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             //请输入点数
             return Result.fail(YamlMessageSource.getMessageStatic("00000039"));
         }
-        if (Double.valueOf(paramDto.getCoefficient()) > Double.valueOf(paramDto.getPointNum())) {
+        if (Double.valueOf(paramDto.getCoefficient()) >= Double.valueOf(paramDto.getPointNum())) {
             //系数不能大于点数
             return Result.fail(YamlMessageSource.getMessageStatic("0000003A"));
         }
@@ -2583,7 +2588,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             //请输入点数
             return Result.fail(YamlMessageSource.getMessageStatic("00000039"));
         }
-        if (Double.valueOf(paramDto.getCoefficient()) > Double.valueOf(paramDto.getPointNum())) {
+        if (Double.valueOf(paramDto.getCoefficient()) >= Double.valueOf(paramDto.getPointNum())) {
             //系数不能大于点数
             return Result.fail(YamlMessageSource.getMessageStatic("0000003A"));
         }
@@ -3063,18 +3068,14 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      */
     private FMeasureMethod createNewMethod(TimeUseMethodDto paramDto) {
         FMeasureMethod fMeasureMethod = new FMeasureMethod();
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        String collect = new Random().ints(8, 0, chars.length())
-                .mapToObj(i -> String.valueOf(chars.charAt(i)))
-                .collect(Collectors.joining());
 
-        fMeasureMethod.setMethodName(paramDto.getMeasureType() + collect);
-
+        fMeasureMethod.setMethodName(defaultMethodName + "-" +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         FTimeSweepParamter parameter = new FTimeSweepParamter();
         // 将前端参数复制给数据库参数
         BeanUtils.copyProperties(paramDto.getParameter(), parameter);
         if (paramDto.getType().equals("0")) {
-            parameter.setEnergyLampName(paramDto.getEnergyLamp().equals("0") ? "钨灯" : paramDto.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
+            parameter.setEnergyLampName(paramDto.getParameter().getEnergyLamp().equals("0") ? "钨灯" : paramDto.getParameter().getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
         }
         fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
         fMeasureMethod.setMethodCreateTime(LocalDateTime.now());

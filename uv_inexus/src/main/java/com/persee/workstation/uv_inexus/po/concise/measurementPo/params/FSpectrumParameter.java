@@ -11,6 +11,8 @@ package com.persee.workstation.uv_inexus.po.concise.measurementPo.params;
 
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * 光谱扫描方法参数
  */
@@ -34,4 +36,8 @@ public class FSpectrumParameter extends FMeasurePublicParameters {
     private Boolean ladderCorrection;
     // 扫描速度(0.慢速 1.中速 2.快速 3.极快)
     private String scanSpeed;
+    // 消除尖刺(false.不启用 true.启用)
+    private Boolean spikeRemoval;
+    // 尖刺数组
+    private List<String> spikeArray;
 }

@@ -18,6 +18,7 @@ import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
@@ -233,21 +234,21 @@ public class TimeNewOneWebSocket {
             // 设置参数
             Result paramResult = timeSweepService.setMethodParameters(task.getMethodKey(), deviceSerialNumber);
             if (paramResult.getCode() != 200) {
-                sendError(sessionId,paramResult.getMessage());
+                sendError(deviceSerialNumber,paramResult.getMessage());
                 return;
             }
 
             // 查询方法参数
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
-                sendError(sessionId, "方法不存在");
+                sendError(deviceSerialNumber, "方法不存在");
                 return;
             }
 
             TimeSweepParamter timeParam = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
             // 配置样品池
             if (!setupSamplePoolIfNeeded(param, context, updateBy)) {
-                sendError(sessionId,"样品池配置失败");
+                sendError(deviceSerialNumber,"样品池配置失败");
                 return;
             }
             // 开始测量
@@ -255,7 +256,7 @@ public class TimeNewOneWebSocket {
 
         } catch (Exception e) {
             log.error("时间扫描初始化异常: {}", sessionId, e);
-            sendError(sessionId,"时间扫描初始化异常");
+            sendError(context.deviceSerialNumber,"时间扫描初始化异常");
         }
     }
 
@@ -507,7 +508,10 @@ public class TimeNewOneWebSocket {
         }
         inputParam.setTotalTime(scanTime);
         inputParam.setIntervalSeconds(Double.parseDouble(param.getIntervalTime()));
-        devOperationUtilService.operation(inputParam);
+        R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
+        if (!r.getSuccess()) {
+            sendError(deviceSerialNumber,r.getMessage());
+        }
     }
 
     private void calculateAndPushData(String deviceSerialNumber, TimeScanContext context,

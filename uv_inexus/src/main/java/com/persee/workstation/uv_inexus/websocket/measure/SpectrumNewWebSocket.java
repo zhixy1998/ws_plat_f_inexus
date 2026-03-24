@@ -9,6 +9,7 @@ import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
@@ -916,7 +917,10 @@ public class SpectrumNewWebSocket {
                 break;
         }
         // 发送测量命令
-        devOperationUtilService.operation(command);
+        R<OperationResultEntity> r = devOperationUtilService.operation(command);
+        if (!r.getSuccess()) {
+            sendError(deviceSerialNumber,r.getMessage());
+        }
         Constants.startTime = LocalDateTime.now();
         lastChangeParam=null;
 
@@ -1032,12 +1036,13 @@ public class SpectrumNewWebSocket {
                                         spectrumParameter, task);
 
                                 if (batchData != null) {
-                                    // 异步处理台阶消除
+                                    // 异步处理台阶消除,消除尖刺
                                     processBatchDataAsync(batchData);
 
                                 }
                             }
                         }
+
                     }
 
                     try {
@@ -1053,12 +1058,29 @@ public class SpectrumNewWebSocket {
                 log.info("开始处理剩余数据，批次大小配置: {}", state.getBatchSize());
 
                 // 处理剩余的批次数据
-                BatchData remainingBatch = state.getRemainingBatchBuffer(count, sampleId, state.digit,
+                BatchData batchData = state.getRemainingBatchBuffer(count, sampleId, state.digit,
                         spectrumParameter, task);
 
-                if (remainingBatch != null && !remainingBatch.xBatch.isEmpty()) {
-                    log.info("处理剩余批次数据，点数: {}", remainingBatch.xBatch.size());
-                    processBatchDataAsync(remainingBatch);
+                if (batchData != null && !batchData.xBatch.isEmpty()) {
+                    log.info("处理剩余批次数据，点数: {}", batchData.xBatch.size());
+                    String key = batchData.sessionId + "_" + batchData.sampleId + "_" + batchData.count;
+                    synchronized (originalYValues) {
+                        // 获取已存在的处理后的数据
+                        List<Double> existingData = originalYValues.get(key);
+                        if (existingData == null) {
+                            // 如果没有，创建新的列表
+                            existingData = new ArrayList<>();
+                        }
+
+                        // 追加当前批次的数据
+                        existingData.addAll(batchData.yBatch);
+
+                        // 存储回 originalYValues
+                        originalYValues.put(key, existingData);
+
+                        log.info("追加数据到 originalYValues, key: {}, 当前总点数: {}, 本次追加: {}",
+                                key, existingData.size(), batchData.yBatch.size());
+                    }
                 }
 
                 // 等待所有异步处理完成
@@ -1076,9 +1098,30 @@ public class SpectrumNewWebSocket {
             state.measurementStarted.set(false);
         }
 
+        List<Double> processedYForReturn = new ArrayList<>();
+        String key = deviceSerialNumber + "_" + sampleId + "_" + count;
+
+        // 等待一小段时间，确保所有异步处理完成
+        try {
+            Thread.sleep(500); // 等待500ms
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // 从 originalYValues 获取处理后的数据
+        List<Double> storedY = originalYValues.get(key);
+        if (storedY != null && !storedY.isEmpty()) {
+            log.info("从 originalYValues 获取到处理后的数据，点数: {}", storedY.size());
+            processedYForReturn = new ArrayList<>(storedY);
+        } else {
+            log.warn("未找到处理后的数据，使用原始数据返回，key: {}", key);
+            processedYForReturn = new ArrayList<>(y);
+        }
+
         // 数据完整性检查
         log.info("=== 测量结果统计 ===");
         log.info("总数据点数 - X: " + x.size() + ", Y: " + y.size());
+        log.info("总数据点数2 - X: " + x.size() + ", Y: " + processedYForReturn.size());
         log.info("测量时间 - 开始: " + Constants.startTime + ", 结束: " + Constants.endTime);
         log.info("仪器数据快照大小: " + Constants.instrumentData.size());
         log.info("原始计算数据快照大小: " + Constants.originalCalculationData.size());
@@ -1087,7 +1130,7 @@ public class SpectrumNewWebSocket {
         // 返回快照 + x/y
         return new MeasurementResult(
                 x,
-                y, // 这里的y已经是处理后的数据（校正或原始）
+                processedYForReturn,
                 Constants.startTime,
                 Constants.endTime,
                 changeParams
@@ -1096,7 +1139,7 @@ public class SpectrumNewWebSocket {
 
 
     /**
-     * 异步处理批次数据（包含台阶消除）
+     * 异步处理批次数据（包含台阶消除,消除尖刺）
      */
     private void processBatchDataAsync(BatchData batchData) {
         // 使用线程池异步处理
@@ -1106,31 +1149,57 @@ public class SpectrumNewWebSocket {
                         batchData.xBatch.size(), batchData.startIndex, staircaseEliminationBatchSize);
 
                 boolean ladderCorrection = batchData.parameter.getLadderCorrection();
+                boolean eliminateSpine = batchData.parameter.getSpikeRemoval()!=null?batchData.parameter.getSpikeRemoval():false;
                 List<Double> processedY = batchData.yBatch;
                 List<Double> yForStorage = batchData.yBatch;
 
                 // 执行台阶消除
                 if (ladderCorrection) {
                     log.info("执行台阶消除，数据点数: " + batchData.xBatch.size());
-                    processedY = processAndSaveData(batchData.task, batchData.xBatch, batchData.yBatch,
+                    processedY = processAndSaveDataStep(batchData.task, batchData.xBatch, batchData.yBatch,
                             batchData.parameter, batchData.sampleId);
                     log.info("台阶消除完成");
 
                     // 开启阶梯校正时，存储校正后的数据
+                    batchData.yBatch = processedY;
                     yForStorage = processedY;
                 } else {
                     log.info("跳过台阶消除");
                 }
 
+                // 执行消除尖刺
+                if (eliminateSpine) {
+                    log.info("执行消除尖刺，数据点数: " + batchData.xBatch.size());
+                    processedY = processAndSaveDataSpine(batchData.task, batchData.xBatch, processedY,
+                            batchData.parameter, batchData.sampleId);
+                    log.info("消除尖刺完成");
+
+                    // 开启消除尖刺时，存储消除后的数据
+                    batchData.yBatch = processedY;
+                    yForStorage = processedY;
+                } else {
+                    log.info("跳过消除尖刺");
+                }
+
                 String key = batchData.sessionId + "_" + batchData.sampleId + "_" + batchData.count;
                 synchronized (originalYValues) {
-                    // 如果key已经存在，先清理旧数据
-                    if (originalYValues.containsKey(key)) {
-                        log.warn("发现重复的key，清理旧数据: {}", key);
+                    // 获取已存在的处理后的数据
+                    List<Double> existingData = originalYValues.get(key);
+                    if (existingData == null) {
+                        // 如果没有，创建新的列表
+                        existingData = new ArrayList<>();
                     }
-                    // 总是创建新的列表，避免追加到旧列表
-                    originalYValues.put(key, new ArrayList<>(yForStorage));
+
+                    // 追加当前批次的数据
+                    existingData.addAll(yForStorage);
+
+                    // 存储回 originalYValues
+                    originalYValues.put(key, existingData);
+
+                    log.info("追加数据到 originalYValues, key: {}, 当前总点数: {}, 本次追加: {}",
+                            key, existingData.size(), yForStorage.size());
                 }
+
                 // 判断是否是当前样品的第一次批次
                 boolean isFirstBatch = false;
                 SessionState state = sessionStates.get(batchData.sessionId);
@@ -1138,6 +1207,7 @@ public class SpectrumNewWebSocket {
                     // 如果已推送点数为0，说明是第一次批次
                     isFirstBatch = (state.pushedPointsCount.get() == 0);
                 }
+
                 // 调用新的存储方法，处理数据库的首次创建或追加
                 handleBatchDataStorage(batchData, isFirstBatch);
 
@@ -1515,7 +1585,7 @@ public class SpectrumNewWebSocket {
         // 如果需要台阶校正
         if (ladderCorrection) {
             log.info("开始台阶校正");
-            List<Double> correctedY = processAndSaveData(task, processedX, processedY,
+            List<Double> correctedY = processAndSaveDataStep(task, processedX, processedY,
                     spectrumParameter, sampleId);
             processedY = correctedY;
             yForStorage = correctedY; // 开启校正时存储校正后的数据
@@ -1689,9 +1759,9 @@ public class SpectrumNewWebSocket {
     }
 
     /**
-     * 处理数据并保存
+     * 台阶消除
      */
-    public List<Double> processAndSaveData(TMeasureTask task,
+    public List<Double> processAndSaveDataStep(TMeasureTask task,
                                            List<Double> x,
                                            List<Double> y,
                                            SpectrumParameter parameter,
@@ -1761,6 +1831,37 @@ public class SpectrumNewWebSocket {
         return processedY;
     }
 
+
+    /**
+     * 消除尖刺
+     */
+    public List<Double> processAndSaveDataSpine(TMeasureTask task,
+                                               List<Double> x,
+                                               List<Double> y,
+                                               SpectrumParameter parameter,
+                                               String sampleId) {
+
+        String luminosityMode = parameter.getLuminosity();
+        boolean eliminateSpine = parameter.getSpikeRemoval();
+
+        log.info("---------------进入消除尖刺处理逻辑---------------");
+        log.info("消除尖刺参数 - 数据点数: " + x.size() + ", 光度模式: " + luminosityMode + ", 样品ID: " + sampleId);
+
+        // 如果不需要消除尖刺，直接返回原始数据
+        if (!eliminateSpine) {
+            log.info("消除尖刺已禁用，返回原始数据");
+            return y;
+        }
+
+        // 这里调用 Python 的消除尖刺算法，返回处理后的 y 值
+        List<Double> processedY = eliminationSpinePython(x, y, parameter);
+
+        log.info("消除尖刺完成，原始数据点数: " + y.size() + ", 处理后数据点数: " + processedY.size());
+        log.info("---------------消除尖刺处理逻辑结束---------------");
+
+        return processedY;
+    }
+
     /**
      * 调用 Python 服务处理台阶消除
      */
@@ -1793,6 +1894,43 @@ public class SpectrumNewWebSocket {
             return processedY;
         } catch (Exception e) {
             log.error("调用Python台阶消除服务失败，返回原始数据", e);
+            return y;
+        }
+    }
+
+
+    /**
+     * 调用 Python 服务处理消除尖刺
+     */
+    private List<Double> eliminationSpinePython(List<Double> x, List<Double> y, SpectrumParameter parameter) {
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            for (Double v : x) {
+                if (v.equals(760.0)) {
+                    System.out.println("到达760.0");
+                }
+            }
+
+            // 构建请求体
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("x_data", x);
+            requestBody.put("y_data", y);
+            requestBody.put("spinedot", parameter.getSpikeArray());
+            requestBody.put("wavelength_end", parameter.getEndWaveLength());
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            // 调用 Python API
+            ResponseEntity<Map> response = restTemplate.postForEntity(pythonPathConstant.getRemoveSpikes(), request, Map.class);
+
+            // 从响应中获取处理后的 y 值
+            List<Double> processedY = (List<Double>) response.getBody().get("smoothed_data");
+
+            return processedY;
+        } catch (Exception e) {
+            log.error("调用Python消除尖刺服务失败，返回原始数据", e);
             return y;
         }
     }
@@ -1956,7 +2094,7 @@ public class SpectrumNewWebSocket {
                 measureData.setMeasurementEndTime(endTime);
                 measureData.setIsDelete("0");
                 measureData.setIsSave("1");
-                traceDataService.updateById(measureData);
+                traceDataService.saveOrUpdate(measureData);
                 TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("analysis_number", number).last("limit 1"));
                 if (analysisData == null) {
                     analysisData = new TMeasureAnalysisData();
@@ -1978,13 +2116,13 @@ public class SpectrumNewWebSocket {
                 analysisData.setColor(ColorUtil.getRandomColor());
                 analysisData.setIsDelete("0");
                 analysisData.setIsSave("1");
-                tMeasureAnalysisDataService.updateById(analysisData);
+                tMeasureAnalysisDataService.saveOrUpdate(analysisData);
                 TMeasureAnalysisImage tMeasureAnalysisImage = tMeasureAnalysisImageService.getOne(new QueryWrapper<TMeasureAnalysisImage>().eq("analysis_id", analysisData.getId()));
                 if (tMeasureAnalysisImage == null) {
                     tMeasureAnalysisImage = new TMeasureAnalysisImage();
                 }
                 tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
-                tMeasureAnalysisImageService.updateById(tMeasureAnalysisImage);
+                tMeasureAnalysisImageService.saveOrUpdate(tMeasureAnalysisImage);
             } else {
                 // 重复模式
                 TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(
@@ -2006,7 +2144,7 @@ public class SpectrumNewWebSocket {
                     measureData.setMeasurementStartTime(startTime);
                     measureData.setMeasurementEndTime(endTime);
                     measureData.setIsSave("1");
-                    traceDataService.updateById(measureData);
+                    traceDataService.saveOrUpdate(measureData);
                     analysisData.setAnalysisParam(JSON.toJSONString(changeParamList));
                     analysisData.setAnalysisResult(JSON.toJSONString(result));
                     if (peakValleys != null) {
@@ -2017,7 +2155,7 @@ public class SpectrumNewWebSocket {
                     }
                     analysisData.setColor(ColorUtil.getRandomColor());
                     analysisData.setIsSave("1");
-                    tMeasureAnalysisDataService.updateById(analysisData);
+                    tMeasureAnalysisDataService.saveOrUpdate(analysisData);
                 } else {
                     // 新增分析数据
                     TMeasureData measureData = new TMeasureData();
@@ -2067,7 +2205,7 @@ public class SpectrumNewWebSocket {
                 task.setSampleKey(JSON.toJSONString(specimen));
                 task.setDeviceSerialNumber(deviceSerialNumber);
                 task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
-                boolean update = tMeasureTaskService.updateById(task);
+                boolean update = tMeasureTaskService.saveOrUpdate(task);
                 if (!update) {
                     log.error("更新任务失败: " + taskId);
                 }
@@ -2097,12 +2235,12 @@ public class SpectrumNewWebSocket {
                     }
                     task.setSampleKey(JSON.toJSONString(specimen));
                     task.setDeviceSerialNumber(deviceSerialNumber);
-                    boolean update = tMeasureTaskService.updateById(task);
+                    boolean update = tMeasureTaskService.saveOrUpdate(task);
                     if (!update) {
                         log.error("更新任务失败: " + taskId);
                     }
                 }
-                boolean update = tMeasureTaskService.updateById(task);
+                boolean update = tMeasureTaskService.saveOrUpdate(task);
                 if (!update) {
                     log.error("更新任务失败: " + taskId);
                 }

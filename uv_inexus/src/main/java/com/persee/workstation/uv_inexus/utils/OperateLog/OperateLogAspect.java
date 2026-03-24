@@ -185,11 +185,21 @@ public class OperateLogAspect {
                     String methodName = signature.getName();
                     logPO.setMethod(className + "." + methodName);
 
-                    // 优化：记录请求参数（解决超长问题）
-                    if (operateLog.recordParams()) {
-                        logPO.setParams(buildParamsJson(joinPoint.getArgs()));
+            // -------------------------- 4. 记录请求参数 --------------------------
+            if (operateLog.recordParams()) {
+                Object[] args = joinPoint.getArgs();
+                Object[] safeArgs = new Object[args.length];
+                for (int i = 0; i < args.length; i++) {
+                    Object arg = args[i];
+                    if (arg != null && arg.getClass().getName().contains("MultipartFile")) {
+                        // 过滤掉MultipartFile类型，避免序列化错误
+                        safeArgs[i] = "[MultipartFile: " + arg.toString() + "]";
+                    } else {
+                        safeArgs[i] = arg;
                     }
                 }
+                String paramsJson = JSON.toJSONString(safeArgs, SerializerFeature.DisableCircularReferenceDetect);
+                logPO.setParams(paramsJson);
             }
 
             // -------------------------- 5. 执行目标方法 --------------------------

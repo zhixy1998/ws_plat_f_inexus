@@ -5,6 +5,7 @@ import lombok.Data;
 
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
+import java.util.List;
 
 /**
  * 光谱扫描方法参数Vo类
@@ -43,4 +44,8 @@ public class SpectrumParameterVo extends MeasurePublicParameters {
     @NotNull(message = "扫描速度不能为空")
     @Pattern(regexp = "^[0-3]$", message = "扫描速度值无效")
     private String scanSpeed;
+    // 消除尖刺(false.不启用 true.启用)
+    private Boolean spikeRemoval;
+    // 尖刺数组
+    private List<String> spikeArray;
 }

@@ -23,6 +23,9 @@ import com.persee.workstation.uv_inexus.dao.guide.measurementDao.*;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.dto.guide.ProjectExportRequestDto;
+import com.persee.workstation.uv_inexus.dto.guide.ProjectImportDto;
+import com.persee.workstation.uv_inexus.dto.guide.ProjectImportResultDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskEnum;
@@ -37,7 +40,6 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TMeasureProjectCollaboratorGroup;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
-
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
@@ -50,11 +52,20 @@ import com.persee.workstation.uv_inexus.vo.concise.common.TaskStatisticVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.TaskDetailVO;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URLEncoder;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -78,11 +89,21 @@ public class DataManagementServiceImpl implements DataManagementService {
     @Autowired
     private TMeasureAnalysisDataMapper analysisDataMapper;
     @Autowired
+    private TMeasureAnalysisImageMapper analysisImageMapper;
+    @Autowired
     private SysUserService userService;
     @Autowired
     private SysUserGroupMapper userGroupMapper ;
     @Autowired
     private TMeasureProjectCollaboratorGroupService collaboratorGroupService;
+
+    // Excel列索引
+    private static final int COL_PROJECT_NAME = 0;
+    private static final int COL_REMARK = 1;
+    private static final int COL_CREATOR = 2;
+    private static final int COL_CREATE_TIME = 3;
+    private static final int COL_OWNER_GROUP = 4;
+    private static final int COL_FIELD5 = 5;
 
     /**
      * 查询未完成任务和已完成任务
@@ -162,10 +183,12 @@ public class DataManagementServiceImpl implements DataManagementService {
             String sampleKey = tMeasureTasks.get(i).getSampleKey();
             List<TaskSpecimen> taskSpecimens = JSON.parseArray(sampleKey, TaskSpecimen.class);
             int count = 0;
-            for (int j = 0; j < taskSpecimens.size(); j++) {
-                String deleteType = taskSpecimens.get(j).getDeleteType();
-                if (deleteType.equals("0")) {
-                    count++;
+            if (taskSpecimens!=null&& taskSpecimens.size() > 0){
+                for (int j = 0; j < taskSpecimens.size(); j++) {
+                    String deleteType = taskSpecimens.get(j).getDeleteType();
+                    if (deleteType.equals("0")) {
+                        count++;
+                    }
                 }
             }
             tMeasureTaskDto.setSampleNumber(count);
@@ -331,6 +354,303 @@ public class DataManagementServiceImpl implements DataManagementService {
         return Result.ok(map);
     }
 
+    @Override
+    public void exportProjects(ProjectExportRequestDto requestDto, HttpServletResponse response) {
+        try {
+            List<String> projectIds = requestDto.getProjectIds();
+
+            // 1. 参数校验
+            if (projectIds == null || projectIds.isEmpty()) {
+                writeErrorResponse(response, "请选择要导出的项目");
+                return;
+            }
+
+            // 2. 查询项目数据
+            List<TMeasureProject> projects = projectManagementMapper.selectList(
+                    new QueryWrapper<TMeasureProject>().in("id", projectIds)
+            );
+
+            if (projects.isEmpty()) {
+                writeErrorResponse(response, "未找到要导出的项目");
+                return;
+            }
+
+            // 3. 创建Excel文件
+            String fileName = "projects_export_" +
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".xlsx";
+
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition",
+                    "attachment; filename=\"" + URLEncoder.encode(fileName, "UTF-8") + "\"");
+
+            try (Workbook workbook = new XSSFWorkbook();
+                 OutputStream os = response.getOutputStream()) {
+
+                Sheet sheet = workbook.createSheet("项目数据");
+
+                // 创建标题行
+                createHeaderRow(sheet);
+
+                // 填充数据行
+                int rowNum = 1;
+                for (TMeasureProject project : projects) {
+                    Row row = sheet.createRow(rowNum++);
+                    row.createCell(COL_PROJECT_NAME).setCellValue(project.getProjectName());
+                    row.createCell(COL_REMARK).setCellValue(project.getRemark() != null ? project.getRemark() : "");
+                    row.createCell(COL_CREATOR).setCellValue(project.getCreatorKey() != null ? project.getCreatorKey() : "");
+                    row.createCell(COL_CREATE_TIME).setCellValue(
+                            project.getCreateTime() != null ?
+                                    project.getCreateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "");
+                    row.createCell(COL_OWNER_GROUP).setCellValue(project.getOwnerGroupId() != null ? project.getOwnerGroupId() : "");
+                    row.createCell(COL_FIELD5).setCellValue(project.getField5() != null ? project.getField5() : "");
+                }
+
+                // 自动调整列宽
+                for (int i = 0; i <= COL_FIELD5; i++) {
+                    sheet.autoSizeColumn(i);
+                }
+
+                workbook.write(os);
+                os.flush();
+            }
+
+        } catch (Exception e) {
+            log.error("导出项目失败", e);
+            writeErrorResponse(response, "导出失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result<ProjectImportResultDto> importProjects(MultipartFile file, ProjectImportDto importDto) {
+        ProjectImportResultDto result = new ProjectImportResultDto();
+        List<String> successIds = new ArrayList<>();
+        List<String> failedNames = new ArrayList<>();
+        List<String> skippedNames = new ArrayList<>();
+
+        int successCount = 0;
+        int failCount = 0;
+        int skipCount = 0;
+
+        try {
+            // 1. 参数校验
+            if (file.isEmpty()) {
+                return Result.fail("导入文件不能为空");
+            }
+
+            if (!StringUtils.isNotBlank(importDto.getUpdateBy())) {
+                return Result.fail("导入负责人不能为空");
+            }
+
+            // 2. 获取当前用户信息
+            SysUserPO currentUser = systemUserManageDAO.selectOne(
+                    new QueryWrapper<SysUserPO>().eq("username", importDto.getUpdateBy())
+            );
+
+            if (currentUser == null) {
+                return Result.fail("用户不存在: " + importDto.getUpdateBy());
+            }
+
+            // 3. 获取用户组信息
+            SysUserGroupPO userGroup = userGroupMapper.selectOne(
+                    new QueryWrapper<SysUserGroupPO>().eq("user_id", currentUser.getId())
+            );
+
+            if (userGroup == null) {
+                return Result.fail("用户未加入任何组: " + importDto.getUpdateBy());
+            }
+
+            // 4. 解析Excel文件
+            try (InputStream is = file.getInputStream();
+                 Workbook workbook = new XSSFWorkbook(is)) {
+
+                Sheet sheet = workbook.getSheetAt(0);
+                if (sheet == null) {
+                    return Result.fail("Excel文件中没有数据");
+                }
+
+                // 从第2行开始读取（跳过标题行）
+                int rowCount = sheet.getPhysicalNumberOfRows();
+                for (int i = 1; i < rowCount; i++) {
+                    Row row = sheet.getRow(i);
+                    if (row == null) continue;
+
+                    try {
+                        // 读取数据
+                        String projectName = getCellValue(row.getCell(COL_PROJECT_NAME));
+                        if (!StringUtils.isNotBlank(projectName)) {
+                            continue; // 项目名称为空，跳过
+                        }
+
+                        String remark = getCellValue(row.getCell(COL_REMARK));
+                        String field5 = getCellValue(row.getCell(COL_FIELD5));
+
+                        // 检查项目是否已存在
+                        TMeasureProject existingProject = projectManagementMapper.selectOne(
+                                new QueryWrapper<TMeasureProject>()
+                                        .eq("project_name", projectName)
+                                        .eq("is_delete", "0")
+                        );
+
+                        if (existingProject != null && !importDto.getOverwrite()) {
+                            // 项目存在且不覆盖，跳过
+                            skippedNames.add(projectName);
+                            skipCount++;
+                            continue;
+                        }
+
+                        // 创建或更新项目
+                        TMeasureProject project;
+                        if (existingProject != null && importDto.getOverwrite()) {
+                            project = existingProject;
+                        } else {
+                            project = new TMeasureProject();
+                            project.setId(UUID.randomUUID().toString());
+                            project.setCreateTime(LocalDateTime.now());
+                        }
+
+                        project.setProjectName(projectName);
+                        project.setRemark(remark);
+                        project.setField5(field5);
+                        project.setLastUpdatedTime(LocalDateTime.now());
+                        project.setCreatorKey(importDto.getUpdateBy());
+                        project.setLastUpdatedBy(importDto.getUpdateBy());
+                        project.setOwnerGroupId(userGroup.getGroupId());
+                        project.setIsDelete("0");
+
+                        // 保存
+                        if (existingProject != null && importDto.getOverwrite()) {
+                            projectManagementMapper.updateById(project);
+                        } else {
+                            projectManagementMapper.insert(project);
+                        }
+
+                        successIds.add(project.getId());
+                        successCount++;
+
+                    } catch (Exception e) {
+                        log.error("导入第{}行失败", i+1, e);
+                        failedNames.add("第" + (i+1) + "行");
+                        failCount++;
+                    }
+                }
+            }
+
+            // 5. 构建返回结果
+            result.setSuccessCount(successCount);
+            result.setFailCount(failCount);
+            result.setSkipCount(skipCount);
+            result.setSuccessIds(successIds);
+            result.setFailedNames(failedNames);
+            result.setSkippedNames(skippedNames);
+
+            return Result.ok(result);
+
+        } catch (Exception e) {
+            log.error("导入项目失败", e);
+            return Result.fail("导入失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    public void downloadTemplate(HttpServletResponse response) {
+        try {
+            String fileName = "project_import_template.xlsx";
+
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition",
+                    "attachment; filename=\"" + URLEncoder.encode(fileName, "UTF-8") + "\"");
+
+            try (Workbook workbook = new XSSFWorkbook();
+                 OutputStream os = response.getOutputStream()) {
+
+                Sheet sheet = workbook.createSheet("项目导入模板");
+
+                // 创建标题行
+                createHeaderRow(sheet);
+
+                // 创建示例行
+                Row exampleRow = sheet.createRow(1);
+                exampleRow.createCell(COL_PROJECT_NAME).setCellValue("示例项目名称");
+                exampleRow.createCell(COL_REMARK).setCellValue("项目备注");
+                exampleRow.createCell(COL_CREATOR).setCellValue("创建人");
+                exampleRow.createCell(COL_CREATE_TIME).setCellValue("2024-01-01 00:00:00");
+                exampleRow.createCell(COL_OWNER_GROUP).setCellValue("group123");
+                exampleRow.createCell(COL_FIELD5).setCellValue("预留字段");
+
+                // 设置列宽
+                for (int i = 0; i <= COL_FIELD5; i++) {
+                    sheet.autoSizeColumn(i);
+                }
+
+                workbook.write(os);
+                os.flush();
+            }
+
+        } catch (Exception e) {
+            log.error("下载模板失败", e);
+            writeErrorResponse(response, "下载模板失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 创建标题行
+     */
+    private void createHeaderRow(Sheet sheet) {
+        Row headerRow = sheet.createRow(0);
+        headerRow.createCell(COL_PROJECT_NAME).setCellValue("项目名称");
+        headerRow.createCell(COL_REMARK).setCellValue("备注");
+        headerRow.createCell(COL_CREATOR).setCellValue("创建人");
+        headerRow.createCell(COL_CREATE_TIME).setCellValue("创建时间");
+        headerRow.createCell(COL_OWNER_GROUP).setCellValue("归属组ID");
+        headerRow.createCell(COL_FIELD5).setCellValue("预留字段5");
+
+        // 设置标题行样式
+        CellStyle style = sheet.getWorkbook().createCellStyle();
+        Font font = sheet.getWorkbook().createFont();
+        font.setBold(true);
+        style.setFont(font);
+
+        for (int i = 0; i <= COL_FIELD5; i++) {
+            headerRow.getCell(i).setCellStyle(style);
+        }
+    }
+
+    /**
+     * 获取单元格值
+     */
+    private String getCellValue(Cell cell) {
+        if (cell == null) return "";
+
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getDateCellValue().toString();
+                } else {
+                    return String.valueOf(cell.getNumericCellValue());
+                }
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            default:
+                return "";
+        }
+    }
+
+    /**
+     * 写入错误响应
+     */
+    private void writeErrorResponse(HttpServletResponse response, String message) {
+        try {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write(JSON.toJSONString(Result.fail(message)));
+        } catch (Exception e) {
+            log.error("写入错误响应失败", e);
+        }
+    }
+
     /**
      * 用户任务统计
      * @param vo
@@ -371,8 +691,8 @@ public class DataManagementServiceImpl implements DataManagementService {
         pageWrapper.eq("user_id", user.getId());
 
         // 根据测量模式筛选
-        if (StringUtils.isNotBlank(vo.getMeasureMode())) {
-            pageWrapper.eq("measure_mode", vo.getMeasureMode());
+        if (StringUtils.isNotBlank(vo.getMeasureType())) {
+            pageWrapper.eq("measure_type", vo.getMeasureType());
         }
 
         // 根据任务名称模糊查询
@@ -614,6 +934,10 @@ public class DataManagementServiceImpl implements DataManagementService {
             methodSumListDto.setLastUseTime(method.getMethodUseTime());
             methodSumList.add(methodSumListDto);
         }
+        result.setTotal(methodPage.getTotal()); // 总记录数
+        result.setPageNum((int) methodPage.getCurrent()); // 当前页码
+        result.setPageSize((int) methodPage.getSize());
+        result.setPages(methodPage.getPages()); // 总页数
         result.setMethodList(methodSumList);
         return Result.ok(result);
     }
@@ -838,7 +1162,7 @@ public class DataManagementServiceImpl implements DataManagementService {
     查询全部任务
      */
     @Override
-    public Result<Page<TaskManagementDto>> getTasksManagementList(TaskQueryParam taskQueryParam) {
+    public Result<Map<String,Object>> getTasksManagementList(TaskQueryParam taskQueryParam) {
         // 参数校验
         if (taskQueryParam == null) {
             //查询参数不能为空
@@ -852,45 +1176,55 @@ public class DataManagementServiceImpl implements DataManagementService {
         Page<TMeasureTask> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
 
-        // 精确查询条件（添加空值判断）
-        if (taskQueryParam.getSelectType() != null) {
-            queryWrapper.eq(TMeasureTask::getMeasureType, taskQueryParam.getSelectType());
-        }
-
         // 模糊查询条件（添加空值判断）
         if (StringUtils.isNotBlank(taskQueryParam.getKeyword())) {
             queryWrapper.like(TMeasureTask::getTaskName, taskQueryParam.getKeyword());
         }
 
         Page<TMeasureTask> result = taskManagementMapper.selectPage(page, queryWrapper);
-        Page<TaskManagementDto> dtoPage = new Page<>();
-        dtoPage.setCurrent(result.getCurrent());
-        dtoPage.setSize(result.getSize());
-        dtoPage.setTotal(result.getTotal());
-        dtoPage.setPages(result.getPages());
+        List<TMeasureTask> records = result.getRecords();
+        List<TaskManagementDto> dtoList = new ArrayList<>();
+        for (TMeasureTask record : records) {
+            String proName;
+            String methodName;
+            if (record.getProjectItemKey()!=null){
+                TMeasureProject project = projectManagementMapper.selectById(record.getProjectItemKey());
+                proName=project.getProjectName();
+            }else{
+                proName="";
+            }
+            if (record.getMethodKey()!=null){
+                TMeasureMethod tMeasureMethod = methodManagementMapper.selectById(record.getMethodKey());
+                if (tMeasureMethod!=null){
+                    methodName=tMeasureMethod.getMethodName();
+                }else{
+                    methodName="";
+                }
+            }else {
+                methodName="";
+            }
 
-        List<TaskManagementDto> dtoList = result.getRecords().stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-        dtoPage.setRecords(dtoList);
-
-        return Result.ok(dtoPage);
-    }
-
-    private TaskManagementDto convertToDto(TMeasureTask entity) {
-        TaskManagementDto dto = new TaskManagementDto();
-        BeanUtils.copyProperties(entity, dto);
-        LambdaQueryWrapper<TMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(TMeasureMethod::getId, entity.getMethodKey());
-        TMeasureMethod tMeasureMethod = methodManagementMapper.selectOne(queryWrapper);
-        dto.setMethodName(tMeasureMethod.getMethodName());
-        LambdaQueryWrapper<TMeasureProject> proQueryWrapper = new LambdaQueryWrapper<>();
-        proQueryWrapper.eq(TMeasureProject::getId, entity.getProjectItemKey());
-        TMeasureProject tMeasureProject = projectManagementMapper.selectOne(proQueryWrapper);
-        dto.setProjectName(tMeasureProject.getProjectName());
-        dto.setId(entity.getId());
-        dto.setTaskName(entity.getTaskName());
-        return dto;
+            List<TaskSpecimen> specimen = JSON.parseArray(record.getSampleKey(), TaskSpecimen.class);
+            TaskManagementDto dto = TaskManagementDto.builder()
+                    .id(record.getId())
+                    .taskName(record.getTaskName())
+                    .projectName(proName)
+                    .startTime(record.getStartTime()!=null?record.getStartTime().toString(): "-")
+                    .sampleKey(specimen != null ? specimen.size() : 0)
+                    .methodId(record.getMethodKey())
+                    .methodName(methodName)
+                    .measureType(record.getMeasureType())
+                    .build();
+            dtoList.add(dto);
+        }
+        // 创建map结构用于返回
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("current", result.getCurrent());      // 当前页数
+        resultMap.put("size", result.getSize());           // 每页记录数
+        resultMap.put("total", result.getTotal());         // 总记录数
+        resultMap.put("pages", result.getPages());         // 总页数
+        resultMap.put("result", dtoList);                 // 数据列表
+        return Result.ok(resultMap);
     }
 
     LaTeXConverter converter = new LaTeXConverter();
@@ -904,40 +1238,58 @@ public class DataManagementServiceImpl implements DataManagementService {
     @Override
     public Result<String> deleteTask(Box List) {
         List<String> deleteTaskIdList = List.getParams();
+        // 遍历要删除的任务
         for (String deleteTaskId : deleteTaskIdList) {
-            LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(TMeasureTask::getId, deleteTaskId);
-            TMeasureTask tMeasureTask = taskManagementMapper.selectOne(queryWrapper);
-            String sampleKey = tMeasureTask.getSampleKey();
-            List<TMeasureSample> tMeasureSamples = JSON.parseArray(sampleKey, TMeasureSample.class);
             try {
-                for (TMeasureSample TMeasureSample : tMeasureSamples) {
-                    String specimenKey = TMeasureSample.getId();
-
-                    sampleManagementMapper.deleteById(specimenKey);
+                // 根据当前任务id查询当前任务数据
+                TMeasureTask tMeasureTask = taskManagementMapper.selectById(deleteTaskId);
+                // 取出并转换当前任务的所有样品
+                List<TMeasureSample> tMeasureSamples = JSON.parseArray(tMeasureTask.getSampleKey(), TMeasureSample.class);
+                if (tMeasureSamples!=null&&tMeasureSamples.size()!=0) {
+                    for (TMeasureSample TMeasureSample : tMeasureSamples) {
+                        String specimenKey = TMeasureSample.getId();
+                        sampleManagementMapper.deleteById(specimenKey);
+                    }
                 }
-                dataManagementMapper.delete(new LambdaQueryWrapper<TMeasureData>().eq(TMeasureData::getTaskId, deleteTaskId));
-                analysisDataMapper.delete(new LambdaQueryWrapper<TMeasureAnalysisData>().eq(TMeasureAnalysisData::getTaskId, deleteTaskId));
-
+                // 查询当前任务是否有测量数据,如果有则进行删除
+                LambdaQueryWrapper<TMeasureData> dataWrapper = new LambdaQueryWrapper<>();
+                dataWrapper.eq(TMeasureData::getTaskId, deleteTaskId);
+                dataWrapper.last("LIMIT 1");
+                TMeasureData tMeasureData = dataManagementMapper.selectOne(dataWrapper);
+                if (tMeasureData != null) {
+                    dataManagementMapper.delete(new LambdaQueryWrapper<TMeasureData>().eq(TMeasureData::getTaskId, deleteTaskId));
+                }
+                // 查询当前任务是否有分析数据,如果有则进行删除(附加分析图片表数据)
+                LambdaQueryWrapper<TMeasureAnalysisData> analyWrapper = new LambdaQueryWrapper<>();
+                analyWrapper.eq(TMeasureAnalysisData::getTaskId, deleteTaskId);
+                List<TMeasureAnalysisData> analysisData = analysisDataMapper.selectList(analyWrapper);
+                if (analysisData != null && analysisData.size() != 0) {
+                    for (TMeasureAnalysisData tMeasureAnalysisData : analysisData) {
+                        String analysisDataKey = tMeasureAnalysisData.getId();
+                        QueryWrapper<TMeasureAnalysisImage> wrapper = new QueryWrapper<>();
+                        wrapper.eq("analysis_id", analysisDataKey);
+                        TMeasureAnalysisImage byId = analysisImageMapper.selectOne(wrapper);
+                        if (byId != null) {
+                            analysisImageMapper.delete(wrapper);
+                        }
+                        analysisDataMapper.deleteById(analysisDataKey);
+                    }
+                }
                 int res = taskManagementMapper.deleteById(deleteTaskId);
                 if (res == 0) {
                     //任务删除失败
                     return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
                 }
-                //删除成功
-                return Result.ok(YamlMessageSource.getMessageStatic("00100022"));
             } catch (Exception e) {
                 int i = taskManagementMapper.deleteById(deleteTaskId);
                 if (i == 0) {
                     //任务删除失败
                     return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
                 }
-                //删除成功
-                return Result.ok(YamlMessageSource.getMessageStatic("00100022"));
             }
 
         }
-        return null;
+        return Result.ok();
     }
 
     @Override

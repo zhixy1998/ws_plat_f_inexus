@@ -343,7 +343,10 @@ public class ConciseBaseLineNewWebSocket {
                 inputParam.setAction(ActionCmdEnum.BaseLineFast);
             }
 
-            devOperationUtilService.operation(inputParam);
+            R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
+            if (!r.getSuccess()) {
+                sendError(deviceSerialNumber,r.getMessage());
+            }
 
             dataPointIndexMap.put(deviceSerialNumber, 0);
             log.info("【开始基线测量】设备: {}, 模式: {}, IP: {}",

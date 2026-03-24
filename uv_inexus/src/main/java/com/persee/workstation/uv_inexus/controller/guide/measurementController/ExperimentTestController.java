@@ -418,6 +418,13 @@ public class ExperimentTestController {
     }
 
 
+    @GetMapping("taskTermination")
+    @ApiOperation("任务终止")
+    public Result taskTermination(@RequestParam String taskId) {
+        return experimentTestService.taskTermination(taskId);
+    }
+
+
     @ButtonPermission(
             description = "实验测试-向导模式-测量", // 操作描述
             permissionMapping = "lumne=wizardModeLumneMeasurement,quantity=wizardModeQuantityMeasurement,spectralScan=wizardModeSpectralScanScan,timeScan=wizardModeTimeScanScan" // 自定义操作类型→驼峰权限标识

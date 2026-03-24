@@ -443,7 +443,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
         // 3. 比较参数
         if (compareParam(oldParam, newParam)) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00104001"));
+            return Result.ok();
         }
 
         boolean methodBoolean = false;
@@ -2029,7 +2029,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             //请输入点数
             return Result.fail(YamlMessageSource.getMessageStatic("00000039"));
         }
-        if (Double.valueOf(paramDto.getCoefficient()) > Double.valueOf(paramDto.getPointNum())) {
+        if (Double.valueOf(paramDto.getCoefficient()) >= Double.valueOf(paramDto.getPointNum())) {
             //系数不能大于点数
             return Result.fail(YamlMessageSource.getMessageStatic("0000003A"));
         }
@@ -2169,7 +2169,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             //请输入点数
             return Result.fail(YamlMessageSource.getMessageStatic("00000039"));
         }
-        if (Double.valueOf(paramDto.getCoefficient()) > Double.valueOf(paramDto.getPointNum())) {
+        if (Double.valueOf(paramDto.getCoefficient()) >= Double.valueOf(paramDto.getPointNum())) {
             //系数不能大于点数
             return Result.fail(YamlMessageSource.getMessageStatic("0000003A"));
         }
@@ -3945,9 +3945,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             if (totalNumber <= 0) {
                 return R.fail("扫描总个数必须大于0，当前值：" + totalNumber);
             }
-            if (totalNumber > 9999) {
-                return R.fail("扫描总个数不能超过9999，当前值：" + totalNumber);
-            }
 
             // 验证扫描总时长、时间间隔和总个数的关系
             if (parameter.getScanUnit().equals("1")) { // 秒模式
@@ -3972,12 +3969,12 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
             // 根据单位设置最大扫描时长限制
             if ("0".equals(scanUnit)) { // 分
-                if (scanTime > 1440) { // 最大24小时
-                    return R.fail("扫描总时长（分）不能超过1440分钟（24小时），当前值：" + scanTime);
+                if (scanTime > 10000) {
+                    return R.fail("扫描总时长（分）不能超过10000分钟，当前值：" + scanTime);
                 }
             } else { // 秒
-                if (scanTime > 3600) { // 最大1小时
-                    return R.fail("扫描总时长（秒）不能超过3600秒（1小时），当前值：" + scanTime);
+                if (scanTime > 10000) {
+                    return R.fail("扫描总时长（秒）不能超过10000秒，当前值：" + scanTime);
                 }
             }
 

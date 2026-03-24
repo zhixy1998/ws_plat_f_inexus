@@ -11,7 +11,11 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @Slf4j
@@ -22,6 +26,8 @@ public class SpectrumResultCalculator {
 
 //    private static final double Z = 1.0;
 
+
+    private final Map<String, List<Double>> wavelengthCache = new ConcurrentHashMap<>();
     /**
      * @param luminosity 1=Abs, 2=T%, 3=Es, 4=Er
      */
@@ -96,12 +102,11 @@ public class SpectrumResultCalculator {
             BigDecimal w = BigDecimal.valueOf(sp.getWavelength());
             String wl = w.stripTrailingZeros().toPlainString();
 
-//            Double Zobj = sp.getDarkZ();
-//            double Z = (Zobj == null) ? 1.0 : Zobj;
 
             Double Z = getZFromDatabase(deviceSerialNumber, wl);
             Z = (Z == null) ? 1.0 : Z;
 
+            log.info("Wl={}, Z={}", wl, Z);
 
             double a1;
             if (origin == null || origin.isEmpty()) {
@@ -140,7 +145,7 @@ public class SpectrumResultCalculator {
 //            Double Zobj = sp.getDarkZ();
 //            double Z = (Zobj == null) ? 1.0 : Zobj;
 
-            Double Z = getZFromDatabase(deviceSerialNumber, wl);
+            Double Z = getZFromDatabase2(deviceSerialNumber, wl);
             Z = (Z == null) ? 0.1 : Z;
 
 
@@ -216,6 +221,111 @@ public class SpectrumResultCalculator {
             return null;
         }
         return null;  // 如果没有找到 Z 值，返回 null
+    }
+
+    Double getZFromDatabase2(String deviceSerialNumber, String wl) {
+
+        try {
+            DeviceInfoPO po = deviceInfoService.getInfo(deviceSerialNumber);
+            if (po == null || po.getDarkInfo() == null) {
+                return null;
+            }
+
+            Map<String, String> darkInfo = po.getDarkInfo();
+
+            //当前波长
+            double x = Double.parseDouble(wl);
+
+            //精确匹配
+            String exact = darkInfo.get(wl);
+            if (exact != null && !exact.isEmpty()) {
+                return Double.parseDouble(exact);
+            }
+
+            //获取排序后的波长
+            List<Double> wavelengths = getSortedWavelengths(deviceSerialNumber, darkInfo);
+
+            if (wavelengths.isEmpty()) {
+                return null;
+            }
+
+            if (wavelengths.size() == 1) {
+                return Double.parseDouble(
+                        darkInfo.get(String.valueOf(wavelengths.get(0)))
+                );
+            }
+
+            //查找
+            int left = 0;
+            int right = wavelengths.size() - 1;
+
+            while (left <= right) {
+
+                int mid = (left + right) / 2;
+                double midVal = wavelengths.get(mid);
+
+                if (midVal == x) {
+                    return Double.parseDouble(darkInfo.get(String.valueOf(midVal)));
+                } else if (midVal < x) {
+                    left = mid + 1;
+                } else {
+                    right = mid - 1;
+                }
+            }
+
+            //边界处理
+            if (right < 0) {
+                // x 比最小波长还小
+                double minWl = wavelengths.get(0);
+                return Double.parseDouble(darkInfo.get(String.valueOf(minWl)));
+            }
+
+            if (left >= wavelengths.size()) {
+                // x 比最大波长还大
+                double maxWl = wavelengths.get(wavelengths.size() - 1);
+                return Double.parseDouble(darkInfo.get(String.valueOf(maxWl)));
+            }
+
+
+            double x1 = wavelengths.get(right);
+            double x2 = wavelengths.get(left);
+
+            BigDecimal bd1 = BigDecimal.valueOf(x1);
+            BigDecimal bd2 = BigDecimal.valueOf(x2);
+            String key1 = bd1.stripTrailingZeros().toPlainString();
+            String key2 = bd2.stripTrailingZeros().toPlainString();
+
+            double y1 = Double.parseDouble(darkInfo.get(key1));
+            double y2 = Double.parseDouble(darkInfo.get(key2));
+
+            if (Math.abs(y2 - y1) < 1e-7) {
+                return y1;
+            }
+
+            return y1 + (x - x1) * (y2 - y1) / (x2 - x1);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+    private List<Double> getSortedWavelengths(String deviceSerialNumber, Map<String, String> darkInfo) {
+
+        return wavelengthCache.computeIfAbsent(deviceSerialNumber, k -> {
+
+            List<Double> list = new ArrayList<>();
+
+            for (String key : darkInfo.keySet()) {
+                try {
+                    list.add(Double.parseDouble(key));
+                } catch (Exception ignored) {}
+            }
+
+            Collections.sort(list);
+            return list;
+        });
     }
 }
 
