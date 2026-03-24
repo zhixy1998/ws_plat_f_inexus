@@ -2789,7 +2789,7 @@ public class RationServiceImpl implements RationService {
 
     }
 
-    private Map<String, Map<String, String>> extracted(List<String> option, RationWavelengthDataInfo wlData, TMeasureSample sample, Integer digit) {
+    private Map<String, Map<String, String>> extracted(List<String> option, RationWavelengthDataInfo wlData, TMeasureSample sample, Integer digit, Integer otherDigit) {
 
         Map<String, Map<String, String>> ans = new HashMap<>();
 
@@ -2808,7 +2808,7 @@ public class RationServiceImpl implements RationService {
                     children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
 
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(wlData.getAbsValue()), digit));
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(wlData.getTPercentValue()), digit));
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(wlData.getTPercentValue()), otherDigit));
                     ans.putIfAbsent(pre + DataIdentityEnums.avg.getIdentity(), children);
                 }
                 if (DataIdentityEnums.sd.getIdentity().equals(s)) {
@@ -2987,7 +2987,7 @@ public class RationServiceImpl implements RationService {
 //                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
 //                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getTPercentValue()));
 
-                            Map<String, Map<String, String>> ch = extracted(option, dataInfo, sample, digit);
+                            Map<String, Map<String, String>> ch = extracted(option, dataInfo, sample, digit, otherDigit);
                             if (!ch.isEmpty()) {
                                 for (Map.Entry<String, Map<String, String>> entry : ch.entrySet()) {
                                     String key = entry.getKey();
