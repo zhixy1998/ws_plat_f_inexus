@@ -1595,18 +1595,18 @@ public class ConciseSpectrumNewWebSocket {
             }
         }
         List<Double> yForStorage = processedY; // 用于存储的Y值
-        // 如果需要台阶校正
-        if (ladderCorrection) {
-            log.info("开始台阶校正");
-            List<Double> correctedY = processAndSaveDataStep(task, processedX, processedY,
-                    spectrumParameter, sampleId);
-            processedY = correctedY;
-            yForStorage = correctedY; // 开启校正时存储校正后的数据
-            log.info("台阶校正完成");
-        } else {
-            // 未开启校正时存储原始数据
-            yForStorage = processedY;
-        }
+//        // 如果需要台阶校正
+//        if (ladderCorrection) {
+//            log.info("开始台阶校正");
+//            List<Double> correctedY = processAndSaveDataStep(task, processedX, processedY,
+//                    spectrumParameter, sampleId);
+//            processedY = correctedY;
+//            yForStorage = correctedY; // 开启校正时存储校正后的数据
+//            log.info("台阶校正完成");
+//        } else {
+//            // 未开启校正时存储原始数据
+//            yForStorage = processedY;
+//        }
 
         // 关键修改：根据是否开启阶梯校正来决定存储的数据
         String key = deviceSerialNumber + "_" + sampleId + "_" + count;
@@ -1997,7 +1997,27 @@ public class ConciseSpectrumNewWebSocket {
         String sessionId =deviceSerialNumber;
         String storageKey = sessionId + "_" + sampleId + "_" + number;
 
+        // 2. 保存测量数据
+        List<FTaskSpecimen> sampleData = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        FTaskSpecimen taskSpecimen = null;
+        for (FTaskSpecimen data : sampleData) {
+            if (data.getSpecimenKey().equals(sampleId)) {
+                taskSpecimen = data;
+                break;
+            }
+        }
+        if (taskSpecimen == null) {
+            log.warn("未找到该样品: " + sampleId);
+            return;
+        }
+
+        FMeasureSample sample = tMeasureSampleService.getById(taskSpecimen.getSpecimenKey());
+        FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        FSpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+        Boolean isScanFast = spectrumParameter.getScanSpeed().equals("3");
+
         try {
+
             SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
             // 1. 处理峰谷数据
             HttpHeaders headers = new HttpHeaders();
@@ -2033,63 +2053,65 @@ public class ConciseSpectrumNewWebSocket {
                     }
                 }
             }
-
-            String peakUrl = pythonPathConstant.getPeakSearching();
-            String valleyUrl = pythonPathConstant.getValleySearching();
-
             List<FPeakValleyMarking> peakValleys = new ArrayList<>();
             List<FPeakValleyMarking> markings = new ArrayList<>();
-            try {
-                // 添加日志输出（调试用）
-                System.out.println("调用寻峰接口: " + peakUrl);
-                System.out.println("调用寻谷接口: " + valleyUrl);
+            if (!isScanFast){
+                String peakUrl = pythonPathConstant.getPeakSearching();
+                String valleyUrl = pythonPathConstant.getValleySearching();
+                try {
+                    // 添加日志输出（调试用）
+                    System.out.println("调用寻峰接口: " + peakUrl);
+                    System.out.println("调用寻谷接口: " + valleyUrl);
 
-                body.put("x_data", x);
-                body.put("y_data", originalY);
-                double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
-                body.put("height", height);
-                body.put("distance", confVO.getPeakInterval());
-                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+                    body.put("x_data", x);
+                    body.put("y_data", originalY);
+                    double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+                    body.put("height", height);
+                    body.put("distance", confVO.getPeakInterval());
+                    HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
 
-                Map<String, Object> resultMap = restTemplate.postForEntity(peakUrl, request, Map.class).getBody();
-                List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
-                List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
-                for (int i = 0; i < xDataFeng.size(); i++) {
-                    FPeakValleyMarking marking = new FPeakValleyMarking();
-                    marking.setX(xDataFeng.get(i).toString());
-                    marking.setY(yDataFeng.get(i));
-                    marking.setType("波峰");
-                    peakValleys.add(marking);
+                    Map<String, Object> resultMap = restTemplate.postForEntity(peakUrl, request, Map.class).getBody();
+                    List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
+                    List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
+                    for (int i = 0; i < xDataFeng.size(); i++) {
+                        FPeakValleyMarking marking = new FPeakValleyMarking();
+                        marking.setX(xDataFeng.get(i).toString());
+                        marking.setY(yDataFeng.get(i));
+                        marking.setType("波峰");
+                        peakValleys.add(marking);
+                    }
+                } catch (Exception e) {
+                    log.error("调用寻峰算法失败: {}", e.getMessage(), e);
                 }
-            } catch (Exception e) {
-                log.error("调用寻峰算法失败: {}", e.getMessage(), e);
-            }
-            try {
-                body.clear();
-                body.put("x_data", x);
-                body.put("y_data", originalY);
-                double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
-                body.put("height", height);
-                body.put("distance", confVO.getPeakInterval());
-                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-                Map<String, Object> resultMap1 = restTemplate.postForEntity(valleyUrl, request, Map.class).getBody();
+                try {
+                    body.clear();
+                    body.put("x_data", x);
+                    body.put("y_data", originalY);
+                    double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+                    body.put("height", height);
+                    body.put("distance", confVO.getPeakInterval());
+                    HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+                    Map<String, Object> resultMap1 = restTemplate.postForEntity(valleyUrl, request, Map.class).getBody();
 
-                List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
-                List<String> yDataGu = (List<String>) resultMap1.get("valley_y");
+                    List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
+                    List<String> yDataGu = (List<String>) resultMap1.get("valley_y");
 
 
-                for (int i = 0; i < xDataGu.size(); i++) {
-                    FPeakValleyMarking marking = new FPeakValleyMarking();
-                    marking.setX(xDataGu.get(i).toString());
-                    marking.setY(yDataGu.get(i));
-                    marking.setType("波谷");
-                    markings.add(marking);
+                    for (int i = 0; i < xDataGu.size(); i++) {
+                        FPeakValleyMarking marking = new FPeakValleyMarking();
+                        marking.setX(xDataGu.get(i).toString());
+                        marking.setY(yDataGu.get(i));
+                        marking.setType("波谷");
+                        markings.add(marking);
+                    }
+                } catch (Exception e) {
+                    log.error("调用寻谷算法失败: {}", e.getMessage(), e);
+                    // 失败时不处理，继续执行保存原始数据
                 }
-            } catch (Exception e) {
-                log.error("调用寻谷算法失败: {}", e.getMessage(), e);
-                // 失败时不处理，继续执行保存原始数据
+
             }
+
 
             // 构建结果字符串，存储时使用原始Y值
             List<String> result = new ArrayList<>();
@@ -2098,22 +2120,7 @@ public class ConciseSpectrumNewWebSocket {
                 result.add(x.get(i) + "," + originalYValue);
             }
 
-            // 2. 保存测量数据
-            List<FTaskSpecimen> sampleData = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-            FTaskSpecimen taskSpecimen = null;
-            for (FTaskSpecimen data : sampleData) {
-                if (data.getSpecimenKey().equals(sampleId)) {
-                    taskSpecimen = data;
-                    break;
-                }
-            }
-            if (taskSpecimen == null) {
-                log.warn("未找到该样品: " + sampleId);
-                return;
-            }
-            FMeasureSample sample = tMeasureSampleService.getById(taskSpecimen.getSpecimenKey());
-            FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-            FSpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+
             if ("不重复".equals(spectrumParameter.getRepetitionPattern())) {
                 // 普通模式
                 FMeasureData measureData = traceDataService.getOne(new QueryWrapper<FMeasureData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("serial_number", number).last("limit 1"));
