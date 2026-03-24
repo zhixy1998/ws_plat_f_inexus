@@ -1,7 +1,2 @@
-UPDATE t_device_type_info
-SET work_time_count = '{"0": "慢速", "1": "中速", "2": "快速", "3": "极快"}'
-WHERE dev_type = 'T600/T700';
-
-UPDATE t_device_type_info
-SET work_time_count = '{"0": "快速", "1": "中速", "2": "慢速", "3": "最慢"}'
-WHERE dev_type = 'T800';
+UPDATE `t800_uv_inexus`.`t_device_type_info` SET `dev_type` = 'T600/T700', `luminosity` = '[0, 1, 2, 3]', `lamp_type` = '[0, 1]', `connect_mode` = 1, `coefficient` = 50, `gain` = '[1, 2, 3, 4]', `response_time` = '[\"0.5\", \"1\", \"2\"]', `scan_speed` = '{\"0\": \"慢速\", \"1\": \"中速\", \"2\": \"快速\", \"3\": \"极快\"}', `min_wavelength` = '190', `max_wavelength` = '1100', `scan_interval` = '[\"0.1\", \"0.2\", \"0.5\", \"1.0\", \"2.0\", \"5.0\"]', `calibration_type` = '[1, 2]', `work_time_count` = NULL WHERE `id` = 1;
+UPDATE `t800_uv_inexus`.`t_device_type_info` SET `dev_type` = 'T800', `luminosity` = '[0, 1, 2, 3]', `lamp_type` = '[0, 1]', `connect_mode` = 1, `coefficient` = 40, `gain` = '[1, 2, 3, 4]', `response_time` = '[\"0.01\", \"0.02\", \"0.05\", \"0.1\", \"0.2\", \"0.5\", \"1\", \"2\"]', `scan_speed` = '{\"0\": \"快速\", \"1\": \"中速\", \"2\": \"慢速\", \"3\": \"最慢\"}', `min_wavelength` = '190', `max_wavelength` = '900', `scan_interval` = '[\"0.1\", \"0.2\", \"0.5\", \"1.0\", \"2.0\", \"5.0\"]', `calibration_type` = '[1, 3]', `work_time_count` = '[{\"type\": \"仪器\", \"workTime\": \"GetDeviceCurrentTime\", \"updateTime\": null, \"totalWorkTime\": \"GetDeviceTotalTime\"}, {\"type\": \"钨灯\", \"workTime\": \"GetWLampCurrentTime\", \"updateTime\": null, \"totalWorkTime\": \"GetWLampTotalTime\"}, {\"type\": \"氘灯\", \"workTime\": \"GetDLampCurrentTime\", \"updateTime\": null, \"totalWorkTime\": \"GetDLampTotalTime\"}]' WHERE `id` = 2;
