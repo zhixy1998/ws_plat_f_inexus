@@ -588,7 +588,7 @@ public class GuidePhotometricWebSocket {
             //循环测完，开始计算平均值
             String name = WaveLengthEnum.getName(parameter.getLuminosity());
             if (!StringUtils.hasText(name)) {
-                name = "abs";
+                name = "Abs";
             }
             switch (name) {
                 case "Abs":
@@ -642,7 +642,7 @@ public class GuidePhotometricWebSocket {
                     Map<String, List<Double>> erValues = originDataList.stream()
                             .collect(Collectors.groupingBy(
                                     PhotometricOriginDataInfo::getWavelength,
-                                    Collectors.mapping(info -> Double.parseDouble(info.getData().get(info.getWavelength() + "-" + WaveLengthEnum.abs.getCode())), Collectors.toList())
+                                    Collectors.mapping(info -> Double.parseDouble(info.getData().get(info.getWavelength() + "-" + info.getMode())), Collectors.toList())
                             ));
                     for (String waveLength : waveLengths) {
                         PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();

@@ -626,7 +626,7 @@ public class ConcisePhotometricNewWebSocket {
             //循环测完，开始计算平均值
             String name = WaveLengthEnum.getName(parameter.getLuminosity());
             if (!StringUtils.hasText(name)) {
-                name = "abs";
+                name = "Abs";
             }
 
             switch (name) {
