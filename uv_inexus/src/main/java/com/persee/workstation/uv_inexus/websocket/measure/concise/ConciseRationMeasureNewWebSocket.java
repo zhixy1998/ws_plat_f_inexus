@@ -223,11 +223,12 @@ public class ConciseRationMeasureNewWebSocket {
                 }
                 sampleKind = dealSample.getSampleKind();
 
-                R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-                if (!setParams.getSuccess()) {
-                    sendError(deviceSerialNumber, setParams.getMessage());
-                    return;
-                }
+                // 设置参数
+//                R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+//                if (!setParams.getSuccess()) {
+//                    sendError(deviceSerialNumber, setParams.getMessage());
+//                    return;
+//                }
 
                 boolean repeat = parameter.getRepeatMode().equals("单池重复");
                 dealSample.setSampleLocation(null);
@@ -335,12 +336,13 @@ public class ConciseRationMeasureNewWebSocket {
 
             //后续添加仪器状态检测
 
-            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-            if (!setParams.getSuccess()) {
-                 
-                sendError(deviceSerialNumber, setParams.getMessage());
-                return;
-            }
+            // 设置参数
+//            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+//            if (!setParams.getSuccess()) {
+//
+//                sendError(deviceSerialNumber, setParams.getMessage());
+//                return;
+//            }
 
             if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
                 boolean repeat = "单池重复".equals(parameter.getRepeatMode());

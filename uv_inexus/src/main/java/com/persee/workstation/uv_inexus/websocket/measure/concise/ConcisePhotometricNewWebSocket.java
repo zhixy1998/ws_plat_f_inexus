@@ -228,12 +228,12 @@ public class ConcisePhotometricNewWebSocket {
                 }
 
 
-                R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-                if (!setParams.getSuccess()) {
-
-                    sendError(deviceSerialNumber, setParams.getMessage());
-                    return;
-                }
+//                R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+//                if (!setParams.getSuccess()) {
+//
+//                    sendError(deviceSerialNumber, setParams.getMessage());
+//                    return;
+//                }
 
                 if (parameter.getRepetitionPattern().equals("单池重复")) {
                     measure = singleSampleRepeatMeasure(measureSample, parameter, task, deviceSerialNumber);
@@ -307,12 +307,12 @@ public class ConcisePhotometricNewWebSocket {
             }
             task.setDeviceSerialNumber(deviceSerialNumber);
 
-            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-            if (!setParams.getSuccess()) {
-
-                sendError(deviceSerialNumber, setParams.getMessage());
-                return;
-            }
+//            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+//            if (!setParams.getSuccess()) {
+//
+//                sendError(deviceSerialNumber, setParams.getMessage());
+//                return;
+//            }
 
             for (TaskSpecimen specimen : taskSpecimen) {
                 if (!isAutoChangePool && measureCount == 1) {

@@ -226,4 +226,10 @@ public class ConciseCommonController {
     public Result<Boolean> checkApproximateRange(@RequestBody FRoundingVO vo) {
         return conciseCommonService.checkApproximateRange(vo);
     }
+
+    @GetMapping("setUpParametersPort")
+    @ApiOperation("通用: 设置参数接口")
+    public Result setUpParametersPort(@RequestParam String methodId,@RequestParam String deviceSerialNumber,@RequestParam String measureType) {
+        return conciseCommonService.setUpParametersPort(methodId,deviceSerialNumber,measureType);
+    }
 }

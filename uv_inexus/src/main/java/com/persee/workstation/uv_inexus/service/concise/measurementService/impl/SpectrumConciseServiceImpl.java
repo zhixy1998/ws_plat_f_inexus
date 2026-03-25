@@ -269,10 +269,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (!StringUtils.hasText(scanSpeed)) {
             return R.fail("扫描速度不能为空");
         }
-        List<String> validScanSpeeds = Arrays.asList("0", "1", "2", "3"); // 0.慢速 1.中速 2.快速 3.极快
-        if (!validScanSpeeds.contains(scanSpeed)) {
-            return R.fail("扫描速度不合法（可选值：0-慢速、1-中速、2-快速、3-极快），当前值：" + scanSpeed);
-        }
 
         // 5. 重复模式校验
         String repetitionPattern = parameter.getRepetitionPattern();
@@ -2344,7 +2340,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             setParam.setSlit1(Double.valueOf(spectrumParam.getSpectralBandwidth()));
         }
         // 6. 扫描速度
-        setParam.setScanSpeed(Integer.valueOf(spectrumParam.getScanSpeed()));
+        if (!spectrumParam.getScanSpeed().equals(Constants.SCANFAST)) {
+            setParam.setScanSpeed(Integer.valueOf(spectrumParam.getScanSpeed()));
+        }
         // 7. 换灯波长
         setParam.setChangeLampWl(Double.valueOf(spectrumParam.getChangeLampWaveLength()));
         // 8. 设置波长
@@ -2358,7 +2356,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         param.setParam(setParam);
         R<OperationResultEntity> r = devOperationUtilService.operation(param);
         if (r.getSuccess()) {
-            return Result.ok(true);
+            return Result.ok("设置参数成功");
         } else {
             return Result.fail(r.getMessage());
         }

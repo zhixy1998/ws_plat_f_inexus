@@ -83,6 +83,10 @@ public interface RationConciseService {
      * 撤销删除
      */
     Result revokeDel(String taskId, String sampleId);
+
+    // 设置参数接口
+    Result setUpParametersPort(String methodId, String deviceSerialNumber);
+
     /**
      * 查询方法参数
      */
@@ -190,4 +194,6 @@ public interface RationConciseService {
      * 导出文件（集成children和option数据）
      */
     R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, List<String> option);
+
+
 }

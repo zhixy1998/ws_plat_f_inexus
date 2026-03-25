@@ -15,7 +15,6 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
@@ -320,11 +319,11 @@ public class ConciseSpectrumOneNewWebSocket {
         }
 
         /// 设置参数
-        Result result = spectrumService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
-        if (result.getCode() != 200) {
-            sendError(deviceSerialNumber, result.getMessage());
-            return;
-        }
+//        Result result = spectrumService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
+//        if (result.getCode() != 200) {
+//            sendError(deviceSerialNumber, result.getMessage());
+//            return;
+//        }
         // 根据方法id查询方法数据
         FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         // 将方法参数提取出来
@@ -337,7 +336,7 @@ public class ConciseSpectrumOneNewWebSocket {
         inputParam.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setAction(ActionCmdEnum.Scan);
-        if (spectrumParameter.getScanSpeed().equals("3")) {
+        if (spectrumParameter.getScanSpeed().equals(Constants.SCANFAST)) {
             inputParam.setAction(ActionCmdEnum.ScanFast);
         }
 
@@ -811,7 +810,7 @@ public class ConciseSpectrumOneNewWebSocket {
         List<ChangeParam> changeParams = new ArrayList<>();
 
         // 判断是否为极快扫描模式
-        boolean isFastScan = "3".equals(spectrumParameter.getScanSpeed());
+        boolean isFastScan = Constants.SCANFAST.equals(spectrumParameter.getScanSpeed());
 
         if (isFastScan) {
             // 极快扫描模式：优化版本（保持不变）
@@ -1949,7 +1948,7 @@ public class ConciseSpectrumOneNewWebSocket {
         FMeasureSample sample = tMeasureSampleService.getById(taskSpecimen.getSpecimenKey());
         FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         FSpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
-        Boolean isScanFast = spectrumParameter.getScanSpeed().equals("3");
+        Boolean isScanFast = spectrumParameter.getScanSpeed().equals(Constants.SCANFAST);
 
         try {
             SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();

@@ -16,6 +16,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
@@ -3800,6 +3801,82 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             //文件生成失败：e.getMessage()
             return R.fail(YamlMessageSource.getMessageStatic("00302006",e.getMessage()));
         }
+    }
+
+    @Override
+    public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
+        // 1. 参数校验
+        if (methodId == null || methodId.equals("")) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000008"));
+        }
+
+        // 2. 根据methodId查询方法数据（光度测量类型）
+        FMeasureMethod tMeasureMethod = fMeasureMethodService.getOne(
+                new QueryWrapper<FMeasureMethod>()
+                        .eq("id", methodId)
+                        .eq("measurement_type", "光度测量")  // 区分光度类型
+        );
+
+        if (tMeasureMethod == null) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
+
+        // 3. 解析光度参数
+        FPhotometricParameter photometricParam = JSON.parseObject(
+                tMeasureMethod.getMeasurementParamInfo(),
+                FPhotometricParameter.class
+        );
+
+        // 4. 构建设备操作参数
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+        SetParam setParam = new SetParam();
+
+        // 5. 设置光度模式
+        setParam.setPhotoMode(Integer.valueOf(photometricParam.getLuminosity()));
+
+        // 6. 设置换灯波长
+        if (StringUtils.hasText(photometricParam.getChangeLampWaveLength())) {
+            setParam.setChangeLampWl(Double.parseDouble(photometricParam.getChangeLampWaveLength()));
+        }
+
+        // 7. 设置光谱带宽
+        if (StringUtils.hasText(photometricParam.getSpectralBandwidth())
+                && deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+            setParam.setSlit1(Double.parseDouble(photometricParam.getSpectralBandwidth()));
+        }
+
+        // 8. 设置响应时间
+        if (StringUtils.hasText(photometricParam.getResponseTime())) {
+            setParam.setResponseTime(Double.parseDouble(photometricParam.getResponseTime()));
+        }
+
+        // 9. 如果是能量模式（Es/Er），设置能量灯和增益
+        if (photometricParam.getLuminosity().equals(WaveLengthEnum.er.getCode())
+                || photometricParam.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
+
+            if (StringUtils.hasText(photometricParam.getEnergyLamp())) {
+                setParam.setLampPos(Integer.valueOf(photometricParam.getEnergyLamp()));
+            }
+
+            if (photometricParam.getGain() != null) {
+                setParam.setGain(photometricParam.getGain());
+            }
+        }
+
+        inputParam.setParam(setParam);
+
+        // 10. 调用设备操作服务
+        R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
+
+        if (r.getSuccess()) {
+            return Result.ok("设置参数成功");
+        } else {
+            return Result.fail(r.getMessage());
+        }
+
     }
 
 
