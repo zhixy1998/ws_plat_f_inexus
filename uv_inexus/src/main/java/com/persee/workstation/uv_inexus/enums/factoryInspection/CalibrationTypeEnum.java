@@ -121,7 +121,7 @@ public enum CalibrationTypeEnum {
     DEFAULT_TASK("default", "默认任务"),
 
     //开箱检验任务
-    OPEN_BOX_INSPECTION("openBoxInspection", "开箱检验"),
+    OPEN_BOX_INSPECTION("installation_acceptance", "开箱检验"),
 
     //分析方法
     METHOD_TYPE("methodType", "分析方法"),

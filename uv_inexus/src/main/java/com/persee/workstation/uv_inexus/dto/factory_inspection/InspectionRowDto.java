@@ -2,8 +2,6 @@ package com.persee.workstation.uv_inexus.dto.factory_inspection;
 
 import lombok.Data;
 
-import java.util.List;
-
 /*
  * *
  *  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
@@ -14,11 +12,18 @@ import java.util.List;
  */
 @Data
 public class InspectionRowDto {
-    private String inspectionItem;      // 验收项目（如：波长最大允许误差）
-    private String standardValue;       // 指标验收标准值（如：±1 nm(T500)、±2 nm(T400)）
-    private List<MeasurementSubItem> subItems; // 子项目（如 656.1nm 和 486.0nm 两行实测数据）
+    private FieldItem wavelength_mpe;   // 波长最大允许误差值
+    private FieldItem wl_rep;           // 波长重复性
+    private FieldItem bsl_stab;         // 基线稳定性
+    private FieldItem stab;             // 稳定性
+    private FieldItem noise;            // 噪声
+    private FieldItem stray_lt;         // 杂散光
+    private FieldItem photo_acc;        // 光度准确度
+
     @Data
-    public static class MeasurementSubItem {
-        private List<String> measuredValues; // 实测值（通常是 3 个）
+    public static class FieldItem {
+        private String label;           // 验收项目（表头：验收项目）
+        private String standardValue;   // 指标验收标准值（表头：指标验收标准值）
+        private Object measuredValue;   // 验收实测值（单个值为 String，多个值为 List<String>）
     }
 }

@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.component;
 
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
@@ -101,7 +102,11 @@ public class DefaultTaskManager {
 
         ExcelTemplate excelTemplate = new ExcelTemplate();
         excelTemplate.setId(template.getId());
-        excelTemplate.setUseCount(template.getUseCount() + 1);
+        Integer useCount = template.getUseCount();
+        if (ObjectUtils.isEmpty(useCount)){
+            useCount = 0;
+        }
+        excelTemplate.setUseCount( + 1);
         excelTemplate.setLastUsed(new Date());
         templateService.updateById(excelTemplate);
         return task;
