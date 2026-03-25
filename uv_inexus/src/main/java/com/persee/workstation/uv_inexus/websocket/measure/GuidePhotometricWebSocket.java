@@ -905,18 +905,16 @@ public class GuidePhotometricWebSocket {
 
 
    private void sendError(String deviceSerialNumber, String message) {
+        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.PhotoMetric.getOperation(), message);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("result", "finish");
 
-     webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.PhotoMetric.getOperation(), message);
+        WebSocketResponseVO vo = new WebSocketResponseVO();
 
-       infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-
-       JSONObject jsonObject = new JSONObject();
-       jsonObject.put("result", "finish");
-
-       WebSocketResponseVO vo = new WebSocketResponseVO();
-       vo.setOperation(WebSocketOperationEnum.RationMeasure.getOperation());
-       vo.setData(jsonObject);
-       webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
+        vo.setOperation(WebSocketOperationEnum.PhotoMetric.getOperation());
+        vo.setData(jsonObject);
+        webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
    }
     private static void initParams() {
      //初始化测量参数
