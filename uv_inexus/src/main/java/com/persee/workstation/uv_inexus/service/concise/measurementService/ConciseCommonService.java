@@ -88,4 +88,6 @@ public interface ConciseCommonService {
      */
     Result<Boolean> checkApproximateRange(FRoundingVO vo);
 
+    // 设置参数接口
+    Result setUpParametersPort(String methodId, String deviceSerialNumber, String measureType);
 }

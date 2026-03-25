@@ -175,4 +175,6 @@ public interface PhotometricConciseService {
      */
     R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, List<String> option);
 
+    // 设置参数
+    Result setUpParametersPort(String methodId, String deviceSerialNumber);
 }

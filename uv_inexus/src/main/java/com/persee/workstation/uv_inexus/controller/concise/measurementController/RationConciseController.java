@@ -73,6 +73,13 @@ public class RationConciseController {
         return rationService.applyMethod(methodParam);
     }
 
+    @GetMapping("/setUpParametersPort")
+    @ApiOperation("设置参数接口")
+    public Result setUpParametersPort(@RequestParam String methodId,
+                                  @RequestParam String deviceSerialNumber) {
+        return rationService.setUpParametersPort(methodId, deviceSerialNumber);
+    }
+
 
     @GetMapping("queryMethodParam")
     @ApiOperation("查询方法参数接口")

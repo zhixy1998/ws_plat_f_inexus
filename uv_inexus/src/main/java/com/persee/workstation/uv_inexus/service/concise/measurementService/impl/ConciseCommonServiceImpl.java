@@ -1780,6 +1780,17 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail(re.getMessage());
         }
 
+        DeviceMeasureVO vo = re.getData();
+
+        // 排序
+        if (vo != null && vo.getScanSpeed() != null) {
+            vo.getScanSpeed().sort((o1, o2) -> {
+                int v1 = Integer.parseInt(o1.getParamValue());
+                int v2 = Integer.parseInt(o2.getParamValue());
+                return Integer.compare(v1, v2);
+            });
+        }
+
         return Result.ok(re.getData());
 
     }
@@ -2029,6 +2040,35 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.ok(r.getData());
         } else {
             return Result.fail(r.getMessage());
+        }
+    }
+
+    @Override
+    public Result setUpParametersPort(String methodId, String deviceSerialNumber, String measureType) {
+        // 校验参数
+        if (!StringUtils.hasText(methodId)) {
+            return Result.fail("请选择方法");
+        }
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            return Result.fail("请先连接仪器");
+        }
+        if (!StringUtils.hasText(measureType)) {
+            return Result.fail("请选择测量类型");
+        }
+        MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
+        switch (measureTypeEnum) {
+            case PHOTOMETRIC_MEASUREMENT:
+                return photometricService.setUpParametersPort(methodId, deviceSerialNumber);
+            case QUANTITATIVE_MEASUREMENT:
+                return rationConciseService.setUpParametersPort(methodId, deviceSerialNumber);
+            case SPECTRAL_SCAN:
+                return spectrumConciseService.setUpParametersPort(methodId, deviceSerialNumber);
+            case TIME_SCAN:
+                return timeSweepConciseService.setUpParametersPort(methodId, deviceSerialNumber);
+            case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
+                return Result.fail("暂不支持双组份定量分析");
+            default:
+                return Result.fail("测量类型不存在");
         }
     }
 
