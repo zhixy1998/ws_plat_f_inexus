@@ -11,17 +11,19 @@ package com.persee.workstation.uv_inexus.enums.factoryInspection;
 
 public enum UnboxingCheckEnum {
     //开箱检验-波长示值误差
-    WAVELENGTH_ACCURACY_OPEN_BOX("波长示值误差与重复性校验","波长示值误差", "士0.2nm(氚灯656.1nm、486.0nm)"),
+    WAVELENGTH_ACCURACY_OPEN_BOX("波长示值误差与重复性校验","最大允许误差", "±1nm(T500)、±2 nm(T400)"),
     //开箱检验-波长重复性
-    WAVELENGTH_REPEATABILITY_OPEN_BOX("波长示值误差与重复性校验","波长重复性", "≤0.1nm"),
+    WAVELENGTH_REPEATABILITY_OPEN_BOX("波长示值误差与重复性校验","波长重复性", "T500≤0.2nm、T400≤0.4nm"),
     //开箱检验-基线平直度
-    BASELINE_STRAIGHTNESS_OPEN_BOX("基线平直度检验","基线平直度", "士0.0005Abs(1090nm~200nm)"),
+    BASELINE_STRAIGHTNESS_OPEN_BOX("基线平直度检验","基线稳定性", "±0.002Abs"),
     //开箱检验-漂移
     DRIFT_OPEN_BOX("漂移检验","漂移", "≤0.1%"),
     //开箱检验-噪声
     NOISE_OPEN_BOX("噪声检验","噪声","≤0.1%"),
     //开箱检验-透射比示值误差
-    TRANSMITTANCE_ACCURACY_OPEN_BOX("透射比示值误差与重复性校验","透射比示值误差", "士0.3%(重铬酸钾标准溶液或标准滤光片)"),
+    TRANSMITTANCE_ACCURACY_OPEN_BOX("透射比示值误差与重复性校验","光度准确度", "士0.3%(重铬酸钾标准溶液或标准滤光片)"),
+    //杂散光校验
+    DUST_LIGHT_CHECK("杂散光校验","杂散光", "T500≤ 0.05 %T；T400≤0.1 %T"),
     ;
 
     private final String sheetName;

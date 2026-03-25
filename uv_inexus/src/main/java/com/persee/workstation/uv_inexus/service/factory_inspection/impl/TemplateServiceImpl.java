@@ -1419,17 +1419,20 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 wrapper.eq(ExcelTemplate::getTemplateCode, templateCode);
                 list = this.list(wrapper);
             } else {
-                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-                //查找的是开箱验证任务
-                wrapper.eq(TaskManagement::getTaskType, "2");
-                List<TaskManagement> list1 = taskManagementService.list(wrapper);
-                if (CollectionUtils.isEmpty(list1)) {
-                    return Result.fail("未找到开箱验证任务");
-                } else {
-                    TaskManagement management = list1.get(0);
-                    ExcelTemplate excelTemplate = this.getById(management.getUseTemplate());
-                    list.add(excelTemplate);
-                }
+//                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+//                //查找的是开箱验证任务
+//                wrapper.eq(TaskManagement::getTaskType, "2");
+//                List<TaskManagement> list1 = taskManagementService.list(wrapper);
+//                if (CollectionUtils.isEmpty(list1)) {
+//                    log.error("没有找到开箱验证任务");
+//                } else {
+                LambdaQueryWrapper<ExcelTemplate> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(ExcelTemplate::getTemplateCode, templateCode);
+                list = this.list(wrapper);
+//                    TaskManagement management = list1.get(0);
+//                    ExcelTemplate excelTemplate = this.getById(management.getUseTemplate());
+//                    list.add(excelTemplate);
+//                }
             }
 
             if (CollectionUtils.isNotEmpty(list)) {
@@ -1459,7 +1462,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 result.setData(groupedData);
                 result.setCode(200);
                 return result;
-            }else {
+            } else {
                 return Result.fail("未找到模板");
             }
         } catch (Exception e) {

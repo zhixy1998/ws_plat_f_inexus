@@ -17,6 +17,7 @@ import com.persee.workstation.uv_inexus.component.EhcacheUtil;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.*;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.DeviceTaskDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TaskAddDto;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.enums.factoryInspection.OutFactoryCheckEnum;
@@ -50,11 +51,13 @@ import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstan
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
@@ -137,7 +140,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     private static volatile Map<String, Boolean> stopInit = new HashMap<>();
     @Autowired
     private TaskManagementService taskManagementService;
-
+    @Autowired
+    private ThreadPoolTaskExecutor measurementTaskExecutor;
     @Override
     public R<DeviceInfoVO> queryDeviceInfo(String deviceSerialNumber, String updateBy) {
 //        log.info("查询仪器信息");
@@ -1758,7 +1762,17 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                     log.error("批量连接中异常：device={}", param.getDeviceIp(), e);
                 }
             }
-
+            ArrayList<DeviceTaskDto> list = new ArrayList<>();
+            for (R<FindDeviceVO> vo : vos) {
+                if (vo.getSuccess()) {
+                    log.info("批量连接成功：device={}", vo.getData().getDeviceSerialNumber());
+                    DeviceTaskDto dto = new DeviceTaskDto();
+                    dto.setDeviceSerialNumber(vo.getData().getDeviceSerialNumber());
+                    dto.setStatus(OutFactoryCheckEnum.CONNECTED.getDesc());
+                    list.add(dto);
+                }
+            }
+            addToCache(list);
             log.info("批量连接完成：总数={}, 成功={}, 失败={}",
                     params.size(), successCount, failCount);
             return R.ok(vos);
@@ -1770,7 +1784,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public Result<HashMap<String, String>> createTaskAfterInstrumentInit(String deviceSerialNumber, String updateBy,String templateCode) throws BusinessException {
+    public Result<DeviceTaskDto> createTaskAfterInstrumentInit(String deviceSerialNumber, String updateBy, String templateCode) throws BusinessException {
         R<Boolean> booleanR = startInitDevice(deviceSerialNumber, updateBy);
 
         DeviceInfoPO deviceInfoPO = infoService.getInfo(deviceSerialNumber);
@@ -1780,40 +1794,140 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             throw new BusinessException("未找到连接仪器信息！");
         }
 
-        List<InitRecordPO> initList = initRecordService.searchInitStatus(deviceSerialNumber, deviceInfoPO.getId());
+//        List<InitRecordPO> initList = initRecordService.searchInitStatus(deviceSerialNumber, deviceInfoPO.getId());
 
 
+        //这里要异步执行操作，前面返回，这里开异步线程执行
+        // 异步执行初始化监控和任务创建
+        asyncExecuteInitMonitor(deviceSerialNumber, templateCode, updateBy);
+
+        // 立即返回成功响应
+        DeviceTaskDto dto = new DeviceTaskDto();
+        dto.setDeviceSerialNumber(deviceSerialNumber);
+        dto.setStatus(OutFactoryCheckEnum.INIT_ING.getDesc());
+        return Result.ok(dto);
+//
+//        while (true) {
+//            //这里初始化之后还要创建新的任务，根据当前选定的模板创建任务，其实就是检定校准的任务
+//            if (deviceInfoPO.getIsInited() == 1) {
+//                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+//                wrapper.eq(TaskManagement::getOperationInstrument, deviceSerialNumber);
+//                List<TaskManagement> list = taskManagementService.list(wrapper);
+//                if (!CollectionUtils.isEmpty(list)) {
+//                    TaskManagement taskManagement = list.get(0);
+//                    DeviceTaskDto dto = new DeviceTaskDto();
+//                    dto.setTaskId(taskManagement.getId());
+//                    ExcelTemplate excelTemplate = templateService.getById(taskManagement.getUseTemplate());
+//                    if (ObjectUtils.isEmpty(excelTemplate)) {
+//                        log.info("未找到模板！");
+//                        throw new BusinessException("未找到模板！");
+//                    }
+//                    dto.setDeviceSerialNumber(deviceSerialNumber);
+//                    dto.setTemplateCode(excelTemplate.getTemplateCode());
+//                    dto.setStatus(OutFactoryCheckEnum.INIT_SUCCESS.getDesc());
+////                map.put("templateCode", );
+////                map.put("deviceSerialNumber",deviceSerialNumber);
+////                Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
+////
+////                List<DeviceTaskDto> dtoList;
+////                if (cachedObject instanceof List) {
+////                    @SuppressWarnings("unchecked")
+////                    List<DeviceTaskDto> checkedList = (List<DeviceTaskDto>) cachedObject;
+////                    dtoList = checkedList;
+////                } else {
+////                    dtoList = new ArrayList<DeviceTaskDto>();
+////                }
+////                dtoList.add(dto);
+////                ehcacheUtil.put(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), dtoList, String.class, Object.class);
+//                    updateInCache(deviceSerialNumber, dto);
+//                    return Result.ok(dto);
+//                }
+//                TaskAddDto taskAddDto = new TaskAddDto();
+//                String randomSuffix = generateRandomSuffix();
+//                taskAddDto.setDetectName(deviceSerialNumber + "_" + randomSuffix);
+//                taskAddDto.setUseTemplate(templateCode);
+//                taskAddDto.setCreateBy(updateBy);
+//                taskAddDto.setCreated(LocalDateTime.now());
+//                taskAddDto.setSerialNumber(deviceSerialNumber);
+//                Result<HashMap<String, String>> task = taskManagementService.newTask(taskAddDto);
+//                if (ObjectUtils.isEmpty(task)) {
+//                    throw new BusinessException("创建任务失败！");
+//                }
+//
+//                HashMap<String, String> map = task.getData();
+//                DeviceTaskDto dto = new DeviceTaskDto();
+//                dto.setTaskId(MapUtils.getString(map, "taskId"));
+//                dto.setDeviceSerialNumber(deviceSerialNumber);
+//                dto.setTemplateCode(MapUtils.getString(map, "templateCode"));
+//                dto.setStatus(OutFactoryCheckEnum.INIT_SUCCESS.getDesc());
+//                updateInCache(deviceSerialNumber, dto);
+//                return Result.ok(dto);
+//            } else if (deviceInfoPO.getIsInited() == 2) {
+//                DeviceTaskDto dto = new DeviceTaskDto();
+//                dto.setDeviceSerialNumber(deviceSerialNumber);
+//                dto.setStatus(OutFactoryCheckEnum.INIT_FAIL.getDesc());
+//                updateInCache(deviceSerialNumber, dto);
+//                return Result.ok(dto);
+//            }
+//            //在这里等待一秒
+//            try {
+//                Thread.sleep(1000);
+//            } catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
+//
+//        }
+    }
+
+
+    /**
+     * 异步执行初始化监控和任务创建
+     */
+    private void asyncExecuteInitMonitor(String deviceSerialNumber, String templateCode, String updateBy) {
+        measurementTaskExecutor.execute(() -> {
+            try {
+                monitorDeviceInitAndCreateTask(deviceSerialNumber, templateCode, updateBy);
+            } catch (Exception e) {
+                log.error("异步监控设备初始化失败:deviceSerialNumber={}", deviceSerialNumber, e);
+                // 更新缓存为失败状态
+                DeviceTaskDto failDto = new DeviceTaskDto();
+                failDto.setDeviceSerialNumber(deviceSerialNumber);
+                failDto.setStatus(OutFactoryCheckEnum.INIT_FAIL.getDesc());
+                updateInCache(deviceSerialNumber, failDto);
+            }
+        });
+    }
+
+/**
+ * 监控设备初始化状态并创建任务
+ */
+private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String templateCode, String updateBy) throws BusinessException {
+    while (true) {
+        DeviceInfoPO deviceInfoPO = infoService.getInfo(deviceSerialNumber);
+        if (deviceInfoPO == null) {
+            log.error("监控过程中设备信息丢失:deviceSerialNumber={}", deviceSerialNumber);
+            break;
+        }
 
         //这里初始化之后还要创建新的任务，根据当前选定的模板创建任务，其实就是检定校准的任务
-        if (booleanR.getSuccess()) {
+        if (deviceInfoPO.getIsInited() == 1) {
             LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(TaskManagement::getOperationInstrument, deviceSerialNumber);
             List<TaskManagement> list = taskManagementService.list(wrapper);
-            if (!CollectionUtils.isEmpty(list)){
+            if (!CollectionUtils.isEmpty(list)) {
                 TaskManagement taskManagement = list.get(0);
-                HashMap<String, String> map = new HashMap<>();
-                map.put("taskId", taskManagement.getId());
+                DeviceTaskDto dto = new DeviceTaskDto();
+                dto.setTaskId(taskManagement.getId());
                 ExcelTemplate excelTemplate = templateService.getById(taskManagement.getUseTemplate());
-                if (ObjectUtils.isEmpty(excelTemplate)){
-                    log.info("未找到模板！");
-                    throw new BusinessException("未找到模板！");
+                if (ObjectUtils.isEmpty(excelTemplate)) {
+                    log.info("未找到模板!");
+                    throw new BusinessException("未找到模板!");
                 }
-                map.put("templateCode", excelTemplate.getTemplateCode());
-                map.put("deviceSerialNumber",deviceSerialNumber);
-                Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
-
-                List<HashMap<String, String>> dtoList;
-                if (cachedObject instanceof List) {
-                    @SuppressWarnings("unchecked")
-                    List<HashMap<String, String>> checkedList = (List<HashMap<String, String>>) cachedObject;
-                    dtoList = checkedList;
-                } else {
-                    dtoList = new ArrayList<HashMap<String, String>>();
-                }
-                dtoList.add(map);
-                ehcacheUtil.put(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), dtoList, String.class, Object.class);
-
-                return Result.ok(map);
+                dto.setDeviceSerialNumber(deviceSerialNumber);
+                dto.setTemplateCode(excelTemplate.getTemplateCode());
+                dto.setStatus(OutFactoryCheckEnum.INIT_SUCCESS.getDesc());
+                updateInCache(deviceSerialNumber, dto);
+                break;
             }
             TaskAddDto taskAddDto = new TaskAddDto();
             String randomSuffix = generateRandomSuffix();
@@ -1823,28 +1937,173 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             taskAddDto.setCreated(LocalDateTime.now());
             taskAddDto.setSerialNumber(deviceSerialNumber);
             Result<HashMap<String, String>> task = taskManagementService.newTask(taskAddDto);
-            if (ObjectUtils.isEmpty(task)){
-                throw new BusinessException("创建任务失败！");
+            if (ObjectUtils.isEmpty(task)) {
+                throw new BusinessException("创建任务失败!");
             }
-            Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST, OutFactoryCheckEnum.class, Object.class);
 
-            List<HashMap<String, String>> dtoList;
+            HashMap<String, String> map = task.getData();
+            DeviceTaskDto dto = new DeviceTaskDto();
+            dto.setTaskId(MapUtils.getString(map, "taskId"));
+            dto.setDeviceSerialNumber(deviceSerialNumber);
+            dto.setTemplateCode(MapUtils.getString(map, "templateCode"));
+            dto.setStatus(OutFactoryCheckEnum.INIT_SUCCESS.getDesc());
+            updateInCache(deviceSerialNumber, dto);
+            break;
+        } else if (deviceInfoPO.getIsInited() == 2) {
+            DeviceTaskDto dto = new DeviceTaskDto();
+            dto.setDeviceSerialNumber(deviceSerialNumber);
+            dto.setStatus(OutFactoryCheckEnum.INIT_FAIL.getDesc());
+            updateInCache(deviceSerialNumber, dto);
+            break;
+        }
+        //在这里等待一秒
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("异步监控线程被中断:deviceSerialNumber={}", deviceSerialNumber);
+            break;
+        }
+    }
+}
+
+// ... existing code ...
+
+    /**
+     * 更新缓存中指定仪器的信息
+     *
+     * @param deviceSerialNumber 仪器序列号
+     * @param updatedData        需要更新的数据项
+     */
+    private void updateInCache(String deviceSerialNumber, DeviceTaskDto updatedData) {
+        try {
+            // 获取缓存中的列表
+            Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(),
+                    OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
+
             if (cachedObject instanceof List) {
                 @SuppressWarnings("unchecked")
-                List<HashMap<String, String>> checkedList = (List<HashMap<String, String>>) cachedObject;
+                List<DeviceTaskDto> dtoList = (List<DeviceTaskDto>) cachedObject;
+
+                if (org.apache.commons.collections4.CollectionUtils.isNotEmpty(dtoList)) {
+                    boolean found = false;
+                    // 找到并更新包含该设备序列号的项
+                    for (int i = 0; i < dtoList.size(); i++) {
+                        DeviceTaskDto item = dtoList.get(i);
+                        if (item != null && deviceSerialNumber.equals(item.getDeviceSerialNumber())) {
+                            // 更新该项的属性
+                            if (updatedData.getTaskId() != null) {
+                                item.setTaskId(updatedData.getTaskId());
+                            }
+                            if (updatedData.getTemplateCode() != null) {
+                                item.setTemplateCode(updatedData.getTemplateCode());
+                            }
+                            // 确保设备序列号不变
+                            item.setDeviceSerialNumber(deviceSerialNumber);
+                            dtoList.set(i, item);
+                            found = true;
+                            log.info("已更新缓存中设备信息：deviceSerialNumber={}", deviceSerialNumber);
+                            break;
+                        }
+                    }
+
+                    // 如果未找到，可以选择添加新项（根据业务需求决定）
+                    if (!found) {
+                        log.warn("缓存中未找到设备信息，是否要添加？deviceSerialNumber={}", deviceSerialNumber);
+                        // 如果需要添加新项，取消下面这行的注释
+                        dtoList.add(updatedData);
+                    }
+
+                    // 更新缓存
+                    ehcacheUtil.put(DEFAULT_CACHE.getCacheName(),
+                            OUT_FACTORY_CHECK_LIST.getCode(), dtoList, String.class, Object.class);
+                }
+            }
+        } catch (Exception e) {
+            log.error("更新缓存中设备信息失败：deviceSerialNumber={}", deviceSerialNumber, e);
+        }
+    }
+
+    /**
+     * 将设备任务信息添加到缓存
+     *
+     * @param dto 设备任务 DTO
+     */
+    private void addToCache(DeviceTaskDto dto) {
+        try {
+            // 获取缓存中的列表
+            Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(),
+                    OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
+
+            List<DeviceTaskDto> dtoList;
+            if (cachedObject instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<DeviceTaskDto> checkedList = (List<DeviceTaskDto>) cachedObject;
                 dtoList = checkedList;
             } else {
-                dtoList = new ArrayList<HashMap<String, String>>();
+                dtoList = new ArrayList<DeviceTaskDto>();
             }
-            HashMap<String, String> data = task.getData();
-            data.put("deviceSerialNumber", deviceSerialNumber);
-            dtoList.add(task.getData());
-            ehcacheUtil.put(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST, dtoList, OutFactoryCheckEnum.class, Object.class);
 
-            return Result.ok(task.getData());
+            dtoList.add(dto);
+            ehcacheUtil.put(DEFAULT_CACHE.getCacheName(),
+                    OUT_FACTORY_CHECK_LIST.getCode(), dtoList, String.class, Object.class);
+
+            log.info("已添加设备到缓存：deviceSerialNumber={}", dto.getDeviceSerialNumber());
+        } catch (Exception e) {
+            log.error("添加设备到缓存失败：deviceSerialNumber={}", dto.getDeviceSerialNumber(), e);
         }
-        return Result.fail();
     }
+
+    /**
+     * 批量将设备任务信息添加到缓存
+     *
+     * @param dtoList 设备任务 DTO 列表
+     */
+    private void addToCache(List<DeviceTaskDto> dtoList) {
+        if (CollectionUtils.isEmpty(dtoList)) {
+            log.warn("批量添加到缓存的 DTO 列表为空");
+            return;
+        }
+
+        try {
+            // 获取缓存中的列表
+            Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(),
+                    OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
+
+            List<DeviceTaskDto> cacheList;
+            if (cachedObject instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<DeviceTaskDto> checkedList = (List<DeviceTaskDto>) cachedObject;
+                cacheList = checkedList;
+            } else {
+                cacheList = new ArrayList<DeviceTaskDto>();
+            }
+
+            // 批量添加（去重）
+            for (DeviceTaskDto dto : dtoList) {
+                if (dto != null) {
+                    // 检查是否已存在相同设备序列号
+                    boolean exists = cacheList.stream()
+                            .anyMatch(item -> dto.getDeviceSerialNumber().equals(item.getDeviceSerialNumber()));
+
+                    if (!exists) {
+                        cacheList.add(dto);
+                        log.info("已添加设备到缓存：deviceSerialNumber={}", dto.getDeviceSerialNumber());
+                    } else {
+                        log.warn("设备已存在于缓存中，跳过添加：deviceSerialNumber={}", dto.getDeviceSerialNumber());
+                    }
+                }
+            }
+
+            ehcacheUtil.put(DEFAULT_CACHE.getCacheName(),
+                    OUT_FACTORY_CHECK_LIST.getCode(), cacheList, String.class, Object.class);
+
+            log.info("批量添加设备到缓存完成，共添加 {} 个设备（去重后）", cacheList.size());
+        } catch (Exception e) {
+            log.error("批量添加设备到缓存失败", e);
+        }
+    }
+
 
     private String generateRandomSuffix() {
         String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";

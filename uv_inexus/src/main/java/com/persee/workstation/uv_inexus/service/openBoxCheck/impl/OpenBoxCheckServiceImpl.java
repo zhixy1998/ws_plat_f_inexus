@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.service.openBoxCheck.impl;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.persee.workstation.uv_inexus.component.ExcelDynamicMerger;
 import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TemplateMapper;
@@ -80,108 +81,141 @@ public class OpenBoxCheckServiceImpl implements OpenBoxCheckService {
     @Autowired
     private ExcelDynamicMerger excelDynamicMerger;
 
+
     @Override
-    public Result<Map<String, Object>> openBoxCheck(String taskId) {
-        HashMap<String, Object> map = new HashMap<>();
-        Workbook taskWorkbook = workbookCacheManager.getTaskWorkbook(taskId);
-        // 获取所有 sheet 页的名称
-        int sheetCount = taskWorkbook.getNumberOfSheets();
-        for (int i = 0; i < sheetCount; i++) {
-            String sheetName = taskWorkbook.getSheetName(i);
-            InspectionRowDto dto = new InspectionRowDto();
-            UnboxingCheckEnum checkEnum = UnboxingCheckEnum.fromSheetName(sheetName);
+    public Result<InspectionRowDto> openBoxCheck(String taskId) {
+        InspectionRowDto result = new InspectionRowDto();
+        try {
+            Workbook taskWorkbook = workbookCacheManager.getTaskWorkbook(taskId);
+            int sheetCount = taskWorkbook.getNumberOfSheets();
 
-            dto.setInspectionItem(checkEnum.getAcceptanceItem());
-            dto.setStandardValue(checkEnum.getAcceptanceCriteriaValue());
-            if ("波长示值误差".equals(dto.getInspectionItem())) {
-                Sheet sheet = taskWorkbook.getSheet(sheetName);
-                List<ExcelCellLocator.CellPosition> positions1 = excelCellLocator.findCellPositions(sheet, "测量值", "氘灯(656.1)");
-                List<ExcelCellLocator.CellPosition> positions2 = excelCellLocator.findCellPositions(sheet, "测量值", "氘灯(486.0)");
-                // 创建子项目
-                List<InspectionRowDto.MeasurementSubItem> subItems = getMeasurementSubItems(positions1, positions2);
-                dto.setSubItems(subItems);
-            }
-            //最后就是测量值，
-            if ("基线平直度".equals(dto.getInspectionItem()) || "漂移".equals(dto.getInspectionItem())) {
-                Sheet sheet = taskWorkbook.getSheet(sheetName);
-                String keyword = "基线平直度".equals(dto.getInspectionItem()) ? "基线平直度" : "漂移检验";
-                List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "测量值", keyword);
-                List<String> values = positions != null ?
-                        positions.stream().map(ExcelCellLocator.CellPosition::getValue).collect(Collectors.toList()) :
-                        Collections.emptyList();
+            Map<String, List<String>> measuredValuesMap = new HashMap<>();
 
-                // 创建子项目
-                List<InspectionRowDto.MeasurementSubItem> subItems = new ArrayList<>();
-                InspectionRowDto.MeasurementSubItem subItem = new InspectionRowDto.MeasurementSubItem();
-                subItem.setMeasuredValues(values);
-                subItems.add(subItem);
-
-                dto.setSubItems(subItems);
-            }
-            if ("噪声".equals(dto.getInspectionItem())) {
-                Sheet sheet = taskWorkbook.getSheet(sheetName);
-                List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "测量值", "500nm 100%噪声");
-                for (ExcelCellLocator.CellPosition position : positions) {
-                    List<InspectionRowDto.MeasurementSubItem> subItems = new ArrayList<>();
-                    InspectionRowDto.MeasurementSubItem subItem = new InspectionRowDto.MeasurementSubItem();
-                    subItem.setMeasuredValues(Collections.singletonList(position.getValue()));
-                    subItems.add(subItem);
-
-                    dto.setSubItems(subItems);
+            for (int i = 0; i < sheetCount; i++) {
+                String sheetName = taskWorkbook.getSheetName(i);
+                UnboxingCheckEnum checkEnum = UnboxingCheckEnum.fromSheetName(sheetName);
+                if (ObjectUtils.isEmpty(checkEnum)) {
+                    continue;
                 }
-            }
-            if ("透射比示值误差".equals(dto.getInspectionItem())) {
-                Sheet sheet = taskWorkbook.getSheet(sheetName);
-                List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "误差值", "紫外分光光度计标准物质GBW(E)130066");
-                if (CollectionUtils.isNotEmpty(positions)) {
-                    ArrayList<String> strings = new ArrayList<>();
-                    for (ExcelCellLocator.CellPosition position : positions) {
-                        String value = position.getValue();
-                        strings.add(value);
+
+                if ("波长示值误差与重复性校验".equals(sheetName)) {
+                    Sheet sheet = taskWorkbook.getSheet(sheetName);
+                    List<ExcelCellLocator.CellPosition> positions1 = excelCellLocator.findCellPositions(sheet, "测量值", "氘灯(486.0)");
+
+                    List<String> values = positions1 != null ?
+                            positions1.stream().map(ExcelCellLocator.CellPosition::getValue).collect(Collectors.toList()) :
+                            Collections.emptyList();
+
+                    measuredValuesMap.put("wavelength_mpe", values);
+                    measuredValuesMap.put("wl_rep", values);
+                }
+
+                if ("基线平直度检验".equals(sheetName)) {
+                    Sheet sheet = taskWorkbook.getSheet(sheetName);
+                    List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "测量值", "基线平直度");
+                    List<String> values = positions != null ?
+                            positions.stream().map(ExcelCellLocator.CellPosition::getValue).collect(Collectors.toList()) :
+                            Collections.emptyList();
+                    measuredValuesMap.put("bsl_stab", values);
+                }
+
+                if ("漂移检验".equals(sheetName)) {
+                    Sheet sheet = taskWorkbook.getSheet(sheetName);
+                    List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "测量值", "漂移检验");
+                    List<String> values = positions != null ?
+                            positions.stream().map(ExcelCellLocator.CellPosition::getValue).collect(Collectors.toList()) :
+                            Collections.emptyList();
+                    measuredValuesMap.put("stab", values);
+                }
+
+                if ("噪声检验".equals(sheetName)) {
+                    Sheet sheet = taskWorkbook.getSheet(sheetName);
+                    List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "测量值", "500nm 100%噪声");
+                    List<String> values = positions != null ?
+                            positions.stream().map(ExcelCellLocator.CellPosition::getValue).collect(Collectors.toList()) :
+                            Collections.emptyList();
+                    measuredValuesMap.put("noise", values);
+                }
+
+                if ("透射比示值误差与重复性校验".equals(sheetName)) {
+                    Sheet sheet = taskWorkbook.getSheet(sheetName);
+                    List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "误差值", "紫外分光光度计标准物质 GBW(E)130066");
+                    if (CollectionUtils.isNotEmpty(positions)) {
+                        ArrayList<String> strings = new ArrayList<>();
+                        for (ExcelCellLocator.CellPosition position : positions) {
+                            strings.add(position.getValue());
+                        }
+                        measuredValuesMap.put("photo_acc", strings);
+                    } else {
+                        List<ExcelCellLocator.CellPosition> positions1 = excelCellLocator.findCellPositions(sheet, "误差值", "10% 中性滤光片");
+                        List<ExcelCellLocator.CellPosition> positions2 = excelCellLocator.findCellPositions(sheet, "误差值", "20% 中性滤光片");
+                        List<ExcelCellLocator.CellPosition> positions3 = excelCellLocator.findCellPositions(sheet, "误差值", "30% 中性滤光片");
+                        ArrayList<ExcelCellLocator.CellPosition> cellPositions = new ArrayList<>();
+                        cellPositions.addAll(positions1);
+                        cellPositions.addAll(positions2);
+                        cellPositions.addAll(positions3);
+                        ArrayList<String> strings = new ArrayList<>();
+
+                        for (ExcelCellLocator.CellPosition position : cellPositions) {
+                            strings.add(position.getValue());
+                        }
+                        measuredValuesMap.put("photo_acc", strings);
                     }
-                    // 找出 strings 中的最大值
-                    String maxValue = strings.stream()
-                            .max(Comparator.naturalOrder())
-                            .orElse("");
-                    List<InspectionRowDto.MeasurementSubItem> subItems = new ArrayList<>();
-                    InspectionRowDto.MeasurementSubItem subItem = new InspectionRowDto.MeasurementSubItem();
-                    subItem.setMeasuredValues(Collections.singletonList(maxValue));
-                    subItems.add(subItem);
+                }
 
-                    dto.setSubItems(subItems);
-                } else {
-                    List<ExcelCellLocator.CellPosition> positions1 = excelCellLocator.findCellPositions(sheet, "误差值", "10%中性滤光片");
-                    List<ExcelCellLocator.CellPosition> positions2 = excelCellLocator.findCellPositions(sheet, "误差值", "20%中性滤光片");
-                    List<ExcelCellLocator.CellPosition> positions3 = excelCellLocator.findCellPositions(sheet, "误差值", "30%中性滤光片");
-                    ArrayList<ExcelCellLocator.CellPosition> cellPositions = new ArrayList<>();
-                    cellPositions.addAll(positions1);
-                    cellPositions.addAll(positions2);
-                    cellPositions.addAll(positions3);
-                    ArrayList<String> strings = new ArrayList<>();
-
-                    for (ExcelCellLocator.CellPosition position : cellPositions) {
-                        String value = position.getValue();
-                        strings.add(value);
-                    }
-                    // 找出 strings 中的最大值
-                    String maxValue = strings.stream()
-                            .max(Comparator.naturalOrder())
-                            .orElse("");
-                    List<InspectionRowDto.MeasurementSubItem> subItems = new ArrayList<>();
-                    InspectionRowDto.MeasurementSubItem subItem = new InspectionRowDto.MeasurementSubItem();
-                    subItem.setMeasuredValues(Collections.singletonList(maxValue));
-                    subItems.add(subItem);
-
-                    dto.setSubItems(subItems);
+                if ("杂散光校验".equals(sheetName)) {
+                    Sheet sheet = taskWorkbook.getSheet(sheetName);
+                    List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "测量值", "杂散光");
+                    List<String> values = positions != null ?
+                            positions.stream().map(ExcelCellLocator.CellPosition::getValue).collect(Collectors.toList()) :
+                            Collections.emptyList();
+                    measuredValuesMap.put("stray_lt", values);
                 }
             }
 
-            map.put("key", sheetName);
-            map.put("value", dto);
+            result.setWavelength_mpe(buildFieldItem("波长最大允许误差",
+                    "±1 nm(T500)、±2 nm(T400)", measuredValuesMap.getOrDefault("wavelength_mpe", Collections.emptyList())));
+            result.setWl_rep(buildFieldItem("波长重复性",
+                    "T500≤0.2nm、T400≤0.4nm", measuredValuesMap.getOrDefault("wl_rep", Collections.emptyList())));
+            result.setBsl_stab(buildFieldItem("基线稳定性",
+                    "±0.002Abs", measuredValuesMap.getOrDefault("bsl_stab", Collections.emptyList())));
+            result.setStab(buildFieldItem("稳定性",
+                    "≤0.35T%/h(500nm、2nm 带宽、预热后)", measuredValuesMap.getOrDefault("stab", Collections.emptyList())));
+            result.setNoise(buildFieldItem("噪声",
+                    "≤0.15T%(500nm、2nm 带宽)", measuredValuesMap.getOrDefault("noise", Collections.emptyList())));
+            result.setStray_lt(buildFieldItem("杂散光",
+                    "T500≤0.05 %T；T400≤0.1 %T", measuredValuesMap.getOrDefault("stray_lt", Collections.emptyList())));
+            result.setPhoto_acc(buildFieldItem("光度准确度",
+                    "±0.3%T", measuredValuesMap.getOrDefault("photo_acc", Collections.emptyList())));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.fail("获取任务数据失败");
         }
 
-        return Result.ok(map);
+        return Result.ok(result);
     }
+
+    private InspectionRowDto.FieldItem buildFieldItem(String inspectionItem, String standardValue, List<String> measuredValues) {
+        InspectionRowDto.FieldItem item = new InspectionRowDto.FieldItem();
+        item.setLabel(inspectionItem);
+        item.setStandardValue(standardValue);
+
+        if (measuredValues == null || measuredValues.isEmpty()) {
+//            item.setMeasuredValue("0.001");
+            item.setMeasuredValue("");
+        } else if (measuredValues.size() == 1) {
+            item.setMeasuredValue(measuredValues.get(0));
+        } else {
+            item.setMeasuredValue(measuredValues);
+        }
+
+//        if (inspectionItem.equals("稳定性")){
+//            item.setMeasuredValue("0.002");
+//        }
+        return item;
+    }
+
 
 
     @Override
@@ -278,24 +312,24 @@ public class OpenBoxCheckServiceImpl implements OpenBoxCheckService {
     }
 
 
-    private static List<InspectionRowDto.MeasurementSubItem> getMeasurementSubItems(List<ExcelCellLocator.CellPosition> positions1, List<ExcelCellLocator.CellPosition> positions2) {
-        List<InspectionRowDto.MeasurementSubItem> subItems = new ArrayList<>();
-        ArrayList<String> strings1 = new ArrayList<>();
-        ArrayList<String> strings2 = new ArrayList<>();
-        for (ExcelCellLocator.CellPosition position : positions1) {
-            strings1.add(position.getValue());
-        }
-        for (ExcelCellLocator.CellPosition position : positions2) {
-            strings2.add(position.getValue());
-        }
-
-        InspectionRowDto.MeasurementSubItem subItem = new InspectionRowDto.MeasurementSubItem();
-        InspectionRowDto.MeasurementSubItem subItem1 = new InspectionRowDto.MeasurementSubItem();
-        subItem.setMeasuredValues(strings1);
-        subItem1.setMeasuredValues(strings2);
-        subItems.add(subItem);
-        subItems.add(subItem1);
-        return subItems;
-    }
+//    private static List<InspectionRowDto.MeasurementSubItem> getMeasurementSubItems(List<ExcelCellLocator.CellPosition> positions1/*, List<ExcelCellLocator.CellPosition> positions2*/) {
+//        List<InspectionRowDto.MeasurementSubItem> subItems = new ArrayList<>();
+//        ArrayList<String> strings1 = new ArrayList<>();
+//        ArrayList<String> strings2 = new ArrayList<>();
+//        for (ExcelCellLocator.CellPosition position : positions1) {
+//            strings1.add(position.getValue());
+//        }
+////        for (ExcelCellLocator.CellPosition position : positions2) {
+////            strings2.add(position.getValue());
+////        }
+//
+//        InspectionRowDto.MeasurementSubItem subItem = new InspectionRowDto.MeasurementSubItem();
+//        InspectionRowDto.MeasurementSubItem subItem1 = new InspectionRowDto.MeasurementSubItem();
+//        subItem.setMeasuredValues(strings1);
+////        subItem1.setMeasuredValues(strings2);
+//        subItems.add(subItem);
+////        subItems.add(subItem1);
+//        return subItems;
+//    }
 
 }

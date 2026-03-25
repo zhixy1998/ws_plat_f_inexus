@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.controller.factory_inspection.multiDevi
 import com.persee.workstation.uv_inexus.component.EhcacheUtil;
 import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.BatchConnectDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.DeviceTaskDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateDto;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.model.R;
@@ -20,7 +21,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CACHE;
@@ -62,7 +62,6 @@ public class MultiDeviceInspectionController {
         }
     }
 
-    //批量连接并初始化设备
     @PostMapping("/batch-connect")
     @ApiOperation("批量连接多台仪器")
     public Result<List<FindDeviceVO>> batchConnectDevices(
@@ -80,18 +79,30 @@ public class MultiDeviceInspectionController {
             info.setUpdateBy(updateBy);
         }
 
-        R<FindDeviceVO> result = deviceManageService.connect(searchInfos, updateBy, templateCode);
+        R result = deviceManageService.connect(searchInfos, updateBy, templateCode);
 
         if (result.getSuccess()) {
             List<FindDeviceVO> connectedDevices = new ArrayList<>();
-            if (result.getData() != null) {
-                connectedDevices.add(result.getData());
+            List<R<FindDeviceVO>> deviceResults = (List<R<FindDeviceVO>>) result.getData();
+
+            if (deviceResults != null) {
+                for (R<FindDeviceVO> deviceResult : deviceResults) {
+                    if (deviceResult.getSuccess() && deviceResult.getData() != null) {
+                        connectedDevices.add(deviceResult.getData());
+                    }
+                }
             }
+
+            if (connectedDevices.isEmpty()) {
+                return Result.fail("所有设备连接失败");
+            }
+
             return Result.ok(connectedDevices);
         } else {
             return Result.fail(result.getMessage());
         }
     }
+
 
     /**
      * 初始化仪器并创建任务
@@ -103,7 +114,7 @@ public class MultiDeviceInspectionController {
      */
     @PostMapping("/init")
     @ApiOperation("初始化仪器并创建任务")
-    public Result<HashMap<String, String>> initDevice(@RequestParam String deviceSerialNumber, @RequestParam String templateCode, @RequestParam String updateBy) throws InterruptedException, BusinessException {
+    public Result<DeviceTaskDto> initDevice(@RequestParam String deviceSerialNumber, @RequestParam String templateCode, @RequestParam String updateBy) throws InterruptedException, BusinessException {
         return deviceManageService.createTaskAfterInstrumentInit(deviceSerialNumber, updateBy, templateCode);
     }
 
@@ -119,16 +130,69 @@ public class MultiDeviceInspectionController {
     @ApiOperation("批量断开连接")
     public Result<Boolean> disconnectDevice(@RequestParam List<String> deviceSerialNumbers, @RequestParam String updateBy) throws InterruptedException {
         if (CollectionUtils.isNotEmpty(deviceSerialNumbers)) {
+            boolean allSuccess = true;
+            String failedDevice = null;
+
             for (String serialNumber : deviceSerialNumbers) {
-                R<Boolean> r = deviceManageService.disconnectDevice(serialNumber, updateBy);
-                if (r.getSuccess()) {
-                    return Result.ok(true);
-                } else {
-                    return Result.fail("断开失败");
+                try {
+                    R<Boolean> r = deviceManageService.disconnectDevice(serialNumber, updateBy);
+                    if (!r.getSuccess()) {
+                        allSuccess = false;
+                        failedDevice = serialNumber;
+                        log.error("断开设备失败：deviceSerialNumber={}, reason={}", serialNumber, r.getMessage());
+                    } else {
+                        // 断开成功后，从缓存中移除该仪器的信息
+                        removeFromCache(serialNumber);
+                    }
+                } catch (Exception e) {
+                    allSuccess = false;
+                    failedDevice = serialNumber;
+                    log.error("断开设备异常：deviceSerialNumber={}, error={}", serialNumber, e.getMessage(), e);
                 }
+            }
+
+            if (allSuccess) {
+                return Result.ok(true);
+            } else {
+                return Result.fail("部分设备断开失败：" + failedDevice);
             }
         }
         return Result.fail(false);
+    }
+
+    /**
+     * 从缓存中移除指定仪器的信息
+     * @param deviceSerialNumber 仪器序列号
+     */
+    private void removeFromCache(String deviceSerialNumber) {
+        try {
+            // 获取缓存中的列表
+            Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(),
+                    OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
+
+            if (cachedObject instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<DeviceTaskDto> dtoList = (List<DeviceTaskDto>) cachedObject;
+
+                if (CollectionUtils.isNotEmpty(dtoList)) {
+                    // 找到并移除包含该设备序列号的项
+                    for (int i = 0; i < dtoList.size(); i++) {
+                        DeviceTaskDto item = dtoList.get(i);
+                        if (item != null && deviceSerialNumber.equals(item.getDeviceSerialNumber())) {
+                            dtoList.remove(i);
+                            log.info("已从缓存中移除设备：deviceSerialNumber={}", deviceSerialNumber);
+                            break;
+                        }
+                    }
+
+                    // 更新缓存
+                    ehcacheUtil.put(DEFAULT_CACHE.getCacheName(),
+                            OUT_FACTORY_CHECK_LIST.getCode(), dtoList, String.class, Object.class);
+                }
+            }
+        } catch (Exception e) {
+            log.error("从缓存中移除设备信息失败：deviceSerialNumber={}", deviceSerialNumber, e);
+        }
     }
 
     /**
@@ -154,16 +218,16 @@ public class MultiDeviceInspectionController {
      */
     @GetMapping("/listConnectedDevice")
     @ApiOperation("列出所有已连接的仪器和任务")
-    public Result<List<HashMap<String, String>>> listConnectedDevice() {
+    public Result<List<DeviceTaskDto>> listConnectedDevice() {
         Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
 
-        List<HashMap<String, String>> dtoList;
+        List<DeviceTaskDto> dtoList;
         if (cachedObject instanceof List) {
             @SuppressWarnings("unchecked")
-            List<HashMap<String, String>> checkedList = (List<HashMap<String, String>>) cachedObject;
+            List<DeviceTaskDto> checkedList = (List<DeviceTaskDto>) cachedObject;
             dtoList = checkedList;
         } else {
-            dtoList = new ArrayList<HashMap<String, String>>();
+            dtoList = new ArrayList<DeviceTaskDto>();
         }
         return Result.ok(dtoList);
     }

@@ -73,10 +73,10 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-import static com.persee.workstation.uv_inexus.constant.Constants.DEVICE_STATUS_IDLE;
-import static com.persee.workstation.uv_inexus.constant.Constants.DEVICE_STATUS_MEASURE;
+import static com.persee.workstation.uv_inexus.constant.Constants.*;
 import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CACHE;
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.DEFAULT_TASK;
 import static com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum.abs;
 import static com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum.tPercent;
 import static com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum.BaseLine;
@@ -110,7 +110,7 @@ import static com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEn
 * */
 @Component
 @Slf4j
-public class ExcelWebSocketHandler extends TextWebSocketHandler {
+public class ExcelWebSocketHandler extends TextWebSocketHandler{
     @Autowired
     private WorkbookCacheManager workbookCacheManager;
     @Autowired
@@ -891,7 +891,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 if (timeScanStopControl.get(taskId)) {
 //                            setTaskMeasuring(taskId, false);
                                     TaskManagement management = taskService.getById(taskId);
-//                            R<String> device = deviceManageService.getConnectDevice(updateBy);
 //                            if (device.getSuccess()) {
                                     ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
                                     DeviceInfoPO info = infoService.getInfo(management.getOperationInstrument());
@@ -965,6 +964,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             TaskManagement management2 = taskService.getById(taskId);
             //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
             if (management2 != null && StringUtils.isBlank(management2.getOperationInstrument())) {
+                //只有检定校准在用，出厂检验任务创建时已经存在设备号
                 R<String> device = deviceManageService.getConnectDevice(updateBy);
 
 //                            String deviceSerialNumber = "30-U1602-01-0022";
@@ -1273,20 +1273,20 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         //获取序列号
         String string = taskManagement.getOperationInstrument();
         DeviceInfoPO info = deviceInfoService.getInfo(string);
-        R<String> device = deviceManageService.getConnectDevice(updateBy);
+//        R<String> device = deviceManageService.getConnectDevice(updateBy);
 
-        if (StringUtils.isBlank(device.getData())) {
+        if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
 //            JSONObject jsonObject = new JSONObject();
 //            jsonObject.put("error", "请检查当前仪器是否连接");
 //            sendToActiveSession(null, taskId, jsonObject);
             throw new BusinessException("请检查当前仪器是否连接！！！");
         }
-        if (!StringUtils.equals(device.getData(), string)) {
-//            JSONObject jsonObject = new JSONObject();
-//            jsonObject.put("error", "设备已切换,请检查当前仪器与任务是否匹配！！！");
-//            sendToActiveSession(null, taskId, jsonObject);
-            throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
-        }
+//        if (!StringUtils.equals(device.getData(), string)) {
+////            JSONObject jsonObject = new JSONObject();
+////            jsonObject.put("error", "设备已切换,请检查当前仪器与任务是否匹配！！！");
+////            sendToActiveSession(null, taskId, jsonObject);
+//            throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
+//        }
         if (info.getIsActivated() == 0) {
             throw new BusinessException("设备未激活！！！");
         }
@@ -1551,16 +1551,17 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             //获取序列号
                             String string = taskManagement.getOperationInstrument();
 
-                            R<String> device = deviceManageService.getConnectDevice(updateBy);
-                            if (StringUtils.isBlank(device.getData())) {
+//                            R<String> device = deviceManageService.getConnectDevice(updateBy);
+                            DeviceInfoPO info = deviceInfoService.getInfo(string);
+
+                            if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
                                 throw new BusinessException("请检查当前仪器是否连接！！！");
                             }
 
-                            DeviceInfoPO info = deviceInfoService.getInfo(string);
 
-                            if (!StringUtils.equals(device.getData(), string)) {
-                                throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
-                            }
+//                            if (!StringUtils.equals(device.getData(), string)) {
+//                                throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
+//                            }
                             if (info.getIsActivated() == 0) {
                                 throw new BusinessException("设备未激活！！！");
                             }

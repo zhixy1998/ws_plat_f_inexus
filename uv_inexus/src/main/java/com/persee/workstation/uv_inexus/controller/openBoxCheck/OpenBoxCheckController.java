@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.controller.openBoxCheck;
 
+import com.persee.workstation.uv_inexus.dto.factory_inspection.InspectionRowDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateCreationRequest;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.openBoxCheck.OpenBoxCheckService;
@@ -10,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.util.Map;
 
 /*
  * *
@@ -32,7 +32,7 @@ public class OpenBoxCheckController {
      */
     @RequestMapping("/acceptanceReport")
     @ApiOperation("验收报告")
-    public Result<Map<String, Object>> openBoxCheck(@RequestParam String taskId) {
+    public Result<InspectionRowDto> openBoxCheck(@RequestParam String taskId) {
         return openBoxCheckService.openBoxCheck(taskId);
     }
     /**
