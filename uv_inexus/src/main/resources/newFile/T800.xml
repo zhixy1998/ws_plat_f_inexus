@@ -964,7 +964,7 @@
     <ReplyNumber>-1</ReplyNumber>
     <HeadReceiveBytes>
         <string>255:101:19:11</string>
-        <string>255:101:19:2</string>
+        <string>255:101:19:12</string>
     </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>

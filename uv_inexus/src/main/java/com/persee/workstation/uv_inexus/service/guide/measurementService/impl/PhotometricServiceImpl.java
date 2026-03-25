@@ -1853,7 +1853,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                                 }
                                 map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
 
-                                Map<String, Map<String, String>> ch = extracted(option, wlData, sample);
+                                Map<String, Map<String, String>> ch = extracted(option, wlData, sample, digit, otherDigit);
                                 if (!ch.isEmpty()) {
                                     for (Map.Entry<String, Map<String, String>> entry : ch.entrySet()) {
                                         String key = entry.getKey();
@@ -1875,8 +1875,13 @@ public class PhotometricServiceImpl implements PhotometricService {
                                 // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
                                 for (Map.Entry<String, String> entry : originData.entrySet()) {
 //                                    String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
-                                    Double v = DataCountUtil.formatValue(digit, Double.valueOf(entry.getValue()));
-                                    String s = DataCountUtil.addZero(v, digit);
+                                    int currentDigit = digit;
+                                    if (!entry.getKey().endsWith(luminosity)) {
+                                        currentDigit = otherDigit;
+                                    }
+
+                                    Double v = DataCountUtil.formatValue(currentDigit, Double.valueOf(entry.getValue()));
+                                    String s = DataCountUtil.addZero(v, currentDigit);
                                     formattedData.put(entry.getKey(), s);
                                 }
 
@@ -2053,7 +2058,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
 
-    private Map<String, Map<String, String>> extracted(List<String> option, PhotometricOriginDataInfo wlData,  TMeasureSample sample) {
+    private Map<String, Map<String, String>> extracted(List<String> option, PhotometricOriginDataInfo wlData,  TMeasureSample sample, Integer digit, Integer otherDigit) {
 
         Map<String, String> originData = wlData.getData();
         Map<String, Map<String, String>> ans = new HashMap<>();
@@ -2068,14 +2073,25 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         if (wlData.getMode().equals(WaveLengthEnum.abs.getCode()) || wlData.getMode().equals(WaveLengthEnum.tPercent.getCode())) {
 
+            Integer absDigit = digit;
+            Integer tDigit = digit;
+            if (wlData.getMode().equals(WaveLengthEnum.abs.getCode())) {
+                tDigit = otherDigit;
+            } else {
+                absDigit = otherDigit;
+            }
+
+
             if (!option.isEmpty()) {
                 for (String s : option) {
                     Map<String, String> children = new HashMap<>();
                     if (DataIdentityEnums.avg.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
+                        String abs = DataCountUtil.formatValueWithBigDecimal(absDigit, originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
+                        String t = DataCountUtil.formatValueWithBigDecimal(tDigit, originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));
 
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.parseDouble(abs), absDigit));
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.parseDouble(t), tDigit));
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.avg.getIdentity(), children);
                     }
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {

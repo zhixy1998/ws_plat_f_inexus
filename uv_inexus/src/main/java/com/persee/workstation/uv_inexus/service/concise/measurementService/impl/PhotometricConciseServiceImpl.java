@@ -2429,7 +2429,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                                 map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
 
 
-                                Map<String, Map<String, String>> ch = extracted(option, wlData, sample);
+                                Map<String, Map<String, String>> ch = extracted(option, wlData, sample, digit, otherDigit);
                                 if (!ch.isEmpty()) {
                                     for (Map.Entry<String, Map<String, String>> entry : ch.entrySet()) {
                                         String key = entry.getKey();
@@ -2865,7 +2865,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         return result;
     }
 
-    private Map<String, Map<String, String>> extracted(List<String> option, FPhotometricOriginDataInfo wlData, FMeasureSample sample) {
+    private Map<String, Map<String, String>> extracted(List<String> option, FPhotometricOriginDataInfo wlData, FMeasureSample sample, Integer digit, Integer otherDigit) {
 
         Map<String, String> originData = wlData.getData();
         Map<String, Map<String, String>> ans = new HashMap<>();
@@ -2881,11 +2881,22 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (wlData.getMode().equals(WaveLengthEnum.abs.getCode()) || wlData.getMode().equals(WaveLengthEnum.tPercent.getCode())) {
 
+            Integer absDigit = digit;
+            Integer tDigit = digit;
+            if (wlData.getMode().equals(WaveLengthEnum.abs.getCode())) {
+                tDigit = otherDigit;
+            } else {
+                absDigit = otherDigit;
+            }
             if (!option.isEmpty()) {
                 for (String s : option) {
                     Map<String, String> children = new HashMap<>();
                     if (DataIdentityEnums.avg.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
+
+                        String abs = DataCountUtil.formatValueWithBigDecimal(absDigit, originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
+                        String t = DataCountUtil.formatValueWithBigDecimal(tDigit, originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));
+
 
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));

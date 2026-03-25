@@ -6,7 +6,8 @@ import com.persee.workstation.uv_inexus.po.factory_inspection.WorkbookData;
 import com.persee.workstation.uv_inexus.service.factory_inspection.WorkbookDataService;
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -478,4 +481,218 @@ public class WorkbookCacheManager {
             log.error("保存工作簿到数据库失败: {}", taskId, e);
         }
     }
+    // ... existing code ...
+
+    /**
+     * 处理前端编辑单元格后的更新
+     *
+     * @param taskId    任务 ID
+     * @param sheetName Sheet 名称
+     * @param rowNum    行号（从 0 开始）
+     * @param colNum    列号（从 0 开始）
+     * @param newValue  新的单元格值
+     * @param updateBy  操作用户
+     * @return 更新后的 Sheet 数据，用于推送给前端
+     */
+    public Map<String, Object> updateCellByFrontend(String taskId, String sheetName,
+                                                    int rowNum, int colNum, String newValue,
+                                                    String updateBy) {
+        try {
+            // 1. 获取工作簿
+            Workbook workbook = getTaskWorkbook(taskId);
+            if (workbook == null) {
+                log.error("更新单元格失败：工作簿不存在，taskId={}", taskId);
+                return null;
+            }
+
+            // 2. 获取 Sheet
+            Sheet sheet = workbook.getSheet(sheetName);
+            if (sheet == null) {
+                log.error("更新单元格失败：Sheet 不存在，taskId={}, sheetName={}", taskId, sheetName);
+                return null;
+            }
+
+            // 3. 获取或创建行
+            Row row = sheet.getRow(rowNum);
+            if (row == null) {
+                row = sheet.createRow(rowNum);
+            }
+
+            // 4. 获取或创建单元格
+            Cell cell = row.getCell(colNum);
+            if (cell == null) {
+                cell = row.createCell(colNum);
+            }
+
+            // 5. 设置新值（自动判断类型）
+            setCellValue(cell, newValue);
+
+            // 6. 计算公式（确保依赖此单元格的其他公式重新计算）
+            FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+            evaluator.evaluateInCell(cell);
+
+            // 强制重新计算所有公式
+            for (int i = 0; i < 3; i++) {
+                evaluator.evaluateAll();
+            }
+            workbook.setForceFormulaRecalculation(true);
+
+            // 7. 更新缓存和数据库
+            updateTaskWorkbook(taskId, workbook, updateBy);
+
+            // 8. 准备返回数据（提取更新后的 Sheet 数据）
+            Map<String, Object> result = new HashMap<>();
+            result.put("sheetName", sheetName);
+            result.put("sheetData", extractSheetData(sheet, workbook));
+
+            log.info("前端编辑单元格成功：taskId={}, sheet={}, row={}, col={}, value={}",
+                    taskId, sheetName, rowNum, colNum, newValue);
+
+            return result;
+
+        } catch (Exception e) {
+            log.error("前端编辑单元格失败：taskId={}, sheet={}, row={}, col={}",
+                    taskId, sheetName, rowNum, colNum, e);
+            return null;
+        }
+    }
+
+    /**
+     * 设置单元格值（自动判断类型）
+     */
+    private void setCellValue(Cell cell, String value) {
+        if (value == null || value.trim().isEmpty()) {
+            cell.setCellType(CellType.BLANK);
+            return;
+        }
+
+        String trimmedValue = value.trim();
+
+        // 尝试解析为数字
+        try {
+            double numValue = Double.parseDouble(trimmedValue);
+            cell.setCellType(CellType.NUMERIC);
+            cell.setCellValue(numValue);
+            return;
+        } catch (NumberFormatException e) {
+            // 不是数字，继续判断
+        }
+
+        // 判断是否为布尔值
+        if ("TRUE".equalsIgnoreCase(trimmedValue)) {
+            cell.setCellType(CellType.BOOLEAN);
+            cell.setCellValue(true);
+            return;
+        }
+        if ("FALSE".equalsIgnoreCase(trimmedValue)) {
+            cell.setCellType(CellType.BOOLEAN);
+            cell.setCellValue(false);
+            return;
+        }
+
+        // 判断是否为公式
+        if (trimmedValue.startsWith("=")) {
+            cell.setCellType(CellType.FORMULA);
+            cell.setCellValue(trimmedValue.substring(1));
+            return;
+        }
+
+        // 默认为字符串
+        cell.setCellType(CellType.STRING);
+        cell.setCellValue(trimmedValue);
+    }
+
+    /**
+     * 提取 Sheet 数据（用于返回给前端）
+     */
+    private Map<String, Object> extractSheetData(Sheet sheet, Workbook workbook) {
+        Map<String, Object> sheetDto = new HashMap<>();
+        sheetDto.put("sheetName", sheet.getSheetName());
+        sheetDto.put("firstRowNum", sheet.getFirstRowNum());
+        sheetDto.put("lastRowNum", sheet.getLastRowNum());
+
+        // 公式评估器
+        FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+        evaluator.clearAllCachedResultValues();
+
+        // 提取合并区域
+        List<Map<String, Object>> mergedRegions = new ArrayList<>();
+        for (CellRangeAddress region : sheet.getMergedRegions()) {
+            Map<String, Object> merged = new HashMap<>();
+            merged.put("firstRow", region.getFirstRow());
+            merged.put("lastRow", region.getLastRow());
+            merged.put("firstCol", region.getFirstColumn());
+            merged.put("lastCol", region.getLastColumn());
+
+            // 获取合并区域的值
+            Row row = sheet.getRow(region.getFirstRow());
+            if (row != null) {
+                Cell cell = row.getCell(region.getFirstColumn());
+                if (cell != null) {
+                    merged.put("value", getCellValueAsString(cell, evaluator));
+                }
+            }
+            mergedRegions.add(merged);
+        }
+        sheetDto.put("mergedRegions", mergedRegions);
+
+        // 提取普通单元格数据
+        Map<String, Map<String, Object>> rowData = new HashMap<>();
+        for (int rowNum = sheet.getFirstRowNum(); rowNum <= sheet.getLastRowNum(); rowNum++) {
+            Row row = sheet.getRow(rowNum);
+            if (row != null) {
+                Map<String, Object> cellData = new HashMap<>();
+                for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
+                    Cell cell = row.getCell(cellNum);
+                    if (cell != null) {
+                        cellData.put(String.valueOf(cellNum), getCellValueAsString(cell, evaluator));
+                    }
+                }
+                if (!cellData.isEmpty()) {
+                    rowData.put(String.valueOf(rowNum), cellData);
+                }
+            }
+        }
+        sheetDto.put("rows", rowData);
+
+        return sheetDto;
+    }
+
+    /**
+     * 获取单元格值（字符串格式）
+     */
+    private String getCellValueAsString(Cell cell, FormulaEvaluator evaluator) {
+        try {
+            switch (cell.getCellType()) {
+                case FORMULA:
+                    // 使用 evaluator 获取公式计算结果
+                    org.apache.poi.ss.usermodel.CellValue cellValue = evaluator.evaluate(cell);
+                    switch (cellValue.getCellType()) {
+                        case NUMERIC:
+                            return String.valueOf(cellValue.getNumberValue());
+                        case STRING:
+                            return cellValue.getStringValue();
+                        case BOOLEAN:
+                            return String.valueOf(cellValue.getBooleanValue());
+                        default:
+                            return "";
+                    }
+                case NUMERIC:
+                    return String.valueOf(cell.getNumericCellValue());
+                case STRING:
+                    return cell.getStringCellValue();
+                case BOOLEAN:
+                    return String.valueOf(cell.getBooleanCellValue());
+                default:
+                    return "";
+            }
+        } catch (Exception e) {
+            log.warn("获取单元格值失败：{}", e.getMessage());
+            return "";
+        }
+    }
+
+
+
+
 }

@@ -1,10 +1,10 @@
 package com.persee.workstation.uv_inexus.service.openBoxCheck;
 
+import com.persee.workstation.uv_inexus.dto.factory_inspection.InspectionRowDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateCreationRequest;
 import com.persee.workstation.uv_inexus.model.Result;
 
 import javax.validation.Valid;
-import java.util.Map;
 
 /*
  * *
@@ -16,7 +16,7 @@ import java.util.Map;
  */
 
 public interface OpenBoxCheckService {
-    Result<Map<String, Object>> openBoxCheck(String taskId);
+    Result<InspectionRowDto> openBoxCheck(String taskId);
 
     Result<String> editUnboxingTemplate(@Valid TemplateCreationRequest request);
 }

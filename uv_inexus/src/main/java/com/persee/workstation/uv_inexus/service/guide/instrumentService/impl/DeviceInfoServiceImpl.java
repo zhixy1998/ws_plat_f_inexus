@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
@@ -493,10 +494,12 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         ans.setLampType(lamp);
 
         List<DeviceConfParam> scanSpeed = new ArrayList<>();
-        po.getScanSpeed().forEach(i -> {
+
+        JSONObject speed = po.getScanSpeed();
+        speed.forEach((k, v) -> {
             DeviceConfParam param = new DeviceConfParam();
-            param.setParamName(i);
-            param.setParamValue(ScanSpeedEnum.getCodeByName(i));
+            param.setParamName(v.toString());
+            param.setParamValue(k);
             scanSpeed.add(param);
         });
         ans.setScanSpeed(scanSpeed);
