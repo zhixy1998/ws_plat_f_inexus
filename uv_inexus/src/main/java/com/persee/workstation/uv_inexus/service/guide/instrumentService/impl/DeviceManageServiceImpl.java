@@ -887,6 +887,23 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                     paramVO.setParam(param.getParam());
                     paramVO.setParamType(param.getParamType());
 
+                    List<DataNameValue> defaultValue = param.getDefaultValue();
+                    if (defaultValue != null && !defaultValue.isEmpty()) {
+
+                        if (paramVO.getParam().equals(DeviceCalibrationParamEnum.Start.getType())) {
+                            DataNameValue value = defaultValue.get(1);
+                            if (StringUtils.hasText(value.getDataValue())) {
+                                paramVO.setLastValue(value.getDataValue());
+                            }
+                        } else {
+                            DataNameValue value = defaultValue.get(0);
+                            if (StringUtils.hasText(value.getDataValue())) {
+                                paramVO.setLastValue(value.getDataValue());
+                            }
+                        }
+
+
+                    }
 
                     wrapper.eq(CalibrationTempPO::getCalibrationType, type);
                     wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber);

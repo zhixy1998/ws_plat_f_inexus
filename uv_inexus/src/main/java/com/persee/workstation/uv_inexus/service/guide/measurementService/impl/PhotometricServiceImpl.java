@@ -133,8 +133,8 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Autowired
     LaTeXConverter latexConverter;
 
-    @Value("default")
-    String defaultProjectKey;
+    @Value("默认任务")
+    String defaultTaskKey;
 
     @Value("任务")
     String newTaskName;
@@ -333,7 +333,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             if (upper1.equals(lower2)) {
                 boolean includeUpper = Boolean.TRUE.equals(current.getIsUpperLimitIncluded());
                 boolean includeLower = Boolean.TRUE.equals(next.getIsLowerLimitIncluded());
-                if (!(includeUpper ^ includeLower)) {
+                if (includeUpper == includeLower) {
                     return R.fail(YamlMessageSource.getMessageStatic("00100022"));
                 }
             }
@@ -462,14 +462,14 @@ public class PhotometricServiceImpl implements PhotometricService {
         vo.setClearDataRange(RationChangeMethodTypeEnums.noChange.getIdentity());
         vo.setMessage(RationChangeMethodTypeEnums.noChange.getMessage());
 
-
         TMeasureMethod currentMethod = tMeasureMethodService.getById(checkDTO.getCurrentMethodId());
-        if (StringUtils.hasText(currentMethod.getProjectItemKey()) && currentMethod.getProjectItemKey().equals(defaultProjectKey)) {
-            log.info("生成新方法");
-            vo.setParamChange(true);
-            vo.setMessage(RationChangeMethodTypeEnums.newMethod.getMessage());
-            vo.setClearDataRange(RationChangeMethodTypeEnums.newMethod.getIdentity());
-            return Result.ok(vo);
+
+        boolean isTaskEnd = false;
+
+        if (StringUtils.hasText(checkDTO.getTaskId())) {
+
+            TMeasureTask task = tMeasureTaskService.getById(checkDTO.getTaskId());
+            isTaskEnd = task != null && task.getTaskStatus() != null && task.getTaskStatus().equals(TaskStatusEnum.COMPLETED.getCode());
         }
 
         PhotometricParameter oldParam = JSON.parseObject(currentMethod.getMeasurementParamInfo(), PhotometricParameter.class);
@@ -496,12 +496,21 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         //检查分析参数
         boolean analyze = checkAnalyzeParam(oldParam, newMethodParam);
-        if (!analyze) {
+        if (!analyze && !isTaskEnd) {
             log.info("分析参数有改变");
             vo.setClearDataRange(RationChangeMethodTypeEnums.analyze.getIdentity());
             vo.setParamChange(true);
             vo.setMessage(RationChangeMethodTypeEnums.analyze.getMessage());
+            return Result.ok(vo);
         }
+
+        if (isTaskEnd) {
+            log.info("当前任务已结束");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.endTask.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.endTask.getMessage());
+        }
+
         return Result.ok(vo);
     }
 
