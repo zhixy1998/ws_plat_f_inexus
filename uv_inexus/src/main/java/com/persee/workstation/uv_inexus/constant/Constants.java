@@ -57,6 +57,7 @@ public class Constants {
     public final static String PARAM_TWO = "2";
     public final static String PARAM_THREE = "3";
     public final static String PARAM_FOUR = "4";
+    public final static String SCANFAST = "111";
     public final static String DEFAULT_TASK = "默认任务";
 
     /**
