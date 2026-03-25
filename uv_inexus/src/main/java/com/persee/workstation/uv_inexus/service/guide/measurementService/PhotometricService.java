@@ -133,7 +133,7 @@ public interface PhotometricService {
     /**
      * 多格式文件导出（集成children和option数据）
      */
-    R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, java.util.List<String> option);
+    R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit,  Integer otherDigit, java.util.List<String> option);
 
     /**
      * 查询可绑定的方法参数

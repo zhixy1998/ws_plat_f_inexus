@@ -2505,7 +2505,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
-    public R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, List<String> option) {
+    public R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit,List<String> option) {
         log.info("开始导出（集成children和option），taskId: {}, fileType: {}, option: {}", taskId, fileType, option);
         if (!StringUtils.hasText(taskId)) {
             return R.fail(YamlMessageSource.getMessageStatic("00000019"));
@@ -2543,6 +2543,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         queryDataDTO.setTaskId(taskId);
         queryDataDTO.setAllDisplay(allDisplay);
         queryDataDTO.setDigit(digit);
+        queryDataDTO.setOtherDigit(otherDigit);
         List<Map<String, Object>> data = queryData(queryDataDTO).getData();
 
         List<Map<String, Object>> expandedData = new ArrayList<>();
