@@ -48,6 +48,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
@@ -122,8 +123,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Autowired
     private DevOperationUtilService operationUtilService;
 
-//    @Autowired
-//    DeviceManageService manageService;
+    @Autowired
+    DeviceInfoService infoService;
 
     @Autowired
     RestUtil restUtil;
@@ -470,17 +471,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             double minWaveLength = 190.0;
             double maxWaveLength = 1100.0;
 
-//            if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
-//                R<DeviceMeasureVO> typeInfo = manageService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
-//                if (typeInfo.getSuccess()) {
-//                    DeviceMeasureVO vo = typeInfo.getData();
-//                    if (vo != null) {
-//                        minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
-//                        maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
-//                    }
-//
-//                }
-//            }
+            if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
+                R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
+                if (typeInfo.getSuccess()) {
+                    DeviceMeasureVO vo = typeInfo.getData();
+                    if (vo != null) {
+                        minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                        maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                    }
+
+                }
+            }
 
             for (String waveStr : newMethodParam.getWaveLength()) {
                 if (waveStr == null || waveStr.trim().isEmpty()) {

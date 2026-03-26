@@ -46,7 +46,6 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecime
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -138,7 +137,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     ConcisePublicUtilService concisePublicUtilService;
 
     @Autowired
-    DeviceManageService manageService;
+    DeviceInfoService infoService;
 
     @Autowired
     SystemBusinessParamService businessParamService;
@@ -357,7 +356,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             double maxWaveLength = 1100.0;
 
             if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
-                R<DeviceMeasureVO> typeInfo = manageService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
+                R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
                 if (typeInfo.getSuccess()) {
                     DeviceMeasureVO vo = typeInfo.getData();
                     if (vo != null) {

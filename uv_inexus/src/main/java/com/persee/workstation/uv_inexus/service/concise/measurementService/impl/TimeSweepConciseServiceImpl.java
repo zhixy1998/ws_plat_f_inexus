@@ -55,6 +55,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
@@ -193,7 +194,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @param parameter 时间扫描参数
      * @return 校验结果
      */
-    private R<Boolean> checkParam(FTimeSweepParamter parameter) {
+    private R<Boolean> checkParam(FTimeSweepParamter parameter, String deviceSerialNumber) {
         // 1. 根对象非空校验
         if (parameter == null) {
             return R.fail(YamlMessageSource.getMessageStatic("00102003"));
@@ -218,6 +219,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         // 波长默认范围 190-1100
         double minWaveLength = 190.0;
         double maxWaveLength = 1100.0;
+
+        if (StringUtils.hasText(deviceSerialNumber)) {
+            R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(deviceSerialNumber);
+            if (typeInfo.getSuccess()) {
+                DeviceMeasureVO vo = typeInfo.getData();
+                if (vo != null) {
+                    minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                    maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                }
+
+            }
+        }
 
         try {
             double waveLength = Double.parseDouble(waveLengthStr);
@@ -571,7 +584,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     public Result use(TimeUseMethodDto paramDto) {
         FTimeSweepParamter param = new FTimeSweepParamter();
         BeanUtils.copyProperties(paramDto.getParameter(), param);
-        R<Boolean> r = checkParam(param);
+        R<Boolean> r = checkParam(param, paramDto.getDeviceSerialNumber());
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }

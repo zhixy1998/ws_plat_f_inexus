@@ -992,7 +992,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000012"));
         }
 
-        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
+        if (dto.getHeads().size() > 10) {
             //表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000013"));
         }
@@ -1078,6 +1078,26 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (dto.getHeads() != null && !dto.getHeads().isEmpty()) {
             taskHeadSnapshot.setSampleHeads(dto.getHeads());
         }
+
+        List<InputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
+        List<String> allHeadIdentity = new ArrayList<>();
+
+        if (mapRelation != null && !mapRelation.isEmpty()) {
+            taskHeadSnapshot.getSampleHeads().forEach(head -> {
+                allHeadIdentity.add(head.getIdentity());
+            });
+            taskHeadSnapshot.getTaskHeads().forEach(head -> {
+                allHeadIdentity.add(head.getIdentity());
+            });
+            List<InputParamMapTableHead> newMapRelation = new ArrayList<>();
+            mapRelation.forEach(map -> { if (allHeadIdentity.contains(map.getHeadIdentity())) {
+                newMapRelation.add(map);
+            }});
+
+            taskHeadSnapshot.setMapRelation(newMapRelation);
+
+        }
+
         taskHeadSnapshot.setTaskId(task.getId());
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 

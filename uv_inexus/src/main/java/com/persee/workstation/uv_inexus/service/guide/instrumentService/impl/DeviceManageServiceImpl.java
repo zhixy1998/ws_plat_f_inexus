@@ -890,19 +890,19 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                     List<DataNameValue> defaultValue = param.getDefaultValue();
                     if (defaultValue != null && !defaultValue.isEmpty()) {
 
+
                         if (paramVO.getParam().equals(DeviceCalibrationParamEnum.Start.getType())) {
-                            DataNameValue value = defaultValue.get(1);
-                            if (StringUtils.hasText(value.getDataValue())) {
-                                paramVO.setLastValue(value.getDataValue());
-                            }
-                        } else {
+
+                            paramVO.setLastValue(typeInfoPO.getMaxWavelength());
+
+                        } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.End.getType())) {
+                            paramVO.setLastValue(typeInfoPO.getMinWavelength());
+                        }else {
                             DataNameValue value = defaultValue.get(0);
                             if (StringUtils.hasText(value.getDataValue())) {
                                 paramVO.setLastValue(value.getDataValue());
                             }
                         }
-
-
                     }
 
                     wrapper.eq(CalibrationTempPO::getCalibrationType, type);
@@ -1496,6 +1496,21 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             int scanSpeed = 3;
             double darkBand = 2.0;
 
+            double minWaveLength = 190.0;
+            double maxWaveLength = 1100.0;
+
+            if (StringUtils.hasText(deviceSerialNumber)) {
+                R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(deviceSerialNumber);
+                if (typeInfo.getSuccess()) {
+                    DeviceMeasureVO vo = typeInfo.getData();
+                    if (vo != null) {
+                        minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                        maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                    }
+
+                }
+            }
+
             for (DataNameValue datum : dto.getData()) {
                 try {
 
@@ -1520,7 +1535,18 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 }
             }
 
+            if (start < minWaveLength || start > maxWaveLength) {
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+                return R.fail(String.format("起始波长范围在 %s ~ %s 内", minWaveLength, maxWaveLength));
+            }
+            if (end < minWaveLength || end > maxWaveLength) {
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+                return R.fail(String.format("终止波长范围在 %s ~ %s 内", minWaveLength, maxWaveLength));
+            }
+
+
             if (end >= start) {
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
                 return R.fail("终止波长不能大于起始波长");
             }
 
