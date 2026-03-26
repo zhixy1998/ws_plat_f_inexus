@@ -18,7 +18,12 @@ public enum ScanSpeedEnum {
     SLOW("0", "慢速"),
     MEDIUM("1", "中速"),
     FAST("2", "快速"),
-    SUPER_FAST("3", "极快");
+    SUPER_FAST("111", "极快");
+
+//    SLOW("3", "极慢速"),
+//    MEDIUM("2", "慢速"),
+//    FAST("1", "中速"),
+//    SUPER_FAST("0", "快速");
 
 
     private final String code;

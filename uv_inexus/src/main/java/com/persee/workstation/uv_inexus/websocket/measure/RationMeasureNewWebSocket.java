@@ -207,11 +207,11 @@ public class RationMeasureNewWebSocket{
                 }
                 sampleKind = dealSample.getSampleKind();
 
-                R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-                if (!setParams.getSuccess()) {
-                    sendError(deviceSerialNumber, setParams.getMessage());
-                    return;
-                }
+//                R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+//                if (!setParams.getSuccess()) {
+//                    sendError(deviceSerialNumber, setParams.getMessage());
+//                    return;
+//                }
 
                 boolean repeat = parameter.getRepeatMode().equals("单池重复");
                 dealSample.setSampleLocation(null);
@@ -316,11 +316,11 @@ public class RationMeasureNewWebSocket{
 
             task.setDeviceSerialNumber(deviceSerialNumber);
 
-            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-            if (!setParams.getSuccess()) {
-                sendError(deviceSerialNumber, setParams.getMessage());
-                return;
-            }
+//            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+//            if (!setParams.getSuccess()) {
+//                sendError(deviceSerialNumber, setParams.getMessage());
+//                return;
+//            }
 
             ParallelData parallelData = new ParallelData();
 

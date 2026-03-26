@@ -764,7 +764,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     // 参数未变，直接返回成功结果，跳过后续所有数据库更新/新建操作
                     Map<String, Object> map = new HashMap<>();
                     map.put("method", currentMethod);
-                    Result draftButton = createDraftButton(currentMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+                    Result draftButton = createDraftButton(currentMethod.getId(), null, paramDto.getUpdateBy());
                     if (draftButton.getCode() == 200) {
                         map.put("taskId", draftButton.getData());
                     }
@@ -800,7 +800,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 //应用失败
                 return Result.fail(YamlMessageSource.getMessageStatic("00100002"));
             }
-            Result draftButton = createDraftButton(method2.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(method2.getId(), null, paramDto.getUpdateBy());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -831,7 +831,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -846,7 +846,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -859,7 +859,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail(YamlMessageSource.getMessageStatic("00105016"));
             } else {
                 map.put("method", method);
-                Result draftButton = createDraftButton(method.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+                Result draftButton = createDraftButton(method.getId(), null, paramDto.getUpdateBy());
                 if (draftButton.getCode() == 200) {
                     map.put("taskId", draftButton.getData());
                 }
@@ -872,7 +872,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -994,8 +994,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     @Override
     public Result createDraftButton(String methodId,
                                     String taskId,
-                                    String updateBy,
-                                    String deviceSerialNumber) {
+                                    String updateBy) {
         if (methodId == null) {
             //请先创建方法或者选择方法
             return Result.fail(YamlMessageSource.getMessageStatic("0010000B"));
@@ -1032,7 +1031,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         fMeasureTask.setCreateTime(LocalDateTime.now());
         fMeasureTask.setIsSave("0");
         fMeasureTask.setIsDelete(createType);
-        fMeasureTask.setDeviceSerialNumber(deviceSerialNumber);
         if (taskId != null) {
             // 根据taskId查询上一个草稿数据
             FMeasureTask task1 = fMeasureTaskService.getById(taskId);

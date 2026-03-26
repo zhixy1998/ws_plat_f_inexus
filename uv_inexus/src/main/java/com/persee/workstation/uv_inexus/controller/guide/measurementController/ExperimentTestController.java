@@ -138,6 +138,14 @@ public class ExperimentTestController {
         return experimentTestService.isAddSample(addSampleDTO);
     }
 
+    @GetMapping("setUpParametersPort")
+    @ApiOperation("通用: 设置参数接口")
+    public Result setUpParametersPort(@RequestParam String taskId,
+                                      @RequestParam String deviceSerialNumber,
+                                      @RequestParam String measureType) {
+        return experimentTestService.setUpParametersPort(taskId,deviceSerialNumber,measureType);
+    }
+
 
     @GetMapping("queryProjectStatistics")
     @ApiOperation("查询项目统计接口")

@@ -2044,10 +2044,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     }
 
     @Override
-    public Result setUpParametersPort(String methodId, String deviceSerialNumber, String measureType) {
+    public Result setUpParametersPort(String taskId, String deviceSerialNumber, String measureType) {
         // 校验参数
-        if (!StringUtils.hasText(methodId)) {
-            return Result.fail("请选择方法");
+        if (!StringUtils.hasText(taskId)) {
+            return Result.fail("请先新建任务");
         }
         if (!StringUtils.hasText(deviceSerialNumber)) {
             return Result.fail("请先连接仪器");
@@ -2055,6 +2055,17 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (!StringUtils.hasText(measureType)) {
             return Result.fail("请选择测量类型");
         }
+        // 根据任务id查询任务信息
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        String serialNumber = task.getDeviceSerialNumber();
+        if (serialNumber!=null&&!task.getDeviceSerialNumber().equals(deviceSerialNumber)){
+            return Result.fail("当前设备与任务测量设备不匹配");
+        }
+        String methodId = task.getMethodKey();
+        // 根据测量类型获取对应的测量服务
         MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
         switch (measureTypeEnum) {
             case PHOTOMETRIC_MEASUREMENT:

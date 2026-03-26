@@ -61,6 +61,12 @@ public class PhotometricController {
         return photometricService.updateMethodParam(methodParam);
     }
 
+    @GetMapping("setUpParametersPort")
+    @ApiOperation("设置参数接口")
+    public Result setUpParametersPort(@RequestParam String methodId, @RequestParam String deviceSerialNumber) {
+        return photometricService.setUpParametersPort(methodId, deviceSerialNumber);
+    }
+
 
     @PostMapping
     @ApiOperation("新增样品输入参数")

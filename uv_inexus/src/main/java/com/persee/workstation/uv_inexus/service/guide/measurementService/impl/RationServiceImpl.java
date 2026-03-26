@@ -583,6 +583,70 @@ public class RationServiceImpl implements RationService {
     }
 
     /**
+     * 设置预测量参数接口
+     *
+     * @param methodId 方法ID
+     * @param deviceSerialNumber 设备序列号
+     * @return 操作结果
+     */
+    public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
+        // 参数校验
+        if (methodId == null || methodId.isEmpty()) {
+            return Result.fail("方法ID不能为空");
+        }
+        if (deviceSerialNumber == null || deviceSerialNumber.isEmpty()) {
+            return Result.fail("设备序列号不能为空");
+        }
+
+        // 根据methodId去方法表中查询数据
+        TMeasureMethod tMeasureMethod = tMeasureMethodService.getById(methodId);
+
+        if (tMeasureMethod == null) {
+            // 没有找到该方法
+            return Result.fail("未找到对应的测量方法");
+        }
+
+        // 解析参数
+        RationParameter parameter = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), RationParameter.class);
+        if (parameter == null) {
+            return Result.fail("参数解析失败");
+        }
+
+        // 构建操作输入参数
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+        // 设置具体参数
+        SetParam param = new SetParam();
+
+        // 1. 设置光度模式（使用吸收模式）
+        param.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
+
+        // 2. 设置换灯波长
+        param.setChangeLampWl(Double.valueOf(parameter.getChangeLampWaveLength()));
+
+        // 3. 设置狭缝
+        if (StringUtils.hasText(parameter.getSpectralBandwidth()) && deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+            param.setSlit1(Double.valueOf(parameter.getSpectralBandwidth()));
+        }
+
+        // 4. 设置响应时间
+        param.setResponseTime(Double.valueOf(parameter.getResponseTime()));
+
+        inputParam.setParam(param);
+
+        // 执行操作
+        R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
+
+        if (!operation.getSuccess()) {
+            return Result.fail(operation.getMessage());
+        }
+
+        return Result.ok(true);
+    }
+
+    /**
      * 生成表头和映射信息
      */
     private R<Boolean> generateTableInfo(String taskId, String methodId, Boolean clearOld) {

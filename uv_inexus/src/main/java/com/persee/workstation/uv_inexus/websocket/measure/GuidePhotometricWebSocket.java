@@ -220,13 +220,13 @@ public class GuidePhotometricWebSocket {
                       tMeasureSampleService.updateById(measureSample);
                   }
 
-                  R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-
-                  if (!setParams.getSuccess()) {
-
-                      sendError(deviceSerialNumber, setParams.getMessage());
-                      return;
-                  }
+//                  R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+//
+//                  if (!setParams.getSuccess()) {
+//
+//                      sendError(deviceSerialNumber, setParams.getMessage());
+//                      return;
+//                  }
 
                   if (parameter.getRepetitionPattern().equals("单池重复")) {
                       measure = singleSampleRepeatMeasure(measureSample, parameter, task, deviceSerialNumber);
@@ -305,12 +305,12 @@ public class GuidePhotometricWebSocket {
                  maxPoolNum = Collections.max(usefulLocation);
              }
              task.setDeviceSerialNumber(deviceSerialNumber);
-             R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-             if (!setParams.getSuccess()) {
-
-                 sendError(deviceSerialNumber, setParams.getMessage());
-                 return;
-             }
+//             R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+//             if (!setParams.getSuccess()) {
+//
+//                 sendError(deviceSerialNumber, setParams.getMessage());
+//                 return;
+//             }
              for (TaskSpecimen specimen : taskSpecimen) {
                  if (!isAutoChangePool && measureCount == 1) {
                      log.info("不自动切换样品池，只测一个就结束");
