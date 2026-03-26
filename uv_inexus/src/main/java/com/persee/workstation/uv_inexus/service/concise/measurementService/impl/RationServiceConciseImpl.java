@@ -1984,16 +1984,6 @@ public class RationServiceConciseImpl implements RationConciseService {
             setParam.setResponseTime(Double.parseDouble(rationParam.getResponseTime()));
         }
 
-        // 9. 设置增益
-        if (StringUtils.hasText(String.valueOf(rationParam.getGain()))) {
-            setParam.setGain(Integer.valueOf(rationParam.getGain()));
-        }
-
-        // 10. 设置能量灯
-        if (StringUtils.hasText(rationParam.getEnergyLamp())) {
-            setParam.setLampPos(Integer.valueOf(rationParam.getEnergyLamp()));
-        }
-
         inputParam.setParam(setParam);
 
         // 11. 调用设备操作服务
