@@ -9,6 +9,24 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -21,27 +39,14 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysQuickConfigM
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigGrantPermDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigSaveDTO;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigTreeDTO;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupQuickConfigPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysPermissionPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysQuickConfigPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysQuickConfigService;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.UserPermissionService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-
-import javax.annotation.Resource;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 快捷配置Service实现类
@@ -183,7 +188,7 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
     private SysPermissionMapper sysPermissionMapper;
 
     @Override
-    public Result<List<Map<String, Object>>> getQuickConfigTree(String groupId) {
+    public Result<List<Map<String, Object>>> getQuickConfigTree(String groupId, Integer quickConfigType) {
         try {
             // ========== 步骤1：获取该小组绑定的快捷配置ID集合 ==========
             Set<String> haveConfigIds = new HashSet<>();
@@ -203,8 +208,12 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
                 }
             }
 
-            // ========== 步骤2：查询所有快捷配置，构建基础Map列表（补充perm_ids_have解析） ==========
-            List<SysQuickConfigPO> allConfig = baseMapper.selectList(null);
+            // ========== 步骤2：查询快捷配置，构建基础Map列表（补充perm_ids_have解析） ==========
+            QueryWrapper<SysQuickConfigPO> configQueryWrapper = new QueryWrapper<>();
+            if (quickConfigType != null) {
+                configQueryWrapper.eq("quick_config_type", quickConfigType);
+            }
+            List<SysQuickConfigPO> allConfig = baseMapper.selectList(configQueryWrapper);
             List<Map<String, Object>> allConfigMap = allConfig.stream().map(po -> {
                 Map<String, Object> configMap = new HashMap<>();
                 // 映射原有所有字段

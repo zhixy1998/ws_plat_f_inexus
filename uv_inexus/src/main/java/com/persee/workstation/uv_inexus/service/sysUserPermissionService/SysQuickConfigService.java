@@ -57,7 +57,7 @@ public interface SysQuickConfigService extends IService<SysQuickConfigPO> {
      */
     Result<String> deleteById(Long id);
 
-    Result<List<Map<String, Object>>> getQuickConfigTree(String groupId);
+    Result<List<Map<String, Object>>> getQuickConfigTree(String groupId, Integer quickConfigType);
 
     Result<Boolean> grantQuickConfigToGroup(QuickConfigGrantPermDTO grantDTO);
 }
