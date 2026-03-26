@@ -775,12 +775,12 @@ public class RationServiceImpl implements RationService {
 
 
         TMeasureMethod currentMethod = tMeasureMethodService.getById(checkDTO.getCurrentMethodId());
-        if (StringUtils.hasText(currentMethod.getProjectItemKey()) && currentMethod.getProjectItemKey().equals(defaultMethodProjectName)) {
-            log.info("生成新方法");
-            vo.setParamChange(true);
-            vo.setMessage(RationChangeMethodTypeEnums.newMethod.getMessage());
-            vo.setClearDataRange(RationChangeMethodTypeEnums.newMethod.getIdentity());
-            return Result.ok(vo);
+        boolean isTaskEnd = false;
+
+        if (StringUtils.hasText(checkDTO.getTaskId())) {
+
+            TMeasureTask task = tMeasureTaskService.getById(checkDTO.getTaskId());
+            isTaskEnd = task != null && task.getTaskStatus() != null && task.getTaskStatus().equals(TaskStatusEnum.COMPLETED.getCode());
         }
 
         RationParameter oldParam = JSON.parseObject(currentMethod.getMeasurementParamInfo(), RationParameter.class);
@@ -815,12 +815,19 @@ public class RationServiceImpl implements RationService {
 
         //检查分析参数
         boolean analyze = checkAnalyzeParam(oldParam, newMethodParam);
-        if (!analyze) {
+        if (!analyze && !isTaskEnd) {
             log.info("分析参数有改变");
             vo.setClearDataRange(RationChangeMethodTypeEnums.analyze.getIdentity());
             vo.setParamChange(true);
             vo.setMessage(RationChangeMethodTypeEnums.analyze.getMessage());
         }
+        if (isTaskEnd) {
+            log.info("当前任务已结束");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.endTask.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.endTask.getMessage());
+        }
+
         return Result.ok(vo);
     }
 
@@ -4150,7 +4157,7 @@ public class RationServiceImpl implements RationService {
 
         step = (maxX - minX) / 100;
 
-        double st = step * 3;
+        double st = step * 40;
 
         switch (info.getDegree()) {
             case 1:
