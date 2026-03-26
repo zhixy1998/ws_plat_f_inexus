@@ -9,26 +9,35 @@
 
 package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
+import java.util.List;
+import java.util.Map;
+
+import javax.validation.Valid;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigGrantPermDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigSaveDTO;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysQuickConfigPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysQuickConfigService;
 import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
-import javax.validation.Valid;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 快捷配置Controller
@@ -93,8 +102,10 @@ public class SysQuickConfigController {
     @ApiOperation("查询快捷配置树形结构（按小组ID匹配拥有状态）")
     public Result<List<Map<String, Object>>> getQuickConfigTree(
             @ApiParam(value = "小组ID", required = false)
-            @RequestParam(required = false) String groupId) {
-        return sysQuickConfigService.getQuickConfigTree(groupId);
+            @RequestParam(required = false) String groupId,
+            @ApiParam(value = "快捷配置类型：0-普通用户，1-GMP", required = false)
+            @RequestParam(required = false) Integer quickConfigType) {
+        return sysQuickConfigService.getQuickConfigTree(groupId, quickConfigType);
     }
 
     @PostMapping("/grant-group-perm")

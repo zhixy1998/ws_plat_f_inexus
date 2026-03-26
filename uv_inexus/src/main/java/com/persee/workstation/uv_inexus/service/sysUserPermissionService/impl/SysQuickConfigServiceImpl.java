@@ -181,7 +181,7 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
     private SysPermissionMapper sysPermissionMapper;
 
     @Override
-    public Result<List<Map<String, Object>>> getQuickConfigTree(String groupId) {
+    public Result<List<Map<String, Object>>> getQuickConfigTree(String groupId, Integer quickConfigType) {
         try {
             // ========== 步骤1：获取该小组绑定的快捷配置ID集合 ==========
             Set<String> haveConfigIds = new HashSet<>();
@@ -202,7 +202,14 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
             }
 
             // ========== 步骤2：查询所有快捷配置，构建基础Map列表（补充perm_ids_have解析） ==========
-            List<SysQuickConfigPO> allConfig = baseMapper.selectList(null);
+            QueryWrapper<SysQuickConfigPO> configQuery = new QueryWrapper<>();
+            
+            // 添加quickConfigType筛选条件
+            if (quickConfigType != null) {
+                configQuery.eq("quick_config_type", quickConfigType);
+            }
+            
+            List<SysQuickConfigPO> allConfig = baseMapper.selectList(configQuery);
             List<Map<String, Object>> allConfigMap = allConfig.stream().map(po -> {
                 Map<String, Object> configMap = new HashMap<>();
                 // 映射原有所有字段

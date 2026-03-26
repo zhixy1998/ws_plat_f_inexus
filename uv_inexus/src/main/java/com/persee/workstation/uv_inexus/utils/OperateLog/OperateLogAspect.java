@@ -155,6 +155,8 @@ public class OperateLogAspect {
                         operateDescMap.put("wmquantityGenerationReport", "定量测量-生成报告");
                         operateDescMap.put("wmspectralGenerationReport", "光谱扫描-生成报告");
                         operateDescMap.put("wmtimeScanGenerationReport", "时间扫描-生成报告");
+                        operateDescMap.put("instrumentCalibrationWavelengthCorrection", "波长校正");
+                        operateDescMap.put("instrumentCalibrationDarkCurrentCorrection", "暗电流校正");
 
                         // 替换描述中的operateType占位符
                         String operateName = operateDescMap.getOrDefault(currentOperateType, currentOperateType);
