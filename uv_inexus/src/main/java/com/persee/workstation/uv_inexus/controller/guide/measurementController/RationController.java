@@ -79,6 +79,12 @@ public class RationController {
         return rationService.updateMethodParam(methodParam);
     }
 
+    @GetMapping("setUpParametersPort")
+    @ApiOperation("设置参数接口")
+    public Result setUpParametersPort(@RequestParam String methodId, @RequestParam String deviceSerialNumber) {
+        return rationService.setUpParametersPort(methodId, deviceSerialNumber);
+    }
+
     @GetMapping("getSampleList")
     @ApiOperation("获取样本列表接口")
     public Result getSampleList(@RequestParam String taskId,

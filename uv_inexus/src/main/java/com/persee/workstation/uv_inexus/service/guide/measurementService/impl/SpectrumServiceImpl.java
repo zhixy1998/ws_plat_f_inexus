@@ -446,13 +446,6 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail(YamlMessageSource.getMessageStatic("00304002"));
         }
         queryMethodParameterVo.setLuminosityName(queryMethodParameterVo.getLuminosity().equals("1") ? "Abs" : queryMethodParameterVo.getLuminosity().equals("2") ? "T%" : queryMethodParameterVo.getLuminosity().equals("3") ? "Es" : "Er");
-        if (queryMethodParameterVo.getScanSpeed().equals("0")
-                && queryMethodParameterVo.getScanSpeed().equals("1")
-                && queryMethodParameterVo.getScanSpeed().equals("2")
-                && queryMethodParameterVo.getScanSpeed().equals("3")) {
-            //请选择正确的扫描速度
-            return Result.fail(YamlMessageSource.getMessageStatic("00304003"));
-        }
         queryMethodParameterVo.setScanSpeedName(queryMethodParameterVo.getScanSpeed().equals("0") ? "慢速" : queryMethodParameterVo.getScanSpeed().equals("1") ? "中速" : queryMethodParameterVo.getScanSpeed().equals("2") ? "快速" : "极快");
         return Result.ok(queryMethodParameterVo);
     }
@@ -715,7 +708,9 @@ public class SpectrumServiceImpl implements SpectrumService {
             setParam.setSlit1(Double.valueOf(spectrumParam.getSpectralBandwidth()));
         }
         // 6. 扫描速度
-        setParam.setScanSpeed(Integer.valueOf(spectrumParam.getScanSpeed()));
+        if (!spectrumParam.getScanSpeed().equals(Constants.SCANFAST)) {
+            setParam.setScanSpeed(Integer.valueOf(spectrumParam.getScanSpeed()));
+        }
         // 7. 换灯波长
         setParam.setChangeLampWl(Double.valueOf(spectrumParam.getChangeLampWaveLength()));
         // 8. 设置波长
@@ -729,7 +724,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         param.setParam(setParam);
         R<OperationResultEntity> r = devOperationUtilService.operation(param);
         if (r.getSuccess()) {
-            return Result.ok(true);
+            return Result.ok("设置参数成功");
         } else {
             return Result.fail(r.getMessage());
         }
@@ -3321,7 +3316,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             paramDto.setLadderCorrection(false);
         }
         boolean update1 = Double.parseDouble(paramDto.getWaveLengthInterval()) < 1;
-        if (paramDto.getScanSpeed().equals("3") && update1) {
+        if (paramDto.getScanSpeed().equals(Constants.SCANFAST) && update1) {
             return Result.fail("极快扫描速度时,扫描间隔不能小于1秒");
         }
         double start = Double.parseDouble(paramDto.getStartWaveLength());
@@ -3336,7 +3331,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (changeWavelength < 330.0 || changeWavelength > 390.0) {
             return Result.fail("幻灯波长在330~390之间");
         }
-        if (paramDto.getScanSpeed().equals("3") && (start > 1100 || start < 380)) {
+        if (paramDto.getScanSpeed().equals(Constants.SCANFAST) && (start > 1100 || start < 380)) {
             return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
         }
         if (paramDto.getMethodName()==null) {
@@ -3866,7 +3861,6 @@ public class SpectrumServiceImpl implements SpectrumService {
         addTextRun(taskInfo, "重复次数: " + spectrumParameter.getRepetitionTime(), 12, false, true);
         addTextRun(taskInfo, "时间间隔: " + spectrumParameter.getTimeInterval(), 12, false, true);
         addTextRun(taskInfo, "阶梯矫正: " + (String.valueOf(spectrumParameter.getLadderCorrection()) == "true" ? "启用" : "不启用"), 12, false, true);
-        addTextRun(taskInfo, "扫描速度: " + (spectrumParameter.getScanSpeed() == "0" ? "慢速" : spectrumParameter.getScanSpeed() == "1" ? "中速" : spectrumParameter.getScanSpeed() == "2" ? "快速" : "极快"), 12, false, true);
 
         addTextRun(taskInfo, "样品信息: ", 14, true, true);
         // 创建表格
@@ -4757,10 +4751,6 @@ public class SpectrumServiceImpl implements SpectrumService {
         String scanSpeed = parameter.getScanSpeed();
         if (!StringUtils.hasText(scanSpeed)) {
             return R.fail("扫描速度不能为空");
-        }
-        List<String> validScanSpeeds = Arrays.asList("0", "1", "2", "3"); // 0.慢速 1.中速 2.快速 3.极快
-        if (!validScanSpeeds.contains(scanSpeed)) {
-            return R.fail("扫描速度不合法（可选值：0-慢速、1-中速、2-快速、3-极快），当前值：" + scanSpeed);
         }
 
         // 5. 重复模式校验

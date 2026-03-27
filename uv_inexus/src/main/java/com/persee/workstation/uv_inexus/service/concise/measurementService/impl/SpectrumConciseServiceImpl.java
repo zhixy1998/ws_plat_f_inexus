@@ -59,6 +59,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
@@ -162,6 +163,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     private PythonPathConstant pythonPathConstant;
 
     @Autowired
+    DeviceInfoService infoService;
+
+    @Autowired
     private RestTemplate restTemplate;
 
     @Autowired
@@ -191,7 +195,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      * @param parameter 光谱扫描参数
      * @return 校验结果
      */
-    private R<Boolean> checkParam(FSpectrumParameter parameter) {
+    private R<Boolean> checkParam(FSpectrumParameter parameter, String deviceSerialNumber) {
         // 1. 根对象非空校验
         if (parameter == null) {
             return R.fail(YamlMessageSource.getMessageStatic("00102003"));
@@ -225,6 +229,18 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 波长默认范围 190-1100
         double minWaveLength = 190.0;
         double maxWaveLength = 1100.0;
+
+        if (StringUtils.hasText(deviceSerialNumber)) {
+            R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(deviceSerialNumber);
+            if (typeInfo.getSuccess()) {
+                DeviceMeasureVO vo = typeInfo.getData();
+                if (vo != null) {
+                    minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                    maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                }
+
+            }
+        }
 
         double startWave = 0;
         double endWave = 0;
@@ -268,10 +284,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         String scanSpeed = parameter.getScanSpeed();
         if (!StringUtils.hasText(scanSpeed)) {
             return R.fail("扫描速度不能为空");
-        }
-        List<String> validScanSpeeds = Arrays.asList("0", "1", "2", "3"); // 0.慢速 1.中速 2.快速 3.极快
-        if (!validScanSpeeds.contains(scanSpeed)) {
-            return R.fail("扫描速度不合法（可选值：0-慢速、1-中速、2-快速、3-极快），当前值：" + scanSpeed);
         }
 
         // 5. 重复模式校验
@@ -697,7 +709,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         FSpectrumParameter param = new FSpectrumParameter();
         BeanUtils.copyProperties(paramDto.getParameter(), param);
-        R<Boolean> r = checkParam(param);
+        R<Boolean> r = checkParam(param, paramDto.getDeviceSerialNumber());
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
@@ -705,7 +717,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             paramDto.getParameter().setLadderCorrection(false);
         }
         boolean update1 = Double.parseDouble(paramDto.getParameter().getWaveLengthInterval()) < 1;
-        if (paramDto.getParameter().getScanSpeed().equals("3") && update1) {
+        if (paramDto.getParameter().getScanSpeed().equals(Constants.SCANFAST) && update1) {
             return Result.fail("极快扫描速度时,扫描间隔不能小于1秒");
         }
         double start = Double.parseDouble(paramDto.getParameter().getStartWaveLength());
@@ -720,7 +732,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (changeWavelength < 330.0 || changeWavelength > 390.0) {
             return Result.fail("幻灯波长在330~390之间");
         }
-        if (paramDto.getParameter().getScanSpeed().equals("3") && (start > 1100 || start < 380)) {
+        if (paramDto.getParameter().getScanSpeed().equals(Constants.SCANFAST) && (start > 1100 || start < 380)) {
             return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
         }
         if (param.getSpikeRemoval()==null){
@@ -752,7 +764,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     // 参数未变，直接返回成功结果，跳过后续所有数据库更新/新建操作
                     Map<String, Object> map = new HashMap<>();
                     map.put("method", currentMethod);
-                    Result draftButton = createDraftButton(currentMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+                    Result draftButton = createDraftButton(currentMethod.getId(), null, paramDto.getUpdateBy());
                     if (draftButton.getCode() == 200) {
                         map.put("taskId", draftButton.getData());
                     }
@@ -788,7 +800,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 //应用失败
                 return Result.fail(YamlMessageSource.getMessageStatic("00100002"));
             }
-            Result draftButton = createDraftButton(method2.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(method2.getId(), null, paramDto.getUpdateBy());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -819,7 +831,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -834,7 +846,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -847,7 +859,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail(YamlMessageSource.getMessageStatic("00105016"));
             } else {
                 map.put("method", method);
-                Result draftButton = createDraftButton(method.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+                Result draftButton = createDraftButton(method.getId(), null, paramDto.getUpdateBy());
                 if (draftButton.getCode() == 200) {
                     map.put("taskId", draftButton.getData());
                 }
@@ -860,7 +872,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -982,8 +994,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     @Override
     public Result createDraftButton(String methodId,
                                     String taskId,
-                                    String updateBy,
-                                    String deviceSerialNumber) {
+                                    String updateBy) {
         if (methodId == null) {
             //请先创建方法或者选择方法
             return Result.fail(YamlMessageSource.getMessageStatic("0010000B"));
@@ -1020,7 +1031,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         fMeasureTask.setCreateTime(LocalDateTime.now());
         fMeasureTask.setIsSave("0");
         fMeasureTask.setIsDelete(createType);
-        fMeasureTask.setDeviceSerialNumber(deviceSerialNumber);
         if (taskId != null) {
             // 根据taskId查询上一个草稿数据
             FMeasureTask task1 = fMeasureTaskService.getById(taskId);
@@ -2344,7 +2354,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             setParam.setSlit1(Double.valueOf(spectrumParam.getSpectralBandwidth()));
         }
         // 6. 扫描速度
-        setParam.setScanSpeed(Integer.valueOf(spectrumParam.getScanSpeed()));
+        if (!spectrumParam.getScanSpeed().equals(Constants.SCANFAST)) {
+            setParam.setScanSpeed(Integer.valueOf(spectrumParam.getScanSpeed()));
+        }
         // 7. 换灯波长
         setParam.setChangeLampWl(Double.valueOf(spectrumParam.getChangeLampWaveLength()));
         // 8. 设置波长
@@ -2358,7 +2370,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         param.setParam(setParam);
         R<OperationResultEntity> r = devOperationUtilService.operation(param);
         if (r.getSuccess()) {
-            return Result.ok(true);
+            return Result.ok("设置参数成功");
         } else {
             return Result.fail(r.getMessage());
         }

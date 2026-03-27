@@ -42,4 +42,10 @@ public class UserRoutePermissionController {
         // 返回值改为 List<String>
         return userRoutePermissionService.getUserRoutePermissions(userId, request);
     }
+    
+    @GetMapping("/menu-structure")
+    @ApiOperation("获取所有菜单路由结构（perm_type=1）")
+    public Result<List<?>> getMenuRouteStructure() {
+        return userRoutePermissionService.getMenuRouteStructure();
+    }
 }

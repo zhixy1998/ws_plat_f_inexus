@@ -409,7 +409,6 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         tMeasureTask.setCreateTime(LocalDateTime.now());
         tMeasureTask.setMethodKey(paramDto.getMethodId());
         tMeasureTask.setProjectItemKey(paramDto.getProjectId());
-        tMeasureTask.setDeviceSerialNumber(paramDto.getDeviceSerialNumber());
         List<TaskSpecimen> list = new ArrayList<>();
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(paramDto.getMeasurementType());
         // TODO 所有测量的创建任务需要完善
@@ -814,6 +813,55 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return handleQuantitativeSample(dto, task, numberConfig, nameConfig);
         } else {
             return handleFourMeasurementSample(dto, task, description, numberConfig, nameConfig);
+        }
+    }
+
+    /**
+     * 通用: 设置参数接口
+     * @param taskId
+     * @param deviceSerialNumber
+     * @param measureType
+     * @return
+     */
+    @Override
+    public Result setUpParametersPort(String taskId, String deviceSerialNumber, String measureType) {
+        // 校验参数
+        if (!StringUtils.hasText(taskId)) {
+            return Result.fail("请先新建任务");
+        }
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            return Result.fail("请先连接仪器");
+        }
+        if (!StringUtils.hasText(measureType)) {
+            return Result.fail("请选择测量类型");
+        }
+        // 根据任务id查询任务信息
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        if (task.getTaskStatus().equals(Constants.PARAM_ONE)&&!task.getDeviceSerialNumber().equals(deviceSerialNumber)){
+            return Result.fail("当前设备与任务测量设备不匹配");
+        }
+        if (task.getTaskStatus().equals(Constants.PARAM_TWO)){
+            return Result.fail("任务已结束,无法测量");
+        }
+        String methodId = task.getMethodKey();
+        // 根据测量类型获取对应的测量服务
+        MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
+        switch (measureTypeEnum) {
+            case PHOTOMETRIC_MEASUREMENT:
+                return photometricService.setUpParametersPort(methodId, deviceSerialNumber);
+            case QUANTITATIVE_MEASUREMENT:
+                return rationService.setUpParametersPort(methodId, deviceSerialNumber);
+            case SPECTRAL_SCAN:
+                return spectrumService.setUpParametersPort(methodId, deviceSerialNumber);
+            case TIME_SCAN:
+                return timeSweepService.setMethodParameters(methodId, deviceSerialNumber);
+            case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
+                return Result.fail("暂不支持双组份定量分析");
+            default:
+                return Result.fail("测量类型不存在");
         }
     }
 
@@ -2403,7 +2451,6 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         dto.setMethodId(methodId);
         dto.setProjectId(method.getProjectItemKey());
         dto.setMeasurementType(method.getMeasurementType());
-        dto.setDeviceSerialNumber(deviceSerialNumber);
 
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         String collect = new Random().ints(8, 0, chars.length())

@@ -55,6 +55,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
@@ -193,7 +194,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @param parameter 时间扫描参数
      * @return 校验结果
      */
-    private R<Boolean> checkParam(FTimeSweepParamter parameter) {
+    private R<Boolean> checkParam(FTimeSweepParamter parameter, String deviceSerialNumber) {
         // 1. 根对象非空校验
         if (parameter == null) {
             return R.fail(YamlMessageSource.getMessageStatic("00102003"));
@@ -218,6 +219,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         // 波长默认范围 190-1100
         double minWaveLength = 190.0;
         double maxWaveLength = 1100.0;
+
+        if (StringUtils.hasText(deviceSerialNumber)) {
+            R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(deviceSerialNumber);
+            if (typeInfo.getSuccess()) {
+                DeviceMeasureVO vo = typeInfo.getData();
+                if (vo != null) {
+                    minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                    maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                }
+
+            }
+        }
 
         try {
             double waveLength = Double.parseDouble(waveLengthStr);
@@ -571,7 +584,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     public Result use(TimeUseMethodDto paramDto) {
         FTimeSweepParamter param = new FTimeSweepParamter();
         BeanUtils.copyProperties(paramDto.getParameter(), param);
-        R<Boolean> r = checkParam(param);
+        R<Boolean> r = checkParam(param, paramDto.getDeviceSerialNumber());
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
@@ -604,7 +617,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     // 参数未变，直接返回成功结果，跳过后续所有数据库更新/新建操作
                     Map<String, Object> map = new HashMap<>();
                     map.put("method", currentMethod);
-                    Result draftButton = createDraftButton(currentMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+                    Result draftButton = createDraftButton(currentMethod.getId(), null, paramDto.getUpdateBy());
                     if (draftButton.getCode() == 200) {
                         map.put("taskId", draftButton.getData());
                     }
@@ -640,7 +653,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 //应用失败
                 return Result.fail(YamlMessageSource.getMessageStatic("00100002"));
             }
-            Result draftButton = createDraftButton(method2.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(method2.getId(), null, paramDto.getUpdateBy());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -670,7 +683,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -685,7 +698,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -699,7 +712,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return Result.fail(YamlMessageSource.getMessageStatic("00105016"));
             } else {
                 map.put("method", method);
-                Result draftButton = createDraftButton(method.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+                Result draftButton = createDraftButton(method.getId(), null, paramDto.getUpdateBy());
                 if (draftButton.getCode() == 200) {
                     map.put("taskId", draftButton.getData());
                 }
@@ -712,7 +725,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -829,7 +842,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      */
 
     @Override
-    public Result createDraftButton(String methodId, String taskId, String updateBy, String deviceSerialNumber) {
+    public Result createDraftButton(String methodId, String taskId, String updateBy) {
         if (methodId == null) {
             //请先创建方法或者选择方法
             return Result.fail(YamlMessageSource.getMessageStatic("0010000B"));
@@ -866,7 +879,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         fMeasureTask.setCreateTime(LocalDateTime.now());
         fMeasureTask.setIsSave("0");
         fMeasureTask.setIsDelete(createType);
-        fMeasureTask.setDeviceSerialNumber(deviceSerialNumber);
         if (taskId != null) {
             // 根据taskId查询上一个草稿数据
             FMeasureTask task1 = fMeasureTaskService.getById(taskId);

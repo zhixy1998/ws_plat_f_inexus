@@ -16,7 +16,6 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
@@ -234,11 +233,11 @@ public class ConciseTimeOneNewWebSocket {
             context.task = task;
 
             // 设置参数
-            Result paramResult = timeSweepConciseService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
-            if (paramResult.getCode() != 200) {
-                sendError(deviceSerialNumber,paramResult.getMessage());
-                return;
-            }
+//            Result paramResult = timeSweepConciseService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
+//            if (paramResult.getCode() != 200) {
+//                sendError(deviceSerialNumber,paramResult.getMessage());
+//                return;
+//            }
 
             // 查询方法参数
             FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());

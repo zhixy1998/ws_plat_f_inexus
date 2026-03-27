@@ -133,8 +133,8 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Autowired
     LaTeXConverter latexConverter;
 
-    @Value("default")
-    String defaultProjectKey;
+    @Value("默认任务")
+    String defaultTaskKey;
 
     @Value("任务")
     String newTaskName;
@@ -333,7 +333,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             if (upper1.equals(lower2)) {
                 boolean includeUpper = Boolean.TRUE.equals(current.getIsUpperLimitIncluded());
                 boolean includeLower = Boolean.TRUE.equals(next.getIsLowerLimitIncluded());
-                if (!(includeUpper ^ includeLower)) {
+                if (includeUpper == includeLower) {
                     return R.fail(YamlMessageSource.getMessageStatic("00100022"));
                 }
             }
@@ -402,6 +402,70 @@ public class PhotometricServiceImpl implements PhotometricService {
         return Result.ok(measureMethod.getId());
     }
 
+    /**
+     * 设置预测量参数接口
+     *
+     * @param methodId 方法ID
+     * @param deviceSerialNumber 设备序列号
+     * @return 操作结果
+     */
+    public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
+        // 参数校验
+        if (methodId == null || methodId.isEmpty()) {
+            return Result.fail("方法ID不能为空");
+        }
+        if (deviceSerialNumber == null || deviceSerialNumber.isEmpty()) {
+            return Result.fail("设备序列号不能为空");
+        }
+
+        // 根据methodId去方法表中查询数据
+        TMeasureMethod tMeasureMethod = tMeasureMethodService.getById(methodId);
+
+        if (tMeasureMethod == null) {
+            // 没有找到该方法
+            return Result.fail("未找到对应的测量方法");
+        }
+
+        // 解析参数
+        RationParameter parameter = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), RationParameter.class);
+        if (parameter == null) {
+            return Result.fail("参数解析失败");
+        }
+
+        // 构建操作输入参数
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+        // 设置具体参数
+        SetParam param = new SetParam();
+
+        // 1. 设置光度模式（使用吸收模式）
+        param.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
+
+        // 2. 设置换灯波长
+        param.setChangeLampWl(Double.valueOf(parameter.getChangeLampWaveLength()));
+
+        // 3. 设置狭缝
+        if (StringUtils.hasText(parameter.getSpectralBandwidth()) && deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+            param.setSlit1(Double.valueOf(parameter.getSpectralBandwidth()));
+        }
+
+        // 4. 设置响应时间
+        param.setResponseTime(Double.valueOf(parameter.getResponseTime()));
+
+        inputParam.setParam(param);
+
+        // 执行操作
+        R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
+
+        if (!operation.getSuccess()) {
+            return Result.fail(operation.getMessage());
+        }
+
+        return Result.ok("设置参数成功");
+    }
+
     @Override
     public Result<MethodChangeCheckVO> checkMethodParam(PhotometricMethodParameterDto checkDTO) {
 
@@ -462,14 +526,14 @@ public class PhotometricServiceImpl implements PhotometricService {
         vo.setClearDataRange(RationChangeMethodTypeEnums.noChange.getIdentity());
         vo.setMessage(RationChangeMethodTypeEnums.noChange.getMessage());
 
-
         TMeasureMethod currentMethod = tMeasureMethodService.getById(checkDTO.getCurrentMethodId());
-        if (StringUtils.hasText(currentMethod.getProjectItemKey()) && currentMethod.getProjectItemKey().equals(defaultProjectKey)) {
-            log.info("生成新方法");
-            vo.setParamChange(true);
-            vo.setMessage(RationChangeMethodTypeEnums.newMethod.getMessage());
-            vo.setClearDataRange(RationChangeMethodTypeEnums.newMethod.getIdentity());
-            return Result.ok(vo);
+
+        boolean isTaskEnd = false;
+
+        if (StringUtils.hasText(checkDTO.getTaskId())) {
+
+            TMeasureTask task = tMeasureTaskService.getById(checkDTO.getTaskId());
+            isTaskEnd = task != null && task.getTaskStatus() != null && task.getTaskStatus().equals(TaskStatusEnum.COMPLETED.getCode());
         }
 
         PhotometricParameter oldParam = JSON.parseObject(currentMethod.getMeasurementParamInfo(), PhotometricParameter.class);
@@ -496,12 +560,21 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         //检查分析参数
         boolean analyze = checkAnalyzeParam(oldParam, newMethodParam);
-        if (!analyze) {
+        if (!analyze && !isTaskEnd) {
             log.info("分析参数有改变");
             vo.setClearDataRange(RationChangeMethodTypeEnums.analyze.getIdentity());
             vo.setParamChange(true);
             vo.setMessage(RationChangeMethodTypeEnums.analyze.getMessage());
+            return Result.ok(vo);
         }
+
+        if (isTaskEnd) {
+            log.info("当前任务已结束");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.endTask.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.endTask.getMessage());
+        }
+
         return Result.ok(vo);
     }
 
@@ -983,7 +1056,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000012"));
         }
 
-        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
+        if (dto.getHeads().size() > 10) {
             //表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000013"));
         }
@@ -1069,6 +1142,26 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (dto.getHeads() != null && !dto.getHeads().isEmpty()) {
             taskHeadSnapshot.setSampleHeads(dto.getHeads());
         }
+
+        List<InputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
+        List<String> allHeadIdentity = new ArrayList<>();
+
+        if (mapRelation != null && !mapRelation.isEmpty()) {
+            taskHeadSnapshot.getSampleHeads().forEach(head -> {
+                allHeadIdentity.add(head.getIdentity());
+            });
+            taskHeadSnapshot.getTaskHeads().forEach(head -> {
+                allHeadIdentity.add(head.getIdentity());
+            });
+            List<InputParamMapTableHead> newMapRelation = new ArrayList<>();
+            mapRelation.forEach(map -> { if (allHeadIdentity.contains(map.getHeadIdentity())) {
+                newMapRelation.add(map);
+            }});
+
+            taskHeadSnapshot.setMapRelation(newMapRelation);
+
+        }
+
         taskHeadSnapshot.setTaskId(task.getId());
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 
@@ -2496,7 +2589,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
-    public R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, List<String> option) {
+    public R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit,List<String> option) {
         log.info("开始导出（集成children和option），taskId: {}, fileType: {}, option: {}", taskId, fileType, option);
         if (!StringUtils.hasText(taskId)) {
             return R.fail(YamlMessageSource.getMessageStatic("00000019"));
@@ -2534,6 +2627,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         queryDataDTO.setTaskId(taskId);
         queryDataDTO.setAllDisplay(allDisplay);
         queryDataDTO.setDigit(digit);
+        queryDataDTO.setOtherDigit(otherDigit);
         List<Map<String, Object>> data = queryData(queryDataDTO).getData();
 
         List<Map<String, Object>> expandedData = new ArrayList<>();

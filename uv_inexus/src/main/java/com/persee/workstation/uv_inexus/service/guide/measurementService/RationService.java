@@ -20,8 +20,6 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 
 import java.io.File;
@@ -45,6 +43,14 @@ public interface RationService {
      * 修改方法并保存
      */
     Result<MeasurementCurrentInfoVO> updateMethodParam(MethodParamsDto methodDto);
+
+    /**
+     * 设置方法参数接口
+     * @param methodId
+     * @param deviceSerialNumber
+     * @return
+     */
+    Result setUpParametersPort(String methodId, String deviceSerialNumber);
 
     /**
      * 检查方法参数
@@ -189,5 +195,6 @@ public interface RationService {
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit) throws BusinessException;
 
     void test(String a, String b);
+
 
 }

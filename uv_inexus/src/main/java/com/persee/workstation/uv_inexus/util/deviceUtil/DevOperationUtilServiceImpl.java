@@ -321,12 +321,15 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
             Integer devStatus = OperationTypeEnums.getEnum(inputParam.getOperationType()).getStatus();
 
-            if (anEnum != OperationTypeEnums.Stop) {
-                R<Boolean> r = infoService.newUseDevice(deviceSerialNumber, devStatus);
-                if (!r.getSuccess()) {
-                    return R.fail(r.getMessage());
+            synchronized (this) {
+                if (anEnum != OperationTypeEnums.Stop) {
+                    R<Boolean> r = infoService.newUseDevice(deviceSerialNumber, devStatus);
+                    if (!r.getSuccess()) {
+                        return R.fail(r.getMessage());
+                    }
                 }
             }
+
         }
 
         R<OperationResultEntity> result = R.ok();

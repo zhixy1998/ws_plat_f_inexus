@@ -10,8 +10,6 @@
 package com.persee.workstation.uv_inexus.service.guide.measurementService;
 
 import com.alibaba.fastjson.JSONObject;
-import com.persee.workstation.uv_inexus.dto.guide.PhotometricMethodParamCheckDTO;
-import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.QualityConfEnums;
 import com.persee.workstation.uv_inexus.model.R;
@@ -39,6 +37,15 @@ public interface PhotometricService {
      * 方法参数修改接口
      */
     Result<String> updateMethodParameter(PhotometricMethodParameterDto methodDto);
+
+    /**
+     * 设置方法参数接口
+     * @param methodId
+     * @param deviceSerialNumber
+     * @return
+     */
+    Result setUpParametersPort(String methodId, String deviceSerialNumber);
+
     /**
      * 检查方法参数
      */
@@ -133,7 +140,7 @@ public interface PhotometricService {
     /**
      * 多格式文件导出（集成children和option数据）
      */
-    R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, java.util.List<String> option);
+    R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit,  Integer otherDigit, java.util.List<String> option);
 
     /**
      * 查询可绑定的方法参数
@@ -157,5 +164,6 @@ public interface PhotometricService {
     R<Boolean> createSample(String taskId, String updateBy, String deviceSerialNumber);
 
     Map<String, String> checkValueQuantity(PhotometricParameter parameter, PhotometricOriginDataInfo dataInfo, QualityConfEnums qcType);
+
 
 }

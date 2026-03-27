@@ -349,7 +349,7 @@ public class SpectrumOneNewWebSocket {
         inputParam.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setAction(ActionCmdEnum.Scan);
-        if (spectrumParameter.getScanSpeed().equals("3")) {
+        if (spectrumParameter.getScanSpeed().equals(Constants.SCANFAST)) {
             inputParam.setAction(ActionCmdEnum.ScanFast);
         }
 
@@ -744,7 +744,7 @@ public class SpectrumOneNewWebSocket {
         List<ChangeParam> changeParams = new ArrayList<>();
 
         // 判断是否为极快扫描模式
-        boolean isFastScan = "3".equals(spectrumParameter.getScanSpeed());
+        boolean isFastScan = Constants.SCANFAST.equals(spectrumParameter.getScanSpeed());
 
         if (isFastScan) {
             // 极快扫描模式：优化版本（保持不变）
@@ -1798,7 +1798,7 @@ public class SpectrumOneNewWebSocket {
         TMeasureSample sample = tMeasureSampleService.getById(taskSpecimen.getSpecimenKey());
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-        Boolean isScanFast = spectrumParameter.getScanSpeed().equals("3");
+        Boolean isScanFast = spectrumParameter.getScanSpeed().equals(Constants.SCANFAST);
 
         try {
             SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();

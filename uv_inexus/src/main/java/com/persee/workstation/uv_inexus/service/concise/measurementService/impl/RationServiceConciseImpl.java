@@ -18,6 +18,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
@@ -45,7 +46,6 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecime
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -137,7 +137,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     ConcisePublicUtilService concisePublicUtilService;
 
     @Autowired
-    DeviceManageService manageService;
+    DeviceInfoService infoService;
 
     @Autowired
     SystemBusinessParamService businessParamService;
@@ -356,7 +356,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             double maxWaveLength = 1100.0;
 
             if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
-                R<DeviceMeasureVO> typeInfo = manageService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
+                R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
                 if (typeInfo.getSuccess()) {
                     DeviceMeasureVO vo = typeInfo.getData();
                     if (vo != null) {
@@ -1926,6 +1926,74 @@ public class RationServiceConciseImpl implements RationConciseService {
 
 
         return Result.ok();
+    }
+
+    /**
+     * 设置参数接口
+     * @param methodId
+     * @param deviceSerialNumber
+     * @return
+     */
+    @Override
+    public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
+        // 1. 参数校验
+        if (methodId == null || methodId.equals("")) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000008"));
+        }
+
+        // 2. 根据methodId查询方法数据（定量类型）
+        FMeasureMethod tMeasureMethod = fMeasureMethodService.getOne(
+                new QueryWrapper<FMeasureMethod>()
+                        .eq("id", methodId)
+                        .eq("measurement_type", MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())  // 区分定量类型
+        );
+
+        if (tMeasureMethod == null) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
+
+        // 3. 解析定量参数
+        FRationParameter rationParam = JSON.parseObject(
+                tMeasureMethod.getMeasurementParamInfo(),
+                FRationParameter.class
+        );
+
+        // 4. 构建设备操作参数
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+        SetParam setParam = new SetParam();
+
+        // 5. 设置光度模式（定量通常是吸光度）
+        setParam.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
+
+        // 6. 设置换灯波长
+        if (StringUtils.hasText(rationParam.getChangeLampWaveLength())) {
+            setParam.setChangeLampWl(Double.parseDouble(rationParam.getChangeLampWaveLength()));
+        }
+
+        // 7. 设置光谱带宽
+        if (StringUtils.hasText(rationParam.getSpectralBandwidth())
+                && deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+            setParam.setSlit1(Double.parseDouble(rationParam.getSpectralBandwidth()));
+        }
+
+        // 8. 设置响应时间
+        if (StringUtils.hasText(rationParam.getResponseTime())) {
+            setParam.setResponseTime(Double.parseDouble(rationParam.getResponseTime()));
+        }
+
+        inputParam.setParam(setParam);
+
+        // 11. 调用设备操作服务
+        R<OperationResultEntity> r = operationUtilService.operation(inputParam);
+
+        if (r.getSuccess()) {
+            return Result.ok("设置参数成功");
+        } else {
+            return Result.fail(r.getMessage());
+        }
     }
 
     private Boolean revokeDelSampleNumRepeat(List<FTaskSpecimen> taskSpecimen, FMeasureSample sample) {

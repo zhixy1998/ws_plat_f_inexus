@@ -37,6 +37,9 @@ public interface ExperimentTestService {
 
     Result isAddSample(AddSampleDTO addSampleDTO);
 
+    // 通用: 设置参数接口
+    Result setUpParametersPort(String taskId, String deviceSerialNumber, String measureType);
+
     Result queryTaskPort(QueryTaskDto queryTask);
 
     Result continueMeasuringPort(String projectId, String methodId);
@@ -135,4 +138,6 @@ public interface ExperimentTestService {
      * 任务终止
      */
     Result taskTermination(String taskId);
+
+
 }

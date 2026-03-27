@@ -15,7 +15,6 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
@@ -340,12 +339,12 @@ public class ConciseSpectrumNewWebSocket {
             maxLocation = list.stream().map(FMeasureSample::getSampleLocation).max(String::compareTo).orElse(null);
         }
 
-        /// 设置参数
-        Result result = spectrumService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
-        if (result.getCode() != 200) {
-            sendError(deviceSerialNumber, result.getMessage());
-            return;
-        }
+/// 设置参数
+//        Result result = spectrumService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
+//        if (result.getCode() != 200) {
+//            sendError(deviceSerialNumber, result.getMessage());
+//            return;
+//        }
 
         boolean poolStatus = false;
         if (configPO.getIsAutoChangePool()) {

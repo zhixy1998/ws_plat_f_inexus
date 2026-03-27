@@ -92,9 +92,8 @@ public class TimeSweepConciseController {
     @ApiOperation("创建草稿按钮接口")
     public Result createDraftButton(@RequestParam String methodId,
                                     @RequestParam(required = false) String taskId,
-                                    @RequestParam String updateBy,
-                                    @RequestParam String deviceSerialNumber) {
-        return timeSweepConciseService.createDraftButton(methodId,taskId,updateBy,deviceSerialNumber);
+                                    @RequestParam String updateBy) {
+        return timeSweepConciseService.createDraftButton(methodId,taskId,updateBy);
     }
 
     @GetMapping("querySampleList")

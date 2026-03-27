@@ -274,6 +274,14 @@ public class ConciseCommonController {
         return conciseCommonService.checkApproximateRange(vo);
     }
 
+    @GetMapping("setUpParametersPort")
+    @ApiOperation("通用: 设置参数接口")
+    public Result setUpParametersPort(@RequestParam String taskId,
+                                      @RequestParam String deviceSerialNumber,
+                                      @RequestParam String measureType) {
+        return conciseCommonService.setUpParametersPort(taskId,deviceSerialNumber,measureType);
+    }
+
     @ButtonPermission(
             description = "通用websocket前置判断接口",
             permissionMapping =
