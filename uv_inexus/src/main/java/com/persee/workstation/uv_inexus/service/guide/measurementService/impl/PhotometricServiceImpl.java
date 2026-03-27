@@ -427,7 +427,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         }
 
         // 解析参数
-        RationParameter parameter = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), RationParameter.class);
+        PhotometricParameter parameter = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), PhotometricParameter.class);
         if (parameter == null) {
             return Result.fail("参数解析失败");
         }
@@ -441,7 +441,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         SetParam param = new SetParam();
 
         // 1. 设置光度模式（使用吸收模式）
-        param.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
+        param.setPhotoMode(Integer.valueOf(parameter.getLuminosity()));
 
         // 2. 设置换灯波长
         param.setChangeLampWl(Double.valueOf(parameter.getChangeLampWaveLength()));
@@ -453,6 +453,19 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         // 4. 设置响应时间
         param.setResponseTime(Double.valueOf(parameter.getResponseTime()));
+
+        // 9. 如果是能量模式（Es/Er），设置能量灯和增益
+        if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode())
+                || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
+
+            if (StringUtils.hasText(parameter.getEnergyLamp())) {
+                param.setLampPos(Integer.valueOf(parameter.getEnergyLamp()));
+            }
+
+            if (parameter.getGain() != null) {
+                param.setGain(parameter.getGain());
+            }
+        }
 
         inputParam.setParam(param);
 
