@@ -224,12 +224,12 @@ public class DataManagementServiceImpl implements DataManagementService {
         // 创建分页对象
         Page<TMeasureProject> page = new Page<>(pageNum, pageSize);
 
-        SysUserPO user = userService.getOne(new QueryWrapper<SysUserPO>().eq("username", vo.getUpdateBy()));
+        SysUserPO user = userService.getOne(new QueryWrapper<SysUserPO>().eq("username", vo.getUpdateBy()).last("LIMIT 1"));
         if (user == null){
             return Result.fail("用户不存在");
         }
         // 根据用户查询用户所在的组
-        SysUserGroupPO userGroupPO = userGroupMapper.selectOne(new QueryWrapper<SysUserGroupPO>().eq("user_id", user.getId()));
+        SysUserGroupPO userGroupPO = userGroupMapper.selectOne(new QueryWrapper<SysUserGroupPO>().eq("user_id", user.getId()).last("LIMIT 1"));
         if (userGroupPO == null){
             return Result.fail("用户未加入任何组");
         }

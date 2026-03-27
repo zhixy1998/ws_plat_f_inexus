@@ -71,6 +71,7 @@ public interface ConciseCommonService {
     Result isAddSample(AddSampleDTO addSampleDTO);
 
     Result<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber);
+
     //删除方法
     Result<String> delMethod(String methodId);
 
@@ -90,4 +91,6 @@ public interface ConciseCommonService {
 
     // 设置参数接口
     Result setUpParametersPort(String taskId, String deviceSerialNumber, String measureType);
+
+
 }

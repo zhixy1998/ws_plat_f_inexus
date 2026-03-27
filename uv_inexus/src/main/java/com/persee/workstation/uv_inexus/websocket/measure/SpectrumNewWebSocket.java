@@ -2018,7 +2018,7 @@ public class SpectrumNewWebSocket {
             }
             List<FPeakValleyMarking> peakValleys = new ArrayList<>();
             List<FPeakValleyMarking> markings = new ArrayList<>();
-            if (isScanFast){
+            if (!isScanFast){
                 String peakUrl = pythonPathConstant.getPeakSearching();
                 String valleyUrl = pythonPathConstant.getValleySearching();
 

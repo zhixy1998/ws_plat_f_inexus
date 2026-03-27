@@ -91,5 +91,4 @@ public class DeviceTypeInfoPO {
     @ApiModelProperty("使用时长统计指令")
     @TableField(value = "work_time_count", typeHandler = JacksonTypeHandler.class)
     private List<WorkTimeInfo>  workTimeCount;
-
 }
