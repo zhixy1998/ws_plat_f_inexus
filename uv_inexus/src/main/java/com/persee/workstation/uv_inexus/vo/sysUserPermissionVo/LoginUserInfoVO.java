@@ -45,4 +45,7 @@ public class LoginUserInfoVO {
 
     @ApiModelProperty("登录令牌（JWT）")
     private String token;
+
+    @ApiModelProperty("角色编码")
+    private String roleCode;
 }
