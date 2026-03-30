@@ -9,20 +9,22 @@
 
 package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserLoginService;
 import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 用户登录控制器
@@ -49,7 +51,7 @@ public class SysUserLoginController {
 
         if (loginDTO.getIsFastLogin() != null && loginDTO.getIsFastLogin() == 1) {
             log.info("触发快捷登录，使用默认用户");
-            // 建议在Constants类中定义默认值，避免硬编码（示例：Constants.DEFAULT_USERNAME）
+            
             loginDTO.setUserName("kh-admin");
             loginDTO.setPassword("123456");
         }

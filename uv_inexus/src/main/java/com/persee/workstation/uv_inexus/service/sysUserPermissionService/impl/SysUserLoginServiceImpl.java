@@ -9,22 +9,27 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
+import java.time.LocalDateTime;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserLoginService;
 import com.persee.workstation.uv_inexus.util.tokenUtil.JWTUtils;
 import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
 import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
-import java.time.LocalDateTime;
 
 /**
  * 用户登录服务实现
@@ -35,6 +40,7 @@ import java.time.LocalDateTime;
 public class SysUserLoginServiceImpl implements SysUserLoginService {
 
     private final SystemUserManageDAO sysUserDAO; // 注入用户DAO（操作t_sys_user表）
+    private final SysRoleMapper sysRoleMapper; // 注入角色DAO（操作t_sys_role表）
 
     @Override
     public R<LoginUserInfoVO> login(UserLoginDTO loginDTO) {
@@ -103,8 +109,17 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
         loginVO.setLastLoginTime(now); // 填充本次登录时间（实时更新）
         loginVO.setId(userPO.getId()); // 从数据库查的真实ID
         loginVO.setUsername(loginDTO.getUserName()); // 登录用户名
-        // System.out.println("wewrwerwe"+userPO.getId());
-        // System.out.println("qweqeqweqweqwe"+loginDTO.getUserName());
+        
+        // 7. 查询角色编码
+        if (userPO.getRoleId() != null) {
+            QueryWrapper<SysRolePO> roleQueryWrapper = new QueryWrapper<>();
+            roleQueryWrapper.eq("id", userPO.getRoleId());
+            SysRolePO rolePO = sysRoleMapper.selectOne(roleQueryWrapper);
+            if (rolePO != null) {
+                loginVO.setRoleCode(rolePO.getRoleCode());
+            }
+        }
+        
         UserContext.setCurrentUser(loginVO);
 
         // 7. 返回成功结果

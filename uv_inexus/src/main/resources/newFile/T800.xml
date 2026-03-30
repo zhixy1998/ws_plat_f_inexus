@@ -1710,15 +1710,15 @@
             <string>波长(0成功1失败):AJ38:4</string>
         </OutputString>
         <SendBytes>
-            <string>181:255:0:15:0:0:0:0:0:0:0:Check</string>
+            <string>101:255:0:15:0:0:0:0:0:0:0:Check</string>
         </SendBytes>
         <ReadBytes>
-            <string>255:181:0:15:AJ38:0:0:0:0:0:0:Check</string>
+            <string>255:101:0:15:AJ38:0:0:0:0:0:0:Check</string>
         </ReadBytes>
         <ReplyNumber>-1</ReplyNumber>
         <HeadReceiveBytes>
-            <string>255:181:32:241</string>
-            <string>255:181:0:15</string>
+            <string>255:101:32:241</string>
+            <string>255:101:0:15</string>
         </HeadReceiveBytes>
     </ProtocolItem>
 </Protocols>

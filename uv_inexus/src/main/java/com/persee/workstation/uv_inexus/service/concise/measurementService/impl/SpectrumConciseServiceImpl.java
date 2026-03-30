@@ -389,11 +389,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             if (bandwidth <= 0) {
                 return R.fail("光谱带宽必须大于0，当前值：" + bandwidth);
             }
-            // 常见光谱带宽值校验（可选，根据业务决定是否强制）
-            List<Double> validBandwidths = Arrays.asList(0.5, 1.0, 2.0, 4.0, 5.0);
-            if (!validBandwidths.contains(bandwidth)) {
-                return R.fail("光谱带宽值不合法，常见值：" + validBandwidths);
-            }
         } catch (NumberFormatException e) {
             return R.fail("光谱带宽格式错误，必须为数字");
         }
@@ -745,7 +740,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         setParam.setChangeLampWl(Double.valueOf(paramDto.getParameter().getChangeLampWaveLength()));
         boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
         if (!b) {
-            return Result.fail("设置参数失败");
+            log.error("设置仪器参数失败");
         }
 
         // 判断参数是否发生变化，如果没有变化，直接返回，不再执行后续操作

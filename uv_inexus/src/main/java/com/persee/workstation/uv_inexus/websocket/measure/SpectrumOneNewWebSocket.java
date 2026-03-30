@@ -1838,7 +1838,7 @@ public class SpectrumOneNewWebSocket {
             }
             List<PeakValleyMarking> peakValleys = new ArrayList<>();
             List<PeakValleyMarking> markings = new ArrayList<>();
-            if (isScanFast){
+            if (!isScanFast){
                 String peakUrl = pythonPathConstant.getPeakSearching();
                 String valleyUrl = pythonPathConstant.getValleySearching();
 
