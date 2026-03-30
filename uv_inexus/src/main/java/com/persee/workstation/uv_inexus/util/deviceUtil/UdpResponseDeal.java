@@ -1330,7 +1330,21 @@ public class UdpResponseDeal {
             deviceInfo.add(last[i] & 0xFF); // 转换为无符号十进制数
         }
 
-        return resultEntity; // 返回副本，避免外部修改
+        if (last.length > 47) {
+            StringBuilder asciiStr = new StringBuilder();
+            for (int i = 33; i <= 47; i++) {
+                int val = last[i] & 0xFF;
+                char ch = (char) val;
+                asciiStr.append(ch);
+                if (i == 34) {
+                    asciiStr.append('-');
+                }
+            }
+            resultEntity.setDeviceSerialNumber(asciiStr.toString());
+            System.out.println("序列号：" + asciiStr.toString());
+        }
+
+        return resultEntity;
     }
 
     public static String deviceIp(List<byte[]> responses) {
