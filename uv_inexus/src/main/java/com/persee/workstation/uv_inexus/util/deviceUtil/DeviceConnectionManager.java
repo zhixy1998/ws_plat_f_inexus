@@ -611,6 +611,39 @@ public class DeviceConnectionManager {
         return device.getUseType();
     }
 
+    /**
+     * 设置当前状态
+     * @param deviceId 设备ID
+     * @param taskId 当前任务
+     * @return 是否成功
+     */
+    public boolean setDevCurrentTaskId(String deviceId, String taskId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置使用任务id失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.setCurrentTaskId(taskId);
+        device.updateLastUseTime();
+        logInfo("设置当前任务id: %s -> %s", deviceId, taskId);
+        return true;
+    }
+
+    /**
+     * 获取当前状态值
+     * @param deviceId 设备ID
+     * @return 当前状态值
+     */
+    public String getDevCurrentTaskId(String deviceId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("获取任务id失败: 设备不存在 %s", deviceId);
+            return null;
+        }
+        return device.getUseType();
+    }
+
 
 
     /**

@@ -131,6 +131,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         if (currentStatus.equals(Constants.DEVICE_STATUS_IDLE)) {
             String deviceId = deviceInfoPO.getDeviceId();
             deviceManager.setDevCurrentUseType(deviceId, null);
+            deviceManager.setDevCurrentTaskId(deviceId, null);
         }
 
     }
@@ -145,6 +146,23 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
         String deviceId = deviceInfoPO.getDeviceId();
         deviceManager.setDevCurrentUseType(deviceId, useType);
+
+        dao.update(deviceInfoPO, queryWrapper);
+    }
+
+    @Override
+    public void updateDeviceCurrentStatus(String deviceSerialNumber, String useType, String taskId, Integer currentStatus) {
+        LambdaQueryWrapper<DeviceInfoPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DeviceInfoPO::getDeviceSerialNumber, deviceSerialNumber)
+                .last("limit 1");
+        DeviceInfoPO deviceInfoPO = dao.selectOne(queryWrapper);
+        deviceInfoPO.setDeviceCurrentStatus(currentStatus);
+
+        String deviceId = deviceInfoPO.getDeviceId();
+        deviceManager.setDevCurrentUseType(deviceId, useType);
+        if (taskId != null) {
+            deviceManager.setDevCurrentTaskId(deviceId, taskId);
+        }
 
         dao.update(deviceInfoPO, queryWrapper);
     }
@@ -413,6 +431,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             list.add(new DeviceConfParam(ScanSpeedEnum.FAST.getName(), ScanSpeedEnum.FAST.getCode()));
             list.add(new DeviceConfParam(ScanSpeedEnum.SUPER_FAST.getName(), ScanSpeedEnum.SUPER_FAST.getCode()));
             ans.setScanSpeed(list);
+            ans.setFilterWavelength(Arrays.asList(762, 555, 359));
             return R.ok(ans);
         }
 
@@ -436,13 +455,14 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         DeviceMeasureVO ans = new DeviceMeasureVO();
 
         ans.setBandWidth(deviceModelInfoPO.getSpacingWidth() == null ? null : deviceModelInfoPO.getSpacingWidth());
+        ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength() == null ? null : deviceModelInfoPO.getFilterWavelength());
 
         Integer devTypeId = deviceModelInfoPO.getDevTypeId();
 
         DeviceTypeInfoPO deviceTypeInfoPO = deviceTypeInfoDAO.selectById(devTypeId);
         ans = changeType(deviceTypeInfoPO);
         ans.setBandWidth(deviceModelInfoPO.getSpacingWidth());
-
+        ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength());
         return R.ok(ans);
     }
 

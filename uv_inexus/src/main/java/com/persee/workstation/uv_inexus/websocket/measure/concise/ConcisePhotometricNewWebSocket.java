@@ -144,7 +144,7 @@ public class ConcisePhotometricNewWebSocket {
         isSd = param.getIsSd() != null && param.getIsSd();
         isRsd = param.getIsRsd() != null && param.getIsRsd();
 
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.ConcisePhotoMetric.getOperation(), Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.ConcisePhotoMetric.getOperation(), taskId, Constants.DEVICE_STATUS_MEASURE);
 
         if (taskId == null) {
             sendError(deviceSerialNumber, "请创建任务");

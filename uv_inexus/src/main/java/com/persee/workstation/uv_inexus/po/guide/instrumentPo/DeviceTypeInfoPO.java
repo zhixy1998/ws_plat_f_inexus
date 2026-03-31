@@ -76,9 +76,17 @@ public class DeviceTypeInfoPO {
     @TableField(value = "min_wavelength")
     private String minWavelength;
 
+    @ApiModelProperty("最小换灯波长")
+    @TableField(value = "min_lamp_wavelength")
+    private String minLampWavelength;
+
     @ApiModelProperty("最大波长")
     @TableField(value = "max_wavelength")
     private String maxWavelength;
+
+    @ApiModelProperty("最大换灯波长")
+    @TableField(value = "max_lamp_wavelength")
+    private String maxLampWavelength;
 
     @ApiModelProperty("扫描间隔")
     @TableField(value = "scan_interval", typeHandler = JacksonTypeHandler.class)

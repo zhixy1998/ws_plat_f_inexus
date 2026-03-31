@@ -211,7 +211,7 @@ public class TimeNewOneWebSocket {
             String updateBy = param.getUpdateBy();
             Integer digit = param.getDigit();
 
-            infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.TimeMeasureOne.getOperation(), Constants.DEVICE_STATUS_MEASURE);
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.TimeMeasureOne.getOperation(), taskId, Constants.DEVICE_STATUS_MEASURE);
 
             if (taskId == null || deviceSerialNumber == null || updateBy == null || sampleId == null) {
                 safeCleanup(sessionId, true);
@@ -470,9 +470,6 @@ public class TimeNewOneWebSocket {
      */
     private void executeSingleMeasurement(String deviceSerialNumber, TimeScanContext context,
                                           TimeSweepParamter param) {
-        if (!context.running.get()) {
-            return;
-        }
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.TimeMeasure.getType());

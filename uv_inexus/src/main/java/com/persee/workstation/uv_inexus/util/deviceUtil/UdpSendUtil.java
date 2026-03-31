@@ -24,6 +24,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.*;
@@ -147,6 +148,10 @@ public class UdpSendUtil {
                                 deviceMac.append(message[m] & 0xFF); // 转换为无符号十进制数
                                 deviceMac.append(":");
                             }
+
+                            OperationResultEntity parse =UdpResponseDeal.parse(cmdId, Collections.singletonList(message), sendBytes);
+                            searchInfo.setDeviceSerialNumber(parse.getDeviceSerialNumber());
+
                             searchInfo.setDeviceMac(deviceMac.deleteCharAt(deviceMac.length()-1).toString());
                             ans.add(searchInfo);
                             break;

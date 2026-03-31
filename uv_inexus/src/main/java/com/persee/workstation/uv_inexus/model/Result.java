@@ -165,6 +165,69 @@ public class Result<T> {
     }
 
 
+    /**
+     * 参数校验失败（带数据）
+     * @param data 返回数据
+     * @param <T>
+     * @return
+     */
+    public static<T> Result<T> checkFail(T data){
+        Result<T> result = build(data);
+        return build(data, ResultCodeEnum.ARGUMENT_VALID_ERROR);
+    }
+
+    /**
+     * 参数校验失败（不带数据）
+     * @param <T>
+     * @return
+     */
+    public static<T> Result<T> checkFail(){
+        return checkFail(null);
+    }
+
+    /**
+     * 参数校验失败（通过消息码与参数）
+     * @param messageCode 消息码
+     * @param obj 占位符参数
+     * @param <T>
+     * @return
+     */
+    public static<T> Result<T> checkFail(String messageCode, Object... obj){
+        return build(ResultCodeEnum.ARGUMENT_VALID_ERROR.getCode(), messageCode, obj);
+    }
+
+    /**
+     * 参数校验失败（通过状态码和消息）
+     * @param code 状态码
+     * @param message 消息
+     * @param <T>
+     * @return
+     */
+    public static<T> Result<T> checkFail(Integer code, String message) {
+        Result<T> result = build(code, message);
+        return result;
+    }
+
+    /**
+     * 参数校验失败（通过消息）
+     * @param message 消息
+     * @param <T>
+     * @return
+     */
+    public static<T> Result<T> checkFail(String message){
+        return checkFail(ResultCodeEnum.ARGUMENT_VALID_ERROR.getCode(), message);
+    }
+
+    /**
+     * 参数校验失败便捷别名，统一调用风格
+     * @param messageCode 消息码
+     * @param obj 占位符参数
+     * @param <T>
+     * @return
+     */
+    public static<T> Result<T> checkFailCode(String messageCode, Object... obj){
+        return checkFail(messageCode, obj);
+    }
 
     public Result<T> message(String msg){
         this.setMessage(msg);

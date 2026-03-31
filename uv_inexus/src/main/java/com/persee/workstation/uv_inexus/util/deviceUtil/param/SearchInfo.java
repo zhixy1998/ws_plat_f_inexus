@@ -51,4 +51,7 @@ public class SearchInfo {
     @ApiModelProperty(value = "用户")
     private String updateBy;
 
+    @ApiModelProperty(value = "虚列号")
+    private String deviceSerialNumber;
+
 }

@@ -267,7 +267,7 @@ public class ConciseSpectrumNewWebSocket {
         // 初始化发送锁
         sessionSendLocks.put(deviceSerialNumber, new Object());
 
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.ConciseSpectrum.getOperation(), Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.ConciseSpectrum.getOperation(), param.getTaskId(), Constants.DEVICE_STATUS_MEASURE);
 
         clearGlobalData();
         // 停止状态给初始值
@@ -366,7 +366,7 @@ public class ConciseSpectrumNewWebSocket {
         inputParam.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setAction(ActionCmdEnum.Scan);
-        if (spectrumParameter.getScanSpeed().equals(Constants.SCANFAST)) {
+        if (spectrumParameter.getScanSpeed().equals(Constants.PARAM_FOUR)) {
             inputParam.setAction(ActionCmdEnum.ScanFast);
         }
 
@@ -965,7 +965,7 @@ public class ConciseSpectrumNewWebSocket {
         List<ChangeParam> changeParams = new ArrayList<>();
 
         // 判断是否为极快扫描模式
-        boolean isFastScan = Constants.SCANFAST.equals(spectrumParameter.getScanSpeed());
+        boolean isFastScan = Constants.PARAM_FOUR.equals(spectrumParameter.getScanSpeed());
 
         if (isFastScan) {
             // 极快扫描模式：优化版本（保持不变）
@@ -2014,7 +2014,7 @@ public class ConciseSpectrumNewWebSocket {
         FMeasureSample sample = tMeasureSampleService.getById(taskSpecimen.getSpecimenKey());
         FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         FSpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
-        Boolean isScanFast = spectrumParameter.getScanSpeed().equals(Constants.SCANFAST);
+        Boolean isScanFast = spectrumParameter.getScanSpeed().equals(Constants.PARAM_FOUR);
 
         try {
 

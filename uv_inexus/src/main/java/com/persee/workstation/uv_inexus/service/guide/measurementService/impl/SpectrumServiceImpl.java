@@ -39,6 +39,7 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.CalculationFormulaService;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.StandardPretreatmentService;
@@ -54,6 +55,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
@@ -169,6 +171,9 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Autowired
     private ConcisePublicUtilService concisePublicUtilService;
+
+    @Autowired
+    private DeviceManageService deviceManageService;
 
     @Value("1")
     String deleteType;
@@ -468,6 +473,11 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (spectrumParameter.getSpikeRemoval()==null){
             spectrumParameter.setSpikeRemoval(false);
         }
+        // 仪器下发参数校验
+        R rdata = IssueCheckParam(spectrumParameter, methodDto.getDeviceSerialNumber());
+        if (!rdata.getSuccess()) {
+            return Result.checkFail(rdata.getData());
+        }
         // 创建测量方法表
         TMeasureMethod tMeasureMethod = new TMeasureMethod();
         if (methodDto.getPretreatmentIds() != null) {
@@ -685,7 +695,11 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         SpectrumParameter spectrumParam = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), SpectrumParameter.class);
         double waveLengthInterval = Double.parseDouble(spectrumParam.getWaveLengthInterval());
-
+        // 仪器下发参数校验
+        R rdata = IssueCheckParam(spectrumParam, deviceSerialNumber);
+        if (!rdata.getSuccess()) {
+            return Result.checkFail(rdata.getData());
+        }
         // 设置参数
         DevOperationInputParam param = new DevOperationInputParam();
         param.setOperationType(OperationTypeEnums.SetParam.getType());
@@ -708,8 +722,17 @@ public class SpectrumServiceImpl implements SpectrumService {
             setParam.setSlit1(Double.valueOf(spectrumParam.getSpectralBandwidth()));
         }
         // 6. 扫描速度
-        if (!spectrumParam.getScanSpeed().equals(Constants.SCANFAST)) {
-            setParam.setScanSpeed(Integer.valueOf(spectrumParam.getScanSpeed()));
+        if (!spectrumParam.getScanSpeed().equals(Constants.PARAM_FOUR)) {
+            R<DeviceMeasureVO> deviceTypeInfo = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+            String ScanSpeed = deviceTypeInfo.getData().getScanSpeed().stream()
+                    .filter(obj -> obj.getParamName().equals(spectrumParam.getScanSpeed()))
+                    .map(DeviceConfParam::getParamValue)
+                    .findFirst()
+                    .orElse(null);
+            if (ScanSpeed == null) {
+                return Result.fail("扫描速度参数错误");
+            }
+            setParam.setScanSpeed(Integer.valueOf(ScanSpeed));
         }
         // 7. 换灯波长
         setParam.setChangeLampWl(Double.valueOf(spectrumParam.getChangeLampWaveLength()));
@@ -3316,7 +3339,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             paramDto.setLadderCorrection(false);
         }
         boolean update1 = Double.parseDouble(paramDto.getWaveLengthInterval()) < 1;
-        if (paramDto.getScanSpeed().equals(Constants.SCANFAST) && update1) {
+        if (paramDto.getScanSpeed().equals(Constants.PARAM_FOUR) && update1) {
             return Result.fail("极快扫描速度时,扫描间隔不能小于1秒");
         }
         double start = Double.parseDouble(paramDto.getStartWaveLength());
@@ -3331,7 +3354,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (changeWavelength < 330.0 || changeWavelength > 390.0) {
             return Result.fail("幻灯波长在330~390之间");
         }
-        if (paramDto.getScanSpeed().equals(Constants.SCANFAST) && (start > 1100 || start < 380)) {
+        if (paramDto.getScanSpeed().equals(Constants.PARAM_FOUR) && (start > 1100 || start < 380)) {
             return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
         }
         if (paramDto.getMethodName()==null) {
@@ -5010,5 +5033,83 @@ public class SpectrumServiceImpl implements SpectrumService {
 
         return null; // 校验通过
     }
+    /**
+     * 下发给仪器的参数校验
+     * @param param
+     * @param deviceSerialNumber
+     * @return
+     */
+    private R IssueCheckParam(SpectrumParameter param, String deviceSerialNumber) {
+        Boolean result = true;
+        List<String> errorMessages = new ArrayList<>();
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!deviceMeasureVOR.getSuccess()) {
+            return R.fail(deviceMeasureVOR.getMessage());
+        }
+        DeviceMeasureVO deviceMeasureVO = deviceMeasureVOR.getData();
+        // 1. 光度模式是否存在
+        boolean a = deviceMeasureVO.getLuminosity().stream()
+                .anyMatch(obj -> obj.getParamValue().equals(param.getLuminosity()));
+        if (!a) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该光度模式");
+        }
+        // 2. 波长范围是否超出限制
+        Double startWaveLength = Double.parseDouble(param.getStartWaveLength());
+        Double endWaveLength = Double.parseDouble(param.getEndWaveLength());
+        Double maxWavelength =  Double.parseDouble(deviceMeasureVO.getMaxWavelength());
+        Double minWavelength =  Double.parseDouble(deviceMeasureVO.getMinWavelength());
+        if (startWaveLength > maxWavelength || endWaveLength < minWavelength) {
+            result = result ? false : result;
+            errorMessages.add("波长范围超出限制, 最大值: "+maxWavelength+"  最小值: "+minWavelength);
+        }
+        // 3. 波长间隔是否存在
+        if (!deviceMeasureVO.getScanInterval().contains(param.getWaveLengthInterval())) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该波长间隔");
+        }
+        // 4. 光谱带宽是否存在
+        if (!deviceMeasureVO.getBandWidth().contains(param.getSpectralBandwidth())) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该光谱带宽");
+        }
+        // 5. 扫描速度是否存在
+        boolean anyMatch = deviceMeasureVO.getScanSpeed().stream()
+                .anyMatch(obj -> obj.getParamName().equals(param.getScanSpeed()));
+        if (!anyMatch) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该扫描速度");
+        }
+        // 6. 换灯波长是否超出限制
+        Double lampWaveLength = Double.parseDouble(param.getChangeLampWaveLength());
+        Double maxLampWavelength =  Double.parseDouble(deviceMeasureVO.getMaxLampWavelength());
+        Double minLampWavelength =  Double.parseDouble(deviceMeasureVO.getMinLampWavelength());
+        if (lampWaveLength > maxLampWavelength || lampWaveLength < minLampWavelength) {
+            result = result ? false : result;
+            errorMessages.add("换灯波长超出限制, 最大值: "+maxLampWavelength+"  最小值: "+minLampWavelength);
+        }
+        // 7. 在光度模式为Es/Er模式下的情况
+        if (param.getLuminosity().equals(Constants.PARAM_TWO)|| param.getLuminosity().equals(Constants.PARAM_THREE)) {
+            // 7.1 能量灯是否存在
+            boolean b = deviceMeasureVO.getLampType().stream()
+                    .anyMatch(obj -> obj.getParamValue().equals(param.getEnergyLamp()));
+            if (!b) {
+                result = result ? false : result;
+                errorMessages.add("当前仪器不支持该能量灯");
+            }
 
+            // 7.2 增益是否存在
+            if (!deviceMeasureVO.getGain().contains(param.getGain())) {
+                result = result ? false : result;
+                errorMessages.add("当前仪器不支持该增益数值");
+            }
+        }
+
+        if (result){
+            return R.ok(true);
+        }else {
+            return R.fail(errorMessages);
+        }
+
+    }
 }

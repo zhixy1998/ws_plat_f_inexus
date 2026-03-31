@@ -228,6 +228,12 @@ public class DeviceController {
         }
     }
 
+    @GetMapping("queryDeviceTypeInfoWithDefault")
+    @ApiOperation("查询设备类型信息")
+    public Result<DeviceMeasureVO> queryDeviceTypeInfoWithDefault(@RequestParam(required = false) String deviceSerialNumber) {
+        return deviceManageService.queryDeviceTypeInfoWithDefault(deviceSerialNumber);
+    }
+
     @GetMapping("/continueInit")
     @ApiOperation("新驱动-继续初始化")
     public Result<Boolean> continueInit(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {

@@ -265,7 +265,7 @@ public class SpectrumNewWebSocket {
         // 初始化发送锁
         sessionSendLocks.put(deviceSerialNumber, new Object());
 
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.Spectrum.getOperation(), Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.Spectrum.getOperation(), param.getTaskId(), Constants.DEVICE_STATUS_MEASURE);
 
         if (Constants.endTime != null || Constants.startTime != null) {
             JSONObject errorMsg = new JSONObject();
@@ -377,7 +377,7 @@ public class SpectrumNewWebSocket {
         inputParam.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setAction(ActionCmdEnum.Scan);
-        if (spectrumParameter.getScanSpeed().equals(Constants.SCANFAST)) {
+        if (spectrumParameter.getScanSpeed().equals(Constants.PARAM_FOUR)) {
             inputParam.setAction(ActionCmdEnum.ScanFast);
         }
 
@@ -933,7 +933,7 @@ public class SpectrumNewWebSocket {
         List<ChangeParam> changeParams = new ArrayList<>();
 
         // 判断是否为极快扫描模式
-        boolean isFastScan = Constants.SCANFAST.equals(spectrumParameter.getScanSpeed());
+        boolean isFastScan = Constants.PARAM_FOUR.equals(spectrumParameter.getScanSpeed());
 
         if (isFastScan) {
             // 极快扫描模式：优化版本（保持不变）
@@ -1979,7 +1979,7 @@ public class SpectrumNewWebSocket {
         TMeasureSample sample = tMeasureSampleService.getById(taskSpecimen.getSpecimenKey());
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-        Boolean isScanFast = spectrumParameter.getScanSpeed().equals(Constants.SCANFAST);
+        Boolean isScanFast = spectrumParameter.getScanSpeed().equals(Constants.PARAM_FOUR);
         try {
             SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
             // 1. 处理峰谷数据

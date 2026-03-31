@@ -22,4 +22,5 @@ public class MethodParamRequestDto {
     private List<String> pretreatmentIds; // 前处理的多个id
     private String updateBy; // 修改人
     private Map<String, Object> params; // 不定参数
+    private String deviceSerialNumber; // 设备序列号
 }
