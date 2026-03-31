@@ -87,6 +87,11 @@ public class Constants {
     public final static Integer DEVICE_STATUS_DIS_CONNECT = 6;
     public final static Integer DEVICE_STATUS_CALIBRATION = 7;
 
+    /**
+     * 仪器激活状态 0-未激活，1-已激活
+     */
+    public static final Integer DEVICE_ACTIVE_NO = 0;
+    public static final Integer DEVICE_ACTIVE_YES = 1;
 
 
     public static volatile LocalDateTime startTime=null;

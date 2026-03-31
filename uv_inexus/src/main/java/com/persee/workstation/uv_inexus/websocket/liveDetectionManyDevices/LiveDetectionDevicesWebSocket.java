@@ -754,7 +754,7 @@ public class LiveDetectionDevicesWebSocket {
             return;
         }
         Integer devCurrentStatus = device.getDevCurrentStatus();
-        if(devCurrentStatus.equals(Constants.DEVICE_STATUS_MEASURE)) {
+        if(!devCurrentStatus.equals(Constants.DEVICE_STATUS_IDLE) && !devCurrentStatus.equals(Constants.DEVICE_STATUS_ECHO) && !devCurrentStatus.equals(Constants.DEVICE_STATUS_DIS_CONNECT)) {
             DetectionManyDevicesResponseInfoVO currentStatus = device.getCurrentStatus();
             BeanUtils.copyProperties(currentStatus, data);
             data.setX(null);

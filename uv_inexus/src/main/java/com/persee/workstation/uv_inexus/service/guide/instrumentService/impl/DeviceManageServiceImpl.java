@@ -1265,15 +1265,15 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public R<Boolean> disconnectDevice(String deviceSerialNumber, String updateBy) {
 
-        DeviceInfoPO info1 = infoService.getInfo(deviceSerialNumber);
-        if (info1 == null || info1.getConnectStatus().equals(Constants.CONNECT_DEVICE_STOP)) {
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        if (info == null || info.getConnectStatus().equals(Constants.CONNECT_DEVICE_STOP)) {
             log.info("仪器未连接");
             return R.ok(true);
         }
 
-        if (!StringUtils.hasText(info1.getDeviceId())) {
-            info1.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
-            infoService.saveOrUpdateInfo(info1);
+        if (!StringUtils.hasText(info.getDeviceId())) {
+            info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+            infoService.saveOrUpdateInfo(info);
             return R.ok(true);
         }
 
@@ -1282,10 +1282,24 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         inputParam.setOperationType(OperationTypeEnums.Disconnect.getType());
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
-            return R.fail(operation.getMessage());
+            if(info.getIsActivated().equals(Constants.DEVICE_ACTIVE_NO) || !info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
+                info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+                info.setDeviceId("");
+                info.setConnectType(-1);
+                info.setIp("");
+                info.setIsInited(0);
+                info.setMachineIp("");
+                info.setDevicePort(-1);
+                info.setUpdateBy(updateBy);
+                infoService.saveOrUpdateInfo(info);
+                return R.ok(true);
+            } else {
+                return R.fail(operation.getMessage());
+            }
+
         } else {
             OperationResultEntity data = operation.getData();
-            DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+
             info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
             info.setDeviceId("");
             info.setConnectType(-1);
@@ -1390,13 +1404,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             DeviceInfoPO infoPO = pos.remove(0);
 
             try {
-                pos.forEach(po -> {
-                    try {
-                        disconnectDevice(po.getDeviceSerialNumber(), updateBy);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+                pos.forEach(po -> disconnectDevice(po.getDeviceSerialNumber(), updateBy));
             } catch (Exception e) {
                 log.error("断开连接失败: {}", e.getMessage());
             }
