@@ -123,6 +123,8 @@ public enum CalibrationTypeEnum {
     //开箱检验任务
     OPEN_BOX_INSPECTION("installation_acceptance", "开箱检验"),
 
+    //出厂检验任务
+    FACTORY_INSPECTION("factory_inspection", "出厂检验"),
     //分析方法
     METHOD_TYPE("methodType", "分析方法"),
 
