@@ -79,16 +79,9 @@ public class SpectrumConciseController {
     }
 
 
-    @PostMapping(value = "applyMethod", produces = "application/json;charset=UTF-8")
+    @PostMapping("applyMethod")
     @ApiOperation("应用接口")
-    public Result applyMethod(@Valid @RequestBody FUseMethodDto paramDto,
-                              BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            String errorMsg = bindingResult.getFieldErrors().stream()
-                    .map(error -> error.getDefaultMessage())
-                    .collect(Collectors.joining("; "));
-            return Result.fail("参数校验失败: " + errorMsg);
-        }
+    public Result applyMethod(@RequestBody FUseMethodDto paramDto) {
         return spectrumConciseService.use(paramDto);
     }
 

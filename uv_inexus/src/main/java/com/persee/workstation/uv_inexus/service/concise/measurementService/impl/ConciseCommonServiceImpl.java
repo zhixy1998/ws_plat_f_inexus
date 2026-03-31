@@ -2105,7 +2105,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (multipTaskSample.getDigit()==null){
             multipTaskSample.setDigit(4);
         }
-        Map<String,Object> result = new HashMap<>();
+        List<Map<String,Object>> resultList = new ArrayList<>();
         // 根据测量类型获取对应的测量服务
         MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(multipTaskSample.getMeasureType());
         for (String taskId : multipTaskSample.getTaskIds()) {
@@ -2113,6 +2113,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             if (byId == null) {
                 return Result.fail("部分任务不存在请查看");
             }
+            Map<String,Object> result = new HashMap<>();
             Result resultData = null;
             switch (measureTypeEnum) {
                 case SPECTRAL_SCAN:
@@ -2124,9 +2125,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 default:
                     return Result.fail("测量类型暂不支持数据比较");
             }
-            result.put(byId.getTaskName(),resultData.getData());
+            result.put("title",byId.getTaskName());
+            result.put("children",resultData.getData());
+            resultList.add(result);
         }
-        return Result.ok(result);
+        return Result.ok(resultList);
     }
 
     @PreDestroy //

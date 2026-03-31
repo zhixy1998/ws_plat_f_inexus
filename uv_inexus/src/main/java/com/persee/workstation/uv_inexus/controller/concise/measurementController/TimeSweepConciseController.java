@@ -66,16 +66,9 @@ public class TimeSweepConciseController {
     }
 
 
-    @PostMapping(value = "applyMethod", produces = "application/json;charset=UTF-8")
+    @PostMapping("applyMethod")
     @ApiOperation("应用接口")
-    public Result applyMethod(@Valid @RequestBody TimeUseMethodDto paramDto, BindingResult bindingResult) {
-        // 校验参数
-        if (bindingResult.hasErrors()) {
-            String errorMsg = bindingResult.getFieldErrors().stream()
-                    .map(error ->  error.getDefaultMessage())
-                    .collect(Collectors.joining("; "));
-            return Result.fail("参数校验失败: " + errorMsg);
-        }
+    public Result applyMethod(@RequestBody TimeUseMethodDto paramDto) {
         return timeSweepConciseService.use(paramDto);
     }
 
