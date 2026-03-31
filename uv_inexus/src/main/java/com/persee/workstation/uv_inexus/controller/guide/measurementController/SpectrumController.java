@@ -81,14 +81,7 @@ public class SpectrumController {
 
     @PostMapping("saveMethodParameter")
     @ApiOperation("方法参数修改接口")
-    public Result saveMethodParameter(@Valid @RequestBody SpectralMethodParameterDto methodDto,
-                                      BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            String errorMsg = bindingResult.getFieldErrors().stream()
-                    .map(error -> error.getDefaultMessage())
-                    .collect(Collectors.joining("; "));
-            return Result.fail("参数校验失败: " + errorMsg);
-        }
+    public Result saveMethodParameter(@RequestBody SpectralMethodParameterDto methodDto) {
         return spectrumService.updateMethodParameter(methodDto);
     }
 
