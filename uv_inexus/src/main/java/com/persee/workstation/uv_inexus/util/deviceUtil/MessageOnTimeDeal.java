@@ -284,6 +284,11 @@ public class MessageOnTimeDeal {
             // 清空队列，避免残包
             MessageStoreManager.getInstance().clearDeviceMessages(deviceId);
 
+            unknowCountMessageQueue.clearCommand(deviceSerialNumber, "Scan");
+            unknowCountMessageQueue.clearCommand(deviceSerialNumber, "ScanFast");
+            unknowCountMessageQueue.clearCommand(deviceSerialNumber, "BaseLine");
+            unknowCountMessageQueue.clearCommand(deviceSerialNumber, "BaseLineFast");
+
             return; // 不需要继续创建新线程
         }
 
@@ -297,6 +302,20 @@ public class MessageOnTimeDeal {
 
         if (isScan || isBaseline) {
             unknowCountMessageQueue.clearIp(deviceSerialNumber);
+
+            SpectrumPointStore oldStore = spectrumPointStoreMap.get(deviceSerialNumber);
+            if (oldStore != null) {
+                oldStore.clear();
+                log.info("[基线清空] 清空旧的基线数据和 pointStore，设备={}", deviceSerialNumber);
+            }
+        }
+
+        if (isBaseline) {
+            SpectrumPointStore oldStore = spectrumPointStoreMap.get(deviceSerialNumber);
+            if (oldStore != null) {
+                oldStore.clear();
+                log.info("[基线清空] 清空旧的基线数据，设备={}", deviceSerialNumber);
+            }
         }
 
         MessageStoreManager store = MessageStoreManager.getInstance();
@@ -360,8 +379,13 @@ public class MessageOnTimeDeal {
                         byte[] useMessage = store.getMessage(deviceId);
 
                         recvCount++;
-                        if (recvCount >= 2) currentTimeout = 15000L;
-                        startTime = System.currentTimeMillis();
+                        if (recvCount >= 2) {
+                            currentTimeout = 15000L;
+                            if (cmdId.equals("ScanFast") || cmdId.equals("BaseLineFast")){
+                                currentTimeout = 1000L;
+                            }
+                            startTime = System.currentTimeMillis();
+                        }
 
                         // ----------------- 2. 解析报文 -----------------
                         OperationResultEntity parsed = UdpResponseDeal.parseScan(Collections.singletonList(useMessage));
