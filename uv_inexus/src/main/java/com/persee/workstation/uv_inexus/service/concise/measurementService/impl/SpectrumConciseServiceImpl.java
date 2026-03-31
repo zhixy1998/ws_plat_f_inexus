@@ -710,9 +710,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return Result.fail(r.getMessage());
         }
         // 仪器下发参数校验
-        R rdata = IssueCheckParam(param, paramDto.getDeviceSerialNumber());
-        if (!rdata.getSuccess()) {
-            return Result.checkFail(rdata.getData());
+        if (paramDto.getDeviceSerialNumber()!=null&& !paramDto.getDeviceSerialNumber().isEmpty()){
+            R rdata = IssueCheckParam(param, paramDto.getDeviceSerialNumber());
+            if (!rdata.getSuccess()) {
+                return Result.checkFail(rdata.getData());
+            }
         }
         if (paramDto.getParameter().getLuminosity().equals("3") || paramDto.getParameter().getLuminosity().equals("4")) {
             paramDto.getParameter().setLadderCorrection(false);
@@ -2335,9 +2337,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         FSpectrumParameter spectrumParam = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), FSpectrumParameter.class);
         double waveLengthInterval = Double.parseDouble(spectrumParam.getWaveLengthInterval());
         // 仪器下发参数校验
-        R rdata = IssueCheckParam(spectrumParam, deviceSerialNumber);
-        if (!rdata.getSuccess()) {
-            return Result.checkFail(rdata.getData());
+        if (deviceSerialNumber!=null&& !deviceSerialNumber.isEmpty()){
+            R rdata = IssueCheckParam(spectrumParam, deviceSerialNumber);
+            if (!rdata.getSuccess()) {
+                return Result.checkFail(rdata.getData());
+            }
         }
         // 设置参数
         DevOperationInputParam param = new DevOperationInputParam();

@@ -1963,9 +1963,11 @@ public class RationServiceConciseImpl implements RationConciseService {
         );
 
         // 3.5 校验仪器参数
-        R<Boolean> booleanR = IssueCheckParam(rationParam, deviceSerialNumber);
-        if (!booleanR.getSuccess()) {
-            return Result.checkFail(booleanR.getData());
+        if (deviceSerialNumber!=null&& !deviceSerialNumber.isEmpty()){
+            R<Boolean> booleanR = IssueCheckParam(rationParam, deviceSerialNumber);
+            if (!booleanR.getSuccess()) {
+                return Result.checkFail(booleanR.getData());
+            }
         }
 
         // 4. 构建设备操作参数

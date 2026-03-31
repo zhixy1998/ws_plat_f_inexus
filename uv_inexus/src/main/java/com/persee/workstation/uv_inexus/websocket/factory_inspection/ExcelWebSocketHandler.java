@@ -4180,7 +4180,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler{
             param2.setDeviceSerialNumber(deviceSerialNumber);
             param2.setOperationType(OperationTypeEnums.SetParam.getType());
             SetParam setParam3 = new SetParam();
-            Integer actionPosition1 = materialManager.getActionPosition(taskId, StandardMaterialManager.MaterialType.ZERO);
+            Integer actionPosition1 = materialManager.getActionPosition(taskId, StandardMaterialManager.MaterialType.MEASURE);
             //设置样品池位置
             setParam3.setCellPos(actionPosition1);
             param2.setParam(setParam3);
@@ -4244,7 +4244,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler{
             inputParam.setWavelength(waveLength);
         }
         LocalDateTime startTime = LocalDateTime.now();
-        realTimeEcho(taskId, "开始测量");
+//        realTimeEcho(taskId, "开始测量");
         R<OperationResultEntity> measure = devOperationUtilService.operation(inputParam);
         if (!measure.getSuccess()) {
             log.warn("测量出错！");
@@ -4303,19 +4303,32 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler{
                                 JSONObject object = new JSONObject();
                                 switch (anEnum) {
                                     case abs:
-                                        object.put("peak", result.getAbs());
+                                        String abs1 = result.getAbs();
+                                        //abs1 保留五位小数
+                                        abs1 = new BigDecimal(abs1).setScale(5, RoundingMode.HALF_UP).toString();
+
+                                        object.put("peak", abs1);
                                         res.add(object);
                                         break;
                                     case tPercent:
-                                        object.put("peak", result.getTPercent());
+                                        String tPercent1 = result.getTPercent();
+                                        tPercent1 = new BigDecimal(tPercent1).setScale(5, RoundingMode.HALF_UP).toString();
+
+                                        object.put("peak", tPercent1);
                                         res.add(object);
                                         break;
                                     case es:
-                                        object.put("peak", result.getEs());
+                                        String es = result.getEs();
+                                        es = new BigDecimal(es).setScale(5, RoundingMode.HALF_UP).toString();
+
+                                        object.put("peak",es );
                                         res.add(object);
                                         break;
                                     case er:
-                                        object.put("peak", result.getEr());
+                                        String er = result.getEr();
+                                        er = new BigDecimal(er).setScale(5, RoundingMode.HALF_UP).toString();
+
+                                        object.put("peak", er);
                                         res.add(object);
                                         break;
                                 }

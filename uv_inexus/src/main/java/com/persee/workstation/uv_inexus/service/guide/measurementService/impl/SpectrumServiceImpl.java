@@ -474,9 +474,11 @@ public class SpectrumServiceImpl implements SpectrumService {
             spectrumParameter.setSpikeRemoval(false);
         }
         // 仪器下发参数校验
-        R rdata = IssueCheckParam(spectrumParameter, methodDto.getDeviceSerialNumber());
-        if (!rdata.getSuccess()) {
-            return Result.checkFail(rdata.getData());
+        if (methodDto.getDeviceSerialNumber()!=null&& !methodDto.getDeviceSerialNumber().isEmpty()){
+            R rdata = IssueCheckParam(spectrumParameter, methodDto.getDeviceSerialNumber());
+            if (!rdata.getSuccess()) {
+                return Result.checkFail(rdata.getData());
+            }
         }
         // 创建测量方法表
         TMeasureMethod tMeasureMethod = new TMeasureMethod();
@@ -696,9 +698,11 @@ public class SpectrumServiceImpl implements SpectrumService {
         SpectrumParameter spectrumParam = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), SpectrumParameter.class);
         double waveLengthInterval = Double.parseDouble(spectrumParam.getWaveLengthInterval());
         // 仪器下发参数校验
-        R rdata = IssueCheckParam(spectrumParam, deviceSerialNumber);
-        if (!rdata.getSuccess()) {
-            return Result.checkFail(rdata.getData());
+        if (deviceSerialNumber!=null&& !deviceSerialNumber.isEmpty()){
+            R rdata = IssueCheckParam(spectrumParam, deviceSerialNumber);
+            if (!rdata.getSuccess()) {
+                return Result.checkFail(rdata.getData());
+            }
         }
         // 设置参数
         DevOperationInputParam param = new DevOperationInputParam();

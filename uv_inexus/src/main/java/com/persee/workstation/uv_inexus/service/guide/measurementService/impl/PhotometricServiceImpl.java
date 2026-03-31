@@ -434,10 +434,13 @@ public class PhotometricServiceImpl implements PhotometricService {
         }
 
         // 3.5 校验仪器参数
-        R booleanR = IssueCheckParam(parameter, deviceSerialNumber);
-        if (!booleanR.getSuccess()) {
-            return Result.checkFail(booleanR.getData());
+        if (deviceSerialNumber != null&& !deviceSerialNumber.isEmpty()){
+            R booleanR = IssueCheckParam(parameter, deviceSerialNumber);
+            if (!booleanR.getSuccess()) {
+                return Result.checkFail(booleanR.getData());
+            }
         }
+
 
         // 构建操作输入参数
         DevOperationInputParam inputParam = new DevOperationInputParam();
