@@ -82,7 +82,11 @@ public class DefaultTaskManager {
             this.defaultTaskId = task1.getId();
         }
     }
-
+    public TaskManagement createFactoryInspectionTask(String updateBy) {
+        TaskManagement task = createDefaultTask(updateBy);
+        taskManagementService.save(task);
+        return task;
+    }
     private TaskManagement createDefaultTask(String updateBy) {
         TaskManagement task = new TaskManagement();
         task.setId(IdGeneratorUtil.generateIdWithPrefix("task"));

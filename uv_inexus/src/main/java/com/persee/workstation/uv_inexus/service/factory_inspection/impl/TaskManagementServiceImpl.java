@@ -538,6 +538,10 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 
                 return Result.ok(management);
             }
+            if (FACTORY_INSPECTION.getCode().equals(taskId)) {
+                TaskManagement task = defaultTaskManager.createFactoryInspectionTask(updateBy);
+                return Result.ok(task);
+            }
             TaskManagement management = this.getById(taskId);
             ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
             management.setTemplateName(excelTemplate.getTemplateName());
