@@ -82,7 +82,7 @@ public class SpectrumConciseController {
 
     @ButtonPermission("spectralScanApplyMethod")
     @OperateLog(module = "实验测试-经典模式-光谱扫描-应用方法", description = "执行实验测试-经典模式-光谱扫描-应用方法记录", recordParams = true)
-    @PostMapping("applyMethod")
+    @PostMapping(value = "applyMethod", produces = "application/json;charset=UTF-8")
     @ApiOperation("应用接口")
     public Result applyMethod(@Valid @RequestBody FUseMethodDto paramDto,
                               BindingResult bindingResult) {

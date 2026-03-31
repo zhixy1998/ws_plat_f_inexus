@@ -67,6 +67,8 @@ public class TimeSweepConciseController {
         return timeSweepConciseService.searchMethodButton(pageNum,pageSize,updateBy,measureType,methodName);
     }
 
+
+    @PostMapping(value = "applyMethod", produces = "application/json;charset=UTF-8")
     @ButtonPermission("timeScanApplyMethod")
     @OperateLog(module = "实验测试-经典模式-时间扫描-应用方法", description = "执行实验测试-经典模式-时间扫描-应用方法记录", recordParams = true)
     @PostMapping("applyMethod")

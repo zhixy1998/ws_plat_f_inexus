@@ -317,4 +317,10 @@ public class ConciseCommonController {
     public Result<Boolean> checkOperatePermission(PermLogOccupyDTO requestDTO) {
         return Result.ok(true);
     }
+
+    @PostMapping("queryMultipleTaskSample")
+    @ApiOperation("查询多个任务样品")
+    public Result queryMultipleTaskSample(@RequestBody MultipTaskSample multipTaskSample) {
+        return conciseCommonService.queryMultipleTaskSample(multipTaskSample);
+    }
 }
