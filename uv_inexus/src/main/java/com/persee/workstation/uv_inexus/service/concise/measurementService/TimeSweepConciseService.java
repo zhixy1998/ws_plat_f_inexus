@@ -139,4 +139,6 @@ public interface TimeSweepConciseService {
     // 停止测量
     Result stopMeasure(String deviceSerialNumber);
 
+    // 查询已测样品数据列表
+    Result queryMeasuredSampleDataList(String taskId,String type,Integer digit,String deviceSerialNumber);
 }

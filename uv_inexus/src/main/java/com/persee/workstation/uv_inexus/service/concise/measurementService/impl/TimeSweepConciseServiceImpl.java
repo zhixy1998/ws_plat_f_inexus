@@ -4069,6 +4069,95 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
     }
 
+    @Override
+    public Result queryMeasuredSampleDataList(String taskId, String type, Integer digit, String deviceSerialNumber) {
+        // 先对前端传过来的数据进行校验
+        if (taskId == null || taskId.equals("")) {
+            //任务id不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
+        }
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            //没有找到该任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        List<FSampleListVo> listVos = new ArrayList<>();
+        // 根据序列号查询对应的附件配置表信息
+        QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
+        wrapper.eq("device_serial_number", deviceSerialNumber);
+        SamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+        Boolean isAutoChangePool;
+        if (configPO == null) {
+            isAutoChangePool=false;
+        }else{
+            isAutoChangePool= configPO.getIsAutoChangePool();
+        }
+        if (taskSpecimen != null) {
+            for (FTaskSpecimen taskSpeciman : taskSpecimen) {
+                if (taskSpeciman.getDeleteType().equals(Constants.PARAM_ONE) && type == null) {
+                    continue;
+                }
+                if (taskSpeciman.getIsTested().equals(Constants.PARAM_ZERO)){
+                    continue;
+                }
+                FSampleListVo vo = new FSampleListVo();
+                FMeasureSample sample = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                if (sample == null) {
+                    //样品不存在
+                    return Result.fail(YamlMessageSource.getMessageStatic("0000000B"));
+                }
+                QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                queryWrapper.eq("task_id", taskId);
+                queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
+                queryWrapper.eq("analysis_type", "5");
+                if (type == null) {
+                    queryWrapper.eq("is_delete", "0");
+                }
+                queryWrapper.orderByDesc("analysis_number");
+                queryWrapper.last("limit 1");
+                FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
+
+                if (measureData == null ||taskSpeciman.getIsTested().equals("0")&& measureData.getAnalysisResult() == null) {
+                    vo.setTitle(sample.getSampleName());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setAnalysisId(null);
+                    vo.setAnalysisNumber(1);
+                    if (isAutoChangePool){
+                        vo.setSampleLocation(sample.getSampleLocation());
+                    }else{
+                        vo.setSampleLocation(null);
+                    }
+                    vo.setColor(null);
+                    vo.setData(null);
+                    vo.setDeleteType("0");
+                } else {
+                    vo.setTitle(sample.getSampleName());
+                    vo.setAnalysisId(measureData.getId());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setSampleLocation(sample.getSampleLocation());
+                    if (isAutoChangePool){
+                        vo.setSampleLocation(sample.getSampleLocation());
+                    }else{
+                        vo.setSampleLocation(null);
+                    }
+                    vo.setColor(measureData.getColor());
+                    if (measureData.getAnalysisResult() == null) {
+                        vo.setData(null);
+                        vo.setOriginalData(null);
+                    } else {
+                        vo.setData(getSampleData(measureData, digit));
+                        vo.setOriginalData(getOriginalSampleData(measureData, digit));
+                    }
+                    vo.setDeleteType(taskSpeciman.getDeleteType());
+                }
+                vo.setType("0");
+                listVos.add(vo);
+            }
+        }
+        return Result.ok(listVos);
+    }
+
     public void addLuminosityMode(List<FHeadVO> ans, String mode) {
         switch (mode) {
             case "1":

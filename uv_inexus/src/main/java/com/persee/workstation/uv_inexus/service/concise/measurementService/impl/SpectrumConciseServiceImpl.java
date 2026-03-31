@@ -4201,6 +4201,180 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
     }
 
+    /**
+     * 查询已测样品数据列表
+     * @param taskId
+     * @param type
+     * @param digit
+     * @param deviceSerialNumber
+     * @return
+     */
+    @Override
+    public Result queryMeasuredSampleDataList(String taskId, String type, Integer digit, String deviceSerialNumber) {
+        if (taskId == null) {
+            //方法id不能为空,请创建方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000021"));
+        }
+
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            //该方法下没有草稿,请新建草稿
+            return Result.fail(YamlMessageSource.getMessageStatic("00100010"));
+        }
+        // 根据方法id查询方法
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            //没有找到该方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
+        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        List<FSampleListVo> listVos = new ArrayList<>();
+        if (taskSpecimen == null || taskSpecimen.isEmpty()) {
+            return Result.ok(listVos);
+        }
+
+        // 根据序列号查询对应的附件配置表信息
+        QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
+        wrapper.eq("device_serial_number", deviceSerialNumber);
+        SamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+        Boolean isAutoChangePool;
+        if (configPO == null) {
+            isAutoChangePool=false;
+        }else{
+            isAutoChangePool= configPO.getIsAutoChangePool();
+        }
+        // 判断是否是重复模式
+        if ("不重复".equals(parameter.getRepetitionPattern())) {
+            // 不重复模式
+            for (FTaskSpecimen taskSpeciman : taskSpecimen) {
+                if (taskSpeciman.getDeleteType().equals(Constants.PARAM_ONE) && type == null) {
+                    continue;
+                }
+                if (taskSpeciman.getIsTested().equals(Constants.PARAM_ZERO)){
+                    continue;
+                }
+                FSampleListVo vo = new FSampleListVo();
+                // 根据样品id查询样品数据
+                FMeasureSample sample = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                if (sample == null) {
+                    //样品不存在
+                    return Result.fail(YamlMessageSource.getMessageStatic("0000000B"));
+                }
+                QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                queryWrapper.eq("task_id", task.getId());
+                queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
+                queryWrapper.eq("analysis_type", "5");
+                queryWrapper.orderByDesc("analysis_number");
+                if (type == null) {
+                    queryWrapper.eq("is_delete", "0");
+                }
+                queryWrapper.last("limit 1");
+                FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
+                // 如果没有测量数据则设置为无测量数据的参数返回
+                if (measureData == null || taskSpeciman.getIsTested().equals("0") && measureData.getAnalysisResult() == null) {
+                    vo.setTitle(sample.getSampleName());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setAnalysisId(null);
+                    if (isAutoChangePool){
+                        vo.setSampleLocation(sample.getSampleLocation());
+                    }else{
+                        vo.setSampleLocation(null);
+                    }
+                    vo.setAnalysisNumber(1);
+                    vo.setColor(null);
+                    vo.setData(null);
+                    vo.setIsTested(taskSpeciman.getIsTested());
+                } else {
+                    vo.setTitle(sample.getSampleName());
+                    vo.setAnalysisId(measureData.getId());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    if (isAutoChangePool){
+                        vo.setSampleLocation(sample.getSampleLocation());
+                    }else{
+                        vo.setSampleLocation(null);
+                    }
+                    vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                    vo.setColor(measureData.getColor());
+                    if (measureData.getAnalysisResult() == null) {
+                        vo.setData(null);
+                        vo.setOriginalData(null);
+                    } else {
+                        vo.setData(getSampleData(measureData, digit));
+                        vo.setOriginalData(getOriginalSampleData(measureData, digit));
+                    }
+                    vo.setIsTested(taskSpeciman.getIsTested());
+                }
+                vo.setType("0");
+                vo.setDeleteType(taskSpeciman.getDeleteType());
+                listVos.add(vo);
+            }
+        } else {
+            // 重复模式
+            if (parameter.getRepetitionTime() == null || parameter.getRepetitionTime().equals("")) {
+                //请填写重复次数
+                return Result.fail(YamlMessageSource.getMessageStatic("00000037"));
+            }
+            Integer count = Integer.valueOf(parameter.getRepetitionTime());
+            for (FTaskSpecimen taskSpeciman : taskSpecimen) {
+                if (type == null && taskSpeciman.getDeleteType().equals("1")) {
+                    continue;
+                }
+                // 根据样品id查询样品数据
+                FMeasureSample sample = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                if (sample == null) {
+                    //样品不存在
+                    return Result.fail(YamlMessageSource.getMessageStatic("0000000B"));
+                }
+                int key = 0;
+                // 根据方法中的方法参数的重复次数进行循环
+                for (int i = 0; i < count; i++) {
+                    FSampleListVo vo = new FSampleListVo();
+                    QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                    queryWrapper.eq("task_id", task.getId());
+                    queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
+                    queryWrapper.eq("analysis_type", "5");
+                    queryWrapper.eq("analysis_number", (i + 1));
+                    queryWrapper.last("limit 1");
+                    FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
+
+                    if (measureData == null && taskSpeciman.getIsTested().equals("0")) {
+                       continue;
+                    } else if (measureData != null) {
+                        if (measureData.getIsDelete().equals("1") && type == null) {
+                            continue;
+                        }
+                        vo.setTitle(sample.getSampleName() + "-" + (i + 1));
+                        vo.setAnalysisId(measureData.getId());
+                        vo.setSampleId(taskSpeciman.getSpecimenKey());
+                        vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                        if (isAutoChangePool){
+                            vo.setSampleLocation(sample.getSampleLocation());
+                        }else{
+                            vo.setSampleLocation(null);
+                        }
+                        vo.setColor(measureData.getColor());
+                        if (measureData.getAnalysisResult() == null) {
+                            vo.setData(null);
+                            vo.setOriginalData(null);
+                        } else {
+                            vo.setData(getSampleData(measureData, digit));
+                            vo.setOriginalData(getOriginalSampleData(measureData, digit));
+                        }
+                        vo.setDeleteType(measureData.getIsDelete());
+                    } else {
+                        continue;
+                    }
+                    vo.setType("0");
+
+                    listVos.add(vo);
+                }
+            }
+        }
+
+        return Result.ok(listVos);
+    }
+
 
     // 保留原有的downloadWord方法，并适配新参数
     public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds, Integer digit, String deviceSerialNumber) {

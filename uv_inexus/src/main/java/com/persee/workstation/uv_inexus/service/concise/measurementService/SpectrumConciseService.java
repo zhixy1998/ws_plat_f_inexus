@@ -145,4 +145,7 @@ public interface SpectrumConciseService {
 
     // 仪器设置参数
     boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam);
+
+    // 查询已测样品数据列表
+    Result queryMeasuredSampleDataList(String taskId,String type,Integer digit,String deviceSerialNumber);
 }

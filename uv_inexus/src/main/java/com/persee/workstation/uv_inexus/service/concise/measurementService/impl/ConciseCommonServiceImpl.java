@@ -2117,10 +2117,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             Result resultData = null;
             switch (measureTypeEnum) {
                 case SPECTRAL_SCAN:
-                    resultData = spectrumConciseService.querySampleDataList(taskId, null, multipTaskSample.getDigit(), multipTaskSample.getDeviceSerialNumber());
+                    resultData = spectrumConciseService.queryMeasuredSampleDataList(taskId, null, multipTaskSample.getDigit(), multipTaskSample.getDeviceSerialNumber());
                     break;
                 case TIME_SCAN:
-                    resultData = timeSweepConciseService.querySampleDataList(taskId, null, multipTaskSample.getDigit(), multipTaskSample.getDeviceSerialNumber());
+                    resultData = timeSweepConciseService.queryMeasuredSampleDataList(taskId, null, multipTaskSample.getDigit(), multipTaskSample.getDeviceSerialNumber());
                     break;
                 default:
                     return Result.fail("测量类型暂不支持数据比较");
