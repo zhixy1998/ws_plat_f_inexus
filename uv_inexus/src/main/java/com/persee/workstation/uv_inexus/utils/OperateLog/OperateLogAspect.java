@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.util.StringUtils;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -27,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
@@ -211,7 +211,7 @@ public class OperateLogAspect {
 
                 // 记录返回结果
                 if (operateLog.recordParams()) {
-                    String resultJson = JSON.toJSONString(result, SerializerFeature.DisableCircularReferenceDetect);
+                    String resultJson = buildResultJson(result);
                     logPO.setResult(resultJson);
                 }
             }
@@ -367,7 +367,7 @@ public class OperateLogAspect {
                 // 3. 普通DTO/POJO：序列化后截断
                 else {
                     String json = JSON.toJSONString(arg, SerializerFeature.DisableCircularReferenceDetect);
-                    paramsBuilder.append(json.length() > 500 ? json.substring(0, 500) + "...," : json + ",");
+                    paramsBuilder.append(json.length() > 500 ? json.substring(0, 500) + "...,": json + ",");
                 }
             }
 
@@ -376,6 +376,36 @@ public class OperateLogAspect {
         } catch (Exception e) {
             log.warn("构建参数JSON失败，使用默认序列化", e);
             return JSON.toJSONString(args, SerializerFeature.DisableCircularReferenceDetect);
+        }
+    }
+    
+    /**
+     * 构建返回结果JSON（优化：过滤InputStreamResource等不可序列化类型）
+     */
+    private String buildResultJson(Object result) {
+        if (result == null) {
+            return "null";
+        }
+
+        try {
+            // 处理常见的不可序列化类型
+            if (result.getClass().getName().contains("InputStreamResource") || 
+                result.getClass().getName().contains("FileInputStream") ||
+                result.getClass().getName().contains("ByteArrayInputStream")) {
+                return "[StreamResource: 二进制流数据]";
+            }
+            
+            // 处理ResponseEntity类型
+            if (result.getClass().getName().contains("ResponseEntity")) {
+                return "[ResponseEntity: HTTP响应对象]";
+            }
+            
+            // 普通对象序列化
+            String json = JSON.toJSONString(result, SerializerFeature.DisableCircularReferenceDetect);
+            return json.length() > 500 ? json.substring(0, 500) + "..." : json;
+        } catch (Exception e) {
+            log.warn("构建返回结果JSON失败，使用默认序列化", e);
+            return "[Result: 序列化失败]";
         }
     }
 
