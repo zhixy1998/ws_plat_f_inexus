@@ -1077,7 +1077,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
 
                 String baseIp = newIp.toString();
-                Integer s = allocateIp(baseIp, connectPort);
+                Integer s = allocateIp(baseIp, connectPort, deviceInfo.getDeviceMac());
                 if (s == null) {
                     deviceManager.removeDevice(deviceInfo.getDeviceId());
                     return R.fail("仪器连接超数量！");
@@ -1222,7 +1222,26 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     /**
      * 获取ip最后一位
      */
-    private Integer allocateIp(String baseIp, Integer connectPort) {
+    private Integer allocateIp(String baseIp, Integer connectPort, String macAddress) {
+
+        // 如果提供了 MAC 地址，优先使用 MAC 地址生成唯一 IP
+        if (macAddress != null && !macAddress.isEmpty() && baseIp != null) {
+            Integer candidate = generateIpFromMac(macAddress);
+            if (candidate != null) {
+                String ip = baseIp + candidate;
+                String localIp = connectUtil.getEthernetLocalIp();
+
+                // 检查是否与本地 IP 冲突
+                if (!ip.equals(localIp)) {
+                    // 检查设备是否存在
+                    boolean exists = deviceManager.checkDeviceExist(ip, connectPort);
+                    if (!exists) {
+                        return candidate;
+                    }
+                }
+            }
+        }
+
         int attempts = 0;
         while (attempts < size) {
             // 原子地获取当前候选值，并更新计数器为下一个值
@@ -1245,6 +1264,31 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             attempts++;
         }
         return null;
+    }
+
+    /**
+     * 根据 MAC 地址生成唯一的 IP 最后一位
+     * @param macAddress 设备的 MAC 地址
+     * @return IP 最后一位 (1-254)
+     */
+    private Integer generateIpFromMac(String macAddress) {
+        if (macAddress == null || macAddress.isEmpty()) {
+            return null;
+        }
+
+        // 移除 MAC 地址中的分隔符（: 或 -）并转换为小写
+        String cleanMac = macAddress.replace(":", "").replace("-", "").toLowerCase();
+
+        // 使用哈希算法生成唯一值
+        int hashCode = cleanMac.hashCode();
+
+        // 确保为正数
+        hashCode = Math.abs(hashCode);
+
+        // 映射到 1-254 范围
+        int ipLastDigit = (hashCode % 254) + 1;
+
+        return ipLastDigit;
     }
 
     private void initDevice(String deviceSerialNumber, Boolean isInitFromHead) {

@@ -82,14 +82,8 @@ public class TimeSweepController {
     @OperateLog(module = "实验测试-向导模式-时间扫描-应用方法", description = "执行实验测试-向导模式-时间扫描-应用方法操作", recordParams = true)
     @PostMapping("updateMethodParameter")
     @ApiOperation("修改方法参数接口")
-    public Result updateMethodParameter(@Valid @RequestBody TimeSweepMethodParameterDto params, BindingResult bindingResult) {
+    public Result updateMethodParameter( @RequestBody TimeSweepMethodParameterDto params) {
         // 校验参数
-        if (bindingResult.hasErrors()) {
-            String errorMsg = bindingResult.getFieldErrors().stream()
-                    .map(error ->  error.getDefaultMessage())
-                    .collect(Collectors.joining("; "));
-            return Result.fail("参数校验失败: " + errorMsg);
-        }
         return timeSweepService.updateMethodParameter(params);
     }
 

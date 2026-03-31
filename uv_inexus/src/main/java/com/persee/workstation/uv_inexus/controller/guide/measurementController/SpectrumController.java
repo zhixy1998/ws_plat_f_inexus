@@ -87,14 +87,7 @@ public class SpectrumController {
     @OperateLog(module = "实验测试-向导模式-定量测量-应用方法", description = "执行实验测试-向导模式-定量测量-应用方法操作", recordParams = true)
     @PostMapping("saveMethodParameter")
     @ApiOperation("方法参数修改接口")
-    public Result saveMethodParameter(@Valid @RequestBody SpectralMethodParameterDto methodDto,
-                                      BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            String errorMsg = bindingResult.getFieldErrors().stream()
-                    .map(error -> error.getDefaultMessage())
-                    .collect(Collectors.joining("; "));
-            return Result.fail("参数校验失败: " + errorMsg);
-        }
+    public Result saveMethodParameter(@RequestBody SpectralMethodParameterDto methodDto) {
         return spectrumService.updateMethodParameter(methodDto);
     }
 
