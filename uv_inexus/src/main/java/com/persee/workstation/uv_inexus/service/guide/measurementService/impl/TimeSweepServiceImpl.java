@@ -803,9 +803,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         TimeSweepParamter timeSweepParamter = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), TimeSweepParamter.class);
         // 仪器下发参数校验
-        R rdata = IssueCheckParam(timeSweepParamter, deviceSerialNumber);
-        if (!rdata.getSuccess()) {
-            return Result.checkFail(rdata.getData());
+        if (deviceSerialNumber!=null&& !deviceSerialNumber.isEmpty()){
+            R rdata = IssueCheckParam(timeSweepParamter, deviceSerialNumber);
+            if (!rdata.getSuccess()) {
+                return Result.checkFail(rdata.getData());
+            }
         }
         // 设置参数
         DevOperationInputParam param = new DevOperationInputParam();
@@ -2783,10 +2785,13 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail(r.getMessage());
         }
         // 仪器下发参数校验
-        R rdata = IssueCheckParam(timeSweepParamter, methodDto.getDeviceSerialNumber());
-        if (!rdata.getSuccess()) {
-            return Result.checkFail(rdata.getData());
+        if (methodDto.getDeviceSerialNumber()!=null&& !methodDto.getDeviceSerialNumber().isEmpty()){
+            R rdata = IssueCheckParam(timeSweepParamter, methodDto.getDeviceSerialNumber());
+            if (!rdata.getSuccess()) {
+                return Result.checkFail(rdata.getData());
+            }
         }
+
         if (updateBy.length()>=256){
             //用户名过长！
             return Result.fail(YamlMessageSource.getMessageStatic("00305001"));

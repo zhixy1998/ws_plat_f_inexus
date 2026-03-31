@@ -411,6 +411,8 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             ans.setConnectMode(1);
             ans.setMinWavelength("190");
             ans.setMaxWavelength("1100");
+            ans.setMaxLampWavelength("390");
+            ans.setMinLampWavelength("330");
             ans.setBandWidth(Collections.singletonList("2"));
             ans.setGain(Arrays.asList(1, 2, 3, 4));
             ans.setScanInterval(Arrays.asList("0.1", "0.2", "0.5", "1.0", "2.0", "5.0"));

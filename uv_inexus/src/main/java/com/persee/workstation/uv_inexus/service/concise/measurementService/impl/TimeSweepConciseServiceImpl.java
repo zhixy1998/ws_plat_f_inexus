@@ -592,9 +592,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (response >= interval) {
             return Result.fail("响应时间必须小于时间间隔");
         }
-        R<Boolean> booleanR = IssueCheckParam(param, paramDto.getDeviceSerialNumber());
-        if (!booleanR.getSuccess()) {
-            return Result.checkFail(booleanR.getData());
+        // 仪器下发参数校验
+        if (paramDto.getDeviceSerialNumber()!=null&& !paramDto.getDeviceSerialNumber().isEmpty()){
+            R rdata = IssueCheckParam(param, paramDto.getDeviceSerialNumber());
+            if (!rdata.getSuccess()) {
+                return Result.checkFail(rdata.getData());
+            }
         }
         SetParam setParam = new SetParam();
         setParam.setPhotoMode(Integer.valueOf(paramDto.getParameter().getLuminosity()));
@@ -1952,9 +1955,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         FTimeSweepParamter timeSweepParamter = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), FTimeSweepParamter.class);
         // 仪器下发参数校验
-        R<Boolean> rdata = IssueCheckParam(timeSweepParamter, deviceSerialNumber);
-        if (!rdata.getSuccess()) {
-            return Result.checkFail(rdata.getData());
+        if (deviceSerialNumber!=null&& !deviceSerialNumber.isEmpty()){
+            R<Boolean> rdata = IssueCheckParam(timeSweepParamter, deviceSerialNumber);
+            if (!rdata.getSuccess()) {
+                return Result.checkFail(rdata.getData());
+            }
         }
         // 设置参数
         DevOperationInputParam param = new DevOperationInputParam();
