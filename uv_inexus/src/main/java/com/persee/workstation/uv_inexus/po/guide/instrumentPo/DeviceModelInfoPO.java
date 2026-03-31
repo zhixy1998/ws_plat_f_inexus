@@ -58,4 +58,8 @@ public class DeviceModelInfoPO {
     @ApiModelProperty("初始化项")
     @TableField(value = "init_entry", typeHandler = JacksonTypeHandler.class)
     private List<DeviceInitEntryInfo> initEntry;
+
+    @ApiModelProperty("滤色片波长点数组")
+    @TableField(value = "filter_wavelengths", typeHandler = JacksonTypeHandler.class)
+    private List<Integer>  filterWavelength;
 }

@@ -46,6 +46,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecime
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -144,6 +145,9 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     @Autowired
     private DevOperationUtilService operationUtilService;
+
+    @Autowired
+    private DeviceManageService deviceManageService;
 
 
     @Value("1")
@@ -1957,6 +1961,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                 tMeasureMethod.getMeasurementParamInfo(),
                 FRationParameter.class
         );
+
+        // 3.5 校验仪器参数
+        R<Boolean> booleanR = IssueCheckParam(rationParam, deviceSerialNumber);
+        if (!booleanR.getSuccess()) {
+            return Result.checkFail(booleanR.getData());
+        }
 
         // 4. 构建设备操作参数
         DevOperationInputParam inputParam = new DevOperationInputParam();
@@ -6804,5 +6814,57 @@ public class RationServiceConciseImpl implements RationConciseService {
         } else {
             return "docx";
         }
+    }
+
+    /**
+     * 下发给仪器的参数校验
+     * @param param
+     * @param deviceSerialNumber
+     * @return
+     */
+    private R IssueCheckParam(FRationParameter param, String deviceSerialNumber) {
+        Boolean result = true;
+        List<String> errorMessages = new ArrayList<>();
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!deviceMeasureVOR.getSuccess()) {
+            return R.fail(deviceMeasureVOR.getMessage());
+        }
+        DeviceMeasureVO deviceMeasureVO = deviceMeasureVOR.getData();
+        // 1. 波长范围是否超出限制
+        List<String> waveLengths = param.getWaveLength();
+        Double maxWavelength =  Double.parseDouble(deviceMeasureVO.getMaxWavelength());
+        Double minWavelength =  Double.parseDouble(deviceMeasureVO.getMinWavelength());
+        for (String waveLength : waveLengths) {
+            Double wavelength = Double.parseDouble(waveLength);
+            if (wavelength > maxWavelength || wavelength < minWavelength) {
+                result = result ? false : result;
+                errorMessages.add("波长"+ waveLength+"超出限制, 最大值: " + maxWavelength + "  最小值: " + minWavelength);
+            }
+        }
+        // 2. 光谱带宽是否存在
+        if (!deviceMeasureVO.getBandWidth().contains(param.getSpectralBandwidth())) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该光谱带宽");
+        }
+        // 3. 响应时间是否存在
+        if (!deviceMeasureVO.getResponseTime().contains(param.getResponseTime())) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该响应时间");
+        }
+        // 4. 换灯波长是否超出限制
+        Double lampWaveLength = Double.parseDouble(param.getChangeLampWaveLength());
+        Double maxLampWavelength =  Double.parseDouble(deviceMeasureVO.getMaxLampWavelength());
+        Double minLampWavelength =  Double.parseDouble(deviceMeasureVO.getMinLampWavelength());
+        if (lampWaveLength > maxLampWavelength || lampWaveLength < minLampWavelength) {
+            result = result ? false : result;
+            errorMessages.add("换灯波长超出限制, 最大值: "+maxLampWavelength+"  最小值: "+minLampWavelength);
+        }
+
+        if (result){
+            return R.ok(true);
+        }else {
+            return R.fail(errorMessages);
+        }
+
     }
 }

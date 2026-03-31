@@ -63,6 +63,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -1002,6 +1003,77 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     public R<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber) {
 
         return infoService.queryDeviceTypeInfo(deviceSerialNumber);
+    }
+
+    /**
+     * 获取默认参数映射
+     * @param deviceSerialNumber
+     * @return
+     */
+    @Override
+    public Result<DeviceMeasureVO> queryDeviceTypeInfoWithDefault(String deviceSerialNumber) {
+        // 1. 先调用原有接口获取数据库参数，主要是为了获取 connectMode
+        R<DeviceMeasureVO> re = queryDeviceTypeInfo(deviceSerialNumber);
+        if (!re.getSuccess()) {
+            return Result.fail(re.getMessage());
+        }
+
+        DeviceMeasureVO dbVo = re.getData();
+        Integer connectMode = dbVo != null ? dbVo.getConnectMode() : null;
+        List<Integer> filterWavelength = dbVo != null ? dbVo.getFilterWavelength() : null;
+
+        // 2. 创建新的 VO 对象
+        DeviceMeasureVO vo = new DeviceMeasureVO();
+
+        // 3. 遍历枚举，用枚举的默认值填充所有字段
+        for (MappingParamEnum paramEnum : MappingParamEnum.values()) {
+            Object defaultValue = paramEnum.getDefaultValue();
+            String fieldName = paramEnum.getKey();
+
+            // 设置字段值
+            setFieldValueSafe(vo, fieldName, defaultValue);
+        }
+
+        // 4. 设置 connectMode（从数据库获取）
+        vo.setConnectMode(connectMode);
+        vo.setFilterWavelength(filterWavelength);
+
+        return Result.ok(vo);
+    }
+
+
+
+    private void setFieldValueSafe(DeviceMeasureVO vo, String fieldName, Object value) {
+        try {
+            Field field = DeviceMeasureVO.class.getDeclaredField(fieldName);
+            field.setAccessible(true);
+
+            if (value == null) {
+                field.set(vo, null);
+                return;
+            }
+
+            field.set(vo, value);
+
+        } catch (NoSuchFieldException e) {
+            // 字段不存在，忽略
+            System.out.println("字段不存在: " + fieldName);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 通过反射获取字段值
+     */
+    private Object getFieldValue(DeviceMeasureVO vo, String fieldName) {
+        try {
+            Field field = DeviceMeasureVO.class.getDeclaredField(fieldName);
+            field.setAccessible(true);
+            return field.get(vo);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            return null;
+        }
     }
 
 

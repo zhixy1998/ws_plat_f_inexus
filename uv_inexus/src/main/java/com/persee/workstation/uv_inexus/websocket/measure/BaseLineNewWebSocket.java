@@ -337,7 +337,7 @@ public class BaseLineNewWebSocket {
             inputParam.setDeviceSerialNumber(deviceSerialNumber);
             // 发送基线命令
             inputParam.setAction(ActionCmdEnum.BaseLine);
-            boolean isFastScan = Constants.SCANFAST.equals(param.getScanSpeed());
+            boolean isFastScan = Constants.PARAM_FOUR.equals(param.getScanSpeed());
             if (isFastScan) {
                 inputParam.setAction(ActionCmdEnum.BaseLineFast);
             }
@@ -388,7 +388,7 @@ public class BaseLineNewWebSocket {
             }
             while (true) {
                 Object result = null;
-                if (param.getScanSpeed().equals(Constants.SCANFAST)){
+                if (param.getScanSpeed().equals(Constants.PARAM_FOUR)){
                     result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.BaseLineFast.getComId());
                 }else {
                     result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.BaseLine.getComId());
@@ -430,7 +430,7 @@ public class BaseLineNewWebSocket {
                 dataList.add(message.getBaselineRsd());
                 // 短暂休眠，减少CPU占用
                 try {
-                    Thread.sleep(Constants.SCANFAST.equals(param.getScanSpeed()) ? 2 : 10);
+                    Thread.sleep(Constants.PARAM_FOUR.equals(param.getScanSpeed()) ? 2 : 10);
                 } catch (InterruptedException e) {
                     log.info("【数据收集中断】数据收集被中断, session: {}", sessionId);
                     throw new UserInterruptedException("用户主动停止");

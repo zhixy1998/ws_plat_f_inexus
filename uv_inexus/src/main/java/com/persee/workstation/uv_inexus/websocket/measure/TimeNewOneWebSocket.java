@@ -470,9 +470,6 @@ public class TimeNewOneWebSocket {
      */
     private void executeSingleMeasurement(String deviceSerialNumber, TimeScanContext context,
                                           TimeSweepParamter param) {
-        if (!context.running.get()) {
-            return;
-        }
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.TimeMeasure.getType());

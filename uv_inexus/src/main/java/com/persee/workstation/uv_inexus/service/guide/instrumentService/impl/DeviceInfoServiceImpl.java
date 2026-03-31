@@ -431,6 +431,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             list.add(new DeviceConfParam(ScanSpeedEnum.FAST.getName(), ScanSpeedEnum.FAST.getCode()));
             list.add(new DeviceConfParam(ScanSpeedEnum.SUPER_FAST.getName(), ScanSpeedEnum.SUPER_FAST.getCode()));
             ans.setScanSpeed(list);
+            ans.setFilterWavelength(Arrays.asList(762, 555, 359));
             return R.ok(ans);
         }
 
@@ -454,13 +455,14 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         DeviceMeasureVO ans = new DeviceMeasureVO();
 
         ans.setBandWidth(deviceModelInfoPO.getSpacingWidth() == null ? null : deviceModelInfoPO.getSpacingWidth());
+        ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength() == null ? null : deviceModelInfoPO.getFilterWavelength());
 
         Integer devTypeId = deviceModelInfoPO.getDevTypeId();
 
         DeviceTypeInfoPO deviceTypeInfoPO = deviceTypeInfoDAO.selectById(devTypeId);
         ans = changeType(deviceTypeInfoPO);
         ans.setBandWidth(deviceModelInfoPO.getSpacingWidth());
-
+        ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength());
         return R.ok(ans);
     }
 

@@ -121,6 +121,9 @@ public interface DeviceManageService {
 
     R<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber);
 
+    // 获取默认参数映射
+    Result<DeviceMeasureVO> queryDeviceTypeInfoWithDefault(String deviceSerialNumber);
+
 
     void test();
 
@@ -164,4 +167,6 @@ public interface DeviceManageService {
     R<FindDeviceVO> connect(List<SearchInfo> param,String updateBy,String templateCode);
 
     Result<DeviceTaskDto> createTaskAfterInstrumentInit(String deviceSerialNumber, String updateBy, String templateCode) throws BusinessException;
+
+
 }

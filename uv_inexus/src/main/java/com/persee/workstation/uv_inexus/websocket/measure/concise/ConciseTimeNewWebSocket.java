@@ -519,9 +519,6 @@ public class ConciseTimeNewWebSocket {
      */
     private void executeSingleMeasurement(String deviceSerialNumber, TimeScanContext context,
                                           FTimeSweepParamter param) {
-        if (!context.running.get()) {
-            return;
-        }
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.TimeMeasure.getType());
