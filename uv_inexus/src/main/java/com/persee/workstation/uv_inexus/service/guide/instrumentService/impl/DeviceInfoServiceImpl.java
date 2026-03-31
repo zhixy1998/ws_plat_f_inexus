@@ -131,6 +131,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         if (currentStatus.equals(Constants.DEVICE_STATUS_IDLE)) {
             String deviceId = deviceInfoPO.getDeviceId();
             deviceManager.setDevCurrentUseType(deviceId, null);
+            deviceManager.setDevCurrentTaskId(deviceId, null);
         }
 
     }
@@ -145,6 +146,23 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
         String deviceId = deviceInfoPO.getDeviceId();
         deviceManager.setDevCurrentUseType(deviceId, useType);
+
+        dao.update(deviceInfoPO, queryWrapper);
+    }
+
+    @Override
+    public void updateDeviceCurrentStatus(String deviceSerialNumber, String useType, String taskId, Integer currentStatus) {
+        LambdaQueryWrapper<DeviceInfoPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DeviceInfoPO::getDeviceSerialNumber, deviceSerialNumber)
+                .last("limit 1");
+        DeviceInfoPO deviceInfoPO = dao.selectOne(queryWrapper);
+        deviceInfoPO.setDeviceCurrentStatus(currentStatus);
+
+        String deviceId = deviceInfoPO.getDeviceId();
+        deviceManager.setDevCurrentUseType(deviceId, useType);
+        if (taskId != null) {
+            deviceManager.setDevCurrentTaskId(deviceId, taskId);
+        }
 
         dao.update(deviceInfoPO, queryWrapper);
     }

@@ -211,7 +211,7 @@ public class TimeNewOneWebSocket {
             String updateBy = param.getUpdateBy();
             Integer digit = param.getDigit();
 
-            infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.TimeMeasureOne.getOperation(), Constants.DEVICE_STATUS_MEASURE);
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.TimeMeasureOne.getOperation(), taskId, Constants.DEVICE_STATUS_MEASURE);
 
             if (taskId == null || deviceSerialNumber == null || updateBy == null || sampleId == null) {
                 safeCleanup(sessionId, true);

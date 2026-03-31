@@ -213,7 +213,7 @@ public class ConciseTimeOneNewWebSocket {
             String deviceSerialNumber = param.getDeviceSerialNumber();
             String updateBy = param.getUpdateBy();
             Integer digit = param.getDigit();
-            infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.ConciseTimeMeasureOne.getOperation(), Constants.DEVICE_STATUS_MEASURE);
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.ConciseTimeMeasureOne.getOperation(), taskId, Constants.DEVICE_STATUS_MEASURE);
             if (taskId == null || deviceSerialNumber == null || updateBy == null || sampleId == null) {
                 sendError(deviceSerialNumber, "参数错误");
                 return;

@@ -1133,6 +1133,7 @@ public class UdpResponseDeal {
             DetectionConstants.detectionInfo.put("pos", rawpos);
         }
         resultEntity.setCurrentPoolNum(pos);
+        resultEntity.setPos(String.valueOf(pos));
 
         return resultEntity;
     }

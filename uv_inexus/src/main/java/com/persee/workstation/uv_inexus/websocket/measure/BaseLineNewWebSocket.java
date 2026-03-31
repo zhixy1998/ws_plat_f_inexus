@@ -158,7 +158,7 @@ public class BaseLineNewWebSocket {
         // 初始化发送锁
         sessionSendLocks.put(sessionId, new Object());
 
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.BaseLine.getOperation(), Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.BaseLine.getOperation(), param.getTaskId(), Constants.DEVICE_STATUS_MEASURE);
 
         // 往前端推送数据的线程
         Thread taskThread = new Thread(() -> {

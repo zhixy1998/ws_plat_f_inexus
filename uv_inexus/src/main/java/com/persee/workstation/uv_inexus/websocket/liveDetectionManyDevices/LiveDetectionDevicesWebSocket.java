@@ -479,6 +479,7 @@ public class LiveDetectionDevicesWebSocket {
                             }
                         }
                         statusInfo.setDevUseType(device.getUseType());
+                        statusInfo.setTaskId(device.getCurrentTaskId());
                     }
 
                     WebSocketResponseVO webSocketResponseVO = new WebSocketResponseVO();

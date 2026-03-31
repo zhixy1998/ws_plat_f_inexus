@@ -103,6 +103,11 @@ public class DeviceConnectInfo {
      * 仪器当前使用类型
      */
     private String useType;
+
+    /**
+     * 当前测量任务id
+     */
+    private String currentTaskId;
     /**
      * 校零结果  键: 波长, 值: 校零参数 (保留 Map 结构！)
      */

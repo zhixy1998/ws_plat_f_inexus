@@ -180,7 +180,7 @@ public class ConciseTimeNewWebSocket {
         currentSampleCell=null;
         Constants.measureStopStatus.put(param.getDeviceSerialNumber(), true);
         String taskId = param.getTaskId();
-        infoService.updateDeviceCurrentStatus(param.getDeviceSerialNumber(),WebSocketOperationEnum.ConciseTimeMeasure.getOperation(), Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(param.getDeviceSerialNumber(),WebSocketOperationEnum.ConciseTimeMeasure.getOperation(), taskId, Constants.DEVICE_STATUS_MEASURE);
         connectionClosingMap.put(taskId, new AtomicBoolean(false));
         stopProcessingMap.put(taskId, new AtomicBoolean(false));
 
