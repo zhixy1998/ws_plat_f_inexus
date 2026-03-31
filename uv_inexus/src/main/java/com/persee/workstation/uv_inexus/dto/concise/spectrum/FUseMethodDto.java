@@ -18,6 +18,8 @@ import javax.validation.constraints.NotNull;
 @Data
 public class FUseMethodDto {
     // 方法id
+    private String operateType;
+    // 方法id
     private String methodId;
     // 方法id2
     private String methodId2;
