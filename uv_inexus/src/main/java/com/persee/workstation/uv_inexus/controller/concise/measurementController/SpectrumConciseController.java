@@ -79,7 +79,7 @@ public class SpectrumConciseController {
     }
 
 
-    @PostMapping("applyMethod")
+    @PostMapping(value = "applyMethod", produces = "application/json;charset=UTF-8")
     @ApiOperation("应用接口")
     public Result applyMethod(@Valid @RequestBody FUseMethodDto paramDto,
                               BindingResult bindingResult) {

@@ -3656,7 +3656,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      * @return
      */
     public List<Map<String, Object>> getOriginalSampleData(FMeasureAnalysisData measureData,
-                                                           int digit) {
+                                                           Integer digit) {
         // 解析分析结果、峰、谷、标记点
         List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
         List<FPeakValleyMarking> gauges = JSON.parseArray(measureData.getGaugePoint(), FPeakValleyMarking.class);

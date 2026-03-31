@@ -234,4 +234,10 @@ public class ConciseCommonController {
                                       @RequestParam String measureType) {
         return conciseCommonService.setUpParametersPort(taskId,deviceSerialNumber,measureType);
     }
+
+    @PostMapping("queryMultipleTaskSample")
+    @ApiOperation("查询多个任务样品")
+    public Result queryMultipleTaskSample(@RequestBody MultipTaskSample multipTaskSample) {
+        return conciseCommonService.queryMultipleTaskSample(multipTaskSample);
+    }
 }

@@ -93,4 +93,6 @@ public interface ConciseCommonService {
     Result setUpParametersPort(String taskId, String deviceSerialNumber, String measureType);
 
 
+    // 查询多任务样品接口
+    Result queryMultipleTaskSample(MultipTaskSample multipTaskSample);
 }

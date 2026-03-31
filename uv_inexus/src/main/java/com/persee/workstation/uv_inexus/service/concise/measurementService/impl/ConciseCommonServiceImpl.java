@@ -67,7 +67,6 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.PreDestroy;
-import java.lang.reflect.Field;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -2084,6 +2083,50 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             default:
                 return Result.fail("测量类型不存在");
         }
+    }
+
+    /**
+     * 查询多个任务样品信息
+     * @param multipTaskSample
+     * @return
+     */
+    @Override
+    public Result queryMultipleTaskSample(MultipTaskSample multipTaskSample) {
+        // 校验参数
+        if(multipTaskSample==null){
+            return Result.fail("参数不能为空");
+        }
+        if(multipTaskSample.getTaskIds()==null|| multipTaskSample.getTaskIds().isEmpty()){
+            return Result.fail("请选选择任务");
+        }
+        if(multipTaskSample.getMeasureType()==null){
+            return Result.fail("请先选择测量类型");
+        }
+        if (multipTaskSample.getDigit()==null){
+            multipTaskSample.setDigit(4);
+        }
+        Map<String,Object> result = new HashMap<>();
+        // 根据测量类型获取对应的测量服务
+        MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(multipTaskSample.getMeasureType());
+        for (String taskId : multipTaskSample.getTaskIds()) {
+            FMeasureTask byId = fMeasureTaskService.getById(taskId);
+            if (byId == null) {
+                return Result.fail("部分任务不存在请查看");
+            }
+            Result resultData = null;
+            switch (measureTypeEnum) {
+                case SPECTRAL_SCAN:
+                    resultData = spectrumConciseService.querySampleDataList(taskId, null, multipTaskSample.getDigit(), multipTaskSample.getDeviceSerialNumber());
+                    break;
+                case TIME_SCAN:
+                    resultData = timeSweepConciseService.querySampleDataList(taskId, null, multipTaskSample.getDigit(), multipTaskSample.getDeviceSerialNumber());
+                    break;
+                default:
+                    return Result.fail("测量类型暂不支持数据比较");
+            }
+            result.put(byId.getTaskName(),resultData.getData());
+        }
+        return Result.ok(result);
     }
 
     @PreDestroy //
