@@ -4919,7 +4919,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             errorMessages.add("换灯波长超出限制, 最大值: "+maxLampWavelength+"  最小值: "+minLampWavelength);
         }
         // 7. 在光度模式为Es/Er模式下的情况
-        if (param.getLuminosity().equals(Constants.PARAM_TWO)|| param.getLuminosity().equals(Constants.PARAM_THREE)) {
+        if (param.getLuminosity().equals(Constants.PARAM_THREE)|| param.getLuminosity().equals(Constants.PARAM_FOUR)) {
             // 7.1 能量灯是否存在
             boolean b = deviceMeasureVO.getLampType().stream()
                     .anyMatch(obj -> obj.getParamValue().equals(param.getEnergyLamp()));
