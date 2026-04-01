@@ -652,7 +652,7 @@ public class UdpSendUtil {
         long lastReceiveTime = System.currentTimeMillis();
         int i = 0;
         try {
-            int timeoutMs = 100;
+            int timeoutMs = Constants.HANDSHAKE_TIMEOUT;
 
             while (i < totalByteNumber && System.currentTimeMillis() - lastReceiveTime < timeoutMs) {
                 if (store.getQueueSize(deviceId) == 0) {
