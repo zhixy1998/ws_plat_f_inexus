@@ -65,5 +65,9 @@ public interface DeviceInfoService {
      * 没有波长列表时的系数
      */
     Double queryCoefficient(String deviceSerialNumber);
+    /**
+     * 获取设备类型
+     */
+    String queryDeviceTypeBySerialNumber(String deviceSerialNumber);
 
 }

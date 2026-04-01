@@ -186,6 +186,9 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             if (device.getData() != null) {
                 management.setOperationInstrument(device.getData());
             }
+            if (StringUtils.isNotBlank(task.getTaskType())){
+                management.setTaskType(task.getTaskType());
+            }
             boolean save = this.save(management);
             if (!save) {
                 return Result.fail(null);
@@ -531,12 +534,37 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                     return Result.fail("未找到开箱验证任务");
                 }else {
                     management=list.get(0);
-                }
-                ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
-                management.setTemplateName(excelTemplate.getTemplateName());
-                management.setTemplateCode(excelTemplate.getTemplateCode());
+                    R<String> device = deviceManageService.getConnectDevice(updateBy);
+                    String data = device.getData();
+                    if (StringUtils.isNotBlank(management.getOperationInstrument())&&!StringUtils.equals(management.getOperationInstrument(),data)){
+                        TaskAddDto addDto = new TaskAddDto();
+                        addDto.setDetectName(management.getDetectName()+System.currentTimeMillis());
+                        ExcelTemplate template = templateService.getById(management.getUseTemplate());
+                        addDto.setUseTemplate(template.getTemplateCode());
+                        addDto.setContentCategory(management.getContentCategory());
+                        addDto.setCreateBy(updateBy);
+                        addDto.setUpdateBy(updateBy);
+                        addDto.setSerialNumber(data);
+                        addDto.setCreated(LocalDateTime.now());
+                        addDto.setUpdated(LocalDateTime.now());
+                        addDto.setTaskType(INSTALLATION_ACCEPTANCE.getCode());
+                        Result<HashMap<String, String>> task = newTask(addDto);
+                        if (task.getCode() == 200) {
+                            String newTaskId = task.getData().get("taskId");
+                            TaskManagement newManagement = this.getById(newTaskId);
+                            ExcelTemplate excelTemplate = templateService.getById(newManagement.getUseTemplate());
+                            newManagement.setTemplateName(excelTemplate.getTemplateName());
+                            newManagement.setTemplateCode(excelTemplate.getTemplateCode());
+                            return Result.ok(newManagement);
+                        }
+                    }else {
+                        ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
+                        management.setTemplateName(excelTemplate.getTemplateName());
+                        management.setTemplateCode(excelTemplate.getTemplateCode());
 
-                return Result.ok(management);
+                        return Result.ok(management);
+                    }
+                }
             }
             if (FACTORY_INSPECTION.getCode().equals(taskId)) {
                 TaskManagement task = defaultTaskManager.createFactoryInspectionTask(updateBy);

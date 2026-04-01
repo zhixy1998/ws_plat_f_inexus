@@ -493,6 +493,15 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         return deviceTypeInfoPO.getCoefficient() == null ? 50.0 : deviceTypeInfoPO.getCoefficient();
     }
 
+    @Override
+    public String queryDeviceTypeBySerialNumber(String deviceSerialNumber) {
+        List<String> list = deviceTypeInfoDAO.queryDeviceTypeBySerialNumber(deviceSerialNumber);
+        if (list != null && !list.isEmpty()) {
+            return list.get(0);
+        }
+        return "";
+    }
+
     private DeviceMeasureVO changeType(DeviceTypeInfoPO po) {
 
         DeviceMeasureVO ans = new DeviceMeasureVO();
