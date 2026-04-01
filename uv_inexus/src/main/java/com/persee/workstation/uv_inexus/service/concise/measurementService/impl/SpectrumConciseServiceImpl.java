@@ -31,6 +31,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
@@ -720,7 +721,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             paramDto.getParameter().setLadderCorrection(false);
         }
         boolean update1 = Double.parseDouble(paramDto.getParameter().getWaveLengthInterval()) < 1;
-        if (paramDto.getParameter().getScanSpeed().equals(Constants.PARAM_FOUR) && update1) {
+        if (paramDto.getParameter().getScanSpeed().equals(ScanSpeedEnum.EXTREME_FAST.getCode()) && update1) {
             return Result.fail("极快扫描速度时,扫描间隔不能小于1秒");
         }
         double start = Double.parseDouble(paramDto.getParameter().getStartWaveLength());
@@ -735,7 +736,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (changeWavelength < 330.0 || changeWavelength > 390.0) {
             return Result.fail("幻灯波长在330~390之间");
         }
-        if (paramDto.getParameter().getScanSpeed().equals(Constants.PARAM_FOUR) && (start > 1100 || start < 380)) {
+        if (paramDto.getParameter().getScanSpeed().equals(ScanSpeedEnum.EXTREME_FAST.getCode()) && (start > 1100 || start < 380)) {
             return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
         }
         if (param.getSpikeRemoval()==null){
@@ -2365,7 +2366,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             setParam.setSlit1(Double.valueOf(spectrumParam.getSpectralBandwidth()));
         }
         // 6. 扫描速度
-        if (!spectrumParam.getScanSpeed().equals(Constants.PARAM_FOUR)) {
+        if (!spectrumParam.getScanSpeed().equals(ScanSpeedEnum.EXTREME_FAST.getCode())) {
             R<DeviceMeasureVO> deviceTypeInfo = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
             String ScanSpeed = deviceTypeInfo.getData().getScanSpeed().stream()
                     .filter(obj -> obj.getParamName().equals(spectrumParam.getScanSpeed()))

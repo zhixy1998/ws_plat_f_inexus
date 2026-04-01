@@ -158,6 +158,12 @@ public enum CalibrationTypeEnum {
 
 
 
+    //检定校准任务
+    CALIBRATION_INSPECTION("1", "检定校准任务"),
+    //开箱检验任务
+    INSTALLATION_ACCEPTANCE("2", "开箱检验任务"),
+    //出厂检验任务
+    FACTORY_INSPECTION_TASK("3", "出厂检验任务"),
 
 
 

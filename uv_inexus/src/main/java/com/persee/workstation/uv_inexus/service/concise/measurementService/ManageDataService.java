@@ -3,7 +3,10 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService;
 import com.persee.workstation.uv_inexus.dto.concise.common.Box;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
 
 /*
  * *
@@ -15,6 +18,15 @@ import org.springframework.web.multipart.MultipartFile;
  */
 public interface ManageDataService  {
     Result listOfMethods(String methodName, Integer pageNum, Integer pageSize, String sort, String updateBy);
+
+    /**
+     * 获取任务列表
+     * @param taskQueryParam
+     * @return
+     */
+    Result<Map<String, Object>> getTasksManagementList(TaskQueryParam taskQueryParam);
+
+    Result<String> deleteTask(Box deleteTaskIdList);
     
     /**
      * 导出方法
@@ -73,4 +85,7 @@ public interface ManageDataService  {
      * @return 创建结果
      */
     Result createMethodPort(FMethodParamRequestDto methodDto);
+
+
+
 }

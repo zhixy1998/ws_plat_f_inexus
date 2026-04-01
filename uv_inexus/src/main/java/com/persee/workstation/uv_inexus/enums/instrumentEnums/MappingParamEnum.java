@@ -25,11 +25,11 @@ public enum MappingParamEnum {
     RESPONSE_TIME("responseTime", "响应时间", Arrays.asList("0.5", "1", "2")),
 
     SCAN_SPEED("scanSpeed", "扫描速度", Arrays.asList(
-            new ParamOption("最慢", "0"),
-            new ParamOption("慢速", "1"),
-            new ParamOption("中速", "2"),
-            new ParamOption("快速", "3"),
-            new ParamOption("极快", "4")
+            new ParamOption("最慢", "slowest"),
+            new ParamOption("慢速", "slow"),
+            new ParamOption("中速", "medium"),
+            new ParamOption("快速", "fast"),
+            new ParamOption("极快", "fastest")
     )),
 
     MIN_WAVELENGTH("minWavelength", "最小波长", "190"),

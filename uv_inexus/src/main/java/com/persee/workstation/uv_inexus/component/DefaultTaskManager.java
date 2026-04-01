@@ -62,7 +62,8 @@ public class DefaultTaskManager {
 //
         //看一下有没有updateBy创建的任务
         LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(TaskManagement::getCreateBy, updateBy);
+        wrapper.eq(TaskManagement::getCreateBy, updateBy)
+                .eq(TaskManagement::getTaskType, "1");
         long count = taskManagementService.count(wrapper);
 //        long count = taskManagementService.count();
         if (count == 0) {

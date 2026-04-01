@@ -1,16 +1,19 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.Box;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureProject;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureProjectService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.ManageDataService;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.MethodBaseVo;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -43,6 +46,19 @@ public class ManageDataServiceImpl implements ManageDataService {
     
     @Autowired
     private FMeasureTaskService taskService;
+
+    @Autowired
+    private FMeasureSampleService sampleService;
+
+    @Autowired
+    private FMeasureDataService dataService;
+
+    @Autowired
+    private FMeasureAnalysisDataService analysisDataService;
+
+    @Autowired
+    private FMeasureAnalysisImageService analysisImageService;
+
     
     // 日期格式化器
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -218,7 +234,140 @@ public class ManageDataServiceImpl implements ManageDataService {
 
         return Result.ok(response);
     }
-    
+
+    /**
+     * 获取任务列表
+     * @param taskQueryParam
+     * @return
+     */
+    @Override
+    public Result<Map<String, Object>> getTasksManagementList(TaskQueryParam taskQueryParam) {
+        // 参数校验
+        if (taskQueryParam == null) {
+            //查询参数不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00306002"));
+        }
+
+        // 分页参数默认值设置
+        int pageNum = taskQueryParam.getPage() != null ? taskQueryParam.getPage() : 1;
+        int pageSize = taskQueryParam.getSize() != null ? taskQueryParam.getSize() : 10;
+
+        Page<FMeasureTask> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<FMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
+
+        // 模糊查询条件（添加空值判断）
+        if (StringUtils.isNotBlank(taskQueryParam.getKeyword())) {
+            queryWrapper.like(FMeasureTask::getTaskName, taskQueryParam.getKeyword());
+        }
+
+        Page<FMeasureTask> result = taskService.page(page, queryWrapper);
+        List<FMeasureTask> records = result.getRecords();
+        List<TaskManagementDto> dtoList = new ArrayList<>();
+        for (FMeasureTask record : records) {
+            String proName;
+            String methodName;
+            if (record.getProjectItemKey()!=null){
+                FMeasureProject project = projectService.getById(record.getProjectItemKey());
+                proName=project.getProjectName();
+            }else{
+                proName="";
+            }
+            if (record.getMethodKey()!=null){
+                FMeasureMethod tMeasureMethod = measureMethodService.getById(record.getMethodKey());
+                if (tMeasureMethod!=null){
+                    methodName=tMeasureMethod.getMethodName();
+                }else{
+                    methodName="";
+                }
+            }else {
+                methodName="";
+            }
+
+            List<TaskSpecimen> specimen = JSON.parseArray(record.getSampleKey(), TaskSpecimen.class);
+            TaskManagementDto dto = TaskManagementDto.builder()
+                    .id(record.getId())
+                    .taskName(record.getTaskName())
+                    .projectName(proName)
+                    .startTime(record.getCreateTime()!=null?record.getCreateTime().toString(): "-")
+                    .sampleKey(specimen != null ? specimen.size() : 0)
+                    .methodId(record.getMethodKey())
+                    .methodName(methodName)
+                    .measureType(record.getMeasureType())
+                    .build();
+            dtoList.add(dto);
+        }
+        // 创建map结构用于返回
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("current", result.getCurrent());      // 当前页数
+        resultMap.put("size", result.getSize());           // 每页记录数
+        resultMap.put("total", result.getTotal());         // 总记录数
+        resultMap.put("pages", result.getPages());         // 总页数
+        resultMap.put("result", dtoList);                 // 数据列表
+        return Result.ok(resultMap);
+    }
+
+    /**
+     * 经典: 删除任务
+     * @param List
+     * @return
+     */
+    @Override
+    public Result<String> deleteTask(Box List) {
+        List<String> deleteTaskIdList = List.getParams();
+        // 遍历要删除的任务
+        for (String deleteTaskId : deleteTaskIdList) {
+            try {
+                // 根据当前任务id查询当前任务数据
+                FMeasureTask tMeasureTask = taskService.getById(deleteTaskId);
+                // 取出并转换当前任务的所有样品
+                List<FMeasureSample> tMeasureSamples = JSON.parseArray(tMeasureTask.getSampleKey(), FMeasureSample.class);
+                if (tMeasureSamples!=null&&tMeasureSamples.size()!=0) {
+                    for (FMeasureSample TMeasureSample : tMeasureSamples) {
+                        String specimenKey = TMeasureSample.getId();
+                        sampleService.removeById(specimenKey);
+                    }
+                }
+                // 查询当前任务是否有测量数据,如果有则进行删除
+                LambdaQueryWrapper<FMeasureData> dataWrapper = new LambdaQueryWrapper<>();
+                dataWrapper.eq(FMeasureData::getTaskId, deleteTaskId);
+                dataWrapper.last("LIMIT 1");
+                FMeasureData tMeasureData = dataService.getOne(dataWrapper);
+                if (tMeasureData != null) {
+                    dataService.remove(new LambdaQueryWrapper<FMeasureData>().eq(FMeasureData::getTaskId, deleteTaskId));
+                }
+                // 查询当前任务是否有分析数据,如果有则进行删除(附加分析图片表数据)
+                LambdaQueryWrapper<FMeasureAnalysisData> analyWrapper = new LambdaQueryWrapper<>();
+                analyWrapper.eq(FMeasureAnalysisData::getTaskId, deleteTaskId);
+                List<FMeasureAnalysisData> analysisData = analysisDataService.list(analyWrapper);
+                if (analysisData != null && analysisData.size() != 0) {
+                    for (FMeasureAnalysisData tMeasureAnalysisData : analysisData) {
+                        String analysisDataKey = tMeasureAnalysisData.getId();
+                        QueryWrapper<FMeasureAnalysisImage> wrapper = new QueryWrapper<>();
+                        wrapper.eq("analysis_id", analysisDataKey);
+                        FMeasureAnalysisImage byId = analysisImageService.getOne(wrapper);
+                        if (byId != null) {
+                            analysisImageService.remove(wrapper);
+                        }
+                        analysisDataService.removeById(analysisDataKey);
+                    }
+                }
+                boolean res = taskService.removeById(deleteTaskId);
+                if (!res) {
+                    //任务删除失败
+                    return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
+                }
+            } catch (Exception e) {
+                boolean i = taskService.removeById(deleteTaskId);
+                if (!i) {
+                    //任务删除失败
+                    return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
+                }
+            }
+
+        }
+        return Result.ok();
+    }
+
     /**
      * 根据 ID 获取项目
      */

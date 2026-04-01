@@ -4,6 +4,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.Box;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.experimentTest.MethodExportRequest;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ManageDataService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -17,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /*
  * *
@@ -45,6 +47,28 @@ public class ClassicManageDataController {
                                                     @RequestParam String sort,
                                                     @RequestParam(required = false) String updateBy){
         return manageDataService.listOfMethods(methodName,pageNum,pageSize, sort,updateBy);
+    }
+
+    /**
+     * 经典模式: 获取任务列表
+     * @param taskQueryParam
+     * @return
+     */
+    @PostMapping("/getTasksManagementList")
+    @ApiOperation("获取任务列表")
+    public Result<Map<String,Object>> getTasksManagementList(@RequestBody TaskQueryParam taskQueryParam) {
+        return manageDataService.getTasksManagementList(taskQueryParam);
+    }
+
+    /**
+     * 经典模式: 删除任务
+     * @param deleteTaskIdList
+     * @return
+     */
+    @PostMapping("/deleteTask")
+    @ApiOperation("任务删除")
+    public Result<String> deleteTask(@RequestBody Box deleteTaskIdList) {
+        return manageDataService.deleteTask(deleteTaskIdList);
     }
     
     /**

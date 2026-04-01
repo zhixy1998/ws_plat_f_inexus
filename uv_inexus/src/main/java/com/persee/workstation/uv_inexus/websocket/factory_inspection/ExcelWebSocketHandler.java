@@ -110,7 +110,7 @@ import static com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEn
 * */
 @Component
 @Slf4j
-public class ExcelWebSocketHandler extends TextWebSocketHandler{
+public class ExcelWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     private WorkbookCacheManager workbookCacheManager;
     @Autowired
@@ -220,6 +220,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler{
 //    private volatile  halt = false;
     private final Map<String, Boolean> halt = new ConcurrentHashMap<>();
     private List<ChangeParam> zeroList = new ArrayList<>();
+    //任务id和仪器型号关联关系
+    private static final Map<String, String> taskAndVersionMap = new ConcurrentHashMap<>();
 
     // 在类中添加暂停控制类
     @Data
@@ -754,6 +756,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler{
             sendCachedWaveformData(session, taskId);
             // 启动心跳任务
             startHeartbeatTask(taskId);
+//            TaskManagement management = taskService.getById(taskId);
+
             super.afterConnectionEstablished(session);
         } catch (Exception e) {
             log.error("WebSocket连接建立失败", e);
@@ -847,6 +851,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler{
         String type = root.get("type").asText();
         String updateBy = root.get("updateBy").asText();
         String taskId = root.get("taskId").asText();
+
+        //得到当前任务的仪器类型，方便对之后的操作做界定
+        if (StringUtils.isBlank(MapUtils.getString(taskAndVersionMap, taskId))) {
+            TaskManagement taskManagement = taskService.getById(taskId);
+            String s1 = deviceInfoService.queryDeviceTypeBySerialNumber(taskManagement.getOperationInstrument());
+            taskAndVersionMap.put(taskId, s1);
+        }
         if (CLOSE.getCode().equals(type)) {
             try {
                 log.info("收到停止指令");
@@ -2503,7 +2514,22 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler{
         //如果是第一次进来的话
         if (d == 0) {
             if ((anEnum == abs || anEnum == tPercent)) {
+                if (org.apache.commons.lang3.StringUtils.equalsIgnoreCase(MapUtils.getString(taskAndVersionMap, taskId), "T800")) {
 
+                    DevOperationInputParam devType = new DevOperationInputParam();
+                    devType.setDeviceSerialNumber(deviceSerialNumber);
+                    SetParam setParam = new SetParam();
+                    //设置起始波长
+                    setParam.setStartWl(startWavelength);
+                    //设置终止波长
+                    setParam.setEndWl(endWavelength);
+                    //设置扫描间隔
+                    setParam.setScanWlInterval(1.0);
+                    devType.setParam(setParam);
+                    devType.setOperationType(OperationTypeEnums.SetParam.getType());
+                    R<OperationResultEntity> opera =
+                            devOperationUtilService.operation(devType);
+                }
 //        log.info("开始暗电流矫正>>>>>>>>>>>>>>>>>>>>");
                 //切换样品池到黑挡块
                 //看看是否为多样品池
@@ -3590,6 +3616,47 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler{
                     return R.fail(map);
                 }
 
+                if (org.apache.commons.lang3.StringUtils.equalsIgnoreCase(MapUtils.getString(taskAndVersionMap, taskId), "T800")) {
+                    String[] parts = characteristic.split("[,，]");
+
+                    // 解析特征波长并找出最大最小值
+                    List<Double> wavelengths = new ArrayList<>();
+                    for (String part : parts) {
+                        try {
+                            double wl = Double.parseDouble(part.trim());
+                            wavelengths.add(wl);
+                        } catch (NumberFormatException e) {
+                            log.warn("无法解析波长值：{}", part);
+                        }
+                    }
+
+                    if (!wavelengths.isEmpty()) {
+                        double minWavelength = Collections.min(wavelengths);
+                        double maxWavelength = Collections.max(wavelengths);
+
+                        // 最大值加 2，最小值减 2
+                        double startWavelength = minWavelength - 2.0;
+                        double endWavelength = maxWavelength + 2.0;
+
+                        log.info("计算得到的起始波长：{}, 终止波长：{}", startWavelength, endWavelength);
+
+                        DevOperationInputParam devType = new DevOperationInputParam();
+                        devType.setDeviceSerialNumber(deviceSerialNumber);
+                        SetParam setParam = new SetParam();
+                        //设置起始波长
+                        setParam.setStartWl(startWavelength);
+                        //设置终止波长
+                        setParam.setEndWl(endWavelength);
+                        //设置扫描间隔
+                        setParam.setScanWlInterval(1.0);
+                        devType.setParam(setParam);
+                        devType.setOperationType(OperationTypeEnums.SetParam.getType());
+                        R<OperationResultEntity> opera =
+                                devOperationUtilService.operation(devType);
+                    } else {
+                        log.error("未找到有效的波长值");
+                    }
+                }
                 realTimeEcho(taskId, "时间扫描-开始暗电流矫正");
 
                 //到这里就不能停止了，得等到做完暗电流停止
@@ -4035,6 +4102,53 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler{
                     realTimeEcho(taskId, "切换样品池到黑挡块失败");
                     return R.fail(map);
                 }
+
+                if (org.apache.commons.lang3.StringUtils.equalsIgnoreCase(MapUtils.getString(taskAndVersionMap, taskId), "T800")) {
+                    String[] parts = characteristic.split("[,，]");
+
+                    // 解析特征波长并找出最大最小值
+                    List<Double> wavelengths = new ArrayList<>();
+                    for (String part : parts) {
+                        try {
+                            double wl = Double.parseDouble(part.trim());
+                            wavelengths.add(wl);
+                        } catch (NumberFormatException e) {
+                            log.warn("无法解析波长值：{}", part);
+                        }
+                    }
+
+                    if (!wavelengths.isEmpty()) {
+                        double minWavelength = Collections.min(wavelengths);
+                        double maxWavelength = Collections.max(wavelengths);
+
+                        // 最大值加 2，最小值减 2
+                        double startWavelength = minWavelength - 2.0;
+                        double endWavelength = maxWavelength + 2.0;
+
+                        log.info("计算得到的起始波长：{}, 终止波长：{}", startWavelength, endWavelength);
+
+                        DevOperationInputParam devType = new DevOperationInputParam();
+                        devType.setDeviceSerialNumber(deviceSerialNumber);
+                        SetParam setParam = new SetParam();
+                        //设置起始波长
+                        setParam.setStartWl(startWavelength);
+                        //设置终止波长
+                        setParam.setEndWl(endWavelength);
+                        //设置扫描间隔
+                        setParam.setScanWlInterval(1.0);
+                        devType.setParam(setParam);
+                        devType.setOperationType(OperationTypeEnums.SetParam.getType());
+                        R<OperationResultEntity> opera =
+                                devOperationUtilService.operation(devType);
+                    } else {
+                        log.error("未找到有效的波长值");
+                    }
+                }
+
+
+
+
+
                 log.info("开始暗电流矫正>>>>>>>>>>>>>>>>>>>>");
                 realTimeEcho(taskId, "开始暗电流矫正");
                 DevOperationInputParam darkParam = new DevOperationInputParam();
@@ -4321,7 +4435,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler{
                                         String es = result.getEs();
                                         es = new BigDecimal(es).setScale(5, RoundingMode.HALF_UP).toString();
 
-                                        object.put("peak",es );
+                                        object.put("peak", es);
                                         res.add(object);
                                         break;
                                     case er:
