@@ -14,17 +14,11 @@ import lombok.Getter;
 @Getter
 public enum ScanSpeedEnum {
 
-//    ["慢速", "中速", "快速", "极快"]
-    SLOW("0", "慢速"),
-    MEDIUM("1", "中速"),
-    FAST("2", "快速"),
-    SUPER_FAST("111", "极快");
-
-//    SLOW("3", "极慢速"),
-//    MEDIUM("2", "慢速"),
-//    FAST("1", "中速"),
-//    SUPER_FAST("0", "快速");
-
+    SLOW("slowest", "最慢"),
+    MEDIUM("slow", "慢速"),
+    FAST("medium", "中速"),
+    SUPER_FAST("fast", "快速"),
+    EXTREME_FAST("fastest", "极快");
 
     private final String code;
 
@@ -40,6 +34,15 @@ public enum ScanSpeedEnum {
         for (ScanSpeedEnum c : ScanSpeedEnum.values()) {
             if (c.getName().equals(name)) {
                 return c.code;
+            }
+        }
+        return null;
+    }
+
+    public static String getNameByCode(String code) {
+        for (ScanSpeedEnum c : ScanSpeedEnum.values()) {
+            if (c.getCode().equals(code)) {
+                return c.name;
             }
         }
         return null;

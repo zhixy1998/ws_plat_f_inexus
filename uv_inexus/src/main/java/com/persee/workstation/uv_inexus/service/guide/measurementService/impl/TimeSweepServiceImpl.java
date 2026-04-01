@@ -288,7 +288,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     @Override
-    public Result<MethodChangeCheckVO> checkMethodParam(TimeSweepMethodParamsDto methodParam) {
+    public Result checkMethodParam(TimeSweepMethodParamsDto methodParam) {
 
         if (!StringUtils.hasText(methodParam.getCurrentMethodId())) {
             //请选择当前方法
@@ -301,6 +301,14 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
         TimeSweepParamter newMethodParam = new TimeSweepParamter();
         BeanUtils.copyProperties(methodParam, newMethodParam);
+
+        // 仪器下发参数校验
+        if (methodParam.getDeviceSerialNumber()!=null&& !methodParam.getDeviceSerialNumber().isEmpty()){
+            R rdata = IssueCheckParam(newMethodParam, methodParam.getDeviceSerialNumber());
+            if (!rdata.getSuccess()) {
+                return Result.checkFail(rdata.getData());
+            }
+        }
 
         R<Boolean> r = checkParam(newMethodParam);
         if (!r.getSuccess()) {
@@ -4020,11 +4028,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             double bandwidth = Double.parseDouble(spectralBandwidth);
             if (bandwidth <= 0) {
                 return R.fail("光谱带宽必须大于0，当前值：" + bandwidth);
-            }
-            // 常见光谱带宽值校验（可选，根据业务决定是否强制）
-            List<Double> validBandwidths = Arrays.asList(0.5, 1.0, 2.0, 4.0, 5.0);
-            if (!validBandwidths.contains(bandwidth)) {
-                return R.fail("光谱带宽值不合法，常见值：" + validBandwidths);
             }
         } catch (NumberFormatException e) {
             return R.fail("光谱带宽格式错误，必须为数字");
