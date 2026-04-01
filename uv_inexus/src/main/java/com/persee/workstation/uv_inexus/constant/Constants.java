@@ -197,7 +197,7 @@ public class Constants {
     /*
     握手报文超时时间
      */
-    public static final Integer HANDSHAKE_TIMEOUT = 100;
+    public static final Integer HANDSHAKE_TIMEOUT = 1000;
 
 
 }

@@ -231,7 +231,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 波长默认范围 190-1100
         double minWaveLength = 190.0;
         double maxWaveLength = 1100.0;
-
+        double minLampWaveLength = 330;
+        double maxLampWaveLength = 390;
         if (StringUtils.hasText(deviceSerialNumber)) {
             R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(deviceSerialNumber);
             if (typeInfo.getSuccess()) {
@@ -239,6 +240,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 if (vo != null) {
                     minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
                     maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                    minLampWaveLength = StringUtils.hasText(vo.getMinLampWavelength()) ? Double.parseDouble(vo.getMinLampWavelength()) : minLampWaveLength;
+                    maxLampWaveLength = StringUtils.hasText(vo.getMaxLampWavelength()) ? Double.parseDouble(vo.getMaxLampWavelength()) : maxLampWaveLength;
                 }
 
             }
@@ -405,7 +408,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         try {
             double waveVal = Double.parseDouble(changeLampWave);
-            if (waveVal < 330 || waveVal > 390) {
+            if (waveVal < minLampWaveLength || waveVal > maxLampWaveLength) {
                 return R.fail(YamlMessageSource.getMessageStatic("0010202A", waveVal));
             }
         } catch (NumberFormatException e) {
@@ -724,21 +727,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (paramDto.getParameter().getScanSpeed().equals(ScanSpeedEnum.EXTREME_FAST.getCode()) && update1) {
             return Result.fail("极快扫描速度时,扫描间隔不能小于1秒");
         }
-        double start = Double.parseDouble(paramDto.getParameter().getStartWaveLength());
-        double end = Double.parseDouble(paramDto.getParameter().getEndWaveLength());
-        // 校验方法参数中起始波长不能小于终止波长,小于则友好提示
-        if (start <= end) {
-            //起始波长不能小于等于停止波长
-            return Result.fail(YamlMessageSource.getMessageStatic("00104015"));
-        }
-        // 校验幻灯波长在330~390之间
-        double changeWavelength = Double.parseDouble(paramDto.getParameter().getChangeLampWaveLength());
-        if (changeWavelength < 330.0 || changeWavelength > 390.0) {
-            return Result.fail("幻灯波长在330~390之间");
-        }
-        if (paramDto.getParameter().getScanSpeed().equals(ScanSpeedEnum.EXTREME_FAST.getCode()) && (start > 1100 || start < 380)) {
-            return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
-        }
+
         if (param.getSpikeRemoval()==null){
             paramDto.getParameter().setSpikeRemoval(false);
         }

@@ -1012,6 +1012,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         DeviceMeasureVO dbVo = re.getData();
         Integer connectMode = dbVo != null ? dbVo.getConnectMode() : null;
         List<Integer> filterWavelength = dbVo != null ? dbVo.getFilterWavelength() : null;
+        String minWaveLength = dbVo != null ? dbVo.getMinWavelength() : null;
+        String maxWaveLength = dbVo != null ? dbVo.getMaxWavelength() : null;
+        String minLampWaveLength = dbVo != null ? dbVo.getMinLampWavelength() : null;
+        String maxLampWaveLength = dbVo != null ? dbVo.getMaxLampWavelength() : null;
 
         // 2. 创建新的 VO 对象
         DeviceMeasureVO vo = new DeviceMeasureVO();
@@ -1028,6 +1032,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         // 4. 设置 connectMode（从数据库获取）
         vo.setConnectMode(connectMode);
         vo.setFilterWavelength(filterWavelength);
+        vo.setMaxWavelength(maxWaveLength);
+        vo.setMinWavelength(minWaveLength);
+        vo.setMaxLampWavelength(maxLampWaveLength);
+        vo.setMinLampWavelength(minLampWaveLength);
 
         return Result.ok(vo);
     }
