@@ -18,4 +18,7 @@ import javax.servlet.http.HttpServletRequest;
 public interface UserRoutePermissionService {
     // 根据用户ID查询有权访问的路由结构
     Result<List<String>> getUserRoutePermissions(String userId, HttpServletRequest request);
+    
+    // 获取所有菜单路由结构（perm_type=1）
+    Result<List<?>> getMenuRouteStructure();
 }

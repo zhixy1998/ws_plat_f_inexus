@@ -57,6 +57,7 @@ public class Constants {
     public final static String PARAM_TWO = "2";
     public final static String PARAM_THREE = "3";
     public final static String PARAM_FOUR = "4";
+    public final static String SCANFAST = "111";
     public final static String DEFAULT_TASK = "默认任务";
 
     /**
@@ -83,8 +84,14 @@ public class Constants {
     public final static Integer DEVICE_STATUS_ECHO = 3;
     public final static Integer DEVICE_STATUS_OTHER = 4;
     public final static Integer DEVICE_STATUS_ZERO = 5;
-    public final static Integer DEVICE_STATUS_DisConnect = 6;
+    public final static Integer DEVICE_STATUS_DIS_CONNECT = 6;
+    public final static Integer DEVICE_STATUS_CALIBRATION = 7;
 
+    /**
+     * 仪器激活状态 0-未激活，1-已激活
+     */
+    public static final Integer DEVICE_ACTIVE_NO = 0;
+    public static final Integer DEVICE_ACTIVE_YES = 1;
 
 
     public static volatile LocalDateTime startTime=null;
@@ -178,6 +185,14 @@ public class Constants {
      */
     public static final Pattern PARAM_PATTERN = Pattern.compile("^[A-Z]{1,2}\\d{1,10}$");
 
+
+    /*
+    消息来源分类：系统消息:system,仪器：device，远程： remote,未知：unknown
+     */
+    public static final String MESSAGE_SOURCE_SYSTEM = "system";
+    public static final String MESSAGE_SOURCE_DEVICE = "device";
+    public static final String MESSAGE_SOURCE_REMOTE = "remote";
+    public static final String MESSAGE_SOURCE_UNKNOWN = "unknown";
 
 
 }

@@ -40,6 +40,7 @@ import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardPretreatmentService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -53,6 +54,7 @@ import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
@@ -121,15 +123,19 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Autowired
     DevMessageUtil devMessageUtil;
+    @Autowired
+    SystemBusinessParamService businessParamService;
 
+    @Autowired
+    private DeviceManageService deviceManageService;
     @Autowired
     RestUtil restUtil;
 
     @Autowired
     LaTeXConverter latexConverter;
 
-    @Value("default")
-    String defaultProjectKey;
+    @Value("默认任务")
+    String defaultTaskKey;
 
     @Value("任务")
     String newTaskName;
@@ -217,7 +223,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 return R.fail(YamlMessageSource.getMessageStatic("00105010"));
             }
         }
-        if (parameter.getSampleInputParams() != null && parameter.getSampleInputParams().size() > 10) {
+        if (parameter.getSampleInputParams() != null && parameter.getSampleInputParams().size() > 40) {
             return R.fail(YamlMessageSource.getMessageStatic("0010300E"));
         }
         if (parameter.getResultParams() != null && parameter.getResultParams().size() > 5) {
@@ -328,7 +334,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             if (upper1.equals(lower2)) {
                 boolean includeUpper = Boolean.TRUE.equals(current.getIsUpperLimitIncluded());
                 boolean includeLower = Boolean.TRUE.equals(next.getIsLowerLimitIncluded());
-                if (!(includeUpper ^ includeLower)) {
+                if (includeUpper == includeLower) {
                     return R.fail(YamlMessageSource.getMessageStatic("00100022"));
                 }
             }
@@ -397,6 +403,92 @@ public class PhotometricServiceImpl implements PhotometricService {
         return Result.ok(measureMethod.getId());
     }
 
+    /**
+     * 设置预测量参数接口
+     *
+     * @param methodId 方法ID
+     * @param deviceSerialNumber 设备序列号
+     * @return 操作结果
+     */
+    public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
+        // 参数校验
+        if (methodId == null || methodId.isEmpty()) {
+            return Result.fail("方法ID不能为空");
+        }
+        if (deviceSerialNumber == null || deviceSerialNumber.isEmpty()) {
+            return Result.fail("设备序列号不能为空");
+        }
+
+        // 根据methodId去方法表中查询数据
+        TMeasureMethod tMeasureMethod = tMeasureMethodService.getById(methodId);
+
+        if (tMeasureMethod == null) {
+            // 没有找到该方法
+            return Result.fail("未找到对应的测量方法");
+        }
+
+        // 解析参数
+        PhotometricParameter parameter = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), PhotometricParameter.class);
+        if (parameter == null) {
+            return Result.fail("参数解析失败");
+        }
+
+        // 3.5 校验仪器参数
+        if (deviceSerialNumber != null&& !deviceSerialNumber.isEmpty()){
+            R booleanR = IssueCheckParam(parameter, deviceSerialNumber);
+            if (!booleanR.getSuccess()) {
+                return Result.checkFail(booleanR.getData());
+            }
+        }
+
+
+        // 构建操作输入参数
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+        // 设置具体参数
+        SetParam param = new SetParam();
+
+        // 1. 设置光度模式（使用吸收模式）
+        param.setPhotoMode(Integer.valueOf(parameter.getLuminosity()));
+
+        // 2. 设置换灯波长
+        param.setChangeLampWl(Double.valueOf(parameter.getChangeLampWaveLength()));
+
+        // 3. 设置狭缝
+        if (StringUtils.hasText(parameter.getSpectralBandwidth()) && deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+            param.setSlit1(Double.valueOf(parameter.getSpectralBandwidth()));
+        }
+
+        // 4. 设置响应时间
+        param.setResponseTime(Double.valueOf(parameter.getResponseTime()));
+
+        // 9. 如果是能量模式（Es/Er），设置能量灯和增益
+        if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode())
+                || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
+
+            if (StringUtils.hasText(parameter.getEnergyLamp())) {
+                param.setLampPos(Integer.valueOf(parameter.getEnergyLamp()));
+            }
+
+            if (parameter.getGain() != null) {
+                param.setGain(parameter.getGain());
+            }
+        }
+
+        inputParam.setParam(param);
+
+        // 执行操作
+        R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
+
+        if (!operation.getSuccess()) {
+            return Result.fail(operation.getMessage());
+        }
+
+        return Result.ok("设置参数成功");
+    }
+
     @Override
     public Result<MethodChangeCheckVO> checkMethodParam(PhotometricMethodParameterDto checkDTO) {
 
@@ -457,14 +549,14 @@ public class PhotometricServiceImpl implements PhotometricService {
         vo.setClearDataRange(RationChangeMethodTypeEnums.noChange.getIdentity());
         vo.setMessage(RationChangeMethodTypeEnums.noChange.getMessage());
 
-
         TMeasureMethod currentMethod = tMeasureMethodService.getById(checkDTO.getCurrentMethodId());
-        if (StringUtils.hasText(currentMethod.getProjectItemKey()) && currentMethod.getProjectItemKey().equals(defaultProjectKey)) {
-            log.info("生成新方法");
-            vo.setParamChange(true);
-            vo.setMessage(RationChangeMethodTypeEnums.newMethod.getMessage());
-            vo.setClearDataRange(RationChangeMethodTypeEnums.newMethod.getIdentity());
-            return Result.ok(vo);
+
+        boolean isTaskEnd = false;
+
+        if (StringUtils.hasText(checkDTO.getTaskId())) {
+
+            TMeasureTask task = tMeasureTaskService.getById(checkDTO.getTaskId());
+            isTaskEnd = task != null && task.getTaskStatus() != null && task.getTaskStatus().equals(TaskStatusEnum.COMPLETED.getCode());
         }
 
         PhotometricParameter oldParam = JSON.parseObject(currentMethod.getMeasurementParamInfo(), PhotometricParameter.class);
@@ -491,12 +583,21 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         //检查分析参数
         boolean analyze = checkAnalyzeParam(oldParam, newMethodParam);
-        if (!analyze) {
+        if (!analyze && !isTaskEnd) {
             log.info("分析参数有改变");
             vo.setClearDataRange(RationChangeMethodTypeEnums.analyze.getIdentity());
             vo.setParamChange(true);
             vo.setMessage(RationChangeMethodTypeEnums.analyze.getMessage());
+            return Result.ok(vo);
         }
+
+        if (isTaskEnd) {
+            log.info("当前任务已结束");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.endTask.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.endTask.getMessage());
+        }
+
         return Result.ok(vo);
     }
 
@@ -978,7 +1079,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000012"));
         }
 
-        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
+        if (dto.getHeads().size() > 10) {
             //表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000013"));
         }
@@ -1064,6 +1165,26 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (dto.getHeads() != null && !dto.getHeads().isEmpty()) {
             taskHeadSnapshot.setSampleHeads(dto.getHeads());
         }
+
+        List<InputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
+        List<String> allHeadIdentity = new ArrayList<>();
+
+        if (mapRelation != null && !mapRelation.isEmpty()) {
+            taskHeadSnapshot.getSampleHeads().forEach(head -> {
+                allHeadIdentity.add(head.getIdentity());
+            });
+            taskHeadSnapshot.getTaskHeads().forEach(head -> {
+                allHeadIdentity.add(head.getIdentity());
+            });
+            List<InputParamMapTableHead> newMapRelation = new ArrayList<>();
+            mapRelation.forEach(map -> { if (allHeadIdentity.contains(map.getHeadIdentity())) {
+                newMapRelation.add(map);
+            }});
+
+            taskHeadSnapshot.setMapRelation(newMapRelation);
+
+        }
+
         taskHeadSnapshot.setTaskId(task.getId());
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 
@@ -1598,25 +1719,19 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         StringBuilder identity = new StringBuilder();
 
-        for (InputParam inputParam : parameter.getSampleInputParams()) {
-            boolean b = snapshot.getMapRelation().stream().anyMatch(
-                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity()));
+        List<InputParamMapTableHead> mapRelation = snapshot.getMapRelation();
+        for (InputParamMapTableHead relation : mapRelation) {
 
-            Optional<InputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
-                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
-            if (!mapTableHead.isPresent()) {
-                //"缺少参数映射：" + inputParam.getParamName()
-                return R.fail(YamlMessageSource.getMessageStatic("00300005",inputParam.getParamName()));
-            }
-            identity.append(mapTableHead.get().getParamIdentity()).append(",");
-            String s = allData.getString(mapTableHead.get().getHeadIdentity());
+            String s = allData.getString(relation.getHeadIdentity());
             if (!StringUtils.hasText(s)) {
                 //缺少数据！
                 return R.fail(YamlMessageSource.getMessageStatic("00300006"));
             }
+            identity.append(relation.getParamIdentity()).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
         }
+
         identity.deleteCharAt(identity.length()-1);
         values.deleteCharAt(values.length()-1);
 
@@ -1664,37 +1779,29 @@ public class PhotometricServiceImpl implements PhotometricService {
             digit = Constants.DEFAULT_DECIMAL_NUM;
             queryDataDTO.setDigit(digit);
         }
-        TMeasureTaskAttachment attachment;
+
         R<TMeasureTaskAttachment> attachmentResult = tMeasureTaskAttachmentService.queryByTaskId(taskId);
         if (!attachmentResult.getSuccess()) {
-            attachment = new TMeasureTaskAttachment();
+            TMeasureTaskAttachment attachment = new TMeasureTaskAttachment();
             attachment.setTaskId(taskId);
             attachment.setDataParam(JSON.toJSONString(queryDataDTO));
             tMeasureTaskAttachmentService.save(attachment);
+            attachmentResult = tMeasureTaskAttachmentService.queryByTaskId(taskId);
 
-        } else {
-            attachment = attachmentResult.getData();
-            if (!StringUtils.hasText(attachment.getDataParam())) {
-                attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                tMeasureTaskAttachmentService.saveOrUpdate(attachment);
-
-            } else {
-                QueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
-                if (dataDTO.getDigit() == null || !dataDTO.getDigit().equals(digit)) {
-                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                    tMeasureTaskAttachmentService.saveOrUpdate(attachment);
-                } else if (dataDTO.getOtherDigit() == null || !dataDTO.getOtherDigit().equals(otherDigit)) {
-
-                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                    tMeasureTaskAttachmentService.saveOrUpdate(attachment);
-                }
-            }
         }
 
+        TMeasureTaskAttachment attachment = attachmentResult.getData();
+        if (attachment == null) {
+            attachment = new TMeasureTaskAttachment();
+        }
 
+        attachment.setTaskId(taskId);
+        attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+        tMeasureTaskAttachmentService.saveOrUpdate(attachment);
 
         boolean repeat = false;
         PhotometricParameter parameter = null;
+        String luminosity = WaveLengthEnum.abs.getCode();
         if (StringUtils.hasText(task.getMethodKey())) {
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             if (method != null && StringUtils.hasText(method.getMeasurementParamInfo())) {
@@ -1702,6 +1809,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 if (StringUtils.hasText(parameter.getRepetitionPattern()) && parameter.getRepetitionPattern().equals("单池重复")) {
                     repeat = true;
                 }
+                luminosity = parameter.getLuminosity();
             }
         }
 
@@ -1775,8 +1883,13 @@ public class PhotometricServiceImpl implements PhotometricService {
                             Map<String, String> formattedData = new HashMap<>();
                             // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
                             for (Map.Entry<String, String> entry : originData.entrySet()) {
-                                Double v = DataCountUtil.formatValue(digit, Double.valueOf(entry.getValue()));
-                                String s = DataCountUtil.addZero(v, digit);
+
+                                int currentDigit = digit;
+                                if (!entry.getKey().endsWith(luminosity)) {
+                                    currentDigit = otherDigit;
+                                }
+                                Double v = DataCountUtil.formatValue(currentDigit, Double.valueOf(entry.getValue()));
+                                String s = DataCountUtil.addZero(v, currentDigit);
                                 formattedData.put(entry.getKey(), s);
                             }
                             map.putAll(formattedData);
@@ -1832,8 +1945,21 @@ public class PhotometricServiceImpl implements PhotometricService {
                         List<PhotometricOriginDataInfo> dataInfo = reCountData(wlDataList, digit);
                         for (PhotometricOriginDataInfo wlData : dataInfo) {
 
+                            Map<String, String> originData = wlData.getData();
+                            Map<String, String> formattedData = new HashMap<>();
                             if (wlData.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
-                                map.putAll(wlData.getData());
+
+                                for (Map.Entry<String, String> entry : originData.entrySet()) {
+//                                String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
+                                    int currentDigit = digit;
+                                    if (!entry.getKey().endsWith(luminosity)) {
+                                        currentDigit = otherDigit;
+                                    }
+                                    Double v = DataCountUtil.formatValue(currentDigit, Double.valueOf(entry.getValue()));
+                                    String s = DataCountUtil.addZero(v, currentDigit);
+                                    formattedData.put(entry.getKey(), s);
+                                }
+                                map.putAll(formattedData);
                                 Map<String, String> qcAns = checkValueQuantity(parameter, wlData, QualityConfEnums.value_qc);
                                 Object object = map.get(SampleTableEnum.QUALITY.getIdentity());
                                 if (object != null) {
@@ -1843,7 +1969,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                                 }
                                 map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
 
-                                Map<String, Map<String, String>> ch = extracted(option, wlData, sample);
+                                Map<String, Map<String, String>> ch = extracted(option, wlData, sample, digit, otherDigit);
                                 if (!ch.isEmpty()) {
                                     for (Map.Entry<String, Map<String, String>> entry : ch.entrySet()) {
                                         String key = entry.getKey();
@@ -1861,14 +1987,17 @@ public class PhotometricServiceImpl implements PhotometricService {
                                     }
                                 }
                             } else {
-                                Map<String, String> originData = wlData.getData();
-                                // 创建一个新的Map来存储格式化后的数据
-                                Map<String, String> formattedData = new HashMap<>();
+
                                 // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
                                 for (Map.Entry<String, String> entry : originData.entrySet()) {
 //                                    String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
-                                    Double v = DataCountUtil.formatValue(digit, Double.valueOf(entry.getValue()));
-                                    String s = DataCountUtil.addZero(v, digit);
+                                    int currentDigit = digit;
+                                    if (!entry.getKey().endsWith(luminosity)) {
+                                        currentDigit = otherDigit;
+                                    }
+
+                                    Double v = DataCountUtil.formatValue(currentDigit, Double.valueOf(entry.getValue()));
+                                    String s = DataCountUtil.addZero(v, currentDigit);
                                     formattedData.put(entry.getKey(), s);
                                 }
 
@@ -2045,7 +2174,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
 
-    private Map<String, Map<String, String>> extracted(List<String> option, PhotometricOriginDataInfo wlData,  TMeasureSample sample) {
+    private Map<String, Map<String, String>> extracted(List<String> option, PhotometricOriginDataInfo wlData,  TMeasureSample sample, Integer digit, Integer otherDigit) {
 
         Map<String, String> originData = wlData.getData();
         Map<String, Map<String, String>> ans = new HashMap<>();
@@ -2055,29 +2184,68 @@ public class PhotometricServiceImpl implements PhotometricService {
         RepeatMeasureData tPercentData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode());
         String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
 
+        SystemBusinessParamVO vo = businessParamService.queryBusinessParam();
+        Integer sdDigits = vo.getSdDigits();
+
         if (wlData.getMode().equals(WaveLengthEnum.abs.getCode()) || wlData.getMode().equals(WaveLengthEnum.tPercent.getCode())) {
+
+            Integer absDigit = digit;
+            Integer tDigit = digit;
+            if (wlData.getMode().equals(WaveLengthEnum.abs.getCode())) {
+                tDigit = otherDigit;
+            } else {
+                absDigit = otherDigit;
+            }
+
 
             if (!option.isEmpty()) {
                 for (String s : option) {
                     Map<String, String> children = new HashMap<>();
                     if (DataIdentityEnums.avg.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
+                        String abs = DataCountUtil.formatValueWithBigDecimal(absDigit, originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
+                        String t = DataCountUtil.formatValueWithBigDecimal(tDigit, originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));
 
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.parseDouble(abs), absDigit));
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.parseDouble(t), tDigit));
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.avg.getIdentity(), children);
                     }
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
 
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
+                        String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getSd());
+                        String sdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getSd());
+
+                        if (isNumber(sdA)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), sdA);
+                        }
+                        if (isNumber(sdT)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(sdT), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), sdT);
+                        }
+
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
+
+                        String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getRsd());
+                        String rsdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getRsd());
+
+                        if (isNumber(rsdA)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), rsdA);
+                        }
+
+                        if (isNumber(rsdT)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(rsdT), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), rsdT);
+                        }
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.rsd.getIdentity(), children);
                     }
                 }
@@ -2094,12 +2262,27 @@ public class PhotometricServiceImpl implements PhotometricService {
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
                         RepeatMeasureData measureData = wlData.getOtherData().get(mapName);
+
+                        String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, measureData.getRsd());
+                        if (isNumber(sdA)) {
+                            children.put(mapName, DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                        } else {
+                            children.put(mapName, sdA);
+                        }
+
                         children.put(mapName, measureData.getSd());
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
                         RepeatMeasureData measureData = wlData.getOtherData().get(mapName);
+
+                        String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, measureData.getRsd());
+                        if (isNumber(rsdA)) {
+                            children.put(mapName, DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                        } else {
+                            children.put(mapName, rsdA);
+                        }
                         children.put(mapName, measureData.getRsd());
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.rsd.getIdentity(), children);
                     }
@@ -2109,6 +2292,19 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         return ans;
     }
+
+    private Boolean isNumber(String str) {
+        if (str == null || str.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            Double v = Double.parseDouble(str);
+            return !v.isNaN() && !v.isInfinite();
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
 
     @Override
     public R<String> savePhotometricMeasureData(PhotometricSampleAndDataVO sampleAndDataVO) {
@@ -2416,7 +2612,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
-    public R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, List<String> option) {
+    public R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit,List<String> option) {
         log.info("开始导出（集成children和option），taskId: {}, fileType: {}, option: {}", taskId, fileType, option);
         if (!StringUtils.hasText(taskId)) {
             return R.fail(YamlMessageSource.getMessageStatic("00000019"));
@@ -2454,6 +2650,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         queryDataDTO.setTaskId(taskId);
         queryDataDTO.setAllDisplay(allDisplay);
         queryDataDTO.setDigit(digit);
+        queryDataDTO.setOtherDigit(otherDigit);
         List<Map<String, Object>> data = queryData(queryDataDTO).getData();
 
         List<Map<String, Object>> expandedData = new ArrayList<>();
@@ -2795,19 +2992,21 @@ public class PhotometricServiceImpl implements PhotometricService {
                 String identity = head.getIdentity();
                 // 1. 获取原始值（不预设默认值，完全保留数据源状态）
                 Object originalValue = map.get(identity);
-                String cellData;
+                Object cellData;
 
-                // 2. 空值处理：null/空字符串/"null" 统一替换为"-"
+                // 核心逻辑：空值处理（null/空字符串/"null" 统一替换为"-"，其他保留原始值）
                 if (originalValue == null) {
                     cellData = "-";
                 } else {
-                    // 原始值转字符串（不做枚举转换、前缀拼接等额外处理）
-                    cellData = originalValue.toString();
-                    // 清除Excel解析异常的特殊字符（换行/制表符，不修改原始内容）
-                    cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
-                    // 处理空字符串或"null"（不区分大小写）
-                    if (cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                        cellData = "-";
+                    // 如果是数字字符串，尝试转换为 Double，让 Excel 识别为数值类型
+                    cellData = convertToNumberIfNeeded(originalValue.toString());
+                    // 清除 Excel 解析异常的特殊字符（换行/制表符，不修改原始业务内容）
+                    if (cellData instanceof String) {
+                        cellData = ((String) cellData).replace("\r", "").replace("\n", "").replace("\t", " ");
+                        // 处理空字符串或"null"（不区分大小写）
+                        if (((String) cellData).trim().isEmpty() || "null".equalsIgnoreCase((String) cellData)) {
+                            cellData = "-";
+                        }
                     }
                 }
 
@@ -2824,7 +3023,26 @@ public class PhotometricServiceImpl implements PhotometricService {
                     .doWrite(excelData);
         }
     }
+    /**
+     * 尝试将字符串转换为数值类型
+     * @param value 待转换的字符串
+     * @return 如果是有效数字则返回 Double，否则返回原字符串
+     */
+    private Object convertToNumberIfNeeded(String value) {
+        if (value == null || value.trim().isEmpty() || "-".equals(value)) {
+            return value;
+        }
 
+        try {
+            // 尝试去除空格
+            String trimmed = value.trim();
+            // 尝试转换为 Double
+            return Double.parseDouble(trimmed);
+        } catch (NumberFormatException e) {
+            // 转换失败，返回原字符串
+            return value;
+        }
+    }
     // ---------------------- 工具方法 ----------------------
     /**
      * 获取文件后缀（Java 8兼容）
@@ -2967,7 +3185,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 count.setCountValue(s);
             }
         }
-        return Collections.emptyList();
+        return dataVO;
     }
 
     @Override
@@ -3207,5 +3425,78 @@ public class PhotometricServiceImpl implements PhotometricService {
         return value;
     }
 
+    /**
+     * 下发给仪器的参数校验
+     * @param param
+     * @param deviceSerialNumber
+     * @return
+     */
+    private R IssueCheckParam(PhotometricParameter param, String deviceSerialNumber) {
+        Boolean result = true;
+        List<String> errorMessages = new ArrayList<>();
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!deviceMeasureVOR.getSuccess()) {
+            return R.fail(deviceMeasureVOR.getMessage());
+        }
+        DeviceMeasureVO deviceMeasureVO = deviceMeasureVOR.getData();
+        // 1. 光度模式是否存在
+        boolean a = deviceMeasureVO.getLuminosity().stream()
+                .anyMatch(obj -> obj.getParamValue().equals(param.getLuminosity()));
+        if (!a) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该光度模式");
+        }
+        // 2. 波长范围是否超出限制
+        List<String> waveLengths = param.getWaveLength();
+        Double maxWavelength =  Double.parseDouble(deviceMeasureVO.getMaxWavelength());
+        Double minWavelength =  Double.parseDouble(deviceMeasureVO.getMinWavelength());
+        for (String waveLength : waveLengths) {
+            Double wavelength = Double.parseDouble(waveLength);
+            if (wavelength > maxWavelength || wavelength < minWavelength) {
+                result = result ? false : result;
+                errorMessages.add("波长"+ waveLength+"超出限制, 最大值: " + maxWavelength + "  最小值: " + minWavelength);
+            }
+        }
+        // 3. 光谱带宽是否存在
+        if (!deviceMeasureVO.getBandWidth().contains(param.getSpectralBandwidth())) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该光谱带宽");
+        }
+        // 4. 响应时间是否存在
+        if (!deviceMeasureVO.getResponseTime().contains(param.getResponseTime())) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该响应时间");
+        }
+        // 5. 换灯波长是否超出限制
+        Double lampWaveLength = Double.parseDouble(param.getChangeLampWaveLength());
+        Double maxLampWavelength =  Double.parseDouble(deviceMeasureVO.getMaxLampWavelength());
+        Double minLampWavelength =  Double.parseDouble(deviceMeasureVO.getMinLampWavelength());
+        if (lampWaveLength > maxLampWavelength || lampWaveLength < minLampWavelength) {
+            result = result ? false : result;
+            errorMessages.add("换灯波长超出限制, 最大值: "+maxLampWavelength+"  最小值: "+minLampWavelength);
+        }
+        // 7. 在光度模式为Es/Er模式下的情况
+        if (param.getLuminosity().equals(Constants.PARAM_THREE)|| param.getLuminosity().equals(Constants.PARAM_FOUR)) {
+            // 7.1 能量灯是否存在
+            boolean b = deviceMeasureVO.getLampType().stream()
+                    .anyMatch(obj -> obj.getParamValue().equals(param.getEnergyLamp()));
+            if (!b) {
+                result = result ? false : result;
+                errorMessages.add("当前仪器不支持该能量灯");
+            }
 
+            // 7.2 增益是否存在
+            if (!deviceMeasureVO.getGain().contains(param.getGain())) {
+                result = result ? false : result;
+                errorMessages.add("当前仪器不支持该增益数值");
+            }
+        }
+
+        if (result){
+            return R.ok(true);
+        }else {
+            return R.fail(errorMessages);
+        }
+
+    }
 }

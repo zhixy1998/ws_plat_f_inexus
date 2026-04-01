@@ -10,16 +10,21 @@
 package com.persee.workstation.uv_inexus.service.guide.instrumentService;
 
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.exception.BusinessException;
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public interface DeviceMonitorService {
 
     /**
      * 查询监控信息，各种参数
+     *
      * @param queryDTO
      * @return
      */
@@ -27,6 +32,7 @@ public interface DeviceMonitorService {
 
     /**
      * 查询器件状态信息
+     *
      * @param queryDTO
      * @return
      */
@@ -34,6 +40,7 @@ public interface DeviceMonitorService {
 
     /**
      * 查询仪器统计信息
+     *
      * @param countDTO
      * @return
      */
@@ -41,8 +48,8 @@ public interface DeviceMonitorService {
 
     /**
      * 查询历史使用情况接口
-     * @param startTime
-     * 返回值待定，应该是一个po类，传值类型也可以做更改，后面根据需求调整。
+     *
+     * @param startTime 返回值待定，应该是一个po类，传值类型也可以做更改，后面根据需求调整。
      * @return
      */
     List<String> getAllHistoryUsage(LocalDateTime startTime, LocalDateTime endTime, String search);
@@ -53,7 +60,21 @@ public interface DeviceMonitorService {
      */
 //    void getHistoryDetailed(String id);
 
+    /**
+     * 检测类型分项统计
+     */
+    Result<Map<String, Object>> getTypeStatistics(String updateBy, String startTime, String endTime, String deviceNumber);
 
+    /**
+     * 检测项目分项统计
+     */
+    Result<Map<String, Object>> getProjectStatistics(String updateBy, String startTime, String endTime, String deviceNumber);
+
+
+    /**
+     * 查询历史任务
+     */
+    Page<HistoryTaskVO> getHistoryTask(DeviceHistoryTaskDTO queryDto) throws BusinessException;
 
 
 }

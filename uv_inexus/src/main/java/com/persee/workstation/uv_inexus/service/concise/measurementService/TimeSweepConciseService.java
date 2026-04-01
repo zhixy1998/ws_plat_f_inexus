@@ -39,7 +39,7 @@ public interface TimeSweepConciseService {
     Result whetherSaveData(String taskId, Boolean isSave);
 
     // 创建草稿接口
-    Result createDraftButton(String methodId,String taskId, String updateBy,String deviceSerialNumber);
+    Result createDraftButton(String methodId,String taskId, String updateBy);
 
     // 查询样品列表按钮
     Result querySampleListButton(String taskId);
@@ -57,7 +57,7 @@ public interface TimeSweepConciseService {
     Result saveDraftButton(String taskId, String taskName);
 
     // 查询样品数据列表
-    Result querySampleDataList(String taskId, String type, Integer digit);
+    Result querySampleDataList(String taskId, String type, Integer digit,String deviceSerialNumber);
 
     // 删除样品列表接口
     Result deleteSampleListPort(String taskId, String sampleId, String analysisId);
@@ -122,7 +122,7 @@ public interface TimeSweepConciseService {
     /**
      * 导出到word
      */
-    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit);
+    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit ,String deviceSerialNumber);
 
     // 表格头接口
     Result<List<FHeadVO>> tableHead(String taskId, String methodId, List<String> analysisIdList);
@@ -139,4 +139,6 @@ public interface TimeSweepConciseService {
     // 停止测量
     Result stopMeasure(String deviceSerialNumber);
 
+    // 查询已测样品数据列表
+    Result queryMeasuredSampleDataList(String taskId,String type,Integer digit,String deviceSerialNumber);
 }

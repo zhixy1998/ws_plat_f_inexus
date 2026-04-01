@@ -52,7 +52,6 @@ public class FSpectrumParameterVo {
     private String ladderCorrectionName;
     // 扫描速度(0.慢速 1.中速 2.快速 3.极快)
     @NotNull(message = "扫描速度不能为空")
-    @Pattern(regexp = "^[0-3]$", message = "扫描速度值无效")
     private String scanSpeed;
     // 扫描速度名称
     private String scanSpeedName;
@@ -78,4 +77,8 @@ public class FSpectrumParameterVo {
     @NotNull(message = "增益不能为空")
     @Min(value = 0, message = "增益不能小于0")
     private Integer gain;
+    // 消除尖刺(false.不启用 true.启用)
+    private Boolean spikeRemoval;
+    // 尖刺数组
+    private List<String> spikeArray;
 }

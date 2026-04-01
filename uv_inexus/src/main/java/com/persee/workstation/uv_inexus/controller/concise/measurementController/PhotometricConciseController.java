@@ -345,4 +345,12 @@ public class PhotometricConciseController {
             return Result.fail(r.getMessage());
         }
     }
+
+
+    @ApiOperation("设置参数接口")
+    @GetMapping("/setUpParametersPort")
+    public Result setUpParametersPort(@RequestParam String methodId,
+                                       @RequestParam String deviceSerialNumber) {
+        return fPhotometricService.setUpParametersPort(methodId, deviceSerialNumber);
+    }
 }

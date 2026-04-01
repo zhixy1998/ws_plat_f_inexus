@@ -16,6 +16,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
@@ -36,6 +37,7 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -47,6 +49,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
@@ -121,8 +124,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Autowired
     private DevOperationUtilService operationUtilService;
 
-//    @Autowired
-//    DeviceManageService manageService;
+    @Autowired
+    DeviceInfoService infoService;
 
     @Autowired
     RestUtil restUtil;
@@ -136,6 +139,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     @Autowired
     DevOperationUtilService devOperationUtilService;
+
+    @Autowired
+    private DeviceManageService deviceManageService;
 
     @Value("1")
     String deleteType;
@@ -160,6 +166,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     @Value("文件数据")
     String newTaskName;
+
+    @Value("方法")
+    String newMethodName;
 
     private R<Boolean> checkParam(FPhotometricParameter parameter) {
         // 1. 校验光度模式
@@ -265,7 +274,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         // 8. 校验输入参数（数量限制）
-        if (parameter.getSampleInputParams() != null && parameter.getSampleInputParams().size() > 10) {
+        if (parameter.getSampleInputParams() != null && parameter.getSampleInputParams().size() > 40) {
             //输入参数数量不能超过10个
             return R.fail(YamlMessageSource.getMessageStatic("0010300E"));
         }
@@ -368,7 +377,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         String userId = sysUserPO.getId();
 
         FMeasureTask task = new FMeasureTask();
-        task.setTaskName("新建光度测量草稿" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        task.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         task.setIsDelete(createType);
         task.setMeasureType(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription());
         task.setMethodKey(methodId);
@@ -466,17 +475,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             double minWaveLength = 190.0;
             double maxWaveLength = 1100.0;
 
-//            if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
-//                R<DeviceMeasureVO> typeInfo = manageService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
-//                if (typeInfo.getSuccess()) {
-//                    DeviceMeasureVO vo = typeInfo.getData();
-//                    if (vo != null) {
-//                        minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
-//                        maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
-//                    }
-//
-//                }
-//            }
+            if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
+                R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
+                if (typeInfo.getSuccess()) {
+                    DeviceMeasureVO vo = typeInfo.getData();
+                    if (vo != null) {
+                        minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                        maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                    }
+
+                }
+            }
 
             for (String waveStr : newMethodParam.getWaveLength()) {
                 if (waveStr == null || waveStr.trim().isEmpty()) {
@@ -669,7 +678,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 String[] split = methodDTO.getMethodName().split("-");
                 method.setMethodName(split[0] + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
             } else {
-                method.setMethodName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+                method.setMethodName(newMethodName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
             }
             method.setMeasurementType(methodDTO.getMeasureType());
             method.setProjectItemKey(defaultProjectId);
@@ -2176,24 +2185,19 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         StringBuilder identity = new StringBuilder();
 
-        for (FInputParam inputParam : parameter.getSampleInputParams()) {
+        List<FInputParamMapTableHead> mapRelation = snapshot.getMapRelation();
+        for (FInputParamMapTableHead relation : mapRelation) {
 
-            Optional<FInputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
-                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
-            if (!mapTableHead.isPresent()) {
-                log.info("该参数未添加映射，跳过");
-                continue;
-            }
-
-            String s = allData.getString(mapTableHead.get().getHeadIdentity());
+            String s = allData.getString(relation.getHeadIdentity());
             if (!StringUtils.hasText(s)) {
-                //"变量" + inputParam.getParamName() + "缺少数据！"
-                return R.fail(YamlMessageSource.getMessageStatic("00302007",inputParam.getParamName()));
+                //缺少数据！
+                return R.fail(YamlMessageSource.getMessageStatic("00300006"));
             }
-            identity.append(mapTableHead.get().getParamIdentity()).append(",");
+            identity.append(relation.getParamIdentity()).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
         }
+
         identity.deleteCharAt(identity.length()-1);
         values.deleteCharAt(values.length()-1);
 
@@ -2221,6 +2225,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     public Result<List<Map<String, Object>>> queryData(FQueryDataDTO queryDataDTO) {
         String taskId = queryDataDTO.getTaskId();
         Boolean allDisplay = queryDataDTO.getAllDisplay();
+        Integer otherDigit = queryDataDTO.getOtherDigit();
         List<String> option = queryDataDTO.getOption();
 
         if (!StringUtils.hasText(taskId) || allDisplay == null) {
@@ -2238,6 +2243,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (digit == null || digit < 0) {
             digit = Constants.DEFAULT_DECIMAL_NUM;
             queryDataDTO.setDigit(digit);
+        }
+        if (otherDigit==null || otherDigit <0) {
+            otherDigit = Constants.DEFAULT_DECIMAL_NUM;
+            queryDataDTO.setOtherDigit(otherDigit);
         }
 
         R<FMeasureTaskAttachment> attachmentResult = fMeasureTaskAttachmentService.queryByTaskId(taskId);
@@ -2259,6 +2268,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         boolean repeat = false;
         FPhotometricParameter parameter = null;
+        String luminosity = WaveLengthEnum.abs.getCode();
         if (StringUtils.hasText(task.getMethodKey())) {
             FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
             if (method != null && StringUtils.hasText(method.getMeasurementParamInfo())) {
@@ -2266,9 +2276,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 if (StringUtils.hasText(parameter.getRepetitionPattern()) && parameter.getRepetitionPattern().equals("单池重复")) {
                     repeat = true;
                 }
+                luminosity = parameter.getLuminosity();
             }
         }
         List<Integer> usefulLocation = new ArrayList<>();
+
 
         if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
             usefulLocation = fSamplePoolConfigService.getUsefulLocation(queryDataDTO.getDeviceSerialNumber());
@@ -2325,10 +2337,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                             // 创建一个新的Map来存储格式化后的数据
                             Map<String, String> formattedData = new HashMap<>();
                             // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
+
                             for (Map.Entry<String, String> entry : originData.entrySet()) {
 //                                String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
-                                Double v = DataCountUtil.formatValue(digit, Double.valueOf(entry.getValue()));
-                                String s = DataCountUtil.addZero(v, digit);
+                                int currentDigit = digit;
+                                if (!entry.getKey().endsWith(luminosity)) {
+                                    currentDigit = otherDigit;
+                                }
+                                Double v = DataCountUtil.formatValue(currentDigit, Double.valueOf(entry.getValue()));
+                                String s = DataCountUtil.addZero(v, currentDigit);
                                 formattedData.put(entry.getKey(), s);
                             }
                             map.putAll(formattedData);
@@ -2388,8 +2405,25 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         List<FPhotometricOriginDataInfo> dataInfo = reCountData(wlDataList, digit);
                         for (FPhotometricOriginDataInfo wlData : dataInfo) {
 
+                            Map<String, String> originData = wlData.getData();
+                            Map<String, String> formattedData = new HashMap<>();
+
                             if (wlData.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
-                                map.putAll(wlData.getData());
+                                // 创建一个新的Map来存储格式化后的数据
+                                // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
+                                for (Map.Entry<String, String> entry : originData.entrySet()) {
+//                                String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
+                                    int currentDigit = digit;
+                                    if (!entry.getKey().endsWith(luminosity)) {
+                                        currentDigit = otherDigit;
+                                    }
+                                    Double v = DataCountUtil.formatValue(currentDigit, Double.valueOf(entry.getValue()));
+                                    String s = DataCountUtil.addZero(v, currentDigit);
+                                    formattedData.put(entry.getKey(), s);
+                                }
+                                map.putAll(formattedData);
+
+//                                map.putAll(wlData.getData());
 
                                 Map<String, String> qcAns = checkValueQuantity(parameter, wlData, QualityConfEnums.value_qc);
                                 Object object = map.get(SampleTableEnum.QUALITY.getIdentity());
@@ -2401,7 +2435,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                                 map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
 
 
-                                Map<String, Map<String, String>> ch = extracted(option, wlData, sample);
+                                Map<String, Map<String, String>> ch = extracted(option, wlData, sample, digit, otherDigit);
                                 if (!ch.isEmpty()) {
                                     for (Map.Entry<String, Map<String, String>> entry : ch.entrySet()) {
                                         String key = entry.getKey();
@@ -2419,14 +2453,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                                     }
                                 }
                             } else {
-                                Map<String, String> originData = wlData.getData();
                                 // 创建一个新的Map来存储格式化后的数据
-                                Map<String, String> formattedData = new HashMap<>();
                                 // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
+
                                 for (Map.Entry<String, String> entry : originData.entrySet()) {
+                                    int currentDigit = digit;
 //                                    String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
-                                    Double v = DataCountUtil.formatValue(digit, Double.valueOf(entry.getValue()));
-                                    String s = DataCountUtil.addZero(v, digit);
+                                    if (!entry.getKey().endsWith(luminosity)) {
+                                        currentDigit = otherDigit;
+                                    }
+                                    Double v = DataCountUtil.formatValue(currentDigit, Double.valueOf(entry.getValue()));
+                                    String s = DataCountUtil.addZero(v, currentDigit);
                                     formattedData.put(entry.getKey(), s);
                                 }
 
@@ -2834,7 +2871,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         return result;
     }
 
-    private Map<String, Map<String, String>> extracted(List<String> option, FPhotometricOriginDataInfo wlData, FMeasureSample sample) {
+    private Map<String, Map<String, String>> extracted(List<String> option, FPhotometricOriginDataInfo wlData, FMeasureSample sample, Integer digit, Integer otherDigit) {
 
         Map<String, String> originData = wlData.getData();
         Map<String, Map<String, String>> ans = new HashMap<>();
@@ -2848,14 +2885,24 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         Integer sdDigits = vo.getSdDigits();
 
 
-
         if (wlData.getMode().equals(WaveLengthEnum.abs.getCode()) || wlData.getMode().equals(WaveLengthEnum.tPercent.getCode())) {
 
+            Integer absDigit = digit;
+            Integer tDigit = digit;
+            if (wlData.getMode().equals(WaveLengthEnum.abs.getCode())) {
+                tDigit = otherDigit;
+            } else {
+                absDigit = otherDigit;
+            }
             if (!option.isEmpty()) {
                 for (String s : option) {
                     Map<String, String> children = new HashMap<>();
                     if (DataIdentityEnums.avg.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
+
+                        String abs = DataCountUtil.formatValueWithBigDecimal(absDigit, originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
+                        String t = DataCountUtil.formatValueWithBigDecimal(tDigit, originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));
+
 
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));
@@ -2867,9 +2914,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getSd());
                         String sdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getSd());
 
+                        if (isNumber(sdA)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), sdA);
+                        }
+                        if (isNumber(sdT)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(sdT), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), sdT);
+                        }
 
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(sdT), sdDigits));
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
@@ -2878,11 +2933,23 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getRsd());
                         String rsdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getRsd());
 
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
-                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(rsdT), sdDigits));
+                        if (isNumber(rsdA)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), rsdA);
+                        }
+
+                        if (isNumber(rsdT)) {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(rsdT), sdDigits));
+                        } else {
+                            children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), rsdT);
+                        }
+
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.rsd.getIdentity(), children);
                     }
                 }
+
+
             }
         } else {
             if (!option.isEmpty()) {
@@ -2899,8 +2966,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         FRepeatMeasureData measureData = wlData.getOtherData().get(mapName);
 
                         String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, measureData.getRsd());
+                        if (isNumber(sdA)) {
+                            children.put(mapName, DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                        } else {
+                            children.put(mapName, sdA);
+                        }
 
-                        children.put(mapName, DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
@@ -2908,8 +2979,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         FRepeatMeasureData measureData = wlData.getOtherData().get(mapName);
 
                         String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, measureData.getRsd());
+                        if (isNumber(rsdA)) {
+                            children.put(mapName, DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                        } else {
+                            children.put(mapName, rsdA);
+                        }
 
-                        children.put(mapName, DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
                         ans.putIfAbsent(pre + "-" + DataIdentityEnums.rsd.getIdentity(), children);
                     }
                 }
@@ -2917,6 +2992,19 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         return ans;
+    }
+
+
+    private Boolean isNumber(String str) {
+        if (str == null || str.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            Double v = Double.parseDouble(str);
+            return !v.isNaN() && !v.isInfinite();
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     @Override
@@ -3720,6 +3808,91 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
     }
 
+    @Override
+    public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
+        // 1. 参数校验
+        if (methodId == null || methodId.equals("")) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000008"));
+        }
+
+        // 2. 根据methodId查询方法数据（光度测量类型）
+        FMeasureMethod tMeasureMethod = fMeasureMethodService.getOne(
+                new QueryWrapper<FMeasureMethod>()
+                        .eq("id", methodId)
+                        .eq("measurement_type", "光度测量")  // 区分光度类型
+        );
+
+        if (tMeasureMethod == null) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
+
+        // 3. 解析光度参数
+        FPhotometricParameter photometricParam = JSON.parseObject(
+                tMeasureMethod.getMeasurementParamInfo(),
+                FPhotometricParameter.class
+        );
+
+        // 3.5 校验仪器参数
+        if (deviceSerialNumber!=null&& !deviceSerialNumber.isEmpty()){
+            R<Boolean> booleanR = IssueCheckParam(photometricParam, deviceSerialNumber);
+            if (!booleanR.getSuccess()) {
+                return Result.checkFail(booleanR.getData());
+            }
+        }
+
+
+        // 4. 构建设备操作参数
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+        SetParam setParam = new SetParam();
+
+        // 5. 设置光度模式
+        setParam.setPhotoMode(Integer.valueOf(photometricParam.getLuminosity()));
+
+        // 6. 设置换灯波长
+        if (StringUtils.hasText(photometricParam.getChangeLampWaveLength())) {
+            setParam.setChangeLampWl(Double.parseDouble(photometricParam.getChangeLampWaveLength()));
+        }
+
+        // 7. 设置光谱带宽
+        if (StringUtils.hasText(photometricParam.getSpectralBandwidth())
+                && deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+            setParam.setSlit1(Double.parseDouble(photometricParam.getSpectralBandwidth()));
+        }
+
+        // 8. 设置响应时间
+        if (StringUtils.hasText(photometricParam.getResponseTime())) {
+            setParam.setResponseTime(Double.parseDouble(photometricParam.getResponseTime()));
+        }
+
+        // 9. 如果是能量模式（Es/Er），设置能量灯和增益
+        if (photometricParam.getLuminosity().equals(WaveLengthEnum.er.getCode())
+                || photometricParam.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
+
+            if (StringUtils.hasText(photometricParam.getEnergyLamp())) {
+                setParam.setLampPos(Integer.valueOf(photometricParam.getEnergyLamp()));
+            }
+
+            if (photometricParam.getGain() != null) {
+                setParam.setGain(photometricParam.getGain());
+            }
+        }
+
+        inputParam.setParam(setParam);
+
+        // 10. 调用设备操作服务
+        R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
+
+        if (r.getSuccess()) {
+            return Result.ok("设置参数成功");
+        } else {
+            return Result.fail(r.getMessage());
+        }
+
+    }
+
 
     // ---------------------- 新增：三格式文件生成具体实现 ----------------------
     /**
@@ -3915,19 +4088,21 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 String identity = head.getIdentity();
                 // 1. 获取原始值（不预设默认值，完全保留数据源状态）
                 Object originalValue = map.get(identity);
-                String cellData;
+                Object cellData;
 
-                // 2. 空值处理：null/空字符串/"null" 统一替换为"-"
+                // 核心逻辑：空值处理（null/空字符串/"null" 统一替换为"-"，其他保留原始值）
                 if (originalValue == null) {
                     cellData = "-";
                 } else {
-                    // 原始值转字符串（不做枚举转换、前缀拼接等额外处理）
-                    cellData = originalValue.toString();
-                    // 清除Excel解析异常的特殊字符（换行/制表符，不修改原始内容）
-                    cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
-                    // 处理空字符串或"null"（不区分大小写）
-                    if (cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                        cellData = "-";
+                    // 如果是数字字符串，尝试转换为 Double，让 Excel 识别为数值类型
+                    cellData = convertToNumberIfNeeded(originalValue.toString());
+                    // 清除 Excel 解析异常的特殊字符（换行/制表符，不修改原始业务内容）
+                    if (cellData instanceof String) {
+                        cellData = ((String) cellData).replace("\r", "").replace("\n", "").replace("\t", " ");
+                        // 处理空字符串或"null"（不区分大小写）
+                        if (((String) cellData).trim().isEmpty() || "null".equalsIgnoreCase((String) cellData)) {
+                            cellData = "-";
+                        }
                     }
                 }
 
@@ -3945,7 +4120,26 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
     }
 
+    /**
+     * 尝试将字符串转换为数值类型
+     * @param value 待转换的字符串
+     * @return 如果是有效数字则返回 Double，否则返回原字符串
+     */
+    private Object convertToNumberIfNeeded(String value) {
+        if (value == null || value.trim().isEmpty() || "-".equals(value)) {
+            return value;
+        }
 
+        try {
+            // 尝试去除空格
+            String trimmed = value.trim();
+            // 尝试转换为 Double
+            return Double.parseDouble(trimmed);
+        } catch (NumberFormatException e) {
+            // 转换失败，返回原字符串
+            return value;
+        }
+    }
     // ---------------------- 工具方法 ----------------------
     /**
      * 获取文件后缀（Java 8兼容）
@@ -3960,6 +4154,81 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         } else {
             return "docx";
         }
+    }
+
+    /**
+     * 下发给仪器的参数校验
+     * @param param
+     * @param deviceSerialNumber
+     * @return
+     */
+    private R IssueCheckParam(FPhotometricParameter param, String deviceSerialNumber) {
+        Boolean result = true;
+        List<String> errorMessages = new ArrayList<>();
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!deviceMeasureVOR.getSuccess()) {
+            return R.fail(deviceMeasureVOR.getMessage());
+        }
+        DeviceMeasureVO deviceMeasureVO = deviceMeasureVOR.getData();
+        // 1. 光度模式是否存在
+        boolean a = deviceMeasureVO.getLuminosity().stream()
+                .anyMatch(obj -> obj.getParamValue().equals(param.getLuminosity()));
+        if (!a) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该光度模式");
+        }
+        // 2. 波长范围是否超出限制
+        List<String> waveLengths = param.getWaveLength();
+        Double maxWavelength =  Double.parseDouble(deviceMeasureVO.getMaxWavelength());
+        Double minWavelength =  Double.parseDouble(deviceMeasureVO.getMinWavelength());
+        for (String waveLength : waveLengths) {
+            Double wavelength = Double.parseDouble(waveLength);
+            if (wavelength > maxWavelength || wavelength < minWavelength) {
+                result = result ? false : result;
+                errorMessages.add("波长"+ waveLength+"超出限制, 最大值: " + maxWavelength + "  最小值: " + minWavelength);
+            }
+        }
+        // 3. 光谱带宽是否存在
+        if (!deviceMeasureVO.getBandWidth().contains(param.getSpectralBandwidth())) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该光谱带宽");
+        }
+        // 4. 响应时间是否存在
+        if (!deviceMeasureVO.getResponseTime().contains(param.getResponseTime())) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该响应时间");
+        }
+        // 5. 换灯波长是否超出限制
+        Double lampWaveLength = Double.parseDouble(param.getChangeLampWaveLength());
+        Double maxLampWavelength =  Double.parseDouble(deviceMeasureVO.getMaxLampWavelength());
+        Double minLampWavelength =  Double.parseDouble(deviceMeasureVO.getMinLampWavelength());
+        if (lampWaveLength > maxLampWavelength || lampWaveLength < minLampWavelength) {
+            result = result ? false : result;
+            errorMessages.add("换灯波长超出限制, 最大值: "+maxLampWavelength+"  最小值: "+minLampWavelength);
+        }
+        // 7. 在光度模式为Es/Er模式下的情况
+        if (param.getLuminosity().equals(Constants.PARAM_THREE)|| param.getLuminosity().equals(Constants.PARAM_FOUR)) {
+            // 7.1 能量灯是否存在
+            boolean b = deviceMeasureVO.getLampType().stream()
+                    .anyMatch(obj -> obj.getParamValue().equals(param.getEnergyLamp()));
+            if (!b) {
+                result = result ? false : result;
+                errorMessages.add("当前仪器不支持该能量灯");
+            }
+
+            // 7.2 增益是否存在
+            if (!deviceMeasureVO.getGain().contains(param.getGain())) {
+                result = result ? false : result;
+                errorMessages.add("当前仪器不支持该增益数值");
+            }
+        }
+
+        if (result){
+            return R.ok(true);
+        }else {
+            return R.fail(errorMessages);
+        }
+
     }
 
 }

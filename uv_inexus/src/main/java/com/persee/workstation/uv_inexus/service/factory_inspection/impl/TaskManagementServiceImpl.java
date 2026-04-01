@@ -18,6 +18,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.*;
 import com.persee.workstation.uv_inexus.service.factory_inspection.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
+import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -70,6 +71,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     private WorkbookCacheManager workbookCacheManager;
     @Autowired
     private EhcacheUtil ehcacheUtil;
+    @Lazy
     @Autowired
     private DeviceManageService deviceManageService;
     @Autowired
@@ -77,6 +79,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     private DefaultTaskManager defaultTaskManager;
     @Autowired
     private SmartExcelContentConverter smartExcelContentConverter;
+    @Autowired
+    private ExcelCellLocator excelCellLocator;
 
     @Override
     public Result getList(TaskMgrQueryDto queryDto) {
@@ -359,13 +363,36 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     public Result<Boolean> checkTaskUsage(TaskUsageDto dto) {
         if (StringUtils.equals(dto.getTaskId(), DEFAULT_TASK.getCode())) {
             LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode());
+            wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode())
+                    .eq(TaskManagement::getCreateBy, dto.getUpdateBy());
             //这里查询出内置任务
             TaskManagement one = this.getOne(wrapper);
             dto.setTaskId(one.getId());
         }
-        return Result.ok(!workbookCacheManager.isTaskBeingEditedByOthers(dto.getTaskId(), dto.getUpdateBy()));
+
+        String taskId = dto.getTaskId();
+        String updateBy = dto.getUpdateBy();
+
+        // 先检查是否正在被其他用户编辑
+        if (workbookCacheManager.isTaskBeingEditedByOthers(taskId, updateBy)) {
+            String editor = workbookCacheManager.getCurrentEditor(taskId);
+            log.info("任务正在被其他用户编辑：taskId={}, 当前用户={}, 编辑者={}", taskId, updateBy, editor);
+            return Result.ok(false);  // 返回 false 表示不能使用
+        }
+
+        // 尝试获取编辑锁
+        boolean acquired = workbookCacheManager.acquireEditLock(taskId, updateBy);
+        if (acquired) {
+            log.info("获取任务编辑锁成功：taskId={}, updateBy={}", taskId, updateBy);
+            return Result.ok(true);  // 返回 true 表示可以使用
+        } else {
+            // 获取失败，说明被其他用户占用了
+            String editor = workbookCacheManager.getCurrentEditor(taskId);
+            log.warn("获取任务编辑锁失败：taskId={}, 当前用户={}, 占用者={}", taskId, updateBy, editor);
+            return Result.ok(false);  // 返回 false 表示不能使用
+        }
     }
+
 
     @Override
     public Result<List<TaskCheckItemDto.Standard>> standardMaterialList(String taskId) {
@@ -379,18 +406,18 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         wrapper.eq(ExcelDataAsset::getTemplateCode, excelTemplate.getTemplateCode());
         List<ExcelDataAsset> dataAssetList = dataAssetService.list(wrapper);
         List<TaskExecutionDetail> list = new ArrayList<>();
-        if (CollectionUtils.isNotEmpty(dataAssetList)){
+        if (CollectionUtils.isNotEmpty(dataAssetList)) {
             for (ExcelDataAsset asset : dataAssetList) {
 //
 //            }
 //            dataAssetList.forEach(asset -> {
                 Map<String, Object> dataMap = asset.getDataMap();
                 String string = MapUtils.getString(dataMap, "暗电流物质");
-                if(StringUtils.isNotBlank(string)){
+                if (StringUtils.isNotBlank(string)) {
                     LambdaQueryWrapper<CalStdCats> queryWrapper = new LambdaQueryWrapper<>();
                     queryWrapper.eq(CalStdCats::getName, string);
                     List<CalStdCats> list1 = catsService.list(queryWrapper);
-                    if (CollectionUtils.isNotEmpty(list1)){
+                    if (CollectionUtils.isNotEmpty(list1)) {
                         CalStdCats cats = list1.get(0);
                         TaskCheckItemDto.Standard standard = new TaskCheckItemDto.Standard();
                         standard.setStandardId(cats.getId());
@@ -493,6 +520,28 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 
                 return Result.ok(management);
             }
+            if (OPEN_BOX_INSPECTION.getCode().equals(taskId)) {
+                TaskManagement management = null;
+
+                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+                //查找的是开箱验证任务
+                wrapper.eq(TaskManagement::getTaskType, "2");
+                List<TaskManagement> list = this.list(wrapper);
+                if (CollectionUtils.isEmpty(list)) {
+                    return Result.fail("未找到开箱验证任务");
+                }else {
+                    management=list.get(0);
+                }
+                ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
+                management.setTemplateName(excelTemplate.getTemplateName());
+                management.setTemplateCode(excelTemplate.getTemplateCode());
+
+                return Result.ok(management);
+            }
+            if (FACTORY_INSPECTION.getCode().equals(taskId)) {
+                TaskManagement task = defaultTaskManager.createFactoryInspectionTask(updateBy);
+                return Result.ok(task);
+            }
             TaskManagement management = this.getById(taskId);
             ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
             management.setTemplateName(excelTemplate.getTemplateName());
@@ -588,13 +637,13 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         if (cachedObject instanceof List) {
             // 进行类型检查和转换
             dtoList = (List<SetSamplePoolDto>) cachedObject;
-            if (CollectionUtils.isEmpty(dtoList)){
+            if (CollectionUtils.isEmpty(dtoList)) {
                 SetSamplePoolDto setSamplePoolDto = new SetSamplePoolDto();
                 TaskCheckItemDto.Standard standard = new TaskCheckItemDto.Standard();
                 LambdaQueryWrapper<CalStdCats> wrapper = new LambdaQueryWrapper<>();
                 wrapper.eq(CalStdCats::getName, AIR.getDescription());
                 List<CalStdCats> list = catsService.list(wrapper);
-                if (CollectionUtils.isNotEmpty(list)){
+                if (CollectionUtils.isNotEmpty(list)) {
                     CalStdCats cats = list.get(0);
                     standard.setStandardId(cats.getId());
                     standard.setStandardName(cats.getName());
@@ -612,7 +661,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             LambdaQueryWrapper<CalStdCats> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(CalStdCats::getName, AIR.getDescription());
             List<CalStdCats> list = catsService.list(wrapper);
-            if (CollectionUtils.isNotEmpty(list)){
+            if (CollectionUtils.isNotEmpty(list)) {
                 CalStdCats cats = list.get(0);
                 standard.setStandardId(cats.getId());
                 standard.setStandardName(cats.getName());
@@ -636,6 +685,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         }
         return Result.ok(true);
     }
+
 
     /**
      * 导出指定名称的 Sheet 页到文件，保留所有格式并计算公式

@@ -40,7 +40,7 @@ public interface TimeSweepService {
     Result updateMethodParameter(TimeSweepMethodParameterDto params);
 
     // 获取样本列表接口
-    Result sampleListPort(String taskId, String type,Integer  digit);
+    Result sampleListPort(String taskId, String type,Integer  digit,String deviceSerialNumber);
 
     // 删除样品列表接口
     Result deleteSampleListPort(String sampleId, String taskId);
@@ -121,7 +121,7 @@ public interface TimeSweepService {
     Result saveData(String taskId);
 
     // 多格式文件下载接口（支持word/excel/txt）
-    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds);
+    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds,String deviceSerialNumber, Integer  digit);
 
     // 仪器设置参数
     boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam);

@@ -12,23 +12,63 @@
 <mapper namespace="com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper">
 
 
-    <select id="getAllTask" resultType="com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO">
+    <select id="getAllTask"
+            resultType="com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO">
         select id as taskId,
-            task_name as taskName
+        task_name as taskName
         from t800_uv_inexus.t_measure_task
         where project_item_key = #{projectId} and measure_type = #{measureType}
     </select>
 
 
-    <select id="getPreHead" resultType="com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO">
+    <select id="getPreHead"
+            resultType="com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO">
         select name as name,
         identity as identity,
-            print_title as printTitle,
-            locate as locate
+        print_title as printTitle,
+        locate as locate
         from t800_uv_inexus.t_measure_preset_head
         where measure_type = #{measure_type}
         <if test="sample_kind != null">
             and sample_kind = #{sample_kind}
         </if>
+    </select>
+
+    <select id="selectHistoryTaskPage" resultType="com.persee.workstation.uv_inexus.vo.instrumentVo.HistoryTaskVO">
+        SELECT
+        t.task_name AS taskName,
+        u.real_name AS userName,
+        p.project_name AS projectName,
+        m.method_name AS methodName,
+        t.device_serial_number AS deviceNumber,
+        t.start_time AS startTime,
+        t.end_time AS endTime,
+        t.task_status AS taskStatus,
+        t.id AS taskId,
+        t.measure_type AS measureType
+        FROM t_measure_task t
+        LEFT JOIN t_measure_method m ON t.method_key = m.id
+        LEFT JOIN t_measure_project p ON t.project_item_key = p.id
+        LEFT JOIN t_sys_user u ON t.user_id = u.id
+        <where>
+            <!--            AND t.is_delete = '0'-->
+
+            <if test="query.search != null and query.search != ''">
+                AND (m.method_name LIKE CONCAT('%', #{query.search}, '%')
+                OR t.task_name LIKE CONCAT('%', #{query.search}, '%'))
+            </if>
+
+            <if test="query.deviceSerialNumber != null and query.deviceSerialNumber != ''">
+                AND t.device_serial_number = #{query.deviceSerialNumber}
+            </if>
+
+            <if test="query.startDateTime != null">
+                AND t.start_time &gt;= #{query.startDateTime}
+            </if>
+            <if test="query.endDateTime != null">
+                AND t.end_time &lt;= #{query.endDateTime}
+            </if>
+        </where>
+        ORDER BY t.create_time DESC
     </select>
 </mapper>

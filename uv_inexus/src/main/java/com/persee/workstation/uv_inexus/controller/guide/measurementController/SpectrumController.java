@@ -87,14 +87,7 @@ public class SpectrumController {
     @OperateLog(module = "实验测试-向导模式-定量测量-应用方法", description = "执行实验测试-向导模式-定量测量-应用方法操作", recordParams = true)
     @PostMapping("saveMethodParameter")
     @ApiOperation("方法参数修改接口")
-    public Result saveMethodParameter(@Valid @RequestBody SpectralMethodParameterDto methodDto,
-                                      BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            String errorMsg = bindingResult.getFieldErrors().stream()
-                    .map(error -> error.getDefaultMessage())
-                    .collect(Collectors.joining("; "));
-            return Result.fail("参数校验失败: " + errorMsg);
-        }
+    public Result saveMethodParameter(@RequestBody SpectralMethodParameterDto methodDto) {
         return spectrumService.updateMethodParameter(methodDto);
     }
 
@@ -191,8 +184,9 @@ public class SpectrumController {
     @ApiOperation("获取样本列表接口")
     public Result sampleListPort(@RequestParam String taskId,
                                  @RequestParam(required = false) String type,
-                                 @RequestParam(required = false) Integer digit) {
-        return spectrumService.sampleListPort(taskId, type, digit);
+                                 @RequestParam(required = false) Integer digit,
+                                 @RequestParam String deviceSerialNumber) {
+        return spectrumService.sampleListPort(taskId, type, digit,deviceSerialNumber);
     }
 
 
@@ -220,7 +214,10 @@ public class SpectrumController {
 
     @GetMapping("restoreDeletedListData")
     @ApiOperation("恢复已删除数据接口")
-    public Result restoreDeletedListData(@RequestParam String taskId, @RequestParam String sampleId, @RequestParam String type, @RequestParam String analysisId) {
+    public Result restoreDeletedListData(@RequestParam String taskId,
+                                         @RequestParam(required = false) String sampleId,
+                                         @RequestParam String type,
+                                         @RequestParam String analysisId) {
         return spectrumService.restoreDeletedListData(taskId, sampleId, type, analysisId);
     }
 
@@ -251,7 +248,14 @@ public class SpectrumController {
 
     @PostMapping("seekingPeaksAndValleysPort")
     @ApiOperation("寻峰寻谷接口")
-    public Result seekingPeaksAndValleysPort(@RequestBody SeekingPeaksValleysDto paramDto) {
+    public Result seekingPeaksAndValleysPort(@Valid @RequestBody SeekingPeaksValleysDto paramDto,
+                                             BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            String errorMsg = bindingResult.getFieldErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .collect(Collectors.joining("; "));
+            return Result.fail("参数校验失败: " + errorMsg);
+        }
         return spectrumService.peakSearchingPort(paramDto);
     }
 
@@ -378,10 +382,11 @@ public class SpectrumController {
             @RequestParam(required = false) String fileType,
             // 新增 digit 参数（根据实际需求调整 required 和描述）
             @ApiParam(value = "修约", required = false)
-            @RequestParam(value = "digit", required = false) Integer digit) throws Exception {
+            @RequestParam(value = "digit", required = false) Integer digit,
+            @RequestParam String deviceSerialNumber) throws Exception {
 
         // 调用 Service 层的多格式导出方法
-        R<File> result = spectrumService.downloadFile(taskId, allDisplay, fileType, analysisIds, digit);
+        R<File> result = spectrumService.downloadFile(taskId, allDisplay, fileType, analysisIds, digit,deviceSerialNumber);
 
         if (result.getSuccess()) {
             File file = result.getData();

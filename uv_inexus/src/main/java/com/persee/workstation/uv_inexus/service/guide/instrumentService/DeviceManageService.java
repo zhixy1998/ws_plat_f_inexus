@@ -10,13 +10,20 @@
 package com.persee.workstation.uv_inexus.service.guide.instrumentService;
 
 
+import com.persee.workstation.uv_inexus.dto.factory_inspection.DeviceTaskDto;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceCalibrationVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceConfigVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceInfoVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
 
 import java.util.List;
 
@@ -46,12 +53,6 @@ public interface DeviceManageService {
      * @param currentLampType 当前灯类型， 0-钨灯，1-氘灯
      */
     R<Boolean> changeLamp(String currentLampType, String deviceSerialNumber);
-
-    /**
-     * 断开连接
-     */
-    Boolean disConnect(String deviceSerialNumber, String updateBy);
-
 
     R<List<FindDeviceVO>> findDevice() throws Exception;
 
@@ -114,6 +115,9 @@ public interface DeviceManageService {
 
     R<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber);
 
+    // 获取默认参数映射
+    Result<DeviceMeasureVO> queryDeviceTypeInfoWithDefault(String deviceSerialNumber);
+
 
     void test();
 
@@ -144,10 +148,19 @@ public interface DeviceManageService {
 
     R<Boolean> deviceNewCalibration(DeviceCalibrationDTO calibrationDTO);
 
+    R<List<WorkTimeInfo>> queryLampLifeInfo(String deviceSerialNumber, Boolean isUpdate);
+
+    R<Boolean> hasWorkTime(String deviceSerialNumber);
+
     R<OperationResultEntity> TimeMeasure(DevOperationInputParam param);
 
     R<Boolean> zero(String deviceSerialNumber, List<String> param);
 
     R<Boolean> addDevice(SearchInfo info);
+
+    R<FindDeviceVO> connect(List<SearchInfo> param,String updateBy,String templateCode);
+
+    Result<DeviceTaskDto> createTaskAfterInstrumentInit(String deviceSerialNumber, String updateBy, String templateCode) throws BusinessException;
+
 
 }

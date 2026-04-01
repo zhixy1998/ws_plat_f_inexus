@@ -1,1 +1,2 @@
 ALTER TABLE t800_uv_inexus_factory_inspection.t_cal_std_cats DROP KEY t_cal_std_cats_unique;
+ALTER TABLE t800_uv_inexus_factory_inspection.t_cal_artifacts DROP KEY t_cal_artifacts_unique;

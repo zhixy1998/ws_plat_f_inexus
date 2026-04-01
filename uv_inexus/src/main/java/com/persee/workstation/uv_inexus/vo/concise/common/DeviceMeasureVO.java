@@ -49,12 +49,21 @@ public class DeviceMeasureVO {
     @ApiModelProperty("最小波长")
     private String minWavelength;
 
+    @ApiModelProperty("最小换灯波长")
+    private String minLampWavelength;
+
     @ApiModelProperty("最大波长")
     private String maxWavelength;
+
+    @ApiModelProperty("最大换灯波长")
+    private String maxLampWavelength;
 
     @ApiModelProperty("扫描间隔")
     private List<String> scanInterval;
 
     @ApiModelProperty("光谱带宽")
     private List<String> bandWidth;
+
+    @ApiModelProperty("滤色片波长点")
+    private List<Integer> filterWavelength;
 }

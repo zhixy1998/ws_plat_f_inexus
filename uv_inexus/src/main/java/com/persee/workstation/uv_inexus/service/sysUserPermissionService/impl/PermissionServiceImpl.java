@@ -14,25 +14,27 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDeleteDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
-import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
-import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionUpdateDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysPermissionPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.PermissionService;
-
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionUpdateDTO;
+import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
+import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
 
 @Service
 public class PermissionServiceImpl implements PermissionService {
 
     @Autowired
     private SysPermissionMapper sysPermissionMapper;
+    
+    @Autowired
+    private SysRoleMapper sysRoleMapper;
 
     @Override
     public Result<List<PermissionTreeDTO>> getAllPermissionTree() {
@@ -106,7 +108,62 @@ public class PermissionServiceImpl implements PermissionService {
         // 6. 执行插入
         sysPermissionMapper.insert(po);
 
+        // 7. 更新SUPER_ADMIN角色的权限列表
+        updateSuperAdminPermission(po.getId());
+
         return Result.ok("新增权限成功");
+    }
+
+    private void updateSuperAdminPermission(String permissionId) {
+        // 查询role_code=SUPER_ADMIN的角色
+        QueryWrapper<com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO> roleQueryWrapper = new QueryWrapper<>();
+        roleQueryWrapper.eq("role_code", "SUPER_ADMIN");
+        com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO superAdminRole = sysRoleMapper.selectOne(roleQueryWrapper);
+        
+        if (superAdminRole != null) {
+            String permIds = superAdminRole.getPermIds();
+            if (permIds == null || permIds.isEmpty()) {
+                // 如果perm_ids为空，直接设置为新权限ID
+                permIds = permissionId;
+            } else {
+                // 如果perm_ids不为空，追加新权限ID
+                permIds += "," + permissionId;
+            }
+            
+            // 更新perm_ids字段
+            superAdminRole.setPermIds(permIds);
+            sysRoleMapper.updateById(superAdminRole);
+        }
+    }
+
+    private void removePermissionFromSuperAdmin(String permissionId) {
+        // 查询role_code=SUPER_ADMIN的角色
+        QueryWrapper<com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO> roleQueryWrapper = new QueryWrapper<>();
+        roleQueryWrapper.eq("role_code", "SUPER_ADMIN");
+        com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO superAdminRole = sysRoleMapper.selectOne(roleQueryWrapper);
+        
+        if (superAdminRole != null) {
+            String permIds = superAdminRole.getPermIds();
+            if (permIds != null && !permIds.isEmpty()) {
+                // 分割权限ID列表
+                String[] permissionIds = permIds.split(",");
+                StringBuilder newPermIds = new StringBuilder();
+                
+                // 重建权限ID列表，排除要删除的权限ID
+                for (String id : permissionIds) {
+                    if (!id.equals(permissionId)) {
+                        if (newPermIds.length() > 0) {
+                            newPermIds.append(",");
+                        }
+                        newPermIds.append(id);
+                    }
+                }
+                
+                // 更新perm_ids字段
+                superAdminRole.setPermIds(newPermIds.toString());
+                sysRoleMapper.updateById(superAdminRole);
+            }
+        }
     }
 
     @Override
@@ -185,19 +242,75 @@ public class PermissionServiceImpl implements PermissionService {
             return Result.fail("权限记录不存在");
         }
 
-        // 2. 将子节点的 parentId 更新为 0 (变为根节点)
-        // 这样原先挂在被删节点下的子节点，现在会变成一级目录
-        // 而子节点的子节点（孙节点）依然挂在子节点下，结构保持不变
-        UpdateWrapper<SysPermissionPO> updateWrapper = new UpdateWrapper<>();
-        updateWrapper.eq("parent_id", deleteDTO.getId())
-                .set("parent_id", 0);
-        sysPermissionMapper.update(null, updateWrapper);
-
-        // 3. 删除当前节点
-        sysPermissionMapper.deleteById(deleteDTO.getId());
+        // 2. 递归删除当前节点及其所有子节点
+        deletePermissionAndChildren(deleteDTO.getId());
 
         return Result.ok("删除权限成功");
     }
+
+    private void deletePermissionAndChildren(Integer parentId) {
+        // 查找所有子节点
+        QueryWrapper<SysPermissionPO> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("parent_id", parentId);
+        List<SysPermissionPO> children = sysPermissionMapper.selectList(queryWrapper);
+
+        // 递归删除所有子节点
+        if (children != null && !children.isEmpty()) {
+            for (SysPermissionPO child : children) {
+                deletePermissionAndChildren(Integer.parseInt(child.getId()));
+            }
+        }
+
+        // 从SUPER_ADMIN角色的权限列表中移除当前权限
+        removePermissionFromSuperAdmin(parentId.toString());
+        
+        // 删除当前节点
+        sysPermissionMapper.deleteById(parentId);
+    }
+
+    @Override
+    public Result<List<PermissionTreeDTO>> getPermissionList(PermissionQueryDTO queryDTO) {
+        QueryWrapper<SysPermissionPO> queryWrapper = new QueryWrapper<>();
+        
+        // 构建查询条件
+        if (queryDTO != null) {
+            if (queryDTO.getTitle() != null && !queryDTO.getTitle().isEmpty()) {
+                queryWrapper.like("title", queryDTO.getTitle());
+            }
+            if (queryDTO.getPermName() != null && !queryDTO.getPermName().isEmpty()) {
+                queryWrapper.like("perm_name", queryDTO.getPermName());
+            }
+            if (queryDTO.getPermCode() != null && !queryDTO.getPermCode().isEmpty()) {
+                queryWrapper.like("perm_code", queryDTO.getPermCode());
+            }
+            if (queryDTO.getPermType() != null) {
+                queryWrapper.eq("perm_type", queryDTO.getPermType());
+            }
+            if (queryDTO.getParentId() != null) {
+                queryWrapper.eq("parent_id", queryDTO.getParentId());
+            }
+            if (queryDTO.getStatus() != null) {
+                queryWrapper.eq("status", queryDTO.getStatus());
+            }
+            if (queryDTO.getHidden() != null) {
+                queryWrapper.eq("hidden", queryDTO.getHidden());
+            }
+            if (queryDTO.getNoAuth() != null) {
+                queryWrapper.eq("no_auth", queryDTO.getNoAuth());
+            }
+            if (queryDTO.getQuickConfigType() != null) {
+                queryWrapper.eq("quick_config_type", queryDTO.getQuickConfigType());
+            }
+        }
+        
+        // 按排序号排序
+        queryWrapper.orderByAsc("sort");
+        
+        List<SysPermissionPO> permissions = sysPermissionMapper.selectList(queryWrapper);
+        List<PermissionTreeDTO> tree = buildPermissionTree(permissions);
+        return Result.ok(tree);
+    }
+
 
     private List<PermissionTreeDTO> buildPermissionTree(List<SysPermissionPO> permissions) {
         List<PermissionTreeDTO> dtoList = permissions.stream().map(po -> {

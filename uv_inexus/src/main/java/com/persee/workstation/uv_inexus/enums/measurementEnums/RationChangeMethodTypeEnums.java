@@ -19,6 +19,7 @@ public enum RationChangeMethodTypeEnums {
     measure("measure", "您已修改测量参数，将生成新方法并清理测量和分析数据，是否要保存现有数据？"),
     curve("curve", "您已修改曲线相关参数，将生成新方法并清理分析数据，是否要保存现有数据？"),
     analyze("analyze", "您已修改分析参数，将生成新方法并清理分析数据，是否保存现有数据？"),
+    endTask("endTask", "您修改了方法参数，当前任务已结束，将为您创建新方法，新任务"),
     noChange("noChange", "方法参数没有变化，无需重新应用！");
 
     private final String identity;

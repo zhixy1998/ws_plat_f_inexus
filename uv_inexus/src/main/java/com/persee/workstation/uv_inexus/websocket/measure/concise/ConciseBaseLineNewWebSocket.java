@@ -159,7 +159,7 @@ public class ConciseBaseLineNewWebSocket {
         // 初始化发送锁
         sessionSendLocks.put(sessionId, new Object());
 
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.ConciseBaseLine.getOperation(), Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.ConciseBaseLine.getOperation(), param.getTaskId(), Constants.DEVICE_STATUS_MEASURE);
 
         // 往前端推送数据的线程
         Thread taskThread = new Thread(() -> {
@@ -338,12 +338,15 @@ public class ConciseBaseLineNewWebSocket {
             inputParam.setDeviceSerialNumber(deviceSerialNumber);
             // 发送基线命令
             inputParam.setAction(ActionCmdEnum.BaseLine);
-            boolean isFastScan = "3".equals(param.getScanSpeed());
+            boolean isFastScan = Constants.PARAM_FOUR.equals(param.getScanSpeed());
             if (isFastScan) {
                 inputParam.setAction(ActionCmdEnum.BaseLineFast);
             }
 
-            devOperationUtilService.operation(inputParam);
+            R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
+            if (!r.getSuccess()) {
+                sendError(deviceSerialNumber,r.getMessage());
+            }
 
             dataPointIndexMap.put(deviceSerialNumber, 0);
             log.info("【开始基线测量】设备: {}, 模式: {}, IP: {}",
@@ -386,7 +389,7 @@ public class ConciseBaseLineNewWebSocket {
             }
             while (Constants.isRunning) {
                 Object result;
-                if (param.getScanSpeed().equals(Constants.PARAM_THREE)){
+                if (param.getScanSpeed().equals(Constants.PARAM_FOUR)){
                     result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.BaseLineFast.getComId());
                 }else {
                     result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.BaseLine.getComId());
@@ -429,7 +432,7 @@ public class ConciseBaseLineNewWebSocket {
 
                 // 短暂休眠，减少CPU占用
                 try {
-                    Thread.sleep("3".equals(param.getScanSpeed()) ? 2 : 10);
+                    Thread.sleep(Constants.PARAM_FOUR.equals(param.getScanSpeed()) ? 2 : 10);
                 } catch (InterruptedException e) {
                     log.info("【数据收集中断】数据收集被中断, session: {}", sessionId);
                     throw new UserInterruptedException("用户主动停止");

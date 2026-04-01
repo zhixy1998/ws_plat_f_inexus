@@ -21,10 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -287,6 +284,11 @@ public class MessageOnTimeDeal {
             // 清空队列，避免残包
             MessageStoreManager.getInstance().clearDeviceMessages(deviceId);
 
+            unknowCountMessageQueue.clearCommand(deviceSerialNumber, "Scan");
+            unknowCountMessageQueue.clearCommand(deviceSerialNumber, "ScanFast");
+//            unknowCountMessageQueue.clearCommand(deviceSerialNumber, "BaseLine");
+//            unknowCountMessageQueue.clearCommand(deviceSerialNumber, "BaseLineFast");
+
             return; // 不需要继续创建新线程
         }
 
@@ -299,7 +301,7 @@ public class MessageOnTimeDeal {
         boolean isBaseline = cmdId.equals("BaseLine") || cmdId.equals("BaseLineFast");
 
         if (isScan || isBaseline) {
-            unknowCountMessageQueue.clearCommand(deviceSerialNumber, cmdId);
+            unknowCountMessageQueue.clearIp(deviceSerialNumber);
         }
 
         MessageStoreManager store = MessageStoreManager.getInstance();
@@ -363,8 +365,13 @@ public class MessageOnTimeDeal {
                         byte[] useMessage = store.getMessage(deviceId);
 
                         recvCount++;
-                        if (recvCount >= 2) currentTimeout = 15000L;
-                        startTime = System.currentTimeMillis();
+                        if (recvCount >= 2) {
+                            currentTimeout = 15000L;
+                            if (cmdId.equals("ScanFast") || cmdId.equals("BaseLineFast")){
+                                currentTimeout = 1000L;
+                            }
+                            startTime = System.currentTimeMillis();
+                        }
 
                         // ----------------- 2. 解析报文 -----------------
                         OperationResultEntity parsed = UdpResponseDeal.parseScan(Collections.singletonList(useMessage));
@@ -403,6 +410,11 @@ public class MessageOnTimeDeal {
 
                                     if (isScan) {
                                         sp.setScanRsd(fittedParam);
+                                        log.info("[光谱RSD] wl={}, r={}, s={}, d={}",
+                                                sp.getWavelength(),
+                                                sp.getScanRsdR(),
+                                                sp.getScanRsdS(),
+                                                sp.getScanRsdD());
                                         SpectrumCalcResult absResult = calculator.calculate(1, sp, RANGE, deviceSerialNumber);
                                         SpectrumCalcResult tResult   = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
                                         SpectrumCalcResult esResult  = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
@@ -421,6 +433,7 @@ public class MessageOnTimeDeal {
                                                 erResult != null ? erResult.getEr() : "-");
                                     } else {
                                         sp.setBaselineRsd(fittedParam);
+                                        deviceManager.addZeroResult(deviceId,String.valueOf(sp.getWavelength()),fittedParam);
                                     }
 ;
                                     // ----------------- 放入未知队列 -----------------
@@ -446,15 +459,20 @@ public class MessageOnTimeDeal {
                                     tempMap.remove(deviceSerialNumber);
                                 } else if (isScan) {
                                     sp.setScanRsd(temp);
+                                    log.info("[T1960光谱RSD] wl={}, r={}, s={}, d={}",
+                                            sp.getWavelength(),
+                                            sp.getScanRsdR(),
+                                            sp.getScanRsdS(),
+                                            sp.getScanRsdD());
                                     SpectrumCalcResult absResult = calculator.calculate(5, sp, RANGE, deviceSerialNumber);
-                                    SpectrumCalcResult tResult   = calculator.calculate(6, sp, RANGE, deviceSerialNumber);
-                                    SpectrumCalcResult esResult  = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
-                                    SpectrumCalcResult erResult  = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
+                                    SpectrumCalcResult tResult = calculator.calculate(6, sp, RANGE, deviceSerialNumber);
+                                    SpectrumCalcResult esResult = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
+                                    SpectrumCalcResult erResult = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
 
-                                sp.setAbsResult(absResult);
-                                sp.setTResult(tResult);
-                                sp.setEsResult(esResult);
-                                sp.setErResult(erResult);
+                                    sp.setAbsResult(absResult);
+                                    sp.setTResult(tResult);
+                                    sp.setEsResult(esResult);
+                                    sp.setErResult(erResult);
 
 
                                 log.info("[光谱计算] wl={}, Abs={}, T%={}, Es={}, Er={}",
@@ -466,9 +484,11 @@ public class MessageOnTimeDeal {
 
                             } else {
                                 sp.setBaselineRsd(temp);
-                                log.info("[光谱计算] wl={}, Abs={}",
+                                log.info("[光谱计算] wl={}, r={}, s={}, d={}",
                                         sp.getWavelength(),
-                                        sp.getAbsResult());
+                                        sp.getBaselineRsdR(),
+                                        sp.getBaselineRsdS(),
+                                        sp.getBaselineRsdD());
                             }
                                 spectrumDataProcessor.dataPointIndex();
 
@@ -656,7 +676,6 @@ public class MessageOnTimeDeal {
         // 清理缓存
         darkCache.remove(deviceSerialNumber);
     }
-
 }
 
 

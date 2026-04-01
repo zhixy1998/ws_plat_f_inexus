@@ -13,10 +13,12 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.persee.workstation.uv_inexus.model.BasePO;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
 import java.util.Map;
 
 @EqualsAndHashCode(callSuper = true)
@@ -95,4 +97,8 @@ public class DeviceInfoPO extends BasePO {
     @ApiModelProperty("计算公式")
     @TableField("linear_segment")
     private String linearSegment;
+
+    @ApiModelProperty("寿命信息")
+    @TableField(value = "work_time_info", typeHandler = JacksonTypeHandler.class)
+    private List<WorkTimeInfo> workTimeInfo;
 }

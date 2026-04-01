@@ -21,7 +21,9 @@ import java.util.*;
 public enum DevXmlEnums {
 
     T800("T800", "newFile/T800.xml", "T800", 8000,
-            Arrays.asList("TestConnect", "GetSn", "GetAccessoryType", "GetInitStatus", "GetCellPos"), new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
+            Arrays.asList("Connect", "GetSn", "GetAccessoryType", "GetInitStatus", "GetCellPos"),
+            Arrays.asList("GetPhotoMode", "GetResponseTime", "Measure", "GetChangeLampWl", "GetCellPos", "GetLampPos", "GetWLampStatus", "GetDLampStatus", "GetCurrentNegativeHV"),
+ new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A},
 
@@ -31,7 +33,9 @@ public enum DevXmlEnums {
             false),
 
     T600AndT700("T600/T700", "newFile/T600.1.xml", "T600/T700", 5000,
-            Arrays.asList("Connect", "GetSn", "GetAccessoryType", "GetInitStatus", "GetCellPos", "GetWlList"), new byte[]{(byte) 0xFF, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
+            Arrays.asList("Connect", "GetSn", "GetAccessoryType", "GetInitStatus", "GetCellPos", "GetWlList"),
+            Arrays.asList("GetPhotoMode", "GetResponseTime", "Measure", "GetChangeLampWl", "GetCellPos", "GetLampPos","GetWLampStatus","GetDLampStatus"),
+            new byte[]{(byte) 0xFF, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xBA},
             new byte[]{(byte) 0xFE, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
@@ -49,6 +53,8 @@ public enum DevXmlEnums {
     private final int port;
     // 连接指令
     private final List<String> connectCommands;
+
+    private final List<String> detectionCommands;
     // 起始报文
     private final byte[] startMessage;
 
@@ -66,13 +72,14 @@ public enum DevXmlEnums {
     }
 
     // 构造函数
-    DevXmlEnums(String devType, String xmlPath, String desc, int port, List<String> connectCommands,
+    DevXmlEnums(String devType, String xmlPath, String desc, int port, List<String> connectCommands, List<String> detectionCommands,
                 byte[] startMessage, byte[] newIpStartMessage, boolean needFit) {
         this.devType = devType;
         this.xmlPath = xmlPath;
         this.desc = desc;
         this.port = port;
         this.connectCommands = connectCommands;
+        this.detectionCommands = detectionCommands;
         this.startMessage = startMessage;
         this.newIpStartMessage = newIpStartMessage;
         this.needFit = needFit;

@@ -20,7 +20,6 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPhotometricParameter;
-import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -44,7 +43,6 @@ import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSo
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
 import com.persee.workstation.uv_inexus.websocket.measure.param.PhotoAndRationMetricWebsocketParam;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -146,7 +144,7 @@ public class ConcisePhotometricNewWebSocket {
         isSd = param.getIsSd() != null && param.getIsSd();
         isRsd = param.getIsRsd() != null && param.getIsRsd();
 
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.ConcisePhotoMetric.getOperation(), Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.ConcisePhotoMetric.getOperation(), taskId, Constants.DEVICE_STATUS_MEASURE);
 
         if (taskId == null) {
             sendError(deviceSerialNumber, "请创建任务");
@@ -230,12 +228,12 @@ public class ConcisePhotometricNewWebSocket {
                 }
 
 
-                R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-                if (!setParams.getSuccess()) {
-
-                    sendError(deviceSerialNumber, "参数设置异常！");
-                    return;
-                }
+//                R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+//                if (!setParams.getSuccess()) {
+//
+//                    sendError(deviceSerialNumber, setParams.getMessage());
+//                    return;
+//                }
 
                 if (parameter.getRepetitionPattern().equals("单池重复")) {
                     measure = singleSampleRepeatMeasure(measureSample, parameter, task, deviceSerialNumber);
@@ -309,12 +307,12 @@ public class ConcisePhotometricNewWebSocket {
             }
             task.setDeviceSerialNumber(deviceSerialNumber);
 
-            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-            if (!setParams.getSuccess()) {
-
-                sendError(deviceSerialNumber, "参数设置异常！");
-                return;
-            }
+//            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+//            if (!setParams.getSuccess()) {
+//
+//                sendError(deviceSerialNumber, setParams.getMessage());
+//                return;
+//            }
 
             for (TaskSpecimen specimen : taskSpecimen) {
                 if (!isAutoChangePool && measureCount == 1) {
@@ -505,21 +503,9 @@ public class ConcisePhotometricNewWebSocket {
             String waveLength = singMeasureResult.getWl();
 
             machineData.add(singMeasureResult);
-            ChangeParam originRsd = new ChangeParam();
-            List<ChangeParam> params = new ArrayList<>();
-            if (StringUtils.hasText(task.getZeroParam())) {
-                params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-                if (params != null) {
-                    for (ChangeParam zero : params) {
-                        if (zero.getWl().equals(waveLength)) {
-                            BeanUtils.copyProperties(zero, originRsd);
-                            break;
-                        }
-                    }
-                }
-            }
+
             //处理数据
-            FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), singMeasureResult, params, null, sample.getSampleNumber());
+            FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), singMeasureResult, null);
             dataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
 
             originDataList.add(dataInfo);
@@ -618,21 +604,9 @@ public class ConcisePhotometricNewWebSocket {
 
 
                     machineData.add(measureResult);
-                    ChangeParam originRsd = new ChangeParam();
-                    List<ChangeParam> params = new ArrayList<>();
-                    if (StringUtils.hasText(task.getZeroParam())) {
-                        params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-                        if (params != null) {
-                            for (ChangeParam zero : params) {
-                                if (zero.getWl().equals(waveLength)) {
-                                    BeanUtils.copyProperties(zero, originRsd);
-                                    break;
-                                }
-                            }
-                        }
-                    }
+
                     //处理数据
-                    FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), measureResult, params, DataIdentityEnums.middle.getIdentity() + "-" + i, sample.getSampleNumber());
+                    FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), measureResult, DataIdentityEnums.middle.getIdentity() + "-" + i);
                     dataInfo.setMeasureTime(time);
                     dataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
 
@@ -652,7 +626,7 @@ public class ConcisePhotometricNewWebSocket {
             //循环测完，开始计算平均值
             String name = WaveLengthEnum.getName(parameter.getLuminosity());
             if (!StringUtils.hasText(name)) {
-                name = "abs";
+                name = "Abs";
             }
 
             switch (name) {
@@ -791,7 +765,7 @@ public class ConcisePhotometricNewWebSocket {
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
 
         if (!operation.getSuccess()) {
-            return R.fail("参数设置出错！");
+            return R.fail(operation.getMessage());
         }
 
         return R.ok(true);
@@ -854,7 +828,7 @@ public class ConcisePhotometricNewWebSocket {
 
     }
 
-    private FPhotometricOriginDataInfo dealAndSendMessage(String deviceSerialNumber, String waveLength, String sampleKey, String luminosity, ChangeParam response, List<ChangeParam> params, String identity, String sampleNo) {
+    private FPhotometricOriginDataInfo dealAndSendMessage(String deviceSerialNumber, String waveLength, String sampleKey, String luminosity, ChangeParam response,String identity) {
 
         FPhotometricOriginDataInfo originDataInfo = new FPhotometricOriginDataInfo();
         originDataInfo.setMode(luminosity);
@@ -869,7 +843,7 @@ public class ConcisePhotometricNewWebSocket {
         Map<String, String> measureData = new HashMap<>();
 
         if (luminosity.equals(WaveLengthEnum.er.getCode())) {
-            String s = DataCountUtil.countErOrEs(response, WaveLengthEnum.er.getCode());
+            String s = response.getValue();
             measureData.put(waveLength + "-" + WaveLengthEnum.er.getCode(), s);
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.er.getCode());
@@ -881,7 +855,7 @@ public class ConcisePhotometricNewWebSocket {
             sendMessage(deviceSerialNumber, jsonObject);
 
         } else if (luminosity.equals(WaveLengthEnum.es.getCode())) {
-            String s = DataCountUtil.countErOrEs(response, WaveLengthEnum.es.getCode());
+            String s = response.getValue();
             measureData.put(waveLength + "-" + WaveLengthEnum.es.getCode(), s);
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.es.getCode());
@@ -893,37 +867,20 @@ public class ConcisePhotometricNewWebSocket {
             sendMessage(deviceSerialNumber, jsonObject);
 
         } else {
-            ChangeParam originRsd = new ChangeParam();
-            if (params != null) {
-                for (ChangeParam param : params) {
-                    if (param.getWl().equals(waveLength)) {
-                        BeanUtils.copyProperties(param, originRsd);
-                        break;
-                    }
-                }
+            String abs = response.getValue();
+            String tPercent = response.getOtherData();
+
+            if (luminosity.equals(WaveLengthEnum.tPercent.getCode())){
+                abs = response.getOtherData();
+                tPercent = response.getValue();
             }
 
-            DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
-            Map<String, String> darkInfo = info.getDarkInfo();
-            double z = 1.0;
-            try {
-                if (darkInfo != null && darkInfo.containsKey(waveLength)) {
-                    z = Double.parseDouble(darkInfo.get(waveLength));
-                }
-            } catch (Exception e) {
-                log.info("获取z值出错");
-            }
-
-
-
-            String tPercent = DataCountUtil.countTPercent(originRsd, response, z);
-            String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
-            measureData.put(waveLength + "-" + WaveLengthEnum.abs.getCode(), data);
+            measureData.put(waveLength + "-" + WaveLengthEnum.abs.getCode(), abs);
             measureData.put(waveLength + "-" + WaveLengthEnum.tPercent.getCode(), tPercent);
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
 
-            Double v = DataCountUtil.formatValue(digit, Double.valueOf(data));
+            Double v = DataCountUtil.formatValue(digit, Double.valueOf(abs));
             String absData = DataCountUtil.addZero(v, digit);
             jsonObject.put("value", absData);
 

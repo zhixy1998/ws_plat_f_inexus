@@ -15,7 +15,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
-import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
@@ -123,6 +123,7 @@ public class ConciseTimeNewWebSocket {
         Integer digit;
         String currentSampleId;
         FMeasureTask task;
+        Integer currentSerialNumber = 1;
 
         void clearData() {
             xData.clear();
@@ -179,7 +180,7 @@ public class ConciseTimeNewWebSocket {
         currentSampleCell=null;
         Constants.measureStopStatus.put(param.getDeviceSerialNumber(), true);
         String taskId = param.getTaskId();
-        infoService.updateDeviceCurrentStatus(param.getDeviceSerialNumber(),WebSocketOperationEnum.ConciseTimeMeasure.getOperation(), Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(param.getDeviceSerialNumber(),WebSocketOperationEnum.ConciseTimeMeasure.getOperation(), taskId, Constants.DEVICE_STATUS_MEASURE);
         connectionClosingMap.put(taskId, new AtomicBoolean(false));
         stopProcessingMap.put(taskId, new AtomicBoolean(false));
 
@@ -218,22 +219,22 @@ public class ConciseTimeNewWebSocket {
 
             FMeasureTask task = tMeasureTaskService.getById(taskId);
             if (task == null) {
-                sendError(sessionId,"任务不存在");
+                sendError(deviceSerialNumber,"任务不存在");
                 return;
             }
             context.task = task;
 
             // 设置参数
-            Result paramResult = timeSweepConciseService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
-            if (paramResult.getCode() != 200) {
-                sendError(sessionId,paramResult.getMessage());
-                return;
-            }
+//            Result paramResult = timeSweepConciseService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
+//            if (paramResult.getCode() != 200) {
+//                sendError(deviceSerialNumber,paramResult.getMessage());
+//                return;
+//            }
 
             // 查询方法参数
             FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
-                sendError(sessionId, "方法不存在");
+                sendError(deviceSerialNumber, "方法不存在");
                 return;
             }
 
@@ -333,6 +334,17 @@ public class ConciseTimeNewWebSocket {
                                           FTimeSweepParamter param, FTaskSpecimen sample, String updateBy) {
         context.clearData();
         context.currentSampleId = sample.getSpecimenKey();
+
+        // 获取当前样品的下一个序列号
+        FMeasureData lastData = tMeasureDataService.getOne(
+                new QueryWrapper<FMeasureData>()
+                        .eq("task_id", context.task.getId())
+                        .eq("sample_key", sample.getSpecimenKey())
+                        .orderByDesc("serial_number")
+                        .last("LIMIT 1")
+        );
+        context.currentSerialNumber = lastData != null ? lastData.getSerialNumber() + 1 : 1;
+
 
         // 检查是否需要设置样品池位置
         setupSamplePoolIfNeeded(session, context, sample, updateBy);
@@ -507,9 +519,6 @@ public class ConciseTimeNewWebSocket {
      */
     private void executeSingleMeasurement(String deviceSerialNumber, TimeScanContext context,
                                           FTimeSweepParamter param) {
-        if (!context.running.get()) {
-            return;
-        }
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.TimeMeasure.getType());
@@ -545,7 +554,10 @@ public class ConciseTimeNewWebSocket {
         }
         inputParam.setTotalTime(scanTime);
         inputParam.setIntervalSeconds(Double.parseDouble(param.getIntervalTime()));
-        devOperationUtilService.operation(inputParam);
+        R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
+        if (!r.getSuccess()) {
+            sendError(deviceSerialNumber,r.getMessage());
+        }
     }
 
     private void calculateAndPushData(String deviceSerialNumber, TimeScanContext context,
@@ -583,7 +595,19 @@ public class ConciseTimeNewWebSocket {
             }
             context.yData.add(yValue);
 
+            // 推送数据点
             pushDataPoint(deviceSerialNumber, xValue, yValue, context.currentSampleId, param, context.digit, yType);
+
+            // 每次推送后立即保存到数据库
+            handleTimePointDataStorage(
+                    deviceSerialNumber,
+                    context.task.getId(),
+                    context.currentSampleId,
+                    context.currentSerialNumber,  // 需要在context中添加这个字段
+                    xValue,
+                    yValue,
+                    calculate.getMeasureRsd()
+            );
 
         } catch (Exception e) {
             log.error("计算数据异常", e);
@@ -616,6 +640,136 @@ public class ConciseTimeNewWebSocket {
         log.info("推送数据点: {}", payload);
 
         sendMessage(deviceSerialNumber, payload);
+    }
+
+    /**
+     * 处理单点数据的数据库存储（首次创建，后续追加）
+     * @param deviceSerialNumber 设备编号
+     * @param taskId 任务ID
+     * @param sampleId 样品ID
+     * @param xValue 当前时间点
+     * @param yValue 当前测量值
+     * @param originalData 当前原始数据
+     */
+    private void handleTimePointDataStorage(String deviceSerialNumber, String taskId, String sampleId,
+                                            Integer serialNumber, BigDecimal xValue, BigDecimal yValue,
+                                            ChangeParam originalData) {
+        try {
+            // 构建当前点的结果字符串
+            String pointResult = xValue + "," + yValue;
+
+            // 查询是否已存在测量数据记录
+            QueryWrapper<FMeasureData> dataQuery = new QueryWrapper<>();
+            dataQuery.eq("task_id", taskId)
+                    .eq("sample_key", sampleId)
+                    .eq("serial_number", serialNumber);
+            FMeasureData existingMeasureData = tMeasureDataService.getOne(dataQuery);
+
+            if (existingMeasureData == null) {
+                // 第一次创建，新建记录
+
+                // 1. 创建测量数据记录
+                FMeasureData measureData = new FMeasureData();
+                measureData.setSerialNumber(serialNumber);
+                measureData.setTaskId(taskId);
+                measureData.setSampleKey(sampleId);
+
+                List<String> resultList = new ArrayList<>();
+                resultList.add(pointResult);
+                measureData.setOriginalCalculationData(JSON.toJSONString(resultList));
+
+                List<ChangeParam> originalList = new ArrayList<>();
+                originalList.add(originalData);
+                measureData.setInstrumentData(JSON.toJSONString(originalList));
+
+                measureData.setIsDelete("0");
+                measureData.setIsSave("0"); // 标记为未完成
+                tMeasureDataService.save(measureData);
+
+                // 2. 获取样品名称
+                FMeasureSample sample = tMeasureSampleService.getById(sampleId);
+                String sampleName = sample != null ? sample.getSampleName() : "样品";
+
+                // 3. 创建分析数据记录
+                FMeasureAnalysisData analysisData = new FMeasureAnalysisData();
+                analysisData.setAnalysisNumber(serialNumber);
+                analysisData.setAnalysisName(sampleName + "-" + serialNumber);
+                analysisData.setTaskId(taskId);
+                analysisData.setSampleKey(sampleId);
+                analysisData.setMeasureDataId(measureData.getId());
+                analysisData.setAnalysisParam(JSON.toJSONString(originalList));
+                analysisData.setAnalysisResult(JSON.toJSONString(resultList));
+                analysisData.setAnalysisType("5");
+                analysisData.setColor(ColorUtil.getRandomColor());
+                analysisData.setIsDelete("0");
+                analysisData.setIsSave("0");
+                tMeasureAnalysisDataService.save(analysisData);
+
+                // 4. 创建图片记录
+                FMeasureAnalysisImage analysisImage = new FMeasureAnalysisImage();
+                analysisImage.setAnalysisId(analysisData.getId());
+                tMeasureAnalysisImageService.save(analysisImage);
+
+                log.info("时间扫描首次创建数据点: sampleId={}, serialNumber={}", sampleId, serialNumber);
+
+            } else {
+                // 后续追加，更新已有记录
+
+                // 更新测量数据
+                String existingDataStr = existingMeasureData.getOriginalCalculationData();
+                List<String> existingData = new ArrayList<>();
+                if (existingDataStr != null && !"[]".equals(existingDataStr) && !existingDataStr.isEmpty()) {
+                    existingData = JSON.parseArray(existingDataStr, String.class);
+                }
+                existingData.add(pointResult);
+                existingMeasureData.setOriginalCalculationData(JSON.toJSONString(existingData));
+
+                // 更新仪器数据
+                String existingInstrumentStr = existingMeasureData.getInstrumentData();
+                List<ChangeParam> existingInstrument = new ArrayList<>();
+                if (existingInstrumentStr != null && !"[]".equals(existingInstrumentStr) && !existingInstrumentStr.isEmpty()) {
+                    existingInstrument = JSON.parseArray(existingInstrumentStr, ChangeParam.class);
+                }
+                existingInstrument.add(originalData);
+                existingMeasureData.setInstrumentData(JSON.toJSONString(existingInstrument));
+
+                tMeasureDataService.updateById(existingMeasureData);
+
+                // 更新分析数据
+                QueryWrapper<FMeasureAnalysisData> analysisQuery = new QueryWrapper<>();
+                analysisQuery.eq("task_id", taskId)
+                        .eq("sample_key", sampleId)
+                        .eq("analysis_number", serialNumber)
+                        .eq("analysis_type", "5");
+                FMeasureAnalysisData existingAnalysis = tMeasureAnalysisDataService.getOne(analysisQuery);
+
+                if (existingAnalysis != null) {
+                    String existingResultStr = existingAnalysis.getAnalysisResult();
+                    List<String> existingResult = new ArrayList<>();
+                    if (existingResultStr != null && !"[]".equals(existingResultStr) && !existingResultStr.isEmpty()) {
+                        existingResult = JSON.parseArray(existingResultStr, String.class);
+                    }
+                    existingResult.add(pointResult);
+                    existingAnalysis.setAnalysisResult(JSON.toJSONString(existingResult));
+
+                    String existingParamStr = existingAnalysis.getAnalysisParam();
+                    List<ChangeParam> existingParam = new ArrayList<>();
+                    if (existingParamStr != null && !"[]".equals(existingParamStr) && !existingParamStr.isEmpty()) {
+                        existingParam = JSON.parseArray(existingParamStr, ChangeParam.class);
+                    }
+                    existingParam.add(originalData);
+                    existingAnalysis.setAnalysisParam(JSON.toJSONString(existingParam));
+
+                    tMeasureAnalysisDataService.updateById(existingAnalysis);
+                }
+
+                log.debug("时间扫描追加数据点: sampleId={}, serialNumber={}, 当前总点数={}",
+                        sampleId, serialNumber, existingData.size());
+            }
+
+        } catch (Exception e) {
+            log.error("处理时间扫描单点数据存储异常", e);
+        }
     }
 
     /**
@@ -717,17 +871,11 @@ public class ConciseTimeNewWebSocket {
                 }
 
             // 保存测量数据
-            FMeasureData measureData = new FMeasureData();
-
-            FMeasureData lastData = tMeasureDataService.getOne(
-                    new QueryWrapper<FMeasureData>()
-                            .eq("task_id", context.task.getId())
-                            .eq("sample_key", sampleId)
-                            .orderByDesc("serial_number")
-                            .last("LIMIT 1")
-            );
-
-            measureData.setSerialNumber(lastData != null ? lastData.getSerialNumber() + 1 : 1);
+            FMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<FMeasureData>().eq("task_id", context.task.getId()).eq("sample_key", sampleId).last("limit 1"));
+            if (measureData == null) {
+                measureData = new FMeasureData();
+            }
+            measureData.setSerialNumber(1);
             measureData.setTaskId(context.task.getId());
             measureData.setSampleKey(sampleId);
             measureData.setInstrumentData(JSON.toJSONString(context.originalData));
@@ -743,19 +891,14 @@ public class ConciseTimeNewWebSocket {
             measureData.setIsDelete("0");
             measureData.setIsSave("1");
 
-            tMeasureDataService.save(measureData);
+            tMeasureDataService.updateById(measureData);
 
             // 保存分析数据
-            FMeasureAnalysisData analysisData = new FMeasureAnalysisData();
-            FMeasureAnalysisData lastAnalysis = tMeasureAnalysisDataService.getOne(
-                    new QueryWrapper<FMeasureAnalysisData>()
-                            .eq("task_id", context.task.getId())
-                            .eq("sample_key", sampleId)
-                            .orderByDesc("analysis_number")
-                            .last("LIMIT 1")
-            );
-
-            analysisData.setAnalysisNumber(lastAnalysis != null ? lastAnalysis.getAnalysisNumber() + 1 : 1);
+            FMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<FMeasureAnalysisData>().eq("task_id", context.task.getId()).eq("sample_key", sampleId).last("limit 1"));
+            if (analysisData == null) {
+                analysisData = new FMeasureAnalysisData();
+            }
+            analysisData.setAnalysisNumber(1);
 
             FMeasureSample sample = tMeasureSampleService.getById(sampleId);
             analysisData.setAnalysisName(sample != null ? sample.getSampleName() + "(" + analysisData.getAnalysisNumber() + ")" : "未知样品");
@@ -775,12 +918,14 @@ public class ConciseTimeNewWebSocket {
             analysisData.setIsDelete("0");
             analysisData.setIsSave("1");
 
-            tMeasureAnalysisDataService.save(analysisData);
+            tMeasureAnalysisDataService.updateById(analysisData);
 
             // 保存分析图片
-            FMeasureAnalysisImage image = new FMeasureAnalysisImage();
-            image.setAnalysisId(analysisData.getId());
-            tMeasureAnalysisImageService.save(image);
+            FMeasureAnalysisImage tMeasureAnalysisImage = tMeasureAnalysisImageService.getOne(new QueryWrapper<FMeasureAnalysisImage>().eq("analysis_id", analysisData.getId()));
+            if (tMeasureAnalysisImage == null) {
+                tMeasureAnalysisImage = new FMeasureAnalysisImage();
+            }
+            tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
 
             // 更新任务状态
             updateTaskStatus(context.task, sampleId, context.deviceSerialNumber);

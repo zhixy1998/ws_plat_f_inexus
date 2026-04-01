@@ -45,7 +45,6 @@ import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSo
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
 import com.persee.workstation.uv_inexus.websocket.measure.param.PhotoAndRationMetricWebsocketParam;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -141,7 +140,7 @@ public class GuidePhotometricWebSocket {
          isAvg = param.getIsAvg() != null && param.getIsAvg();
          isSd = param.getIsSd() != null && param.getIsSd();
          isRsd = param.getIsRsd() != null && param.getIsRsd();
-         infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.PhotoMetric.getOperation(), Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.PhotoMetric.getOperation(), taskId, Constants.DEVICE_STATUS_MEASURE);
 
          if (taskId == null) {
               sendError(deviceSerialNumber, "请创建任务");
@@ -221,13 +220,13 @@ public class GuidePhotometricWebSocket {
                       tMeasureSampleService.updateById(measureSample);
                   }
 
-                  R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-
-                  if (!setParams.getSuccess()) {
-
-                      sendError(deviceSerialNumber, "参数设置异常！");
-                      return;
-                  }
+//                  R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+//
+//                  if (!setParams.getSuccess()) {
+//
+//                      sendError(deviceSerialNumber, setParams.getMessage());
+//                      return;
+//                  }
 
                   if (parameter.getRepetitionPattern().equals("单池重复")) {
                       measure = singleSampleRepeatMeasure(measureSample, parameter, task, deviceSerialNumber);
@@ -306,12 +305,12 @@ public class GuidePhotometricWebSocket {
                  maxPoolNum = Collections.max(usefulLocation);
              }
              task.setDeviceSerialNumber(deviceSerialNumber);
-             R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-             if (!setParams.getSuccess()) {
-
-                 sendError(deviceSerialNumber, "参数设置异常！");
-                 return;
-             }
+//             R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+//             if (!setParams.getSuccess()) {
+//
+//                 sendError(deviceSerialNumber, setParams.getMessage());
+//                 return;
+//             }
              for (TaskSpecimen specimen : taskSpecimen) {
                  if (!isAutoChangePool && measureCount == 1) {
                      log.info("不自动切换样品池，只测一个就结束");
@@ -473,21 +472,8 @@ public class GuidePhotometricWebSocket {
 
 
             machineData.add(changeParam);
-            ChangeParam originRsd = new ChangeParam();
-            List<ChangeParam> params = new ArrayList<>();
-            if (StringUtils.hasText(task.getZeroParam())) {
-                params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-                if (params != null) {
-                    for (ChangeParam zero : params) {
-                        if (zero.getWl().equals(waveLength)) {
-                            BeanUtils.copyProperties(zero, originRsd);
-                            break;
-                        }
-                    }
-                }
-            }
 
-            PhotometricOriginDataInfo dataInfo =  dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), changeParam, params, null, sample.getSampleNumber());
+            PhotometricOriginDataInfo dataInfo =  dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), changeParam, null);
             dataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
 
             originDataList.add(dataInfo);
@@ -580,21 +566,9 @@ public class GuidePhotometricWebSocket {
 
 
                     machineData.add(changeParam);
-                    ChangeParam originRsd = new ChangeParam();
-                    List<ChangeParam> params = new ArrayList<>();
-                    if (StringUtils.hasText(task.getZeroParam())) {
-                        params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-                        if (params != null) {
-                            for (ChangeParam zero : params) {
-                                if (zero.getWl().equals(waveLength)) {
-                                    BeanUtils.copyProperties(zero, originRsd);
-                                    break;
-                                }
-                            }
-                        }
-                    }
+
                     //处理数据
-                    PhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), changeParam, params, DataIdentityEnums.middle.getIdentity() + "-" + i, sample.getSampleNumber());
+                    PhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), changeParam, DataIdentityEnums.middle.getIdentity() + "-" + i);
                     dataInfo.setMeasureTime(time);
                     dataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
 
@@ -614,7 +588,7 @@ public class GuidePhotometricWebSocket {
             //循环测完，开始计算平均值
             String name = WaveLengthEnum.getName(parameter.getLuminosity());
             if (!StringUtils.hasText(name)) {
-                name = "abs";
+                name = "Abs";
             }
             switch (name) {
                 case "Abs":
@@ -668,7 +642,7 @@ public class GuidePhotometricWebSocket {
                     Map<String, List<Double>> erValues = originDataList.stream()
                             .collect(Collectors.groupingBy(
                                     PhotometricOriginDataInfo::getWavelength,
-                                    Collectors.mapping(info -> Double.parseDouble(info.getData().get(info.getWavelength() + "-" + WaveLengthEnum.abs.getCode())), Collectors.toList())
+                                    Collectors.mapping(info -> Double.parseDouble(info.getData().get(info.getWavelength() + "-" + info.getMode())), Collectors.toList())
                             ));
                     for (String waveLength : waveLengths) {
                         PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();
@@ -775,7 +749,7 @@ public class GuidePhotometricWebSocket {
 
     }
 
-    private PhotometricOriginDataInfo dealAndSendMessage(String deviceSerialNumber, String waveLength, String sampleKey, String luminosity, ChangeParam response,List<ChangeParam> params, String identity, String sampleNo) {
+    private PhotometricOriginDataInfo dealAndSendMessage(String deviceSerialNumber, String waveLength, String sampleKey, String luminosity, ChangeParam response, String identity) {
         PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();
         originDataInfo.setMode(luminosity);
         originDataInfo.setWavelength(waveLength);
@@ -788,7 +762,7 @@ public class GuidePhotometricWebSocket {
         }
         Map<String, String> measureData = new HashMap<>();
         if (luminosity.equals(WaveLengthEnum.er.getCode())) {
-            String s = DataCountUtil.countErOrEs(response, WaveLengthEnum.er.getCode());
+            String s = response.getValue();
             measureData.put(waveLength + "-" + WaveLengthEnum.er.getCode(), s);
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.er.getCode());
@@ -801,7 +775,7 @@ public class GuidePhotometricWebSocket {
 
         }
         else if (luminosity.equals(WaveLengthEnum.es.getCode())) {
-            String s = DataCountUtil.countErOrEs(response, WaveLengthEnum.es.getCode());
+            String s = response.getValue();
             measureData.put(waveLength + "-" + WaveLengthEnum.es.getCode(), s);
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.es.getCode());
@@ -814,24 +788,21 @@ public class GuidePhotometricWebSocket {
 
         }
         else {
-            ChangeParam originRsd = new ChangeParam();
-            if (params != null) {
-                for (ChangeParam param : params) {
-                    if (param.getWl().equals(waveLength)) {
-                        BeanUtils.copyProperties(param, originRsd);
-                        break;
-                    }
-                }
+
+            String abs = response.getValue();
+            String tPercent = response.getOtherData();
+
+            if (luminosity.equals(WaveLengthEnum.tPercent.getCode())){
+                abs = response.getOtherData();
+                tPercent = response.getValue();
             }
 
-            String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);
-            String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
-            measureData.put(waveLength + "-" + WaveLengthEnum.abs.getCode(), data);
+            measureData.put(waveLength + "-" + WaveLengthEnum.abs.getCode(), abs);
             measureData.put(waveLength + "-" + WaveLengthEnum.tPercent.getCode(), tPercent);
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
 
-            Double v = DataCountUtil.formatValue(digit, Double.valueOf(data));
+            Double v = DataCountUtil.formatValue(digit, Double.valueOf(abs));
             String absData = DataCountUtil.addZero(v, digit);
             jsonObject.put("value", absData);
 
@@ -889,7 +860,7 @@ public class GuidePhotometricWebSocket {
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
 
         if (!operation.getSuccess()) {
-            return R.fail("参数设置出错！");
+            return R.fail(operation.getMessage());
         }
 
         return R.ok(true);
@@ -934,18 +905,16 @@ public class GuidePhotometricWebSocket {
 
 
    private void sendError(String deviceSerialNumber, String message) {
+        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.PhotoMetric.getOperation(), message);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("result", "finish");
 
-     webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.PhotoMetric.getOperation(), message);
+        WebSocketResponseVO vo = new WebSocketResponseVO();
 
-       infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-
-       JSONObject jsonObject = new JSONObject();
-       jsonObject.put("result", "finish");
-
-       WebSocketResponseVO vo = new WebSocketResponseVO();
-       vo.setOperation(WebSocketOperationEnum.RationMeasure.getOperation());
-       vo.setData(jsonObject);
-       webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
+        vo.setOperation(WebSocketOperationEnum.PhotoMetric.getOperation());
+        vo.setData(jsonObject);
+        webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
    }
     private static void initParams() {
      //初始化测量参数

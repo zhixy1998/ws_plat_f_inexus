@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
@@ -130,6 +131,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         if (currentStatus.equals(Constants.DEVICE_STATUS_IDLE)) {
             String deviceId = deviceInfoPO.getDeviceId();
             deviceManager.setDevCurrentUseType(deviceId, null);
+            deviceManager.setDevCurrentTaskId(deviceId, null);
         }
 
     }
@@ -144,6 +146,23 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
         String deviceId = deviceInfoPO.getDeviceId();
         deviceManager.setDevCurrentUseType(deviceId, useType);
+
+        dao.update(deviceInfoPO, queryWrapper);
+    }
+
+    @Override
+    public void updateDeviceCurrentStatus(String deviceSerialNumber, String useType, String taskId, Integer currentStatus) {
+        LambdaQueryWrapper<DeviceInfoPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DeviceInfoPO::getDeviceSerialNumber, deviceSerialNumber)
+                .last("limit 1");
+        DeviceInfoPO deviceInfoPO = dao.selectOne(queryWrapper);
+        deviceInfoPO.setDeviceCurrentStatus(currentStatus);
+
+        String deviceId = deviceInfoPO.getDeviceId();
+        deviceManager.setDevCurrentUseType(deviceId, useType);
+        if (taskId != null) {
+            deviceManager.setDevCurrentTaskId(deviceId, taskId);
+        }
 
         dao.update(deviceInfoPO, queryWrapper);
     }
@@ -240,7 +259,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             return R.fail(YamlMessageSource.getMessageStatic("00202007"));
         }
 
-        if (!status.equals(Constants.DEVICE_STATUS_DisConnect)) {
+        if (!status.equals(Constants.DEVICE_STATUS_DIS_CONNECT)) {
             Integer isActivated = info.getIsActivated();
             if (isActivated == null || isActivated == 0) {
                 //请先激活仪器
@@ -248,7 +267,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             }
 
             if (!status.equals(Constants.DEVICE_STATUS_INIT) && !info.getDeviceCurrentStatus().equals(Constants.CONNECT_DEVICE_STOP)) {
-                if (isInited == null || isInited == 0) {
+                if (isInited == null || isInited.equals(Constants.INIT_STATUS_NO)) {
                     log.info("未初始化");
                     //未初始化
                     return R.fail(YamlMessageSource.getMessageStatic("00202004"));
@@ -392,6 +411,8 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             ans.setConnectMode(1);
             ans.setMinWavelength("190");
             ans.setMaxWavelength("1100");
+            ans.setMaxLampWavelength("390");
+            ans.setMinLampWavelength("330");
             ans.setBandWidth(Collections.singletonList("2"));
             ans.setGain(Arrays.asList(1, 2, 3, 4));
             ans.setScanInterval(Arrays.asList("0.1", "0.2", "0.5", "1.0", "2.0", "5.0"));
@@ -412,6 +433,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             list.add(new DeviceConfParam(ScanSpeedEnum.FAST.getName(), ScanSpeedEnum.FAST.getCode()));
             list.add(new DeviceConfParam(ScanSpeedEnum.SUPER_FAST.getName(), ScanSpeedEnum.SUPER_FAST.getCode()));
             ans.setScanSpeed(list);
+            ans.setFilterWavelength(Arrays.asList(762, 555, 359));
             return R.ok(ans);
         }
 
@@ -435,13 +457,14 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         DeviceMeasureVO ans = new DeviceMeasureVO();
 
         ans.setBandWidth(deviceModelInfoPO.getSpacingWidth() == null ? null : deviceModelInfoPO.getSpacingWidth());
+        ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength() == null ? null : deviceModelInfoPO.getFilterWavelength());
 
         Integer devTypeId = deviceModelInfoPO.getDevTypeId();
 
         DeviceTypeInfoPO deviceTypeInfoPO = deviceTypeInfoDAO.selectById(devTypeId);
         ans = changeType(deviceTypeInfoPO);
         ans.setBandWidth(deviceModelInfoPO.getSpacingWidth());
-
+        ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength());
         return R.ok(ans);
     }
 
@@ -493,10 +516,12 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         ans.setLampType(lamp);
 
         List<DeviceConfParam> scanSpeed = new ArrayList<>();
-        po.getScanSpeed().forEach(i -> {
+
+        JSONObject speed = po.getScanSpeed();
+        speed.forEach((k, v) -> {
             DeviceConfParam param = new DeviceConfParam();
-            param.setParamName(i);
-            param.setParamValue(ScanSpeedEnum.getCodeByName(i));
+            param.setParamName(v.toString());
+            param.setParamValue(k);
             scanSpeed.add(param);
         });
         ans.setScanSpeed(scanSpeed);

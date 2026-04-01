@@ -43,7 +43,7 @@ public interface SpectrumConciseService {
     Result whetherSaveData(String taskId, Boolean isSave);
 
     // 创建草稿按钮接口
-    Result createDraftButton(String methodId,String taskId,String updateBy,String deviceSerialNumber);
+    Result createDraftButton(String methodId,String taskId,String updateBy);
 
     // 查询样品列表按钮
     Result querySampleListButton(String taskId);
@@ -61,7 +61,7 @@ public interface SpectrumConciseService {
     Result saveDraftButton(String taskId,String taskName);
 
     // 查询样品数据列表
-    Result querySampleDataList(String taskId,String type,Integer digit);
+    Result querySampleDataList(String taskId,String type,Integer digit,String deviceSerialNumber);
 
     // 删除样品列表接口
     Result deleteSampleListPort(String taskId, String sampleId, String analysisId);
@@ -132,7 +132,7 @@ public interface SpectrumConciseService {
     /**
      * 导出到word
      */
-    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit);
+    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit,String deviceSerialNumber);
 
     // 上传图片接口
     Result uploadImage(SpectrumImageUpload upload);
@@ -145,4 +145,7 @@ public interface SpectrumConciseService {
 
     // 仪器设置参数
     boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam);
+
+    // 查询已测样品数据列表
+    Result queryMeasuredSampleDataList(String taskId,String type,Integer digit,String deviceSerialNumber);
 }

@@ -111,7 +111,7 @@ public class ConciseZeroCalibrationNewWebSocket {
         String methodId = param.getMethodId();
         deviceSerialNumber = param.getDeviceSerialNumber();
 
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.ConciseZeroCalibration.getOperation(), taskId, Constants.DEVICE_STATUS_MEASURE);
 
         if (methodId == null || methodId.equals("")) {
             sendError(deviceSerialNumber, "方法编号不能为空");

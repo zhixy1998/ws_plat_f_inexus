@@ -39,7 +39,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/photometricMeasurement/")
-@Api("光度测量")
+@Api("向导模式-光度测量")
 public class PhotometricController {
 
     @Autowired
@@ -65,6 +65,12 @@ public class PhotometricController {
     @ApiOperation("保存方法参数接口")
     public Result<MeasurementCurrentInfoVO> applyMethod(@RequestBody PhotometricMethodParameterDto methodParam) {
         return photometricService.updateMethodParam(methodParam);
+    }
+
+    @GetMapping("setUpParametersPort")
+    @ApiOperation("设置参数接口")
+    public Result setUpParametersPort(@RequestParam String methodId, @RequestParam String deviceSerialNumber) {
+        return photometricService.setUpParametersPort(methodId, deviceSerialNumber);
     }
 
 
@@ -187,9 +193,10 @@ public class PhotometricController {
             @ApiParam(value = "数字参数（说明digit的业务含义，如：XX编号）", required = false)
             @RequestParam(value = "digit", required = false) Integer digit,
             @ApiParam(value = "选项参数（对应queryData的option）", required = false)
+            @RequestParam(value = "otherDigit") Integer otherDigit,
             @RequestParam(value = "option", required = false) java.util.List<String> option) throws Exception {
 
-        R<File> result = photometricService.downloadFileWithChildren(taskId, allDisplay, fileType, digit, option);
+        R<File> result = photometricService.downloadFileWithChildren(taskId, allDisplay, fileType, digit, otherDigit,option);
 
         if (result.getSuccess()) {
             File file = result.getData();

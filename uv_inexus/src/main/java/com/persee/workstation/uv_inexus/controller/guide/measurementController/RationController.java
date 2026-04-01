@@ -79,6 +79,12 @@ public class RationController {
         return rationService.updateMethodParam(methodParam);
     }
 
+    @GetMapping("setUpParametersPort")
+    @ApiOperation("设置参数接口")
+    public Result setUpParametersPort(@RequestParam String methodId, @RequestParam String deviceSerialNumber) {
+        return rationService.setUpParametersPort(methodId, deviceSerialNumber);
+    }
+
     @GetMapping("getSampleList")
     @ApiOperation("获取样本列表接口")
     public Result getSampleList(@RequestParam String taskId,
@@ -205,6 +211,17 @@ public class RationController {
         rationService.test(a, b);
 
         return Result.ok("测试成功");
+    }
+
+    @ApiOperation("查询可绑定的表头")
+    @GetMapping("queryTableHead")
+    public Result<List<HeadVO>> queryTableHead(@RequestParam String taskId) {
+        R<List<HeadVO>> r = rationService.queryBindTableHead(taskId);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
     }
 
     @ApiOperation("查询可绑定的方法参数")

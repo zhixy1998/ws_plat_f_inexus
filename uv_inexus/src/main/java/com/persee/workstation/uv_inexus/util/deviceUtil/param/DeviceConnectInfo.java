@@ -12,7 +12,7 @@ package com.persee.workstation.uv_inexus.util.deviceUtil.param;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.ScanWavelengthConfig;
-import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionResponseInfoVO;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.DetectionManyDevicesResponseInfoVO;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -103,6 +103,11 @@ public class DeviceConnectInfo {
      * 仪器当前使用类型
      */
     private String useType;
+
+    /**
+     * 当前测量任务id
+     */
+    private String currentTaskId;
     /**
      * 校零结果  键: 波长, 值: 校零参数 (保留 Map 结构！)
      */
@@ -122,7 +127,7 @@ public class DeviceConnectInfo {
     /**
      * 仪器当前状态
      */
-    private DetectionResponseInfoVO currentStatus;
+    private DetectionManyDevicesResponseInfoVO currentStatus;
     /**
      * 起始波长
      */

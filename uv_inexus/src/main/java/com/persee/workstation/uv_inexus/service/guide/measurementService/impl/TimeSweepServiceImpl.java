@@ -32,6 +32,7 @@ import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
@@ -43,6 +44,7 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
@@ -142,6 +144,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     private SamplePoolConfigService samplePoolConfigService;
     @Autowired
     private ConcisePublicUtilService concisePublicUtilService;
+
+    @Autowired
+    private DeviceManageService deviceManageService;
 
     @Value("1")
     String deleteType;
@@ -415,6 +420,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         SetParam setParam = new SetParam();
         setParam.setPhotoMode(Integer.valueOf(paramDto.getLuminosity()));
         setParam.setSetWl(Double.valueOf(paramDto.getWaveLength()));
+        if (paramDto.getMethodName()==null) {
+            return Result.fail("方法名称不能为空");
+        }
         boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
         if (!b) {
             log.error("下发参数失败,请查看是否连接仪器");
@@ -439,7 +447,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
         // 3. 比较参数
         if (compareParam(oldParam, newParam)) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00104001"));
+            return Result.ok();
         }
 
         boolean methodBoolean = false;
@@ -483,7 +491,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @return
      */
     @Override
-    public Result sampleListPort(String taskId,String type,Integer digit) {
+    public Result sampleListPort(String taskId,String type,Integer digit,String deviceSerialNumber) {
         // 先对前端传过来的数据进行校验
         if (taskId == null || taskId.equals("")) {
             //任务id不能为空
@@ -496,7 +504,16 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<SampleListVo> listVos = new ArrayList<>();
-
+        // 根据序列号查询对应的附件配置表信息
+        QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
+        wrapper.eq("device_serial_number", deviceSerialNumber);
+        SamplePoolConfigPO configPO = samplePoolConfigService.getOne(wrapper);
+        Boolean isAutoChangePool;
+        if (configPO == null) {
+            isAutoChangePool=false;
+        }else{
+            isAutoChangePool= configPO.getIsAutoChangePool();
+        }
         if (taskSpecimen != null) {
             for (TaskSpecimen taskSpeciman : taskSpecimen) {
                 if (taskSpeciman.getDeleteType().equals("1") && type == null) {
@@ -508,37 +525,47 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                     //样品不存在
                     return Result.fail(YamlMessageSource.getMessageStatic("0000000B"));
                 }
-                if (taskSpeciman.getIsTested().equals("0")) {
+                QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                queryWrapper.eq("task_id", task.getId());
+                queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
+                queryWrapper.eq("analysis_type", "5");
+                queryWrapper.orderByDesc("analysis_number");
+                if (type == null) {
+                    queryWrapper.eq("is_delete", "0");
+                }
+                queryWrapper.last("limit 1");
+                TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getOne(queryWrapper);
+                if (measureData == null ||taskSpeciman.getIsTested().equals("0")&& measureData.getAnalysisResult() == null) {
                     vo.setTitle(sample.getSampleName());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
                     vo.setAnalysisId(null);
                     vo.setAnalysisNumber(1);
-                    vo.setSampleLocation(sample.getSampleLocation());
+                    if (isAutoChangePool){
+                        vo.setSampleLocation(sample.getSampleLocation());
+                    }else{
+                        vo.setSampleLocation(null);
+                    }
                     vo.setColor(null);
                     vo.setData(null);
                     vo.setDeleteType("0");
                 } else {
-                    QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-                    queryWrapper.eq("task_id", taskId);
-                    queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
-                    queryWrapper.eq("analysis_type", "5");
-                    if (type == null) {
-                        queryWrapper.eq("is_delete", "0");
-                    }
-                    queryWrapper.orderByDesc("analysis_number");
-                    queryWrapper.last("limit 1");
-                    TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getOne(queryWrapper);
-                    if (measureData == null) {
-                        continue;
-                    }
                     vo.setTitle(sample.getSampleName());
                     vo.setAnalysisId(measureData.getId());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
-                    vo.setSampleLocation(sample.getSampleLocation());
+                    if (isAutoChangePool){
+                        vo.setSampleLocation(sample.getSampleLocation());
+                    }else{
+                        vo.setSampleLocation(null);
+                    }
                     vo.setAnalysisNumber(measureData.getAnalysisNumber());
                     vo.setColor(measureData.getColor());
-                    vo.setData(getSampleData(measureData, digit));
-                    vo.setOriginalData(getOriginalSampleData(measureData, digit));
+                    if (measureData.getAnalysisResult() == null) {
+                        vo.setData(null);
+                        vo.setOriginalData(null);
+                    } else {
+                        vo.setData(getSampleData(measureData, digit));
+                        vo.setOriginalData(getOriginalSampleData(measureData, digit));
+                    }
                     vo.setDeleteType(taskSpeciman.getDeleteType());
                 }
                 vo.setType("0");
@@ -775,7 +802,13 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
         TimeSweepParamter timeSweepParamter = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), TimeSweepParamter.class);
-
+        // 仪器下发参数校验
+        if (deviceSerialNumber!=null&& !deviceSerialNumber.isEmpty()){
+            R rdata = IssueCheckParam(timeSweepParamter, deviceSerialNumber);
+            if (!rdata.getSuccess()) {
+                return Result.checkFail(rdata.getData());
+            }
+        }
         // 设置参数
         DevOperationInputParam param = new DevOperationInputParam();
         param.setOperationType(OperationTypeEnums.SetParam.getType());
@@ -1273,7 +1306,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail(YamlMessageSource.getMessageStatic("00100011"));
         }
         if (paramDto.getHeight() == null) {
-            paramDto.setHeight(Double.parseDouble(confVO.getPeakValleyDiff()));
+            paramDto.setHeight(confVO.getPeakValleyDiff());
         }
         if (paramDto.getDistance() == null || paramDto.getDistance().isEmpty()) {
             paramDto.setDistance(confVO.getPeakInterval());
@@ -1284,10 +1317,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             //峰谷间距不可以小于1
             return Result.fail(YamlMessageSource.getMessageStatic("00100012"));
         }
-        if (paramDto.getHeight() > 100) {
+        Double height = Double.valueOf(paramDto.getHeight());
+        if (height> 100) {
             return Result.fail(YamlMessageSource.getMessageStatic("00100027"));
         }
-        paramDto.setHeight(paramDto.getHeight() / 100);
+        paramDto.setHeight(String.valueOf(height / 100));
         TMeasureAnalysisData tMeasureAnalysisData = tMeasureAnalysisDataService.getById(paramDto.getDataId());
         if (tMeasureAnalysisData==null){
             //测量数据不存在
@@ -1445,6 +1479,12 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             //没有找到该分析数据
             return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
         }
+        // 波长范围校验
+        Result validateResult = validateGaugePointsRange(paramDto.getGaugePoints(), analysisData);
+        if (validateResult != null) {
+            return validateResult; // 校验失败，返回错误信息
+        }
+
         gaugePointJson = analysisData.getGaugePoint();
         rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
 
@@ -1999,7 +2039,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             //请输入点数
             return Result.fail(YamlMessageSource.getMessageStatic("00000039"));
         }
-        if (Double.valueOf(paramDto.getCoefficient()) > Double.valueOf(paramDto.getPointNum())) {
+        if (Double.valueOf(paramDto.getCoefficient()) >= Double.valueOf(paramDto.getPointNum())) {
             //系数不能大于点数
             return Result.fail(YamlMessageSource.getMessageStatic("0000003A"));
         }
@@ -2139,7 +2179,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             //请输入点数
             return Result.fail(YamlMessageSource.getMessageStatic("00000039"));
         }
-        if (Double.valueOf(paramDto.getCoefficient()) > Double.valueOf(paramDto.getPointNum())) {
+        if (Double.valueOf(paramDto.getCoefficient()) >= Double.valueOf(paramDto.getPointNum())) {
             //系数不能大于点数
             return Result.fail(YamlMessageSource.getMessageStatic("0000003A"));
         }
@@ -2442,7 +2482,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @param fileType 导出格式（word/txt/xlsx）
      * @return 生成的文件对象
      */
-    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds) {
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds,String deviceSerialNumber, Integer digit) {
         // log.info("===== 导出流程开始 =====");
         // log.info("开始导出，taskId: {}, fileType: {}, 需要筛选的analysisId数量: {}",
         // taskId, fileType, analysisIds != null ? analysisIds.size() : 0);
@@ -2491,7 +2531,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         List<SampleListVo> allSamples = new ArrayList<>();
 
         // 处理sampleListPort数据
-        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, null);
+        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, digit,deviceSerialNumber);
         if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
             // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
             allSamples.addAll(sampleListResult.getData());
@@ -2744,6 +2784,14 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
+        // 仪器下发参数校验
+        if (methodDto.getDeviceSerialNumber()!=null&& !methodDto.getDeviceSerialNumber().isEmpty()){
+            R rdata = IssueCheckParam(timeSweepParamter, methodDto.getDeviceSerialNumber());
+            if (!rdata.getSuccess()) {
+                return Result.checkFail(rdata.getData());
+            }
+        }
+
         if (updateBy.length()>=256){
             //用户名过长！
             return Result.fail(YamlMessageSource.getMessageStatic("00305001"));
@@ -3381,8 +3429,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     // 保留原有的downloadWord方法，并适配新参数
-    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds) {
-        return downloadFile(taskId, allDisplay, "word", analysisIds);
+    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds,String deviceSerialNumber,Integer digit) {
+        return downloadFile(taskId, allDisplay, "word", analysisIds,deviceSerialNumber,digit);
     }
 
 
@@ -3614,21 +3662,24 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 // 提取字段原始值（不预设默认值，完全保留数据源状态）
                 String identity = head.getIdentity();
                 Object originalValue = map.get(identity);
-                String cellData;
+                Object cellData;
 
                 // 核心逻辑：空值处理（null/空字符串/"null" 统一替换为"-"，其他保留原始值）
                 if (originalValue == null) {
                     cellData = "-";
                 } else {
-                    // 原始值直接转字符串（不做枚举转换、前缀拼接等额外处理）
-                    cellData = originalValue.toString();
-                    // 清除Excel解析异常的特殊字符（换行/制表符，不修改原始业务内容）
-                    cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
-                    // 处理空字符串或"null"（不区分大小写）
-                    if (cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                        cellData = "-";
+                    // 如果是数字字符串，尝试转换为 Double，让 Excel 识别为数值类型
+                    cellData = convertToNumberIfNeeded(originalValue.toString());
+                    // 清除 Excel 解析异常的特殊字符（换行/制表符，不修改原始业务内容）
+                    if (cellData instanceof String) {
+                        cellData = ((String) cellData).replace("\r", "").replace("\n", "").replace("\t", " ");
+                        // 处理空字符串或"null"（不区分大小写）
+                        if (((String) cellData).trim().isEmpty() || "null".equalsIgnoreCase((String) cellData)) {
+                            cellData = "-";
+                        }
                     }
                 }
+
 
                 rowData.add(cellData);
             }
@@ -3666,7 +3717,26 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return "docx";
         }
     }
+    /**
+     * 尝试将字符串转换为数值类型
+     * @param value 待转换的字符串
+     * @return 如果是有效数字则返回 Double，否则返回原字符串
+     */
+    private Object convertToNumberIfNeeded(String value) {
+        if (value == null || value.trim().isEmpty() || "-".equals(value)) {
+            return value;
+        }
 
+        try {
+            // 尝试去除空格
+            String trimmed = value.trim();
+            // 尝试转换为 Double
+            return Double.parseDouble(trimmed);
+        } catch (NumberFormatException e) {
+            // 转换失败，返回原字符串
+            return value;
+        }
+    }
     /**
      * 添加光度模式
      * @param ans
@@ -3893,9 +3963,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             if (totalNumber <= 0) {
                 return R.fail("扫描总个数必须大于0，当前值：" + totalNumber);
             }
-            if (totalNumber > 9999) {
-                return R.fail("扫描总个数不能超过9999，当前值：" + totalNumber);
-            }
 
             // 验证扫描总时长、时间间隔和总个数的关系
             if (parameter.getScanUnit().equals("1")) { // 秒模式
@@ -3920,12 +3987,12 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
             // 根据单位设置最大扫描时长限制
             if ("0".equals(scanUnit)) { // 分
-                if (scanTime > 1440) { // 最大24小时
-                    return R.fail("扫描总时长（分）不能超过1440分钟（24小时），当前值：" + scanTime);
+                if (scanTime > 10000) {
+                    return R.fail("扫描总时长（分）不能超过10000分钟，当前值：" + scanTime);
                 }
             } else { // 秒
-                if (scanTime > 3600) { // 最大1小时
-                    return R.fail("扫描总时长（秒）不能超过3600秒（1小时），当前值：" + scanTime);
+                if (scanTime > 10000) {
+                    return R.fail("扫描总时长（秒）不能超过10000秒，当前值：" + scanTime);
                 }
             }
 
@@ -4031,5 +4098,124 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 Objects.equals(oldParam.getIntervalTime(), newParam.getIntervalTime()) &&
                 Objects.equals(oldParam.getTotalNumber(), newParam.getTotalNumber()) &&
                 Objects.equals(oldParam.getMultiPoolMode(), newParam.getMultiPoolMode());
+    }
+
+
+    /**
+     * 校验波长范围是否超限
+     * @param gaugePoints
+     * @param analysisData
+     * @return
+     */
+    private Result validateGaugePointsRange(List<String> gaugePoints, TMeasureAnalysisData analysisData) {
+        // 从原始数据中解析波长范围
+        List<String> rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+        if (rawData == null || rawData.isEmpty()) {
+            return Result.fail("原始数据为空");
+        }
+
+        // 获取所有波长点并找出最小和最大值
+        double minWave = Double.MAX_VALUE;
+        double maxWave = -Double.MAX_VALUE;
+
+        for (String dataPoint : rawData) {
+            String[] split = dataPoint.split(",");
+            try {
+                double wave = Double.parseDouble(split[0]);
+                minWave = Math.min(minWave, wave);
+                maxWave = Math.max(maxWave, wave);
+            } catch (NumberFormatException e) {
+                return Result.fail("原始数据格式错误：" + dataPoint);
+            }
+        }
+
+        // 验证每个标记点
+        for (String xStr : gaugePoints) {
+            try {
+                double x = Double.parseDouble(xStr);
+                // 允许有0.01的浮点数误差
+                if (x < minWave - 0.01 || x > maxWave + 0.01) {
+                    String message = String.format("标记点 %.2f 超出时间范围 [%.2f, %.2f]",
+                            x, minWave, maxWave);
+                    return Result.fail(message);
+                }
+            } catch (NumberFormatException e) {
+                return Result.fail("标记点格式错误：" + xStr);
+            }
+        }
+
+        return null; // 校验通过
+    }
+
+    /**
+     * 下发给仪器的参数校验
+     * @param param
+     * @param deviceSerialNumber
+     * @return
+     */
+    private R IssueCheckParam(TimeSweepParamter param, String deviceSerialNumber) {
+        Boolean result = true;
+        List<String> errorMessages = new ArrayList<>();
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!deviceMeasureVOR.getSuccess()) {
+            return R.fail(deviceMeasureVOR.getMessage());
+        }
+        DeviceMeasureVO deviceMeasureVO = deviceMeasureVOR.getData();
+        // 1. 光度模式是否存在
+        boolean a = deviceMeasureVO.getLuminosity().stream()
+                .anyMatch(obj -> obj.getParamValue().equals(param.getLuminosity()));
+        if (!a) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该光度模式");
+        }
+        // 2. 波长范围是否超出限制
+        Double waveLength = Double.parseDouble(param.getWaveLength());
+        Double maxWavelength =  Double.parseDouble(deviceMeasureVO.getMaxWavelength());
+        Double minWavelength =  Double.parseDouble(deviceMeasureVO.getMinWavelength());
+        if (waveLength > maxWavelength || waveLength < minWavelength) {
+            result = result ? false : result;
+            errorMessages.add("波长范围超出限制, 最大值: "+maxWavelength+"  最小值: "+minWavelength);
+        }
+        // 3. 光谱带宽是否存在
+        if (!deviceMeasureVO.getBandWidth().contains(param.getSpectralBandwidth())) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该光谱带宽");
+        }
+        // 4. 响应时间是否存在
+        if (!deviceMeasureVO.getResponseTime().contains(param.getResponseTime())) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该响应时间");
+        }
+        // 5. 换灯波长是否超出限制
+        Double lampWaveLength = Double.parseDouble(param.getChangeLampWaveLength());
+        Double maxLampWavelength =  Double.parseDouble(deviceMeasureVO.getMaxLampWavelength());
+        Double minLampWavelength =  Double.parseDouble(deviceMeasureVO.getMinLampWavelength());
+        if (lampWaveLength > maxLampWavelength || lampWaveLength < minLampWavelength) {
+            result = result ? false : result;
+            errorMessages.add("换灯波长超出限制, 最大值: "+maxLampWavelength+"  最小值: "+minLampWavelength);
+        }
+        // 7. 在光度模式为Es/Er模式下的情况
+        if (param.getLuminosity().equals(Constants.PARAM_THREE)|| param.getLuminosity().equals(Constants.PARAM_FOUR)) {
+            // 7.1 能量灯是否存在
+            boolean b = deviceMeasureVO.getLampType().stream()
+                    .anyMatch(obj -> obj.getParamValue().equals(param.getEnergyLamp()));
+            if (!b) {
+                result = result ? false : result;
+                errorMessages.add("当前仪器不支持该能量灯");
+            }
+
+            // 7.2 增益是否存在
+            if (!deviceMeasureVO.getGain().contains(param.getGain())) {
+                result = result ? false : result;
+                errorMessages.add("当前仪器不支持该增益数值");
+            }
+        }
+
+        if (result){
+            return R.ok(true);
+        }else {
+            return R.fail(errorMessages);
+        }
+
     }
 }

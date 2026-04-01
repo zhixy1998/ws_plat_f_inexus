@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.util.StringUtils;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -27,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
@@ -42,6 +42,7 @@ import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
  * 1. 仅有权限通过时才记录日志（复用ButtonPermissionAspect的权限校验逻辑）
  * 2. 读取operateType，动态匹配permissionMapping，生成对应日志描述
  * 3. 新增operateTypeExt纯占位字段（带中文映射），支持{operateTypeExt}占位符
+ * 4. 优化参数记录：过滤MultipartFile类型参数，避免序列化错误
  */
 @Aspect
 @Component
@@ -187,7 +188,7 @@ public class OperateLogAspect {
                     String methodName = signature.getName();
                     logPO.setMethod(className + "." + methodName);
 
-                    // 优化：记录请求参数（解决超长问题）
+                    // 优化：记录请求参数（解决超长+MultipartFile序列化问题）
                     if (operateLog.recordParams()) {
                         logPO.setParams(buildParamsJson(joinPoint.getArgs()));
                     }
@@ -212,7 +213,7 @@ public class OperateLogAspect {
 
                 // 记录返回结果
                 if (operateLog.recordParams()) {
-                    String resultJson = JSON.toJSONString(result, SerializerFeature.DisableCircularReferenceDetect);
+                    String resultJson = buildResultJson(result);
                     logPO.setResult(resultJson);
                 }
             }
@@ -323,7 +324,7 @@ public class OperateLogAspect {
     }
 
     /**
-     * 构建参数JSON（精简超长参数，避免数据库字段溢出）
+     * 构建参数JSON（优化：1. 过滤MultipartFile避免序列化错误 2. 精简超长参数）
      */
     private String buildParamsJson(Object[] args) {
         if (args == null || args.length == 0) {
@@ -331,9 +332,21 @@ public class OperateLogAspect {
         }
 
         try {
-            // 针对不同参数类型做精简处理
+            // 第一步：处理MultipartFile类型参数，避免序列化错误
+            Object[] safeArgs = new Object[args.length];
+            for (int i = 0; i < args.length; i++) {
+                Object arg = args[i];
+                if (arg != null && arg.getClass().getName().contains("MultipartFile")) {
+                    // 过滤MultipartFile类型，替换为可读字符串，避免序列化失败
+                    safeArgs[i] = "[MultipartFile: " + arg.toString() + "]";
+                } else {
+                    safeArgs[i] = arg;
+                }
+            }
+
+            // 第二步：针对不同参数类型做精简处理，避免数据库字段溢出
             StringBuilder paramsBuilder = new StringBuilder();
-            for (Object arg : args) {
+            for (Object arg : safeArgs) {
                 if (arg == null) {
                     paramsBuilder.append("null,");
                     continue;
@@ -350,12 +363,13 @@ public class OperateLogAspect {
                 else if (arg instanceof Map) {
                     Map<?, ?> map = (Map<?, ?>) arg;
                     int size = map.size();
-                    paramsBuilder.append(String.format("Map(size=%d):%s,", size, map.toString().length() > 200 ? map.toString().substring(0, 200) + "..." : map.toString()));
+                    String mapStr = map.toString().length() > 200 ? map.toString().substring(0, 200) + "..." : map.toString();
+                    paramsBuilder.append(String.format("Map(size=%d):%s,", size, mapStr));
                 }
                 // 3. 普通DTO/POJO：序列化后截断
                 else {
                     String json = JSON.toJSONString(arg, SerializerFeature.DisableCircularReferenceDetect);
-                    paramsBuilder.append(json.length() > 500 ? json.substring(0, 500) + "...," : json + ",");
+                    paramsBuilder.append(json.length() > 500 ? json.substring(0, 500) + "...,": json + ",");
                 }
             }
 
@@ -364,6 +378,36 @@ public class OperateLogAspect {
         } catch (Exception e) {
             log.warn("构建参数JSON失败，使用默认序列化", e);
             return JSON.toJSONString(args, SerializerFeature.DisableCircularReferenceDetect);
+        }
+    }
+    
+    /**
+     * 构建返回结果JSON（优化：过滤InputStreamResource等不可序列化类型）
+     */
+    private String buildResultJson(Object result) {
+        if (result == null) {
+            return "null";
+        }
+
+        try {
+            // 处理常见的不可序列化类型
+            if (result.getClass().getName().contains("InputStreamResource") || 
+                result.getClass().getName().contains("FileInputStream") ||
+                result.getClass().getName().contains("ByteArrayInputStream")) {
+                return "[StreamResource: 二进制流数据]";
+            }
+            
+            // 处理ResponseEntity类型
+            if (result.getClass().getName().contains("ResponseEntity")) {
+                return "[ResponseEntity: HTTP响应对象]";
+            }
+            
+            // 普通对象序列化
+            String json = JSON.toJSONString(result, SerializerFeature.DisableCircularReferenceDetect);
+            return json.length() > 500 ? json.substring(0, 500) + "..." : json;
+        } catch (Exception e) {
+            log.warn("构建返回结果JSON失败，使用默认序列化", e);
+            return "[Result: 序列化失败]";
         }
     }
 

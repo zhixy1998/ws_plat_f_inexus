@@ -82,14 +82,8 @@ public class TimeSweepController {
     @OperateLog(module = "实验测试-向导模式-时间扫描-应用方法", description = "执行实验测试-向导模式-时间扫描-应用方法操作", recordParams = true)
     @PostMapping("updateMethodParameter")
     @ApiOperation("修改方法参数接口")
-    public Result updateMethodParameter(@Valid @RequestBody TimeSweepMethodParameterDto params, BindingResult bindingResult) {
+    public Result updateMethodParameter( @RequestBody TimeSweepMethodParameterDto params) {
         // 校验参数
-        if (bindingResult.hasErrors()) {
-            String errorMsg = bindingResult.getFieldErrors().stream()
-                    .map(error ->  error.getDefaultMessage())
-                    .collect(Collectors.joining("; "));
-            return Result.fail("参数校验失败: " + errorMsg);
-        }
         return timeSweepService.updateMethodParameter(params);
     }
 
@@ -99,8 +93,9 @@ public class TimeSweepController {
     @ApiOperation("获取样本列表接口")
     public Result sampleListPort(@RequestParam String taskId,
                                  @RequestParam(required = false) String type,
-                                 @RequestParam(required = false) Integer digit) {
-        return timeSweepService.sampleListPort(taskId,type, digit);
+                                 @RequestParam(required = false) Integer digit,
+                                 @RequestParam String deviceSerialNumber) {
+        return timeSweepService.sampleListPort(taskId,type, digit,deviceSerialNumber);
     }
 
     @GetMapping("deleteSampleListPort")
@@ -117,7 +112,7 @@ public class TimeSweepController {
         return timeSweepService.changeTheListPort(taskId,type, digit);
     }
 
-    @DeleteMapping("deleteChangeListPort")
+    @GetMapping("deleteChangeListPort")
     @ApiOperation("删除变换列表接口")
     public Result deleteChangeListPort(@RequestParam String analysisId) {
         return timeSweepService.deleteChangeListPort(analysisId);
@@ -125,7 +120,10 @@ public class TimeSweepController {
 
     @GetMapping("restoreDeletedListData")
     @ApiOperation("恢复已删除数据接口")
-    public Result restoreDeletedListData(@RequestParam String taskId,@RequestParam String sampleId,@RequestParam String type,@RequestParam String analysisId){
+    public Result restoreDeletedListData(@RequestParam String taskId,
+                                         @RequestParam(required = false) String sampleId,
+                                         @RequestParam String type,
+                                         @RequestParam String analysisId){
         return timeSweepService.restoreDeletedListData(taskId,sampleId,type,analysisId);
     }
 
@@ -187,7 +185,14 @@ public class TimeSweepController {
 
     @PostMapping("seekingPeaksAndValleysPort")
     @ApiOperation("寻峰寻谷接口")
-    public Result seekingPeaksAndValleysPort(@RequestBody SeekingPeaksValleysDto paramDto){
+    public Result seekingPeaksAndValleysPort(@Valid @RequestBody SeekingPeaksValleysDto paramDto,
+                                             BindingResult bindingResult){
+        if (bindingResult.hasErrors()) {
+            String errorMsg = bindingResult.getFieldErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .collect(Collectors.joining("; "));
+            return Result.fail("参数校验失败: " + errorMsg);
+        }
         return timeSweepService.seekingPeaksAndValleysPort(paramDto);
     }
 
@@ -296,10 +301,12 @@ public class TimeSweepController {
             @ApiParam(value = "筛选的analysisId列表（多个ID用逗号分隔，如123,456）", required = false) 
             @RequestParam(value = "analysisIds", required = false) List<String> analysisIds,
             @ApiParam(value = "导出格式（word/excel/txt，默认word）", required = false) 
-            @RequestParam(required = false) String fileType) throws Exception {
+            @RequestParam(required = false) String fileType,
+            @RequestParam Integer digit,
+            @RequestParam String deviceSerialNumber) throws Exception {
         
         // 调用 Service 层的多格式导出方法
-        R<File> result = timeSweepService.downloadFile(taskId, allDisplay, fileType, analysisIds);
+        R<File> result = timeSweepService.downloadFile(taskId, allDisplay, fileType, analysisIds,deviceSerialNumber,digit);
         
         if (result.getSuccess()) {
             File file = result.getData();

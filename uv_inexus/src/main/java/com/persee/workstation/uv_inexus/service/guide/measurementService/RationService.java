@@ -12,6 +12,7 @@ package com.persee.workstation.uv_inexus.service.guide.measurementService;
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
@@ -42,6 +43,14 @@ public interface RationService {
      * 修改方法并保存
      */
     Result<MeasurementCurrentInfoVO> updateMethodParam(MethodParamsDto methodDto);
+
+    /**
+     * 设置方法参数接口
+     * @param methodId
+     * @param deviceSerialNumber
+     * @return
+     */
+    Result setUpParametersPort(String methodId, String deviceSerialNumber);
 
     /**
      * 检查方法参数
@@ -149,7 +158,7 @@ public interface RationService {
     String fitDataRounding(String fitConcentration, RationParameter parameter);
 
 
-    R<List<RationCountDataInfo>> formula(List<RationWavelengthDataInfo> vo, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Integer digit);
+    R<List<RationCountDataInfo>> formula(List<RationCountDataInfo> countData, List<RationWavelengthDataInfo> wavelengthData,  TMeasureSample sample, TMeasureTask task, RationParameter parameter, Double minuend,Integer digit);
 
     R<Boolean> changeStandSampleDataDigit(String taskId, Integer digit);
 
@@ -158,6 +167,11 @@ public interface RationService {
     Result zero(String deviceSerialNumber, String methodId, String taskId, String updateBy);
 
     Result zero2(String deviceSerialNumber, String methodId, String taskId, String updateBy);
+
+    /**
+     * 获取绑定的表头
+     */
+    R<List<HeadVO>> queryBindTableHead(String taskId);
 
     /**
      * 查询可绑定的方法参数
@@ -178,8 +192,9 @@ public interface RationService {
     /**
      * 导出到word
      */
-    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit);
+    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit) throws BusinessException;
 
     void test(String a, String b);
+
 
 }

@@ -67,18 +67,12 @@ public class TimeSweepConciseController {
         return timeSweepConciseService.searchMethodButton(pageNum,pageSize,updateBy,measureType,methodName);
     }
 
+
     @ButtonPermission("timeScanApplyMethod")
     @OperateLog(module = "实验测试-经典模式-时间扫描-应用方法", description = "执行实验测试-经典模式-时间扫描-应用方法记录", recordParams = true)
     @PostMapping("applyMethod")
     @ApiOperation("应用接口")
-    public Result applyMethod(@Valid @RequestBody TimeUseMethodDto paramDto, BindingResult bindingResult) {
-        // 校验参数
-        if (bindingResult.hasErrors()) {
-            String errorMsg = bindingResult.getFieldErrors().stream()
-                    .map(error ->  error.getDefaultMessage())
-                    .collect(Collectors.joining("; "));
-            return Result.fail("参数校验失败: " + errorMsg);
-        }
+    public Result applyMethod(@RequestBody TimeUseMethodDto paramDto) {
         return timeSweepConciseService.use(paramDto);
     }
 
@@ -92,9 +86,8 @@ public class TimeSweepConciseController {
     @ApiOperation("创建草稿按钮接口")
     public Result createDraftButton(@RequestParam String methodId,
                                     @RequestParam(required = false) String taskId,
-                                    @RequestParam String updateBy,
-                                    @RequestParam String deviceSerialNumber) {
-        return timeSweepConciseService.createDraftButton(methodId,taskId,updateBy,deviceSerialNumber);
+                                    @RequestParam String updateBy) {
+        return timeSweepConciseService.createDraftButton(methodId,taskId,updateBy);
     }
 
     @GetMapping("querySampleList")
@@ -143,8 +136,9 @@ public class TimeSweepConciseController {
     @ApiOperation("查询样品数据列表")
     public Result queryNearestSampleData(@RequestParam String taskId,
                                          @RequestParam(required = false) String type,
-                                         @RequestParam(required = false) Integer digit) {
-        return timeSweepConciseService.querySampleDataList(taskId,type,digit);
+                                         @RequestParam(required = false) Integer digit,
+                                         @RequestParam String deviceSerialNumber) {
+        return timeSweepConciseService.querySampleDataList(taskId,type,digit,deviceSerialNumber);
     }
 
     @GetMapping("deleteSampleListPort")
@@ -210,7 +204,14 @@ public class TimeSweepConciseController {
 
     @PostMapping("seekingPeaksAndValleysPort")
     @ApiOperation("寻峰寻谷接口")
-    public Result seekingPeaksAndValleysPort(@RequestBody FSeekingPeaksValleysDto paramDto){
+    public Result seekingPeaksAndValleysPort(@Valid @RequestBody FSeekingPeaksValleysDto paramDto,
+                                             BindingResult bindingResult){
+        if (bindingResult.hasErrors()) {
+            String errorMsg = bindingResult.getFieldErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .collect(Collectors.joining("; "));
+            return Result.fail("参数校验失败: " + errorMsg);
+        }
         return timeSweepConciseService.peakSearchingPort(paramDto);
     }
 
@@ -296,10 +297,11 @@ public class TimeSweepConciseController {
             @RequestParam(required = false) String fileType,
             // 新增 digit 参数（根据实际需求调整 required 和描述）
             @ApiParam(value = "修约", required = false) 
-            @RequestParam(value = "digit", required = false) Integer digit) throws Exception {
+            @RequestParam(value = "digit", required = false) Integer digit,
+            @RequestParam String deviceSerialNumber) throws Exception {
         
         // 调用 Service 层的多格式导出方法
-        R<File> result = timeSweepConciseService.downloadFile(taskId, allDisplay, fileType, analysisIds, digit);
+        R<File> result = timeSweepConciseService.downloadFile(taskId, allDisplay, fileType, analysisIds, digit,deviceSerialNumber);
         
         if (result.getSuccess()) {
             File file = result.getData();

@@ -81,4 +81,10 @@ public class TaskManagement extends BasePO {
     @TableField(exist = false)
     @ApiModelProperty(value = "模板名称")
     private String templateName;
+    /**
+     * 检测任务类型，1检定校准2开箱验收3出厂检验
+     */
+    @TableField("task_type")
+    @ApiModelProperty(value = "检测任务类型，1检定校准2开箱验收3出厂检验")
+    private String taskType;
 }

@@ -39,6 +39,8 @@ public enum WebSocketOperationEnum {
 
 
     DeviceStatus("deviceStatus", "仪器实时状态值"),
+    //仪器校准
+    Calibration("calibration", "仪器校准"),
     //通用
     Common("Common", "通用");
 

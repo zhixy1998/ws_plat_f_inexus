@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.persee.workstation.uv_inexus.dto.parseReport.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -34,14 +35,6 @@ import com.persee.workstation.uv_inexus.dao.guide.parseReport.DetectionDao;
 import com.persee.workstation.uv_inexus.dao.guide.parseReport.QualityControlDao;
 import com.persee.workstation.uv_inexus.dao.guide.parseReport.RoundingRulesDao;
 import com.persee.workstation.uv_inexus.dao.guide.parseReport.StandardPretreatmentDao;
-import com.persee.workstation.uv_inexus.dto.parseReport.CalculationResultDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.DetectionParametersDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.InputParamDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.MultiTableDataDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.PretreatmentDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.QualityControlDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingParamVO;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
@@ -267,31 +260,110 @@ public class DetectionServiceImpl implements DetectionService {
         // 2. 格式化主表测量参数（原有逻辑不变）
         String detectionParameters = formatJsonToText(detection.getDetectionParameters());
 
-        // 3. 优化前处理字段：返回个数 + "种前处理方式"
+        // 3. 前处理表：汇总描述 + 完整数据列表
         List<StandardPretreatment> pretreatmentList = standardPretreatmentDao.findByDetectionId(detectionId);
         int pretreatmentCount = pretreatmentList.size();
         String preTreatmentDesc = pretreatmentCount + "种前处理方式";
+        // 转换为DTO列表（使用静态内部类）
+        List<DetectionParametersDTO.StandardPretreatmentSubDTO> preTreatmentDTOList = pretreatmentList.stream()
+                .map(pretreatment -> {
+                    DetectionParametersDTO.StandardPretreatmentSubDTO dto = new DetectionParametersDTO.StandardPretreatmentSubDTO();
+                    dto.setDetectionId(pretreatment.getDetectionId());
+                    dto.setPretreatmentDescription(pretreatment.getPretreatmentDescription());
+                    return dto;
+                }).collect(Collectors.toList());
 
-        // 4. 优化质控类型：多个用分号隔开
+        // 4. 质量控制表：汇总类型 + 完整数据列表
         List<QualityControl> qualityControlList = qualityControlDao.findByDetectionId(detectionId);
         String qcType = qualityControlList.stream()
                 .map(QualityControl::getControlType)
                 .filter(controlType -> controlType != null && !controlType.isEmpty())
                 .collect(Collectors.joining("；")); // 分号隔开
+        // 转换为DTO列表（使用静态内部类）
+        List<DetectionParametersDTO.QualityControlSubDTO> qualityControlDTOList = qualityControlList.stream()
+                .map(qualityControl -> {
+                    DetectionParametersDTO.QualityControlSubDTO dto = new DetectionParametersDTO.QualityControlSubDTO();
+                    dto.setDetectionId(qualityControl.getDetectionId());
+                    dto.setControlType(qualityControl.getControlType());
+                    dto.setControlDescription(qualityControl.getControlDescription());
+                    dto.setControlFormula(qualityControl.getControlFormula());
+                    return dto;
+                }).collect(Collectors.toList());
 
-        // 5. 优化结果表示：多个用顿号隔开
+        // 5. 计算公式表：汇总结果表示 + 完整数据列表
         List<CalculationFormula> formulaList = calculationFormulaDao.findByDetectionId(detectionId);
         String resultExpression = formulaList.stream()
                 .map(CalculationFormula::getResultIdentity)
                 .filter(expr -> expr != null && !expr.isEmpty())
                 .collect(Collectors.joining("、")); // 顿号隔开
+        // 转换为DTO列表（使用静态内部类）
+        List<DetectionParametersDTO.CalculationFormulaSubDTO> calculationFormulaDTOList = formulaList.stream()
+                .map(formula -> {
+                    DetectionParametersDTO.CalculationFormulaSubDTO dto = new DetectionParametersDTO.CalculationFormulaSubDTO();
+                    dto.setId(formula.getId()); // 现在类型匹配（String）
+                    dto.setDetectionId(formula.getDetectionId());
+                    dto.setResultIdentity(formula.getResultIdentity());
+                    dto.setResultName(formula.getResultName());
+                    dto.setUnit(formula.getUnit());
+                    dto.setInputParam1Name(formula.getInputParam1Name());
+                    dto.setInputParam1Identity(formula.getInputParam1Identity());
+                    dto.setInputParam2Name(formula.getInputParam2Name());
+                    dto.setInputParam2Identity(formula.getInputParam2Identity());
+                    dto.setInputParam3Name(formula.getInputParam3Name());
+                    dto.setInputParam3Identity(formula.getInputParam3Identity());
+                    dto.setInputParam4Name(formula.getInputParam4Name());
+                    dto.setInputParam4Identity(formula.getInputParam4Identity());
+                    dto.setInputParam5Name(formula.getInputParam5Name());
+                    dto.setInputParam5Identity(formula.getInputParam5Identity());
+                    dto.setInputParam6Name(formula.getInputParam6Name());
+                    dto.setInputParam6Identity(formula.getInputParam6Identity());
+                    dto.setInputParam7Name(formula.getInputParam7Name());
+                    dto.setInputParam7Identity(formula.getInputParam7Identity());
+                    dto.setInputParam8Name(formula.getInputParam8Name());
+                    dto.setInputParam8Identity(formula.getInputParam8Identity());
+                    dto.setInputParam9Name(formula.getInputParam9Name());
+                    dto.setInputParam9Identity(formula.getInputParam9Identity());
+                    dto.setInputParam10Name(formula.getInputParam10Name());
+                    dto.setInputParam10Identity(formula.getInputParam10Identity());
+                    dto.setFormulaText(formula.getFormulaText());
+                    dto.setFormulaImage(formula.getFormulaImage());
+                    dto.setDetectionLimit(formula.getDetectionLimit());
+                    return dto;
+                }).collect(Collectors.toList());
 
-        // 6. 封装返回DTO
+        // 6. 修约规则表：完整数据列表（关键修改：使用findByDetectionIdList替代findByDetectionId）
+        List<RoundingRules> roundingRulesList = roundingRulesDao.findByDetectionIdList(detectionId); // 修正方法名
+        List<DetectionParametersDTO.RoundingRulesSubDTO> roundingRulesDTOList = roundingRulesList.stream()
+                .map(roundingRules -> {
+                    DetectionParametersDTO.RoundingRulesSubDTO dto = new DetectionParametersDTO.RoundingRulesSubDTO();
+                    dto.setDetectionId(roundingRules.getDetectionId());
+                    dto.setResultIdentity(roundingRules.getResultIdentity());
+                    dto.setRoundingType(roundingRules.getRoundingType());
+                    dto.setRoundingCondition(roundingRules.getRoundingCondition());
+                    dto.setDecimalPlaces(roundingRules.getDecimalPlaces());
+                    return dto;
+                }).collect(Collectors.toList());
+
+        // 7. 封装返回DTO（包含主表基础信息 + 所有关联子表完整数据）
         DetectionParametersDTO dto = new DetectionParametersDTO();
+        // 原有字段
         dto.setDetectionParameters(detectionParameters);
         dto.setPreTreatmentDesc(preTreatmentDesc);
         dto.setQcType(qcType);
         dto.setResultExpression(resultExpression);
+        // 新增：主表基础信息
+        dto.setStandardIdentity(detection.getStandardIdentity());
+        dto.setDetectionType(detection.getDetectionType());
+        dto.setDetectionInstrument(detection.getDetectionInstrument());
+        dto.setStandardNumber(detection.getStandardNumber());
+        dto.setStandardName(detection.getStandardName());
+        dto.setDetectionItem(detection.getDetectionItem());
+        dto.setReleaseStatus(detection.getReleaseStatus());
+        // 新增：关联子表完整数据列表
+        dto.setPreTreatmentList(preTreatmentDTOList);
+        dto.setQualityControlList(qualityControlDTOList);
+        dto.setCalculationFormulaList(calculationFormulaDTOList);
+        dto.setRoundingRulesList(roundingRulesDTOList);
 
         return dto;
     }

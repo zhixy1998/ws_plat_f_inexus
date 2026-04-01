@@ -158,6 +158,14 @@ public class ExperimentTestController {
         return experimentTestService.isAddSample(addSampleDTO);
     }
 
+    @GetMapping("setUpParametersPort")
+    @ApiOperation("通用: 设置参数接口")
+    public Result setUpParametersPort(@RequestParam String taskId,
+                                      @RequestParam String deviceSerialNumber,
+                                      @RequestParam String measureType) {
+        return experimentTestService.setUpParametersPort(taskId,deviceSerialNumber,measureType);
+    }
+
 
     @GetMapping("queryProjectStatistics")
     @ApiOperation("查询项目统计接口")
@@ -415,6 +423,13 @@ public class ExperimentTestController {
     @ApiOperation("查询样品默认表头")
     public Result querySampleDefaultHead(@RequestParam String measureType) {
         return experimentTestService.querySampleDefaultHead(measureType);
+    }
+
+
+    @GetMapping("taskTermination")
+    @ApiOperation("任务终止")
+    public Result taskTermination(@RequestParam String taskId) {
+        return experimentTestService.taskTermination(taskId);
     }
 
 

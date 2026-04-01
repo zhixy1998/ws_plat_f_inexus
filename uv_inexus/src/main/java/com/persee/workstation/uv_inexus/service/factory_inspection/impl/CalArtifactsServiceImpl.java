@@ -42,15 +42,24 @@ public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, Cal
     private CalArtifactsMapper calArtifactsMapper;
 
 
+    // ... existing code ...
+
     @Override
     public Result addCalArtifacts(CalArtifactsSaveDto artifacts) {
         if (StringUtils.isNotBlank(artifacts.getCharacteristicValue())) {
-            //把特征值和标准值按照中文或者英文分隔，然后把每一项转为double类型，转失败的话就提示错误
+            //把特征值和标准值按照中文或者英文分隔，然后把每一项转为 double 类型，转失败的话就提示错误
             String[] characteristicValue = artifacts.getCharacteristicValue().split("[,，]");
             if (characteristicValue.length > 0) {
                 for (int i = 0; i < characteristicValue.length; i++) {
+                    String value = characteristicValue[i].trim();
+
+                    // 使用正则表达式严格校验数字格式
+                    if (!value.matches("^-?\\d+(\\.\\d+)?([eE][+-]?\\d+)?$")) {
+                        return Result.fail("特征值第" + (i + 1) + "项格式不正确，请检查输入格式是否正确");
+                    }
+
                     try {
-                        characteristicValue[i] = String.valueOf(Double.parseDouble(characteristicValue[i]));
+                        characteristicValue[i] = String.valueOf(Double.parseDouble(value));
                     } catch (Exception e) {
                         return Result.fail("特征值第" + (i + 1) + "项不是数字，请检查输入格式是否正确");
                     }
@@ -63,8 +72,15 @@ public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, Cal
             if (standardValue.length > 0) {
 
                 for (int i = 0; i < standardValue.length; i++) {
+                    String value = standardValue[i].trim();
+
+                    // 使用正则表达式严格校验数字格式
+                    if (!value.matches("^-?\\d+(\\.\\d+)?([eE][+-]?\\d+)?$")) {
+                        return Result.fail("标准值第" + (i + 1) + "项格式不正确，请检查输入格式是否正确");
+                    }
+
                     try {
-                        standardValue[i] = String.valueOf(Double.parseDouble(standardValue[i]));
+                        standardValue[i] = String.valueOf(Double.parseDouble(value));
                     } catch (Exception e) {
                         return Result.fail("标准值第" + (i + 1) + "项不是数字，请检查输入格式是否正确");
                     }
@@ -73,11 +89,16 @@ public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, Cal
         }
         CalArtifacts calArtifacts = new CalArtifacts();
         BeanUtils.copyProperties(artifacts, calArtifacts);
+
+// ... existing code ...
+
         if (StringUtil.isBlank(calArtifacts.getId())) {
             calArtifacts.setId(IdGeneratorUtil.generateIdWithPrefix("mat"));
             calArtifacts.setIsDelete(NOT_DELETED.getCode());
             LambdaQueryWrapper<CalArtifacts> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(CalArtifacts::getName, calArtifacts.getName());
+            wrapper.eq(CalArtifacts::getName, calArtifacts.getName())
+                    .eq(CalArtifacts::getIsDelete, NOT_DELETED.getCode())
+                    .eq(CalArtifacts::getCategoryId, calArtifacts.getCategoryId());
             long count = this.count(wrapper);
             if (count>0){
                 throw new RuntimeException("标准物名称已存在");

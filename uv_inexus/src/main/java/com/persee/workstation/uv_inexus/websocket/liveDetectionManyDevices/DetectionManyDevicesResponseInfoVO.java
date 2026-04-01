@@ -38,6 +38,9 @@ public class DetectionManyDevicesResponseInfoVO {
     @ApiModelProperty("仪器当前使用类型")
     private String devUseType;
 
+    @ApiModelProperty("当前任务id")
+    private String taskId;
+
     @ApiModelProperty("灯位置")
     private String lampPos;
 

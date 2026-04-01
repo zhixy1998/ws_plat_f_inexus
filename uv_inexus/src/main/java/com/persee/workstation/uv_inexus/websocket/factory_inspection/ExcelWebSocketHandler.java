@@ -32,10 +32,7 @@ import com.persee.workstation.uv_inexus.service.factory_inspection.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
-import com.persee.workstation.uv_inexus.util.ExcelCellComparator;
-import com.persee.workstation.uv_inexus.util.ExcelCellEditor;
-import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
-import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
+import com.persee.workstation.uv_inexus.util.*;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.MessageUtil;
@@ -76,8 +73,10 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import static com.persee.workstation.uv_inexus.constant.Constants.*;
 import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CACHE;
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.DEFAULT_TASK;
 import static com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum.abs;
 import static com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum.tPercent;
 import static com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum.BaseLine;
@@ -111,7 +110,7 @@ import static com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEn
 * */
 @Component
 @Slf4j
-public class ExcelWebSocketHandler extends TextWebSocketHandler {
+public class ExcelWebSocketHandler extends TextWebSocketHandler{
     @Autowired
     private WorkbookCacheManager workbookCacheManager;
     @Autowired
@@ -178,7 +177,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private FindMaxOffsetUVTestTool findMaxOffsetUVTestTool;
     @Autowired
     private SpectrumResultCalculator calculator;
-    private volatile Boolean autoSwitchSamplePool = true;
+    //    private volatile Boolean autoSwitchSamplePool = true;
     private final UnknowCountMessageQueue queue = MessageOnTimeDeal.unknowCountMessageQueue;
     //用任务id做主键，任务当前测量的检测项为值，线程安全
     private final Map<String, String> currentMeasureItemMap = new ConcurrentHashMap<>();
@@ -205,11 +204,15 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             });
     // 用于跟踪已注册的 session，避免重复添加
     private final Map<String, Set<String>> registeredSessionIds = new ConcurrentHashMap<>();
-
+    //任务 - 设备绑定关系
+    private final Map<String, String> taskDeviceBindingMap = new ConcurrentHashMap<>();
     // 记录每个连接的最后活动时间
     private final Map<String, Long> lastActivityTime = new ConcurrentHashMap<>();
     // 记录心跳任务
     private final Map<String, ScheduledFuture<?>> heartbeatTasks = new ConcurrentHashMap<>();
+
+    // 时间扫描停止的控制
+    private static final ConcurrentHashMap<String, Boolean> timeScanStopControl = new ConcurrentHashMap<>();
 
     private static final long HEARTBEAT_INTERVAL = 30000; // 30秒心跳间隔
     private static final long HEARTBEAT_TIMEOUT = 60000;   // 60秒超时
@@ -263,29 +266,54 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
     // 提供添加会话的方法
-    // 提供添加会话的方法
+
+    // 在类成员变量处添加一个新的数据结构，用于跟踪已连接的前端地址
+    private final Map<String, Set<String>> taskToFrontendAddresses = new ConcurrentHashMap<>();
+
+
     public void addSessionToTask(String taskId, WebSocketSession session) {
         String sessionId = session.getId();
+
+        // 获取前端地址（IP + 端口）
+        String frontendAddress = getFrontendAddress(session);
 
         // 检查是否已经注册过
         Set<String> sessionIds = registeredSessionIds.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet());
 
-        // 只有未注册的 session 才添加
-        if (sessionIds.add(sessionId)) {
-            sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
-            log.info("添加新会话到任务：taskId={}, sessionId={}", taskId, sessionId);
-        } else {
-            log.debug("会话已存在，跳过添加：taskId={}, sessionId={}", taskId, sessionId);
+        synchronized (sessionIds) {
+            // 只有未注册的 session 才添加
+            if (sessionIds.add(sessionId)) {
+                // 检查这个前端地址是否已经存在于该任务中
+                Set<String> frontendAddresses = taskToFrontendAddresses.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet());
+
+                synchronized (frontendAddresses) {
+                    if (frontendAddresses.contains(frontendAddress)) {
+                        log.warn("检测到同一前端重复连接，跳过添加：taskId={}, sessionId={}, 前端地址={}",
+                                taskId, sessionId, frontendAddress);
+                        // 从 sessionId 集合中移除刚才添加的 ID
+                        sessionIds.remove(sessionId);
+                        return;
+                    }
+
+                    // 添加前端地址
+                    frontendAddresses.add(frontendAddress);
+                }
+
+                sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
+                log.info("添加新会话到任务：taskId={}, sessionId={}, 前端地址={}", taskId, sessionId, frontendAddress);
+            } else {
+                log.debug("会话已存在，跳过添加：taskId={}, sessionId={}", taskId, sessionId);
+            }
         }
     }
 
-    // ... existing code ...
-
 
     private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
-        log.info("我被调用了"+payload.toString());
+        log.info("我被调用了" + payload.toString());
         try {
-            if(originalSession!=null&&!isSessionValid(originalSession)){
+            if (originalSession != null && !isSessionValid(originalSession)) {
+                payload.put("taskId", taskId);
+
                 originalSession.sendMessage(new TextMessage(payload.toJSONString()));
                 return true;
             }
@@ -295,12 +323,21 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 while (iterator.hasNext()) {
                     WebSocketSession session = iterator.next();
                     if (isSessionValid(session)) {
-                        log.info("准备发送消息到 sessionId: {}, 消息内容：{}", session.getId(), payload.toJSONString());
+                        log.info("准备发送消息到 sessionId: {}, 前端地址：{}, 消息内容：{}",
+                                session.getId(), getFrontendAddress(session), payload.toJSONString());
+                        payload.put("taskId", taskId);
+
                         session.sendMessage(new TextMessage(payload.toJSONString()));
                         log.info("消息发送成功到 sessionId: {}", session.getId());
                     } else {
+                        // 移除无效 session 时，也要清理对应的前端地址
+                        String frontendAddress = getFrontendAddress(session);
+                        Set<String> frontendAddresses = taskToFrontendAddresses.get(taskId);
+                        if (frontendAddresses != null) {
+                            frontendAddresses.remove(frontendAddress);
+                        }
                         iterator.remove();
-                        log.warn("WebSocket 消息发送失败：taskId={}, 源会话已关闭", taskId);
+                        log.warn("WebSocket 消息发送失败：taskId={}, 源会话已关闭，前端地址={}", taskId, frontendAddress);
                     }
                 }
                 log.info("消息已发送到 {} 个 session，sessionId 列表：{}", sessions.size(),
@@ -316,6 +353,29 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+
+    /**
+     * 获取前端连接的地址标识（IP + 端口）
+     */
+    private String getFrontendAddress(WebSocketSession session) {
+        try {
+            java.net.InetSocketAddress remoteAddress = session.getRemoteAddress();
+            if (remoteAddress != null) {
+                String ip = remoteAddress.getAddress() != null ?
+                        remoteAddress.getAddress().getHostAddress() : "unknown";
+                int port = remoteAddress.getPort();
+                return ip + ":" + port;
+            }
+        } catch (Exception e) {
+            log.warn("获取远程地址失败：{}", e.getMessage());
+        }
+        // 如果获取不到远程地址，使用 sessionId 作为备用标识
+        return "session:" + session.getId();
+    }
+
+    // ... existing code ...
+
+
     private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, String payload) {
         try {
             HashSet<WebSocketSession> set = new HashSet<>();
@@ -327,7 +387,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     WebSocketSession session = iterator.next();
                     if (isSessionValid(session)) {
 //                        log.info("消息是：" + payload.toJSONString());
-                        session.sendMessage(new TextMessage(payload));
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("taskId", taskId);
+                        jsonObject.put("data", payload);
+                        session.sendMessage(new TextMessage(jsonObject.toJSONString()));
                         log.info("消息发送给了：" + session.getId());
                     } else {
                         iterator.remove();
@@ -501,8 +564,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     // 修改 setTaskMeasuring 方法
     public void setTaskMeasuring(String taskId, boolean isMeasuring) throws BusinessException {
         if (!isMeasuring) {
-            log.info("修改测量状态: taskId={}, isMeasuring={}", taskId, isMeasuring);
+            TaskManagement management = taskService.getById(taskId);
+            deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
         }
+//        if (!isMeasuring) {
+//            log.info("修改测量状态: taskId={}, isMeasuring={}", taskId, isMeasuring);
+//        }
         Boolean previousStatus = measurementStatusMap.get(taskId);
         measurementStatusMap.put(taskId, isMeasuring);
 
@@ -593,8 +660,29 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             );
 //            sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
             addSessionToTask(taskId, session);
-            boolean b = workbookCacheManager.acquireEditLock(taskId, updateBy);
+//            boolean b = workbookCacheManager.acquireEditLock(taskId, updateBy);
+            // 检查是否已经获取过编辑锁（checkTaskUsage 时已获取）
+//            String currentEditor = workbookCacheManager.getCurrentEditor(taskId);
+//            if (currentEditor == null) {
+//                log.warn("任务{}没有获取锁，不允许连接（checkTaskUsage 未调用？）", taskId);
+//                JSONObject errorMsg = new JSONObject();
+//                errorMsg.put("error", "请先检查任务状态");
+//                session.sendMessage(new TextMessage(errorMsg.toJSONString()));
+//                session.close();
+//                return;
+//            }
 
+//            if (!currentEditor.equals(updateBy)) {
+//                log.warn("任务正在被其他用户编辑，拒绝连接：taskId={}, 当前用户={}, 编辑者={}", taskId, updateBy, currentEditor);
+//                JSONObject errorMsg = new JSONObject();
+//                errorMsg.put("error", "任务正在被其他用户编辑");
+//                errorMsg.put("editor", currentEditor);
+//                session.sendMessage(new TextMessage(errorMsg.toJSONString()));
+//                session.close();
+//                return;
+//            }
+
+            log.info("获取编辑锁成功：taskId={}, updateBy={}", taskId, updateBy);
             // 为会话创建专属Workbook
             Workbook workbook = workbookCacheManager.createTaskWorkbook(taskId, fileName);
             log.info("WebSocket连接建立，会话ID: {}, 文件: {}", sessionId, fileName);
@@ -745,11 +833,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        session = new ConcurrentWebSocketSessionDecorator(
-                session,
-                10 * 1000, // 发送超时时间（毫秒）
-                1024 * 1024 // 最大缓冲区大小（字节）
-        );
+//        session = new ConcurrentWebSocketSessionDecorator(
+//                session,
+//                10 * 1000, // 发送超时时间（毫秒）
+//                1024 * 1024 // 最大缓冲区大小（字节）
+//        );
         // 更新最后活动时间
         lastActivityTime.put(session.getId(), System.currentTimeMillis());
 
@@ -787,6 +875,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 R<OperationResultEntity> stop = devOperationUtilService.operation(param);
                                 if (stop.getSuccess()) {
                                     log.info("停止成功");
+                                    deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
                                 }
                             }
                             // 只停止任务，不关闭连接
@@ -798,18 +887,24 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                            sendToActiveSession(session, taskId, confirmMsg);
                         } else if (scanCount != null) {
                             log.info("时间扫描>>>>>停止");
-                            setTaskMeasuring(taskId, false);
-                            R<String> device = deviceManageService.getConnectDevice(updateBy);
-                            if (device.getSuccess()) {
-                                ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
-                                DeviceInfoPO info = infoService.getInfo(device.getData());
-                                Boolean put = timeMeasureIsStop.put(info.getDeviceId(), true);
-                                stopTask(taskId);
-                                // 发送确认消息
-                                JSONObject confirmMsg = new JSONObject();
-                                confirmMsg.put("isMeasuring", false);
-                                sendToActiveSession(session, taskId, confirmMsg);
+                            while (true) {
+                                if (timeScanStopControl.get(taskId)) {
+//                            setTaskMeasuring(taskId, false);
+                                    TaskManagement management = taskService.getById(taskId);
+//                            if (device.getSuccess()) {
+                                    ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
+                                    DeviceInfoPO info = infoService.getInfo(management.getOperationInstrument());
+                                    Boolean put = timeMeasureIsStop.put(info.getDeviceId(), true);
+                                    stopTask(taskId);
+                                    // 发送确认消息
+                                    JSONObject confirmMsg = new JSONObject();
+                                    confirmMsg.put("isMeasuring", false);
+                                    sendToActiveSession(session, taskId, confirmMsg);
+                                    deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
+                                    break;
+                                }
                             }
+//                            }
                         } else {
                             log.info("光度扫描>>>>>>>>停止");
                             JSONObject jsonObject = new JSONObject();
@@ -841,9 +936,18 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 DeviceInfoPO info = deviceInfoService.getInfo(management1.getOperationInstrument());
                 Integer status = info.getDeviceCurrentStatus();
                 if (status != 0) {
+                    // 【改造】检查设备是否被其他任务占用
+                    String occupiedTaskId = findTaskByDevice(management1.getOperationInstrument());
+                    if (StringUtils.isNotBlank(occupiedTaskId) && !occupiedTaskId.equals(taskId)) {
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("error", "设备正在被其他任务使用中（任务 ID: " + occupiedTaskId + "）！！！");
+                        sendToActiveSession(session, taskId, jsonObject);
+                        sendToActiveSession(session, taskId, jsonObject);
+                        return;
+                    }
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("error", "设备正在使用中！！！");
-                    sendToActiveSession(null, taskId, jsonObject);
+                    sendToActiveSession(session, taskId, jsonObject);
                     return;
                 }
             }
@@ -857,16 +961,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //            management.set
             taskService.updateById(management);
             InspectionRequestDto request = mapper.readValue(payload, InspectionRequestDto.class);
-            handleSingleItemInspection(session, request, taskId, updateBy, false);
-        }
-        if (AUTO.getCode().equals(type)) {
-            log.info("收到自动测试指令");
-
-
-            TaskManagement management1 = taskService.getById(taskId);
-
+            TaskManagement management2 = taskService.getById(taskId);
             //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
-            if (management1 != null && StringUtils.isBlank(management1.getOperationInstrument())) {
+            if (management2 != null && StringUtils.isBlank(management2.getOperationInstrument())) {
+                //只有检定校准在用，出厂检验任务创建时已经存在设备号
                 R<String> device = deviceManageService.getConnectDevice(updateBy);
 
 //                            String deviceSerialNumber = "30-U1602-01-0022";
@@ -879,20 +977,60 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 // 执行更新
                 taskService.update(updateWrapper);
             }
+            deviceInfoService.updateDeviceCurrentStatus(management1.getOperationInstrument(), DEVICE_STATUS_MEASURE);
+            handleSingleItemInspection(session, request, taskId, updateBy, false);
+        }
+        if (AUTO.getCode().equals(type)) {
+            log.info("收到自动测试指令");
+
+
+            TaskManagement management1 = taskService.getById(taskId);
+
+            //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
+            if (management1 != null && StringUtils.isBlank(management1.getOperationInstrument())) {
+                R<String> device = deviceManageService.getConnectDevice(updateBy);
+//                            String deviceSerialNumber = "30-U1602-01-0022";
+                String deviceSerialNumber = device.getData();
+
+                LambdaUpdateWrapper<TaskManagement> updateWrapper = new LambdaUpdateWrapper<>();
+                updateWrapper.eq(TaskManagement::getId, taskId)  // 根据taskId匹配
+                        .set(TaskManagement::getOperationInstrument, deviceSerialNumber); // 设置新序列号
+
+                // 执行更新
+                taskService.update(updateWrapper);
+                // 记录任务 - 设备绑定关系
+                taskDeviceBindingMap.put(taskId, deviceSerialNumber);
+            }
 
             if (StringUtils.isNotBlank(management1 != null ? management1.getOperationInstrument() : null)) {
                 DeviceInfoPO info = deviceInfoService.getInfo(management1.getOperationInstrument());
                 Integer status = info.getDeviceCurrentStatus();
+//                if (info.getIsActivated() == 0) {
+//                    JSONObject jsonObject = new JSONObject();
+//                    jsonObject.put("error", "设备未激活！！！");
+//                    sendToActiveSession(session, taskId, jsonObject);
+//                }
                 if (status != 0) {
+                    // 【改造】检查设备是否被其他任务占用
+                    String occupiedTaskId = findTaskByDevice(management1.getOperationInstrument());
+                    if (StringUtils.isNotBlank(occupiedTaskId) && !occupiedTaskId.equals(taskId)) {
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("error", "设备正在被其他任务使用中（任务 ID: " + occupiedTaskId + "）！！！");
+                        sendToActiveSession(null, taskId, jsonObject);
+//                        throw new BusinessException("设备正在被其他任务使用中（任务 ID: " + occupiedTaskId + "）！！！");
+                        return;
+                    }
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("error", "设备正在使用中！！！");
-                    sendToActiveSession(null, taskId, jsonObject);
+                    sendToActiveSession(session, taskId, jsonObject);
+//                    throw new BusinessException("设备正在使用中！！！");
                     return;
                 }
             } else {
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("error", "找不到该任务！！！");
                 sendToActiveSession(null, taskId, jsonObject);
+//                throw new BusinessException("找不到该任务！！！");
                 return;
             }
             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(management1.getOperationInstrument());
@@ -903,12 +1041,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 sendToActiveSession(null, taskId, jsonObject);
                 return;
             }
-            if (vo.getSamplePoolNum() < 1) {
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", "未知样品池！！！");
-                sendToActiveSession(null, taskId, jsonObject);
-                return;
-            }
+//            if (vo.getSamplePoolNum() < 1) {
+//                JSONObject jsonObject = new JSONObject();
+//                jsonObject.put("error", "未知样品池！！！");
+//                sendToActiveSession(null, taskId, jsonObject);
+//                return;
+//            }
             TaskManagement management = new TaskManagement();
             management.setId(taskId);
             management.setUpdateBy(updateBy);
@@ -918,8 +1056,15 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             taskService.updateById(management);
             // 添加这一行：设置停止标志，与单项测量保持一致
             taskStopFlag.put(taskId, false);
+            try {
+                handleAutoInspection(session, taskId, updateBy);
+            } catch (Exception e) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("error", e.getMessage());
+                sendToActiveSession(null, taskId, jsonObject);
+                setTaskMeasuring(taskId, false);
+            }
 
-            handleAutoInspection(session, taskId, updateBy);
         }
         if (SET_STANDARD.getCode().equals(type)) {
             WebSocketMessageDto<StdMaterialSelectionDto> messageWrapper =
@@ -937,7 +1082,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             //判断任务是否正在被编辑中
             boolean edited = workbookCacheManager.isTaskBeingEditedByOthers(taskId, updateBy);
             if (edited) {
-                session.sendMessage(new TextMessage("任务正在被编辑中"));
+                sendToActiveSession(null, taskId, "任务正在被编辑中");
+//                session.sendMessage(new TextMessage("任务正在被编辑中"));
             }
             if (DEFAULT_TASK.getCode().equals(taskId)) {
                 LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
@@ -1026,8 +1172,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             if (historyData != null && historyData.size() > 4) {
                 historyData = historyData.subList(0, 4);
             }
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("data", historyData);
+            sendToActiveSession(null, taskId, jsonObject);
             String s = JSON.toJSONString(historyData);
-            sendToActiveSession(null, taskId, s);
+//            sendToActiveSession(null, taskId, s);
         }
         // 处理用户操作确认
         if (RESUME.getCode().equals(type)) { // 您定义的恢复命令类型
@@ -1040,6 +1189,59 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         }
         super.handleTextMessage(session, message);
 
+    }
+
+    /**
+     * 根据设备序列号查找正在使用该设备的任务 ID
+     *
+     * @param deviceSerialNumber 设备序列号
+     * @return 任务 ID，如果没有找到则返回 null
+     */
+    private String findTaskByDevice(String deviceSerialNumber) {
+        if (StringUtils.isBlank(deviceSerialNumber)) {
+            return null;
+        }
+
+        // 遍历所有测量中的任务，查找使用该设备的任务
+        for (Map.Entry<String, Boolean> entry : measurementStatusMap.entrySet()) {
+            String taskId = entry.getKey();
+            Boolean isMeasuring = entry.getValue();
+
+            if (Boolean.TRUE.equals(isMeasuring)) {
+                // 从缓存中获取任务绑定的设备
+                String boundDevice = taskDeviceBindingMap.get(taskId);
+                if (deviceSerialNumber.equals(boundDevice)) {
+                    return taskId;
+                }
+
+                // 如果缓存中没有，从数据库查询
+                TaskManagement task = taskService.getById(taskId);
+                if (task != null && deviceSerialNumber.equals(task.getOperationInstrument())) {
+                    // 更新缓存
+                    taskDeviceBindingMap.put(taskId, deviceSerialNumber);
+                    return taskId;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 获取任务绑定的设备序列号
+     *
+     * @param taskId 任务 ID
+     * @return 设备序列号，如果没有绑定则返回 null
+     */
+    private String getTaskDevice(String taskId) {
+        String device = taskDeviceBindingMap.get(taskId);
+        if (StringUtils.isBlank(device)) {
+            TaskManagement task = taskService.getById(taskId);
+            if (task != null) {
+                device = task.getOperationInstrument();
+                taskDeviceBindingMap.put(taskId, device);
+            }
+        }
+        return device;
     }
 
     private void handleAutoInspection(WebSocketSession session, String taskId, String updateBy) throws BusinessException {
@@ -1070,20 +1272,31 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         TaskManagement taskManagement = taskService.getById(taskId);
         //获取序列号
         String string = taskManagement.getOperationInstrument();
+        DeviceInfoPO info = deviceInfoService.getInfo(string);
+//        R<String> device = deviceManageService.getConnectDevice(updateBy);
 
-        R<String> device = deviceManageService.getConnectDevice(updateBy);
-        if (StringUtils.isBlank(device.getData())) {
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("error", "请检查当前仪器是否连接");
-            sendToActiveSession(null, taskId, jsonObject);
+        if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
+//            JSONObject jsonObject = new JSONObject();
+//            jsonObject.put("error", "请检查当前仪器是否连接");
+//            sendToActiveSession(null, taskId, jsonObject);
             throw new BusinessException("请检查当前仪器是否连接！！！");
         }
-        if (!StringUtils.equals(device.getData(), string)) {
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("error", "设备已切换,请检查当前仪器与任务是否匹配！！！");
-            sendToActiveSession(null, taskId, jsonObject);
-            throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
+//        if (!StringUtils.equals(device.getData(), string)) {
+////            JSONObject jsonObject = new JSONObject();
+////            jsonObject.put("error", "设备已切换,请检查当前仪器与任务是否匹配！！！");
+////            sendToActiveSession(null, taskId, jsonObject);
+//            throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
+//        }
+        if (info.getIsActivated() == 0) {
+            throw new BusinessException("设备未激活！！！");
         }
+        if (info.getIsInited() != 1 && info.getIsInited() != 3) {
+            throw new BusinessException("请检查当前仪器是否初始化！！！");
+        }
+        if (info.getIsInited() == 3) {
+            throw new BusinessException("设备正在初始化！！！");
+        }
+
         halt.put(taskId, false);
         //得到所有的检测项
         if (CollectionUtils.isNotEmpty(list)) {
@@ -1116,7 +1329,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     request.setItemId(asset.getId());
                     try {
 
-                        addSessionToTask(taskId, session);
+//                        addSessionToTask(taskId, session);
 //                        sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
                         if (halt.get(taskId)) {
                             log.info("任务已暂停，请检查任务是否暂停");
@@ -1164,6 +1377,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         jsonObject.put("error", e.getMessage());
                         sendToActiveSession(null, taskId, jsonObject);
                     }
+                }
+                JSONObject jsonObject1 = new JSONObject();
+                jsonObject1.put("liveEcho", "自动检测结束");
+
+                // 发送到队列
+                sendToActiveSession(null, taskId, jsonObject1);
+                try {
+                    setTaskMeasuring(taskId, false);
+                } catch (BusinessException e) {
+                    throw new RuntimeException(e);
                 }
             });
 
@@ -1251,6 +1474,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         try {
             setTaskMeasuring(taskId, true);
             halt.put(taskId, false);
+
+            // 【新增】记录任务 - 设备绑定关系
+            TaskManagement management = taskService.getById(taskId);
+            if (management != null && StringUtils.isNotBlank(management.getOperationInstrument())) {
+                taskDeviceBindingMap.put(taskId, management.getOperationInstrument());
+                log.info("任务 {} 绑定设备 {}", taskId, management.getOperationInstrument());
+            }
+
             if (isAutoInspection) {
                 //自动测试
                 log.info("自动测试，开始测试>>>>>>>>>>>>>>>");
@@ -1301,33 +1532,45 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                    String deviceSerialNumber = management.getOperationInstrument();
                             //更新任务对应的序列号为当前连接的仪器
 
-                            TaskManagement management = taskService.getById(taskId);
-                            //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
-                            if (management != null && StringUtils.isBlank(management.getOperationInstrument())) {
-                                R<String> device = deviceManageService.getConnectDevice(updateBy);
-
-//                            String deviceSerialNumber = "30-U1602-01-0022";
-                                String deviceSerialNumber = device.getData();
-
-                                LambdaUpdateWrapper<TaskManagement> updateWrapper = new LambdaUpdateWrapper<>();
-                                updateWrapper.eq(TaskManagement::getId, taskId)  // 根据taskId匹配
-                                        .set(TaskManagement::getOperationInstrument, deviceSerialNumber); // 设置新序列号
-
-                                // 执行更新
-                                taskService.update(updateWrapper);
-                            }
+//                            TaskManagement management = taskService.getById(taskId);
+//                            //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
+//                            if (management != null && StringUtils.isBlank(management.getOperationInstrument())) {
+//                                R<String> device = deviceManageService.getConnectDevice(updateBy);
+//
+////                            String deviceSerialNumber = "30-U1602-01-0022";
+//                                String deviceSerialNumber = device.getData();
+//
+//                                LambdaUpdateWrapper<TaskManagement> updateWrapper = new LambdaUpdateWrapper<>();
+//                                updateWrapper.eq(TaskManagement::getId, taskId)  // 根据taskId匹配
+//                                        .set(TaskManagement::getOperationInstrument, deviceSerialNumber); // 设置新序列号
+//
+//                                // 执行更新
+//                                taskService.update(updateWrapper);
+//                            }
                             TaskManagement taskManagement = taskService.getById(taskId);
                             //获取序列号
                             String string = taskManagement.getOperationInstrument();
 
-                            R<String> device = deviceManageService.getConnectDevice(updateBy);
-                            if (StringUtils.isBlank(device.getData())) {
+//                            R<String> device = deviceManageService.getConnectDevice(updateBy);
+                            DeviceInfoPO info = deviceInfoService.getInfo(string);
+
+                            if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
                                 throw new BusinessException("请检查当前仪器是否连接！！！");
                             }
-                            if (!StringUtils.equals(device.getData(), string)) {
-                                throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
-                            }
 
+
+//                            if (!StringUtils.equals(device.getData(), string)) {
+//                                throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
+//                            }
+                            if (info.getIsActivated() == 0) {
+                                throw new BusinessException("设备未激活！！！");
+                            }
+                            if (info.getIsInited() != 1 && info.getIsInited() != 3) {
+                                throw new BusinessException("请检查当前仪器是否初始化！！！");
+                            }
+                            if (info.getIsInited() == 3) {
+                                throw new BusinessException("设备正在初始化！！！");
+                            }
                             //获取具体的样品池信息
                             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(string);
                             Integer samplePoolNum = vo.getSamplePoolNum();
@@ -1354,14 +1597,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             log.info("测量次数：" + repeatCount);
 
 //告诉前端走到了哪个检测项
-                            JSONObject json1 = new JSONObject();
-                            json1.put("itemName", category + "--" + projectName);
-                            sendToActiveSession(null, taskId, json1);
 
-
-                            JSONObject jsonObject1 = new JSONObject();
-                            jsonObject1.put("itemId", itemId);
-                            sendToActiveSession(null, taskId, jsonObject1);
                             //每个特征值测几次
                             for (Integer d = 0; d < repeatCount; d++) {
 
@@ -1388,8 +1624,19 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                         return futureResult;
                                     }
                                 }
+
                                 try {
                                     if (!halt.get(taskId)) {
+                                        if (d == 0) {
+                                            JSONObject json1 = new JSONObject();
+                                            json1.put("itemName", category + "--" + projectName);
+                                            sendToActiveSession(null, taskId, json1);
+
+
+                                            JSONObject jsonObject1 = new JSONObject();
+                                            jsonObject1.put("itemId", itemId);
+                                            sendToActiveSession(null, taskId, jsonObject1);
+                                        }
                                         map = sendBatchDataPoints(session, taskId, itemId, dataMap, updateBy, operationInstrument, list, samplePoolNum, d);
                                     }
                                 } catch (Exception e) {
@@ -1970,6 +2217,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         for (BigDecimal aBigDecimal : calcResult) {
                             JSONObject jsonObject = new JSONObject();
                             jsonObject.put("peak", aBigDecimal);
+                            log.info("最大偏移量结果111：{}", jsonObject);
                             res.add(jsonObject);
                         }
                     }
@@ -1995,7 +2243,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 BigDecimal peak = (BigDecimal) re.get("peak");
                 if (peak != null) {
                     // 使用BigDecimal进行科学修约到两位小数
-                    peak = peak.setScale(2, RoundingMode.HALF_UP);
+//                    peak = peak.setScale(2, RoundingMode.HALF_UP);
                     re.put("peak", peak.toString());
                 }
             }
@@ -2453,7 +2701,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             return R.fail(map);
                         }
 
-                        promptUserToPlaceMaterial(taskId, "光谱-基线-请保持样品池为空");
+                        promptUserToPlaceMaterial(taskId, "空气");
                         if (halt.get(taskId)) {
                             map.put("line", list);
                             return R.fail(map);
@@ -2765,13 +3013,29 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         }
         if (halt.get(taskId)) {
             log.info("任务停止");
+            if (CollectionUtils.isNotEmpty(res)) {
+                for (JSONObject re : res) {
+                    String s = String.valueOf(re.get("peak"));
+                    String s1 = DataCountUtil.formatValueWithBigDecimal(5, s);
+                    re.put("peak", s1);
+                }
+            }
 //            throw new BusinessException("任务被中断");
             map.put("line", list);
             map.put("res", res);
             return R.fail(map);
         }
+        if (CollectionUtils.isNotEmpty(res)) {
+            for (JSONObject re : res) {
+                String s = String.valueOf(re.get("peak"));
+                String s1 = DataCountUtil.formatValueWithBigDecimal(5, s);
+                re.put("peak", s1);
+            }
+        }
         map.put("line", list);
         map.put("res", res);
+        log.info("最大偏移量结果222：{}", res);
+
         return R.ok(map);
     }
 //
@@ -3272,6 +3536,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
         boolean isOk;
         String errorMsg = "";
+        timeScanStopControl.put(taskId, true);
         if (d == 0) {
             if ((anEnum == abs || anEnum == tPercent)) {
 
@@ -3327,6 +3592,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                 realTimeEcho(taskId, "时间扫描-开始暗电流矫正");
 
+                //到这里就不能停止了，得等到做完暗电流停止
+                timeScanStopControl.put(taskId, false);
                 log.info("时间扫描-开始暗电流矫正>>>>>>>>>>>>>>>>>>>>");
                 DevOperationInputParam darkParam = new DevOperationInputParam();
                 SetParam setParam1 = new SetParam();
@@ -3340,6 +3607,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 }
                 R<OperationResultEntity> operationDark =
                         devOperationUtilService.operation(darkParam);
+                timeScanStopControl.put(taskId, true);
                 log.info("时间扫描-暗电流矫正结果：{}", operationDark);
 //            operationDark.setSuccess(false);
                 if (operationDark.getSuccess()) {
@@ -3360,7 +3628,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 isOk = true;
             }
 
-
+//            if (halt.get(taskId)) {
+//                return R.fail(map);
+//            }
             realTimeEcho(taskId, "时间扫描-开始设置参数");
             // 设置参数
             R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
@@ -3591,8 +3861,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         if (halt.get(taskId)) {
             return R.fail(map);
         }
+
         R<OperationResultEntity> measure = devOperationUtilService.operation(param1);
-//        UnknowCountMessageQueue queue = MessageOnTimeDeal.unknowCountMessageQueue;
         int i = 0;
         waveformCache.clear();
         while (true) {
@@ -3621,7 +3891,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         EndMarker marker = (EndMarker) o;
                         if (marker.getReason() == EndMarker.Reason.NORMAL) {
                             log.info("i={}, total_time={}", i, totalTime);
-                            if (i<totalTime){
+                            if (i < totalTime) {
                                 log.info("时间扫描未成完，继续接收数据");
                                 continue;
                             }
@@ -3910,7 +4180,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             param2.setDeviceSerialNumber(deviceSerialNumber);
             param2.setOperationType(OperationTypeEnums.SetParam.getType());
             SetParam setParam3 = new SetParam();
-            Integer actionPosition1 = materialManager.getActionPosition(taskId, StandardMaterialManager.MaterialType.ZERO);
+            Integer actionPosition1 = materialManager.getActionPosition(taskId, StandardMaterialManager.MaterialType.MEASURE);
             //设置样品池位置
             setParam3.setCellPos(actionPosition1);
             param2.setParam(setParam3);
@@ -3974,7 +4244,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             inputParam.setWavelength(waveLength);
         }
         LocalDateTime startTime = LocalDateTime.now();
-        realTimeEcho(taskId, "开始测量");
+//        realTimeEcho(taskId, "开始测量");
         R<OperationResultEntity> measure = devOperationUtilService.operation(inputParam);
         if (!measure.getSuccess()) {
             log.warn("测量出错！");
@@ -4033,19 +4303,32 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 JSONObject object = new JSONObject();
                                 switch (anEnum) {
                                     case abs:
-                                        object.put("peak", result.getAbs());
+                                        String abs1 = result.getAbs();
+                                        //abs1 保留五位小数
+                                        abs1 = new BigDecimal(abs1).setScale(5, RoundingMode.HALF_UP).toString();
+
+                                        object.put("peak", abs1);
                                         res.add(object);
                                         break;
                                     case tPercent:
-                                        object.put("peak", result.getTPercent());
+                                        String tPercent1 = result.getTPercent();
+                                        tPercent1 = new BigDecimal(tPercent1).setScale(5, RoundingMode.HALF_UP).toString();
+
+                                        object.put("peak", tPercent1);
                                         res.add(object);
                                         break;
                                     case es:
-                                        object.put("peak", result.getEs());
+                                        String es = result.getEs();
+                                        es = new BigDecimal(es).setScale(5, RoundingMode.HALF_UP).toString();
+
+                                        object.put("peak",es );
                                         res.add(object);
                                         break;
                                     case er:
-                                        object.put("peak", result.getEr());
+                                        String er = result.getEr();
+                                        er = new BigDecimal(er).setScale(5, RoundingMode.HALF_UP).toString();
+
+                                        object.put("peak", er);
                                         res.add(object);
                                         break;
                                 }
@@ -4071,12 +4354,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 // }
 
 
-
         setTaskMeasuring(taskId, false);
         map.put("res", res);
         return R.ok(map);
     }
-
 
 
 //    private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
@@ -4378,56 +4659,68 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
 
 
     // 在连接关闭时清理队列
+
     @Override
-    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        // 使用ConcurrentWebSocketSessionDecorator包装原始session
-        session = new ConcurrentWebSocketSessionDecorator(
-                session,
-                10 * 1000, // 发送超时时间（毫秒）
-                1024 * 1024 // 最大缓冲区大小（字节）
-        );
-
-        String sessionId = session.getId();
-        String taskId = getTaskIdFromSession(session);
-
-        log.info("ExcelWebSocketHandler连接关闭，会话ID: {}, 状态: {}, 任务ID: {}",
-                sessionId, status, taskId);
-
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         try {
-            // 清理任务相关的队列和状态
-            if (taskId != null) {
-                // 停止与该连接相关的任务
-//                setTaskMeasuring(taskId, false);
-
-                // 清理消息队列
-                BlockingQueue<QueuedMessage> queue = messageQueues.remove(taskId);
-                if (queue != null) {
-                    queue.clear(); // 清空未处理的消息
-                }
-
-                // 清理处理标志
-                queueProcessingFlags.remove(taskId);
-
-                // 从session映射中移除
-                sessionTaskMap.remove(taskId);
-            }
+            String sessionId = session.getId();
+            String taskId = getTaskIdFromSession(session);
+            String update = getUpdateByFromUrl(session);
+            log.info("WebSocket 连接关闭，会话 ID: {}, 任务 ID: {}, 状态：{}", sessionId, taskId, status);
 
             // 清理会话相关资源
-            lastActivityTime.remove(sessionId);
-            cancelHeartbeatTask(sessionId);
+            registeredSessionIds.remove(taskId);
 
-            // 清理暂停控制
-            if (taskId != null) {
-                pauseControls.remove(taskId);
+            // 【修改】只移除当前关闭的 session，而不是整个任务的所有 session
+            Set<WebSocketSession> sessions = sessionTaskMap.get(taskId);
+            if (sessions != null) {
+                sessions.remove(session);
+                log.info("从任务{}的 session 集合中移除会话{}", taskId, sessionId);
+
+                // 如果是最后一个连接，清理任务相关资源
+                if (sessions.isEmpty()) {
+                    log.info("任务{}的所有连接已断开", taskId);
+                    sessionTaskMap.remove(taskId);  // 此时才移除整个任务的映射
+
+                    // 清理前端地址映射
+                    taskToFrontendAddresses.remove(taskId);
+
+                    // 释放设备绑定
+                    String boundDevice = taskDeviceBindingMap.remove(taskId);
+                    log.info("任务 {} 的所有连接已断开，释放设备绑定：{}", taskId, boundDevice);
+
+                    // 停止心跳任务
+                    ScheduledFuture<?> heartbeatTask = heartbeatTasks.remove(taskId);
+                    if (heartbeatTask != null && !heartbeatTask.isDone()) {
+                        heartbeatTask.cancel(false);
+                    }
+                    // 清理暂停控制
+                    pauseControls.remove(taskId);
+                    taskFutures.remove(taskId);
+                    currentMeasureItemMap.remove(taskId);
+                    measurementStatusMap.remove(taskId);
+                    halt.remove(taskId);
+
+                    // 释放编辑锁
+                    workbookCacheManager.releaseEditLock(taskId, update);
+                    log.info("任务{}的编辑锁已释放", taskId);
+                }
+            } else {
+                log.warn("任务{}的 session 集合不存在，可能已被清理", taskId);
             }
 
-            log.info("ExcelWebSocketHandler连接已完全清理，会话ID: {}", sessionId);
-        } catch (Exception e) {
-            log.error("清理WebSocket连接时出现异常", e);
-        }
+            // 清理会话信息
+            sessionMap.remove(sessionId);
+            operationCount.remove(sessionId);
+            lastActivityTime.remove(sessionId);
 
-        super.afterConnectionClosed(session, status);
+            log.info("WebSocket 连接关闭完成，会话 ID: {}", sessionId);
+            super.afterConnectionClosed(session, status);
+        } catch (Exception e) {
+            log.error("WebSocket 连接关闭异常", e);
+        }
     }
+
 
     // 在停止任务时也清理队列
     public void stopTask(String taskId) throws BusinessException {

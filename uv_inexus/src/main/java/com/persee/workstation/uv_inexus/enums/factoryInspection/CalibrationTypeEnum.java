@@ -120,7 +120,11 @@ public enum CalibrationTypeEnum {
     //默认任务
     DEFAULT_TASK("default", "默认任务"),
 
+    //开箱检验任务
+    OPEN_BOX_INSPECTION("installation_acceptance", "开箱检验"),
 
+    //出厂检验任务
+    FACTORY_INSPECTION("factory_inspection", "出厂检验"),
     //分析方法
     METHOD_TYPE("methodType", "分析方法"),
 
@@ -151,6 +155,10 @@ public enum CalibrationTypeEnum {
     ERROR_RANGE("error_range", "误差范围"),
     //垂直距离范围
     VERTICAL_DISTANCE_RANGE("vertical_distance_range", "垂直距离范围"),
+
+
+
+
 
 
     //新建模板或者修改模板

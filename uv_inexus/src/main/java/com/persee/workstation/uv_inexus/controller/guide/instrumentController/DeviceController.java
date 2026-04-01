@@ -10,6 +10,8 @@
 package com.persee.workstation.uv_inexus.controller.guide.instrumentController;
 
 
+import com.alibaba.fastjson.JSONObject;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
@@ -17,10 +19,8 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceAutoInjectorPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InjectionTrayParamPO;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceAutoInjectorService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMonitorService;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
@@ -33,6 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/dev/ins")
@@ -51,9 +52,12 @@ public class DeviceController {
     @Autowired
     private DeviceAutoInjectorService injectorService;
 
+    @Autowired
+    private DeviceUsageLogService deviceUsageLogService;
+
     @GetMapping("/stop")
     @ApiOperation("新驱动-停止扫描")
-    public Result<Boolean> stop (@RequestParam String deviceSerialNumber) throws InterruptedException {
+    public Result<Boolean> stop(@RequestParam String deviceSerialNumber) throws InterruptedException {
         Boolean r = deviceManageService.stop(deviceSerialNumber).getSuccess();
         if (r) {
             return Result.ok(true);
@@ -64,8 +68,8 @@ public class DeviceController {
 
     @PostMapping("/zero")
     @ApiOperation("新驱动-停止扫描")
-    public Result<Boolean> zero ( @RequestBody DevOperationInputParam inputParam) throws InterruptedException {
-        Boolean r = deviceManageService.zero(inputParam.getDeviceSerialNumber(),inputParam.getWavelength()).getSuccess();
+    public Result<Boolean> zero(@RequestBody DevOperationInputParam inputParam) throws InterruptedException {
+        Boolean r = deviceManageService.zero(inputParam.getDeviceSerialNumber(), inputParam.getWavelength()).getSuccess();
         if (r) {
             return Result.ok(true);
         } else {
@@ -106,7 +110,6 @@ public class DeviceController {
     }
 
 
-
     @PostMapping("/setParam")
     @ApiOperation("设置仪器参数")
     @LogPoint(value = "设置仪器参数", module = "设备管理", recordParams = true, recordResult = true)
@@ -144,7 +147,7 @@ public class DeviceController {
 
     @GetMapping("/findDevice")
     @ApiOperation("查找仪器的接口")
-    @LogPoint(value = "查找仪器", module = "设备管理", recordParams = true,recordResult = true)
+    @LogPoint(value = "查找仪器", module = "设备管理", recordParams = true, recordResult = true)
     public Result<List<FindDeviceVO>> findDevice() throws Exception {
         R<List<FindDeviceVO>> device = deviceManageService.findDevice();
         if (!device.getSuccess()) {
@@ -157,7 +160,7 @@ public class DeviceController {
 
     @GetMapping("/searchDevice")
     @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
-    @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true,recordResult = true)
+    @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true, recordResult = true)
     public Result<List<SearchInfo>> searchDevice(@RequestParam(required = false) Integer connectType) {
         R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType);
         if (!r.getSuccess()) {
@@ -181,7 +184,7 @@ public class DeviceController {
 
     @PostMapping("/connect")
     @ApiOperation("新驱动-连接仪器")
-    @LogPoint(value = "连接仪器", module = "设备管理", recordParams = true,recordResult = true)
+    @LogPoint(value = "连接仪器", module = "设备管理", recordParams = true, recordResult = true)
     public Result<FindDeviceVO> connect(@RequestBody SearchInfo param) throws Exception {
 
         R<FindDeviceVO> r = deviceManageService.connect(param);
@@ -225,6 +228,12 @@ public class DeviceController {
         }
     }
 
+    @GetMapping("queryDeviceTypeInfoWithDefault")
+    @ApiOperation("查询设备类型信息")
+    public Result<DeviceMeasureVO> queryDeviceTypeInfoWithDefault(@RequestParam(required = false) String deviceSerialNumber) {
+        return deviceManageService.queryDeviceTypeInfoWithDefault(deviceSerialNumber);
+    }
+
     @GetMapping("/continueInit")
     @ApiOperation("新驱动-继续初始化")
     public Result<Boolean> continueInit(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
@@ -245,7 +254,7 @@ public class DeviceController {
 
     @GetMapping("/query")
     @ApiOperation("仪器管理查询接口")
-    public Result<DeviceInfoVO> query(@RequestParam String deviceSerialNumber, @RequestParam String updateBy){
+    public Result<DeviceInfoVO> query(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
         R<DeviceInfoVO> infoVO = deviceManageService.queryDeviceInfo(deviceSerialNumber, updateBy);
         if (infoVO.getSuccess()) {
             return Result.ok(infoVO.getData());
@@ -256,11 +265,11 @@ public class DeviceController {
 
     @PostMapping("/init")
     @ApiOperation("仪器初始化接口")
-    public Result<Boolean> deviceInit(@RequestBody DeviceInitDTO initDTO){
+    public Result<Boolean> deviceInit(@RequestBody DeviceInitDTO initDTO) {
         R<Boolean> init = deviceManageService.init(initDTO);
         if (init.getSuccess()) {
             return Result.ok(init.getData());
-        }else {
+        } else {
             return Result.fail(init.getMessage());
         }
     }
@@ -280,7 +289,7 @@ public class DeviceController {
     @ApiOperation("更改仪器名称")
     public Result<Boolean> updateDeviceName(@RequestParam String deviceSerialNumber,
                                             @RequestParam String updateBy,
-                                            @RequestParam String deviceName){
+                                            @RequestParam String deviceName) {
         Boolean r = deviceInfoService.changeDeviceName(deviceSerialNumber, deviceName, updateBy);
         if (r) {
             return Result.ok(true);
@@ -316,7 +325,7 @@ public class DeviceController {
 
     @PostMapping("/start")
     @ApiOperation("仪器开机接口")
-    public Result<Boolean> deviceStart(@RequestBody DeviceStartDTO startDTO){
+    public Result<Boolean> deviceStart(@RequestBody DeviceStartDTO startDTO) {
         deviceManageService.startDevice(startDTO);
         return null;
     }
@@ -330,14 +339,14 @@ public class DeviceController {
 
     @GetMapping("/devMonitor")
     @ApiOperation("查询仪器监控信息")
-    public Result<List<DeviceMonitorVO>> deviceMonitor(@RequestBody DeviceQueryDTO queryDTO){
+    public Result<List<DeviceMonitorVO>> deviceMonitor(@RequestBody DeviceQueryDTO queryDTO) {
         monitorService.queryStatus(queryDTO);
         return null;
     }
 
     @GetMapping("/componentMonitor")
     @ApiOperation("查询器件监控信息")
-    public Result<DeviceComponentMonitorVO> componentMonitor(@RequestBody DeviceQueryDTO dto){
+    public Result<DeviceComponentMonitorVO> componentMonitor(@RequestBody DeviceQueryDTO dto) {
         monitorService.componentQuery(dto);
         return null;
     }
@@ -346,7 +355,7 @@ public class DeviceController {
     @ApiOperation("新--查询仪器配置")
     public Result<DeviceConfigVO> getDevConfig() {
         R<DeviceConfigVO> r = deviceManageService.newQueryDeviceConfig();
-        if (r.getSuccess()){
+        if (r.getSuccess()) {
             return Result.ok(r.getData());
         } else {
             return Result.fail(r.getMessage());
@@ -357,7 +366,7 @@ public class DeviceController {
     @OperateLog(module = "仪器管理-仪器配置-保存修改的仪器配置", description = "执行仪器管理-仪器配置-保存修改的仪器配置记录", recordParams = true)
     @PostMapping("/devConfig")
     @ApiOperation("新--仪器配置接口")
-    public Result<Boolean> devConfig(@RequestBody DevConfigDTO dto){
+    public Result<Boolean> devConfig(@RequestBody DevConfigDTO dto) {
         R<Boolean> r = deviceManageService.newDevConfig(dto);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -366,9 +375,33 @@ public class DeviceController {
         }
     }
 
+    @GetMapping("/getWorkTime")
+    @ApiOperation("新--查询仪器以及各灯工作时长")
+    public Result<List<WorkTimeInfo>> getWorkTime(@RequestParam String deviceSerialNumber, @RequestParam Boolean isUpdate) {
+        R<List<WorkTimeInfo>> r = deviceManageService.queryLampLifeInfo(deviceSerialNumber, isUpdate);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @GetMapping("/hasWorkTime")
+    @ApiOperation("新--仪器是否具有查询灯时长的功能")
+    public Result<Boolean> hasWorkTime(@RequestParam String deviceSerialNumber) {
+        R<Boolean> r = deviceManageService.hasWorkTime(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+
+
     @GetMapping("/setMessagePort")
     @ApiOperation("设置仪器通讯端口")
-    public Result<Boolean> setMessagePort(@RequestParam Integer messagePort, @RequestParam String updateBy){
+    public Result<Boolean> setMessagePort(@RequestParam Integer messagePort, @RequestParam String updateBy) {
         R<Boolean> r = deviceManageService.setDevMessagePort(messagePort, updateBy);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -380,7 +413,7 @@ public class DeviceController {
 
     @GetMapping("/getBandWidth")
     @ApiOperation("查询光谱带宽")
-    public Result<List<Double>> getBandWidth(@RequestParam String deviceSerialNumber){
+    public Result<List<Double>> getBandWidth(@RequestParam String deviceSerialNumber) {
         List<Double> bandWidth = deviceManageService.getBandWidth(deviceSerialNumber);
         return Result.ok(bandWidth);
     }
@@ -388,7 +421,7 @@ public class DeviceController {
 
     @ApiOperation("设置进样器参数配置")
     @PostMapping("/setInjectorConf")
-    public Result<Boolean> setInjectorConf(@RequestBody DeviceAutoInjectorPO injectorPO){
+    public Result<Boolean> setInjectorConf(@RequestBody DeviceAutoInjectorPO injectorPO) {
         R<Boolean> r = injectorService.setInjectorConf(injectorPO);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -399,7 +432,7 @@ public class DeviceController {
 
     @ApiOperation("设置进样器托盘参数配置")
     @PostMapping("/setInjectorTray")
-    public Result<Boolean> setInjectorTray(@RequestBody List<InjectionTrayParamPO> poList){
+    public Result<Boolean> setInjectorTray(@RequestBody List<InjectionTrayParamPO> poList) {
         R<Boolean> r = injectorService.setInjectorTray(poList);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -410,7 +443,7 @@ public class DeviceController {
 
     @GetMapping("/getInjectorConf")
     @ApiOperation("查询进样器参数配置")
-    public Result<DeviceAutoInjectorPO> getInjectorConf(@RequestParam String deviceSerialNumber){
+    public Result<DeviceAutoInjectorPO> getInjectorConf(@RequestParam String deviceSerialNumber) {
         R<DeviceAutoInjectorPO> r = injectorService.queryInjectorConf(deviceSerialNumber);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -421,7 +454,7 @@ public class DeviceController {
 
     @GetMapping("/checkConnect")
     @ApiOperation("联机")
-    public Result<Integer> checkConnect(@RequestParam String deviceSerialNumber){
+    public Result<Integer> checkConnect(@RequestParam String deviceSerialNumber) {
         R<Integer> r = injectorService.checkConnectStatus(deviceSerialNumber);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -439,7 +472,7 @@ public class DeviceController {
 
     }
 
-//    @PostMapping("/calibration")
+    //    @PostMapping("/calibration")
 //    @ApiOperation("仪器校准")
 //    public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto){
 //        R<Boolean> r = deviceManageService.deviceCalibration(dto);
@@ -462,7 +495,7 @@ public class DeviceController {
     )
     @PostMapping("/calibration")
     @ApiOperation("仪器校准")
-    public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto){
+    public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto) {
         R<Boolean> r = deviceManageService.deviceNewCalibration(dto);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -474,11 +507,25 @@ public class DeviceController {
 
     @GetMapping("/usageStatistics")
     @ApiOperation("使用情况统计")
-    public Result<List<DeviceUsageStatisticsVO>> usageStatistics(@RequestBody DeviceUsageCountDTO dto){
+    public Result<List<DeviceUsageStatisticsVO>> usageStatistics(@RequestBody DeviceUsageCountDTO dto) {
 
         monitorService.countUsageInfo(dto);
         return null;
 
+    }
+
+    @GetMapping("/deviceUsageStatistics")
+    @ApiOperation("仪器使用情况统计")
+    public Result<List<DeviceUsageLogVO> > deviceUsageStatistics(@RequestParam(required = false) String startTime, @RequestParam(required = false) String endTime){
+        List<DeviceUsageLogVO> list = deviceUsageLogService.deviceUsageLogStatistics(startTime, endTime);
+        return Result.ok(list);
+    }
+
+    @GetMapping("/userUsageStatistics")
+    @ApiOperation("用户使用情况统计")
+    public Result<JSONObject> userUsageStatistics(@RequestParam(required = false) String startTime, @RequestParam(required = false) String endTime){
+        JSONObject list = deviceUsageLogService.userUsageLogStatistics(startTime, endTime);
+        return Result.ok(list);
     }
 
     @PostMapping("/addDevice")
@@ -493,10 +540,48 @@ public class DeviceController {
     }
 
     @PostMapping("/test")
-    public void test(){
+    public void test() {
         deviceManageService.test();
     }
 
+    @PostMapping("/queryHistoryTask")
+    @ApiOperation("查询历史任务")
+    public Result<Page<HistoryTaskVO>> queryHistoryTask(@RequestBody DeviceHistoryTaskDTO queryDto) {
+        try {
+            Page<HistoryTaskVO> page = monitorService.getHistoryTask(queryDto);
+            return Result.ok(page);
+        } catch (Exception e) {
+            return Result.fail(e.getMessage());
+        }
+    }
+
+    @GetMapping("/getTypeStatistics")
+    @ApiOperation("检测类型分项统计")
+    public Result<Map<String, Object>> getTypeStatistics(
+            @RequestParam String updateBy,
+            @RequestParam String deviceSerialNumber,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        try {
+            return monitorService.getTypeStatistics(updateBy, startTime, endTime, deviceSerialNumber);
+        } catch (Exception e) {
+            return Result.fail(e.getMessage());
+        }
+    }
+
+    @GetMapping("/getProjectStatistics")
+    @ApiOperation("检测项目分项统计")
+    public Result<Map<String, Object>> getProjectStatistics(
+            @RequestParam String updateBy,
+            @RequestParam String deviceSerialNumber,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        try {
+            return monitorService.getProjectStatistics(updateBy, startTime, endTime, deviceSerialNumber);
+        } catch (Exception e) {
+            return Result.fail(e.getMessage());
+        }
+    }
 
 
 }

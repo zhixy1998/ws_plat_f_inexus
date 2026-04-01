@@ -409,7 +409,6 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         tMeasureTask.setCreateTime(LocalDateTime.now());
         tMeasureTask.setMethodKey(paramDto.getMethodId());
         tMeasureTask.setProjectItemKey(paramDto.getProjectId());
-        tMeasureTask.setDeviceSerialNumber(paramDto.getDeviceSerialNumber());
         List<TaskSpecimen> list = new ArrayList<>();
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(paramDto.getMeasurementType());
         // TODO 所有测量的创建任务需要完善
@@ -814,6 +813,55 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return handleQuantitativeSample(dto, task, numberConfig, nameConfig);
         } else {
             return handleFourMeasurementSample(dto, task, description, numberConfig, nameConfig);
+        }
+    }
+
+    /**
+     * 通用: 设置参数接口
+     * @param taskId
+     * @param deviceSerialNumber
+     * @param measureType
+     * @return
+     */
+    @Override
+    public Result setUpParametersPort(String taskId, String deviceSerialNumber, String measureType) {
+        // 校验参数
+        if (!StringUtils.hasText(taskId)) {
+            return Result.fail("请先新建任务");
+        }
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            return Result.fail("请先连接仪器");
+        }
+        if (!StringUtils.hasText(measureType)) {
+            return Result.fail("请选择测量类型");
+        }
+        // 根据任务id查询任务信息
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        if (task.getTaskStatus().equals(Constants.PARAM_ONE)&&!task.getDeviceSerialNumber().equals(deviceSerialNumber)){
+            return Result.fail("当前设备与任务测量设备不匹配");
+        }
+        if (task.getTaskStatus().equals(Constants.PARAM_TWO)){
+            return Result.fail("任务已结束,无法测量");
+        }
+        String methodId = task.getMethodKey();
+        // 根据测量类型获取对应的测量服务
+        MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
+        switch (measureTypeEnum) {
+            case PHOTOMETRIC_MEASUREMENT:
+                return photometricService.setUpParametersPort(methodId, deviceSerialNumber);
+            case QUANTITATIVE_MEASUREMENT:
+                return rationService.setUpParametersPort(methodId, deviceSerialNumber);
+            case SPECTRAL_SCAN:
+                return spectrumService.setUpParametersPort(methodId, deviceSerialNumber);
+            case TIME_SCAN:
+                return timeSweepService.setMethodParameters(methodId, deviceSerialNumber);
+            case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
+                return Result.fail("暂不支持双组份定量分析");
+            default:
+                return Result.fail("测量类型不存在");
         }
     }
 
@@ -1671,7 +1719,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.ok(new ArrayList<>());
         }
         // 根据项目id和方法类型查询方法表数据
-        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", methodType).eq("method_creator", updateBy));
+        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", methodType));
         if (list == null || list.size() == 0) {
             return Result.ok(new ArrayList<>());
         }
@@ -2403,7 +2451,6 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         dto.setMethodId(methodId);
         dto.setProjectId(method.getProjectItemKey());
         dto.setMeasurementType(method.getMeasurementType());
-        dto.setDeviceSerialNumber(deviceSerialNumber);
 
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         String collect = new Random().ints(8, 0, chars.length())
@@ -3166,12 +3213,18 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
+        SpectralReportVo vo = new SpectralReportVo();
+        TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+        if (project != null && StringUtils.hasText(project.getProjectName())) {
+            vo.setProject(project.getProjectName());
+        }
+
         if (task.getMeasureType().equals(PHOTOMETRIC_MEASUREMENT.getDescription())) {
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-            SpectralReportVo vo = new SpectralReportVo();
-            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+
+
             SysUserPO user = systemUserManageDAO.selectById(task.getUserId());
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             PhotometricParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
@@ -3291,8 +3344,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         } else if (task.getMeasureType().equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-            SpectralReportVo vo = new SpectralReportVo();
-//            TMeasureProject project =tMeasureProjectService.getById(task.getProjectItemKey());
+
             vo.setTaskName(task.getTaskName());
             SysUserPO user = systemUserManageDAO.selectById(task.getUserId());
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
@@ -3378,11 +3430,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     SystemBusinessParamVO systemBusinessParamVO = systemBusinessParamService.queryBusinessParam();
                     String curveConf = systemBusinessParamVO.getStandardCurveConf();
                     String[] split = curveConf.split(",");
-                    for (int i = 0; i < split.length; i++) {
-                        if (split[i].equals("1")) {
+                    for (String s : split) {
+                        if (s.equals("1")) {
                             vo.setR(fittingReceiveInfo.getRoundR() == null ? "" : fittingReceiveInfo.getRoundR());
                         }
-                        if (split[i].equals("2")) {
+                        if (s.equals("2")) {
                             vo.setR2(fittingReceiveInfo.getRoundR2() == null ? "" : fittingReceiveInfo.getRoundR2());
                         }
                     }
@@ -3468,10 +3520,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     //没有找到该分析数据
                     return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
                 }
-                if (analysisData.getMeasureDataId() != null)
+                if (analysisData.getMeasureDataId() != null) {
                     data = tMeasureDataService.getById(analysisData.getMeasureDataId());
+                }
             }
-            SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
             vo.setStartWaveLength(param.getStartWaveLength() + "nm");
@@ -3545,11 +3597,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     //没有找到该分析数据
                     return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
                 }
-                if (analysisData.getMeasureDataId() != null)
+                if (analysisData.getMeasureDataId() != null) {
                     data = tMeasureDataService.getById(analysisData.getMeasureDataId());
+                }
             }
 
-            SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             TimeSweepParamter param = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
             vo.setInstrumentWavelength(param.getWaveLength() + "nm");
@@ -4505,5 +4557,31 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         vo.setProjectId(project.getId());
         vo.setProjectName(project.getProjectName());
         return Result.ok(vo);
+    }
+
+    /**
+     * 任务终止
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result taskTermination(String taskId) {
+        // 判断任务id是否为空
+        if (StringUtils.isEmpty(taskId)) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+        task.setTaskStatus(Constants.PARAM_TWO);
+        task.setEndTime(LocalDateTime.now());
+        boolean b = tMeasureTaskService.updateById(task);
+        if (b) {
+            return Result.ok();
+        }else{
+            return Result.fail("任务结束失败");
+        }
+
     }
 }

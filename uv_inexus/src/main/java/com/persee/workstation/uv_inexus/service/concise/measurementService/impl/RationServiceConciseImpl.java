@@ -18,6 +18,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
@@ -137,13 +138,16 @@ public class RationServiceConciseImpl implements RationConciseService {
     ConcisePublicUtilService concisePublicUtilService;
 
     @Autowired
-    DeviceManageService manageService;
+    DeviceInfoService infoService;
 
     @Autowired
     SystemBusinessParamService businessParamService;
 
     @Autowired
     private DevOperationUtilService operationUtilService;
+
+    @Autowired
+    private DeviceManageService deviceManageService;
 
 
     @Value("1")
@@ -179,7 +183,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Value("文件数据")
     String newTaskName;
 
-    @Value("默认方法")
+    @Value("方法")
     String defaultMethodName;
 
     @Override
@@ -275,7 +279,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         String userId = sysUserPO.getId();
 
         FMeasureTask task = new FMeasureTask();
-        task.setTaskName(newTaskName + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        task.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         task.setIsDelete(createType);
         task.setMeasureType(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription());
         task.setMethodKey(methodId);
@@ -356,7 +360,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             double maxWaveLength = 1100.0;
 
             if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
-                R<DeviceMeasureVO> typeInfo = manageService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
+                R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
                 if (typeInfo.getSuccess()) {
                     DeviceMeasureVO vo = typeInfo.getData();
                     if (vo != null) {
@@ -736,7 +740,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         // 6.1 样品输入参数校验（最多10个）
         List<FInputParam> sampleInputParams = parameter.getSampleInputParams();
         if (sampleInputParams != null && !sampleInputParams.isEmpty()) {
-            if (sampleInputParams.size() > 10) {
+            if (sampleInputParams.size() > 20) {
                 //"样品输入参数最多支持10个，当前数量：" + sampleInputParams.size()
                 return R.fail(YamlMessageSource.getMessageStatic("0010201E",sampleInputParams.size()));
             }
@@ -1928,6 +1932,82 @@ public class RationServiceConciseImpl implements RationConciseService {
         return Result.ok();
     }
 
+    /**
+     * 设置参数接口
+     * @param methodId
+     * @param deviceSerialNumber
+     * @return
+     */
+    @Override
+    public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
+        // 1. 参数校验
+        if (methodId == null || methodId.equals("")) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000008"));
+        }
+
+        // 2. 根据methodId查询方法数据（定量类型）
+        FMeasureMethod tMeasureMethod = fMeasureMethodService.getOne(
+                new QueryWrapper<FMeasureMethod>()
+                        .eq("id", methodId)
+                        .eq("measurement_type", MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())  // 区分定量类型
+        );
+
+        if (tMeasureMethod == null) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
+
+        // 3. 解析定量参数
+        FRationParameter rationParam = JSON.parseObject(
+                tMeasureMethod.getMeasurementParamInfo(),
+                FRationParameter.class
+        );
+
+        // 3.5 校验仪器参数
+        if (deviceSerialNumber!=null&& !deviceSerialNumber.isEmpty()){
+            R<Boolean> booleanR = IssueCheckParam(rationParam, deviceSerialNumber);
+            if (!booleanR.getSuccess()) {
+                return Result.checkFail(booleanR.getData());
+            }
+        }
+
+        // 4. 构建设备操作参数
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+        SetParam setParam = new SetParam();
+
+        // 5. 设置光度模式（定量通常是吸光度）
+        setParam.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
+
+        // 6. 设置换灯波长
+        if (StringUtils.hasText(rationParam.getChangeLampWaveLength())) {
+            setParam.setChangeLampWl(Double.parseDouble(rationParam.getChangeLampWaveLength()));
+        }
+
+        // 7. 设置光谱带宽
+        if (StringUtils.hasText(rationParam.getSpectralBandwidth())
+                && deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+            setParam.setSlit1(Double.parseDouble(rationParam.getSpectralBandwidth()));
+        }
+
+        // 8. 设置响应时间
+        if (StringUtils.hasText(rationParam.getResponseTime())) {
+            setParam.setResponseTime(Double.parseDouble(rationParam.getResponseTime()));
+        }
+
+        inputParam.setParam(setParam);
+
+        // 11. 调用设备操作服务
+        R<OperationResultEntity> r = operationUtilService.operation(inputParam);
+
+        if (r.getSuccess()) {
+            return Result.ok("设置参数成功");
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
     private Boolean revokeDelSampleNumRepeat(List<FTaskSpecimen> taskSpecimen, FMeasureSample sample) {
 
         String sampleKind = sample.getSampleKind();
@@ -2064,12 +2144,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                         empty = true;
                     }
                 }
-                if (StringUtils.hasText(sample.getHeads())){
-                    List<FHeadVO> heads = JSON.parseArray(sample.getHeads(), FHeadVO.class);
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
+//                if (StringUtils.hasText(sample.getHeads())){
+//                    List<FHeadVO> heads = JSON.parseArray(sample.getHeads(), FHeadVO.class);
+//                    if (heads != null && !heads.isEmpty()) {
+//                        ans.addAll(heads);
+//                    }
+//                }
             }
         }
         List<FHeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_stand.getIdentity(), allDisplay, empty, deviceSerialNumber);
@@ -2325,12 +2405,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                         empty = true;
                     }
                 }
-                if (StringUtils.hasText(sample.getHeads())){
-                    List<FHeadVO> heads = JSON.parseArray(sample.getHeads(), FHeadVO.class);
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
+//                if (StringUtils.hasText(sample.getHeads())){
+//                    List<FHeadVO> heads = JSON.parseArray(sample.getHeads(), FHeadVO.class);
+//                    if (heads != null && !heads.isEmpty()) {
+//                        ans.addAll(heads);
+//                    }
+//                }
             }
         }
         List<FHeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_unknown.getIdentity(), allDisplay, empty, deviceSerialNumber);
@@ -3380,13 +3460,16 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     }
 
-    private Map<String, Map<String, String>> extracted(List<String> option, FRationWavelengthDataInfo wlData, FMeasureSample sample, Integer digit) {
+    private Map<String, Map<String, String>> extracted(List<String> option, FRationWavelengthDataInfo wlData, FMeasureSample sample, Integer digit, Integer otherDigit) {
 
         Map<String, Map<String, String>> ans = new HashMap<>();
 
         FRepeatMeasureData absData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode());
         FRepeatMeasureData tPercentData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode());
         String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
+
+        SystemBusinessParamVO vo = businessParamService.queryBusinessParam();
+        Integer sdDigits = vo.getSdDigits();
 
         if (option != null && !option.isEmpty()) {
             for (String s : option) {
@@ -3395,25 +3478,63 @@ public class RationServiceConciseImpl implements RationConciseService {
                     children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
 
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(wlData.getAbsValue()), digit));
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(),DataCountUtil.addZero(Double.valueOf(wlData.getTPercentValue()), digit));
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(),DataCountUtil.addZero(Double.valueOf(wlData.getTPercentValue()), otherDigit));
                     ans.putIfAbsent(pre + DataIdentityEnums.avg.getIdentity(), children);
                 }
                 if (DataIdentityEnums.sd.getIdentity().equals(s)) {
                     children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
 
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
+                    String sdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getSd());
+                    String sdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getSd());
+
+                    if (isNumber(sdA)) {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(sdA), sdDigits));
+                    } else {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), sdA);
+                    }
+                    if (isNumber(sdT)) {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(sdT), sdDigits));
+                    } else {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), sdT);
+                    }
+
                     ans.putIfAbsent(pre + DataIdentityEnums.sd.getIdentity(), children);
                 }
                 if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
                     children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
-                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
+
+                    String rsdA = DataCountUtil.formatValueWithBigDecimal(sdDigits, absData.getRsd());
+                    String rsdT = DataCountUtil.formatValueWithBigDecimal(sdDigits, tPercentData.getRsd());
+
+                    if (isNumber(rsdA)) {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.addZero(Double.valueOf(rsdA), sdDigits));
+                    } else {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), rsdA);
+                    }
+
+                    if (isNumber(rsdT)) {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.addZero(Double.valueOf(rsdT), sdDigits));
+                    } else {
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), rsdT);
+                    }
+
                     ans.putIfAbsent(pre + DataIdentityEnums.rsd.getIdentity(), children);
                 }
             }
         }
         return ans;
+    }
+
+    private Boolean isNumber(String str) {
+        if (str == null || str.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            double v = Double.parseDouble(str);
+            return !Double.isNaN(v) && !Double.isInfinite(v);
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     public Map<String, Object> getSingleSampleData(FMeasureTask task, FMeasureSample sample, Boolean repeat, List<String> option, Integer digit, Integer otherDigit) {
@@ -3559,7 +3680,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 //                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
 //                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getTPercentValue()));
 
-                            Map<String, Map<String, String>> ch = extracted(option, dataInfo, sample, digit);
+                            Map<String, Map<String, String>> ch = extracted(option, dataInfo, sample, digit, otherDigit);
                             if (!ch.isEmpty()) {
                                 for (Map.Entry<String, Map<String, String>> entry : ch.entrySet()) {
                                     String key = entry.getKey();
@@ -6542,20 +6663,24 @@ public class RationServiceConciseImpl implements RationConciseService {
                     continue;
                 }
                 // 处理单元格数据
-                String cellData = "-";
+                Object cellData = "-";
                 if (head != null && head.getIdentity() != null) {
                     Object value = map.get(head.getIdentity());
                     if (value != null) {
-                        cellData = String.valueOf(value)
+                        // 尝试将数字字符串转换为 Double，让 Excel 识别为数值类型
+                                cellData = convertToNumberIfNeeded(String.valueOf(value)
                                 .replace("\r", "")
                                 .replace("\n", "")
-                                .replace("\t", " ");
-                        if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                            cellData = "-";
-                        }
-                        // 样品位置特殊处理
-                        if ("sampleLocation".equals(head.getIdentity())) {
-                            cellData = "样品" + cellData;
+                                .replace("\t", " "));
+                        if (cellData instanceof String) {
+                            String strValue = (String) cellData;
+                            if (strValue.isEmpty() || "null".equalsIgnoreCase(strValue)) {
+                                cellData = "-";
+                            }
+                            // 样品位置特殊处理
+                            if ("sampleLocation".equals(head.getIdentity())) {
+                                cellData = "样品" + strValue;
+                            }
                         }
                     }
                 }
@@ -6612,20 +6737,26 @@ public class RationServiceConciseImpl implements RationConciseService {
                     continue;
                 }
                 // 处理单元格数据
-                String cellData = "-";
+                Object cellData = "-";
                 if (head != null && head.getIdentity() != null) {
                     Object value = map.get(head.getIdentity());
                     if (value != null) {
-                        cellData = String.valueOf(value)
+                        // 尝试将数字字符串转换为 Double，让 Excel 识别为数值类型
+                        cellData = convertToNumberIfNeeded(String.valueOf(value)
                                 .replace("\r", "")
                                 .replace("\n", "")
-                                .replace("\t", " ");
-                        if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                            cellData = "-";
-                        }
-                        // 样品位置特殊处理
-                        if ("sampleLocation".equals(head.getIdentity())) {
-                            cellData = "样品" + cellData;
+                                .replace("\t", " "));
+
+                        // 只有字符串类型才需要处理空值和特殊逻辑
+                        if (cellData instanceof String) {
+                            String strValue = (String) cellData;
+                            if (strValue.isEmpty() || "null".equalsIgnoreCase(strValue)) {
+                                cellData = "-";
+                            }
+                            // 样品位置特殊处理
+                            if ("sampleLocation".equals(head.getIdentity())) {
+                                cellData = "样品" + strValue;
+                            }
                         }
                     }
                 }
@@ -6656,7 +6787,21 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
     }
 
+    private Object convertToNumberIfNeeded(String value) {
+        if (value == null || value.trim().isEmpty() || "-".equals(value)) {
+            return value;
+        }
 
+        try {
+            // 尝试去除空格
+            String trimmed = value.trim();
+            // 尝试转换为 Double
+            return Double.parseDouble(trimmed);
+        } catch (NumberFormatException e) {
+            // 转换失败，返回原字符串
+            return value;
+        }
+    }
     // ---------------------- 工具方法 ----------------------
     /**
      * 获取文件后缀（Java 8兼容）
@@ -6671,5 +6816,57 @@ public class RationServiceConciseImpl implements RationConciseService {
         } else {
             return "docx";
         }
+    }
+
+    /**
+     * 下发给仪器的参数校验
+     * @param param
+     * @param deviceSerialNumber
+     * @return
+     */
+    private R IssueCheckParam(FRationParameter param, String deviceSerialNumber) {
+        Boolean result = true;
+        List<String> errorMessages = new ArrayList<>();
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!deviceMeasureVOR.getSuccess()) {
+            return R.fail(deviceMeasureVOR.getMessage());
+        }
+        DeviceMeasureVO deviceMeasureVO = deviceMeasureVOR.getData();
+        // 1. 波长范围是否超出限制
+        List<String> waveLengths = param.getWaveLength();
+        Double maxWavelength =  Double.parseDouble(deviceMeasureVO.getMaxWavelength());
+        Double minWavelength =  Double.parseDouble(deviceMeasureVO.getMinWavelength());
+        for (String waveLength : waveLengths) {
+            Double wavelength = Double.parseDouble(waveLength);
+            if (wavelength > maxWavelength || wavelength < minWavelength) {
+                result = result ? false : result;
+                errorMessages.add("波长"+ waveLength+"超出限制, 最大值: " + maxWavelength + "  最小值: " + minWavelength);
+            }
+        }
+        // 2. 光谱带宽是否存在
+        if (!deviceMeasureVO.getBandWidth().contains(param.getSpectralBandwidth())) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该光谱带宽");
+        }
+        // 3. 响应时间是否存在
+        if (!deviceMeasureVO.getResponseTime().contains(param.getResponseTime())) {
+            result = result ? false : result;
+            errorMessages.add("当前仪器不支持该响应时间");
+        }
+        // 4. 换灯波长是否超出限制
+        Double lampWaveLength = Double.parseDouble(param.getChangeLampWaveLength());
+        Double maxLampWavelength =  Double.parseDouble(deviceMeasureVO.getMaxLampWavelength());
+        Double minLampWavelength =  Double.parseDouble(deviceMeasureVO.getMinLampWavelength());
+        if (lampWaveLength > maxLampWavelength || lampWaveLength < minLampWavelength) {
+            result = result ? false : result;
+            errorMessages.add("换灯波长超出限制, 最大值: "+maxLampWavelength+"  最小值: "+minLampWavelength);
+        }
+
+        if (result){
+            return R.ok(true);
+        }else {
+            return R.fail(errorMessages);
+        }
+
     }
 }

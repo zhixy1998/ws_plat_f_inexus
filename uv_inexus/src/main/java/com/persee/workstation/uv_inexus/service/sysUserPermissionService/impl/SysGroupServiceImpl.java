@@ -14,6 +14,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupPermissionMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupQueryDTO;
@@ -21,6 +22,7 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupSaveDTO;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPermissionPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysGroupService;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
@@ -51,7 +53,8 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
     private SysUserGroupMapper  sysUserGroupMapper;
     @Autowired
     private SysUserService sysUserService;
-
+    @Autowired
+    private SysGroupPermissionMapper sysGroupPermissionMapper;
 
 
     // 分页查询
@@ -107,6 +110,32 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         groupPO.setCreateBy("admin");
         groupPO.setCreated(LocalDateTime.now());
         baseMapper.insert(groupPO);
+
+        // ========== 新增逻辑开始 ==========
+        // 4. 从角色表获取perm_ids（格式：1,2,3,4）
+        String permIds = rolePO.getPermIds();
+        if (permIds != null && !permIds.isEmpty()) {
+            // 4.1 拆分perm_ids为单个权限ID
+            String[] permIdArray = permIds.split(",");
+            // 4.2 循环创建小组-权限关联数据
+            for (String permId : permIdArray) {
+                // 过滤空值和空格
+                permId = permId.trim();
+                if (permId.isEmpty()) {
+                    continue;
+                }
+                // 4.3 封装关联数据
+                SysGroupPermissionPO groupPermissionPO = new SysGroupPermissionPO();
+                groupPermissionPO.setGroupId(groupPO.getId()); // 新建小组ID
+                groupPermissionPO.setPermId(permId);          // 单个权限ID
+                groupPermissionPO.setCreateBy("admin");
+                groupPermissionPO.setCreated(LocalDateTime.now());
+                // 4.4 插入关联表（需注入SysGroupPermissionMapper）
+                sysGroupPermissionMapper.insert(groupPermissionPO);
+            }
+        }
+        // ========== 新增逻辑结束 ==========
+
         //小组创建成功，已关联角色
         return Result.ok(YamlMessageSource.getMessageStatic("00602004"));
     }

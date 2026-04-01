@@ -9,17 +9,20 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceOverview;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceStatistics;
-import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionLampStatus;
-import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionResponseInfoVO;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.DetectionManyDevicesLampStatus;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.DetectionManyDevicesResponseInfoVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -75,6 +78,18 @@ public class DeviceConnectionManager {
         }
 
         return createNewDevice(connectIdentity, port, key, connectType);
+    }
+
+    public boolean checkDeviceExist(String connectIdentity, Integer port) {
+        String key = connectIdentity + ":" + port;
+
+        String existingId = identityMap.get(key);
+        if (existingId == null) {
+            return false;
+        } else {
+            DeviceConnectInfo device = deviceMap.get(existingId);
+            return device != null;
+        }
     }
 
     private String createNewDevice(String connectIdentity, Integer port, String key, Integer connectType) {
@@ -266,74 +281,103 @@ public class DeviceConnectionManager {
      * @return 是否成功
      */
     public boolean partialUpdateCurrentStatus(String deviceId,
-                                              Map<String, Object> statusUpdates) {
+                                              JSONObject statusUpdates) {
         DeviceConnectInfo device = deviceMap.get(deviceId);
         if (device == null || statusUpdates == null || statusUpdates.isEmpty()) {
             return false;
         }
 
         synchronized (device) {
-            DetectionResponseInfoVO currentStatus = device.getCurrentStatus();
+            DetectionManyDevicesResponseInfoVO currentStatus = device.getCurrentStatus();
             if (currentStatus == null) {
-                currentStatus = new DetectionResponseInfoVO();
+                currentStatus = new DetectionManyDevicesResponseInfoVO();
                 device.setCurrentStatus(currentStatus);
             }
 
             // 使用反射动态更新字段（或者为DetectionResponseInfoVO添加更新方法）
             // 这里先提供简单的手动更新
+            // ... existing code ...
             for (Map.Entry<String, Object> entry : statusUpdates.entrySet()) {
                 switch (entry.getKey()) {
                     case "connectStatus":
-                        currentStatus.setConnectStatus((String) entry.getValue());
+                        currentStatus.setConnectStatus(String.valueOf(entry.getValue()));
                         break;
                     case "devCurrentStatus":
-                        currentStatus.setDevCurrentStatus((String) entry.getValue());
+                        currentStatus.setDevCurrentStatus(Integer.valueOf(String.valueOf(entry.getValue())));
                         break;
                     case "lampPos":
-                        currentStatus.setLampPos((String) entry.getValue());
+                        currentStatus.setLampPos(String.valueOf(entry.getValue()));
                         break;
                     case "dataList":
-                        currentStatus.setDataList((List<DetectionLampStatus>) entry.getValue());
+                        String jsonData = String.valueOf(entry.getValue());
+                        List<DetectionManyDevicesLampStatus> dataList = JSON.parseArray(jsonData, DetectionManyDevicesLampStatus.class);
+                        if (dataList != null) {
+                            currentStatus.setDataList(dataList);
+                        }
                         break;
                     case "x":
-                        currentStatus.setX((String) entry.getValue());
+                        currentStatus.setX(String.valueOf(entry.getValue()));
                         break;
                     case "y":
-                        currentStatus.setY((String) entry.getValue());
+                        currentStatus.setY(String.valueOf(entry.getValue()));
                         break;
                     case "pos":
-                        currentStatus.setPos((String) entry.getValue());
+                        currentStatus.setPos(String.valueOf(entry.getValue()));
                         break;
                     case "bandwidth":
-                        currentStatus.setBandwidth((String) entry.getValue());
+                        currentStatus.setBandwidth(String.valueOf(entry.getValue()));
                         break;
                     case "changeLampWl":
-                        currentStatus.setChangeLampWl((String) entry.getValue());
+                        currentStatus.setChangeLampWl(String.valueOf(entry.getValue()));
                         break;
                     case "time":
-                        currentStatus.setTime((String) entry.getValue());
+                        currentStatus.setTime(String.valueOf(entry.getValue()));
                         break;
                     case "attachmentName":
-                        currentStatus.setAttachmentName((String) entry.getValue());
+                        currentStatus.setAttachmentName(String.valueOf(entry.getValue()));
                         break;
                     case "attachmentKind":
-                        currentStatus.setAttachmentKind((Integer) entry.getValue());
+                        Integer i = convertToInteger(entry.getValue());
+                        if (i != null) {
+                            currentStatus.setAttachmentKind(i);
+                        }
                         break;
                     case "totalPoolNum":
-                        currentStatus.setTotalPoolNum((Integer) entry.getValue());
+                        Integer f = convertToInteger(entry.getValue());
+                        if (f != null) {
+                            currentStatus.setTotalPoolNum(f);
+                        }
                         break;
                     case "luminosity":
-                        currentStatus.setLuminosity((String) entry.getValue());
-                        device.setLuminosityMode((String) entry.getValue()); // 同步更新
+                        currentStatus.setLuminosity(String.valueOf(entry.getValue()));
                         break;
                 }
             }
+// ... existing code ...
+
 
             device.updateLastUseTime();
         }
 
         logInfo("部分更新设备状态: %s -> %s", deviceId, statusUpdates.keySet());
         return true;
+    }
+
+    private Integer convertToInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Integer) {
+            return (Integer) value;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /**
@@ -543,13 +587,13 @@ public class DeviceConnectionManager {
     public boolean setDevCurrentUseType(String deviceId, String status) {
         DeviceConnectInfo device = deviceMap.get(deviceId);
         if (device == null) {
-            logWarning("设置状态值失败: 设备不存在 %s", deviceId);
+            logWarning("设置使用类型状态值失败: 设备不存在 %s", deviceId);
             return false;
         }
 
         device.setUseType(status);
         device.updateLastUseTime();
-        logInfo("设置当前状态值: %s -> %s", deviceId, status);
+        logInfo("设置当前使用类型状态值: %s -> %s", deviceId, status);
         return true;
     }
 
@@ -562,6 +606,39 @@ public class DeviceConnectionManager {
         DeviceConnectInfo device = deviceMap.get(deviceId);
         if (device == null) {
             logWarning("设置状态值失败: 设备不存在 %s", deviceId);
+            return null;
+        }
+        return device.getUseType();
+    }
+
+    /**
+     * 设置当前状态
+     * @param deviceId 设备ID
+     * @param taskId 当前任务
+     * @return 是否成功
+     */
+    public boolean setDevCurrentTaskId(String deviceId, String taskId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置使用任务id失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.setCurrentTaskId(taskId);
+        device.updateLastUseTime();
+        logInfo("设置当前任务id: %s -> %s", deviceId, taskId);
+        return true;
+    }
+
+    /**
+     * 获取当前状态值
+     * @param deviceId 设备ID
+     * @return 当前状态值
+     */
+    public String getDevCurrentTaskId(String deviceId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("获取任务id失败: 设备不存在 %s", deviceId);
             return null;
         }
         return device.getUseType();
@@ -637,13 +714,13 @@ public class DeviceConnectionManager {
     public boolean setMeasureValue(String deviceId, String currentMeasureValue) {
         DeviceConnectInfo device = deviceMap.get(deviceId);
         if (device == null) {
-            logWarning("设置当前波长失败: 设备不存在 %s", deviceId);
+            logWarning("设置当前测量结果失败: 设备不存在 %s", deviceId);
             return false;
         }
 
         device.setCurrentMeasureValue(currentMeasureValue);
         device.updateLastUseTime();
-        logInfo("设置当前波长: %s -> %s", deviceId, currentMeasureValue);
+        logInfo("设置当前测量结果: %s -> %s", deviceId, currentMeasureValue);
         return true;
     }
 
@@ -675,7 +752,7 @@ public class DeviceConnectionManager {
             return Collections.emptyMap();
         }
 
-        DetectionResponseInfoVO status = device.getCurrentStatus();
+        DetectionManyDevicesResponseInfoVO status = device.getCurrentStatus();
         if (status == null) {
             return Collections.emptyMap();
         }
@@ -884,18 +961,20 @@ public class DeviceConnectionManager {
 
     private static void logInfo(String format, Object... args) {
         String msg = String.format(format, args);
-        String time = LocalDateTime.now().toString().substring(11, 19);
+        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
         System.out.printf("[%s][DeviceManager] %s%n", time, msg);
+
     }
 
     private static void logWarning(String format, Object... args) {
         String msg = String.format(format, args);
-        String time = LocalDateTime.now().toString().substring(11, 19);
+        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
         System.out.printf("[%s][DeviceManager][WARN] %s%n", time, msg);
     }
 
     private void logError(Exception e) {
-        String time = LocalDateTime.now().toString().substring(11, 19);
+        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
         System.err.printf("[%s][DeviceManager][ERROR] %s: %s%n", time, "清理过程异常", e.getMessage());
+
     }
 }

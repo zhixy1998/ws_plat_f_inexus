@@ -18,11 +18,13 @@
 
 package com.persee.workstation.uv_inexus.po.guide.instrumentPo;
 
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -68,15 +70,23 @@ public class DeviceTypeInfoPO {
 
     @ApiModelProperty("扫描速度")
     @TableField(value = "scan_speed", typeHandler = JacksonTypeHandler.class)
-    private List<String> scanSpeed;
+    private JSONObject scanSpeed;
 
     @ApiModelProperty("最小波长")
     @TableField(value = "min_wavelength")
     private String minWavelength;
 
+    @ApiModelProperty("最小换灯波长")
+    @TableField(value = "min_lamp_wavelength")
+    private String minLampWavelength;
+
     @ApiModelProperty("最大波长")
     @TableField(value = "max_wavelength")
     private String maxWavelength;
+
+    @ApiModelProperty("最大换灯波长")
+    @TableField(value = "max_lamp_wavelength")
+    private String maxLampWavelength;
 
     @ApiModelProperty("扫描间隔")
     @TableField(value = "scan_interval", typeHandler = JacksonTypeHandler.class)
@@ -86,4 +96,7 @@ public class DeviceTypeInfoPO {
     @TableField(value = "calibration_type", typeHandler = JacksonTypeHandler.class)
     private List<Integer> calibrationType;
 
+    @ApiModelProperty("使用时长统计指令")
+    @TableField(value = "work_time_count", typeHandler = JacksonTypeHandler.class)
+    private List<WorkTimeInfo>  workTimeCount;
 }
