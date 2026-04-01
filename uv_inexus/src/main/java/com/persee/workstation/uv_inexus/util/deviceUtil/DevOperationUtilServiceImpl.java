@@ -21,10 +21,12 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInitEntryInfo;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceUsageLogPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InitRecordPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceUsageLogService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.*;
@@ -67,6 +69,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
     @Autowired
     DeviceInfoService infoService;
+
+    @Autowired
+    DeviceUsageLogService deviceUsageLogService;
 
     @Autowired
     InitRecordService initRecordService;
@@ -1494,6 +1499,15 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 if (liveDetection.getMessage() != null && liveDetection.getMessage().equals(DeviceConstants.unCountResponse)) {
                     log.info("{}指令无响应", comId);
+
+                    DeviceUsageLogPO logPO = new DeviceUsageLogPO();
+                    logPO.setDeviceSerialNumber(deviceSerialNumber);
+                    DeviceConnectionManager manager = DeviceConnectionManager.getInstance();
+                    LocalDateTime connectTime = device.getConnectTime();
+                    logPO.setStartTime(connectTime);
+
+                    deviceUsageLogService.saveDeviceUsageLog(logPO);
+
                     deviceManager.removeDevice(deviceId);
                     DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
                     infoPO.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
@@ -2350,14 +2364,14 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         } else {
             if (ReplyNumber < 0) {
                 disconnect = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, Timeout, false, deviceSerialNumber, null, headReceiveBytes);
-                if (!disconnect.getSuccess()) {
-                    return R.fail("断开失败！");
-                }
             } else {
                 disconnect = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
-                if (!disconnect.getSuccess()) {
-                    return R.fail("断开失败！");
-                }
+            }
+            if (!disconnect.getSuccess()) {
+                MessageStoreManager.getInstance().clearDevice(deviceId);
+
+                deviceManager.removeDevice(deviceId);
+                return R.fail("断开失败！");
             }
         }
         MessageStoreManager.getInstance().clearDevice(deviceId);
