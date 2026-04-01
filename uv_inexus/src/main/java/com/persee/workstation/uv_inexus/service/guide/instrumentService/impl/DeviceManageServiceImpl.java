@@ -37,6 +37,7 @@ import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagemen
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceUsageLogService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
 import com.persee.workstation.uv_inexus.util.changeUtil.*;
@@ -115,6 +116,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
     DeviceCalibrationParamDAO calibrationParamDAO;
+
+    @Autowired
+    DeviceUsageLogService deviceUsageLogService;
 
 //    @Autowired
 //    LiveDetectionDevicesWebSocket liveDetectionManyDevicesWebSocket;
@@ -1281,6 +1285,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return R.ok(true);
         }
 
+//        Boolean saveDeviceUsageLog(DeviceUsageLogPO po);
+
+        DeviceUsageLogPO logPO = new DeviceUsageLogPO();
+        logPO.setDeviceSerialNumber(deviceSerialNumber);
+        logPO.setUpdateBy(updateBy);
+        DeviceConnectionManager manager = DeviceConnectionManager.getInstance();
+        DeviceConnectInfo device = manager.getDevice(info.getDeviceId());
+        LocalDateTime connectTime = device.getConnectTime();
+        logPO.setStartTime(connectTime);
+
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setOperationType(OperationTypeEnums.Disconnect.getType());
@@ -1296,6 +1310,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 info.setDevicePort(-1);
                 info.setUpdateBy(updateBy);
                 infoService.saveOrUpdateInfo(info);
+                deviceUsageLogService.saveDeviceUsageLog(logPO);
                 return R.ok(true);
             } else {
                 return R.fail(operation.getMessage());
@@ -1313,6 +1328,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             info.setDevicePort(-1);
             info.setUpdateBy(updateBy);
             infoService.saveOrUpdateInfo(info);
+            deviceUsageLogService.saveDeviceUsageLog(logPO);
             return R.ok(true);
         }
     }

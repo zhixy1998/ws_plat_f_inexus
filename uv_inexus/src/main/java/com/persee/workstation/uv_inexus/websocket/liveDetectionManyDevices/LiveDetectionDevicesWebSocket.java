@@ -632,7 +632,7 @@ public class LiveDetectionDevicesWebSocket {
                     if (!Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
                         log.info("设备已断开，暂停测量: {}", taskInfo.deviceSerialNumber);
                         taskInfo.isRunning = false;
-                        webSocketSendUtil.sendDeviceDisConnectMessage(taskInfo.deviceSerialNumber);
+//                        webSocketSendUtil.sendDeviceDisConnectMessage(taskInfo.deviceSerialNumber);
                         if (device != null) {
                             deviceManager.removeDevice(deviceId);
                         }
