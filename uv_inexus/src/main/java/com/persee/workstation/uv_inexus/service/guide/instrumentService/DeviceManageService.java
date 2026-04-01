@@ -54,12 +54,6 @@ public interface DeviceManageService {
      */
     R<Boolean> changeLamp(String currentLampType, String deviceSerialNumber);
 
-    /**
-     * 断开连接
-     */
-    Boolean disConnect(String deviceSerialNumber, String updateBy);
-
-
     R<List<FindDeviceVO>> findDevice() throws Exception;
 
     /**
