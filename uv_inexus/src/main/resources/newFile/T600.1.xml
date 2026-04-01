@@ -1860,7 +1860,7 @@
 </ProtocolItem>
 <!--    <ProtocolItem>-->
 <!--        <ID>Dark</ID>-->
-<!--        <Describe>暗电流校正</Describe>-->
+<!--        <Describe>暗电流</Describe>-->
 <!--        <Timeout>30000</Timeout>-->
 <!--        <ACK>Y</ACK>-->
 <!--        <InputString>-->

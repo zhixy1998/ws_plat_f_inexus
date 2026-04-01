@@ -487,19 +487,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public Boolean disConnect(String deviceSerialNumber, String updateBy) {
-        DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
-        Constants.devConnectInfo.remove(deviceSerialNumber);
-        devMessageUtil.disConnect(infoPO.getIp());
-
-        infoPO.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
-        infoPO.setUpdateBy(updateBy);
-        infoService.saveOrUpdateInfo(infoPO);
-        ResponseDeal.Sn = null;
-        return true;
-    }
-
-    @Override
     @DS("guide")
     public R<List<FindDeviceVO>> findDevice() throws Exception {
 
@@ -1234,6 +1221,21 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             info.setAttachmentName(attachmentInfo.getAttachmentName());
             info.setUpdateBy(param.getUpdateBy());
+
+            LambdaQueryWrapper<DeviceInfoPO> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+            lambdaQueryWrapper.eq(DeviceInfoPO::getConnectStatus, Constants.CONNECT_DEVICE_SUCCESS)
+                    .eq(DeviceInfoPO::getUpdateBy, param.getUpdateBy())
+                    .orderByDesc(DeviceInfoPO::getUpdated);
+            //TODO 校验用户权限，是否可以连多个
+            int max = 1;
+            List<DeviceInfoPO> pos = deviceInfoDAO.selectList(lambdaQueryWrapper);
+
+            if (pos != null && !pos.isEmpty()) {
+                for (DeviceInfoPO po : pos) {
+                    disconnectDevice(po.getDeviceSerialNumber(), param.getUpdateBy());
+                }
+            }
+
             infoService.saveOrUpdateInfo(info);
             boolean initRecord = true;
 
@@ -1253,6 +1255,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             BeanUtils.copyProperties(info, vo);
             vo.setAttachmentKind(attachmentInfo.getAttachmentKind());
             vo.setLinearSegment(null);
+
+
 
 //            if (info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
 //                liveDetectionManyDevicesWebSocket.startMeasure(info.getDeviceSerialNumber());

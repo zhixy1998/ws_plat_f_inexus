@@ -286,8 +286,8 @@ public class MessageOnTimeDeal {
 
             unknowCountMessageQueue.clearCommand(deviceSerialNumber, "Scan");
             unknowCountMessageQueue.clearCommand(deviceSerialNumber, "ScanFast");
-            unknowCountMessageQueue.clearCommand(deviceSerialNumber, "BaseLine");
-            unknowCountMessageQueue.clearCommand(deviceSerialNumber, "BaseLineFast");
+//            unknowCountMessageQueue.clearCommand(deviceSerialNumber, "BaseLine");
+//            unknowCountMessageQueue.clearCommand(deviceSerialNumber, "BaseLineFast");
 
             return; // 不需要继续创建新线程
         }
@@ -302,20 +302,6 @@ public class MessageOnTimeDeal {
 
         if (isScan || isBaseline) {
             unknowCountMessageQueue.clearIp(deviceSerialNumber);
-
-            SpectrumPointStore oldStore = spectrumPointStoreMap.get(deviceSerialNumber);
-            if (oldStore != null) {
-                oldStore.clear();
-                log.info("[基线清空] 清空旧的基线数据和 pointStore，设备={}", deviceSerialNumber);
-            }
-        }
-
-        if (isBaseline) {
-            SpectrumPointStore oldStore = spectrumPointStoreMap.get(deviceSerialNumber);
-            if (oldStore != null) {
-                oldStore.clear();
-                log.info("[基线清空] 清空旧的基线数据，设备={}", deviceSerialNumber);
-            }
         }
 
         MessageStoreManager store = MessageStoreManager.getInstance();
