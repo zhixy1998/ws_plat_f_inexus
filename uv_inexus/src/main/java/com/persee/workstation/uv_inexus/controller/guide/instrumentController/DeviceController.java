@@ -202,7 +202,7 @@ public class DeviceController {
         if (r.getSuccess()) {
             return Result.ok(true);
         } else {
-            return Result.fail("断开失败");
+            return Result.fail(r.getMessage());
         }
     }
 

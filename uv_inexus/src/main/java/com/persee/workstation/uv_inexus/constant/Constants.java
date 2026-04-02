@@ -194,5 +194,10 @@ public class Constants {
     public static final String MESSAGE_SOURCE_REMOTE = "remote";
     public static final String MESSAGE_SOURCE_UNKNOWN = "unknown";
 
+    /*
+    握手报文超时时间
+     */
+    public static final Integer HANDSHAKE_TIMEOUT = 1000;
+
 
 }

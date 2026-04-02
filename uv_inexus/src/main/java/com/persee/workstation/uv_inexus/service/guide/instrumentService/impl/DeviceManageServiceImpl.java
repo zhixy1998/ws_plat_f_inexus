@@ -37,6 +37,7 @@ import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagemen
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceUsageLogService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
 import com.persee.workstation.uv_inexus.util.changeUtil.*;
@@ -115,6 +116,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
     DeviceCalibrationParamDAO calibrationParamDAO;
+
+    @Autowired
+    DeviceUsageLogService deviceUsageLogService;
 
 //    @Autowired
 //    LiveDetectionDevicesWebSocket liveDetectionManyDevicesWebSocket;
@@ -1008,6 +1012,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         DeviceMeasureVO dbVo = re.getData();
         Integer connectMode = dbVo != null ? dbVo.getConnectMode() : null;
         List<Integer> filterWavelength = dbVo != null ? dbVo.getFilterWavelength() : null;
+        String minWaveLength = dbVo != null ? dbVo.getMinWavelength() : null;
+        String maxWaveLength = dbVo != null ? dbVo.getMaxWavelength() : null;
+        String minLampWaveLength = dbVo != null ? dbVo.getMinLampWavelength() : null;
+        String maxLampWaveLength = dbVo != null ? dbVo.getMaxLampWavelength() : null;
 
         // 2. 创建新的 VO 对象
         DeviceMeasureVO vo = new DeviceMeasureVO();
@@ -1024,6 +1032,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         // 4. 设置 connectMode（从数据库获取）
         vo.setConnectMode(connectMode);
         vo.setFilterWavelength(filterWavelength);
+        vo.setMaxWavelength(maxWaveLength);
+        vo.setMinWavelength(minWaveLength);
+        vo.setMaxLampWavelength(maxLampWaveLength);
+        vo.setMinLampWavelength(minLampWaveLength);
 
         return Result.ok(vo);
     }
@@ -1281,6 +1293,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return R.ok(true);
         }
 
+//        Boolean saveDeviceUsageLog(DeviceUsageLogPO po);
+
+        DeviceUsageLogPO logPO = new DeviceUsageLogPO();
+        logPO.setDeviceSerialNumber(deviceSerialNumber);
+        logPO.setUpdateBy(updateBy);
+        DeviceConnectionManager manager = DeviceConnectionManager.getInstance();
+        DeviceConnectInfo device = manager.getDevice(info.getDeviceId());
+        LocalDateTime connectTime = device.getConnectTime();
+        logPO.setStartTime(connectTime);
+
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setOperationType(OperationTypeEnums.Disconnect.getType());
@@ -1296,6 +1318,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 info.setDevicePort(-1);
                 info.setUpdateBy(updateBy);
                 infoService.saveOrUpdateInfo(info);
+                deviceUsageLogService.saveDeviceUsageLog(logPO);
                 return R.ok(true);
             } else {
                 return R.fail(operation.getMessage());
@@ -1313,6 +1336,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             info.setDevicePort(-1);
             info.setUpdateBy(updateBy);
             infoService.saveOrUpdateInfo(info);
+            deviceUsageLogService.saveDeviceUsageLog(logPO);
             return R.ok(true);
         }
     }

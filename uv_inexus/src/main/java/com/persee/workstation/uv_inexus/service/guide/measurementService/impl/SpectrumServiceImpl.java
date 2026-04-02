@@ -23,6 +23,7 @@ import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.MappingParamEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
@@ -344,13 +345,18 @@ public class SpectrumServiceImpl implements SpectrumService {
             }
         }
 
-        R<Boolean> r = checkParam(newMethodParam);
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(methodParam.getDeviceSerialNumber());
+        if (!deviceMeasureVOR.getSuccess()) {
+            return Result.fail(deviceMeasureVOR.getMessage());
+        }
+
+        R<Boolean> r = checkParam(newMethodParam,methodParam.getDeviceSerialNumber());
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
 
-        double minWaveLength = 190.0;
-        double maxWaveLength = 1100.0;
+        double minWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMinWavelength());
+        double maxWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMaxWavelength());
 
         if (StringUtils.hasText(methodParam.getDeviceSerialNumber())) {
             R<DeviceMeasureVO> typeInfo = deviceInfoService.queryDeviceTypeInfo(methodParam.getDeviceSerialNumber());
@@ -474,7 +480,7 @@ public class SpectrumServiceImpl implements SpectrumService {
     @Override
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter) {
         // 先校验方法是否合法
-        R<Boolean> r = checkParam(spectrumParameter);
+        R<Boolean> r = checkParam(spectrumParameter,methodDto.getDeviceSerialNumber());
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
@@ -4709,7 +4715,7 @@ public class SpectrumServiceImpl implements SpectrumService {
      * @param parameter 光谱扫描参数
      * @return 校验结果
      */
-    private R<Boolean> checkParam(SpectrumParameter parameter) {
+    private R<Boolean> checkParam(SpectrumParameter parameter,String deviceSerialNumber) {
         // 1. 根对象非空校验
         if (parameter == null) {
             return R.fail(YamlMessageSource.getMessageStatic("00102003"));
@@ -4720,7 +4726,17 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (!StringUtils.hasText(luminosity)) {
             return R.fail("光度模式不能为空");
         }
-        List<String> validLuminosityModes = Arrays.asList("1", "2", "3", "4"); // 1.abs 2.T% 3.Es 4.Er
+
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!deviceMeasureVOR.getSuccess()) {
+            return R.fail(deviceMeasureVOR.getMessage());
+        }
+
+        List<MappingParamEnum.ParamOption> defaultValue = (List<MappingParamEnum.ParamOption>) MappingParamEnum.LUMINOSITY.getDefaultValue();
+        // 使用steam流将defaultValue的value值取出来作为一个List<String>
+        List<String> validLuminosityModes = defaultValue.stream()
+                .map(MappingParamEnum.ParamOption::getParamValue)
+                .collect(Collectors.toList());
         if (!validLuminosityModes.contains(luminosity)) {
             return R.fail("光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：" + luminosity);
         }
@@ -4741,8 +4757,8 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
 
         // 波长默认范围 190-1100
-        double minWaveLength = 190.0;
-        double maxWaveLength = 1100.0;
+        double minWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMinWavelength());
+        double maxWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMaxWavelength());
 
         double startWave = 0;
         double endWave = 0;

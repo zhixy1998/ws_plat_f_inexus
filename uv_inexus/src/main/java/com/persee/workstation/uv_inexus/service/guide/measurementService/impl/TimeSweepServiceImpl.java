@@ -24,6 +24,7 @@ import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMap
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.experimentTest.TimeSweepMethodParamsDto;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.MappingParamEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.RationChangeMethodTypeEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
@@ -310,13 +311,18 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             }
         }
 
-        R<Boolean> r = checkParam(newMethodParam);
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(methodParam.getDeviceSerialNumber());
+        if (!deviceMeasureVOR.getSuccess()) {
+            return Result.fail(deviceMeasureVOR.getMessage());
+        }
+
+        R<Boolean> r = checkParam(newMethodParam,methodParam.getDeviceSerialNumber());
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
 
-        double minWaveLength = 190.0;
-        double maxWaveLength = 1100.0;
+        double minWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMinWavelength());
+        double maxWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMaxWavelength());
 
         if (StringUtils.hasText(methodParam.getDeviceSerialNumber())) {
             R<DeviceMeasureVO> typeInfo = deviceInfoService.queryDeviceTypeInfo(methodParam.getDeviceSerialNumber());
@@ -2788,7 +2794,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, TimeSweepParamter timeSweepParamter) {
-        R<Boolean> r = checkParam(timeSweepParamter);
+        R<Boolean> r = checkParam(timeSweepParamter,methodDto.getDeviceSerialNumber());
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
@@ -3887,7 +3893,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @param parameter 时间扫描参数
      * @return 校验结果
      */
-    private R<Boolean> checkParam(TimeSweepParamter parameter) {
+    private R<Boolean> checkParam(TimeSweepParamter parameter,String deviceSerialNumber) {
         // 1. 根对象非空校验
         if (parameter == null) {
             return R.fail(YamlMessageSource.getMessageStatic("00102003"));
@@ -3898,7 +3904,16 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (!StringUtils.hasText(luminosity)) {
             return R.fail("光度模式不能为空");
         }
-        List<String> validLuminosityModes = Arrays.asList("1", "2", "3", "4"); // 1.abs 2.T% 3.Es 4.Er
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!deviceMeasureVOR.getSuccess()) {
+            return R.fail(deviceMeasureVOR.getMessage());
+        }
+
+        List<MappingParamEnum.ParamOption> defaultValue = (List<MappingParamEnum.ParamOption>) MappingParamEnum.LUMINOSITY.getDefaultValue();
+        // 使用steam流将defaultValue的value值取出来作为一个List<String>
+        List<String> validLuminosityModes = defaultValue.stream()
+                .map(MappingParamEnum.ParamOption::getParamValue)
+                .collect(Collectors.toList());
         if (!validLuminosityModes.contains(luminosity)) {
             return R.fail("光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：" + luminosity);
         }
@@ -3910,8 +3925,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
 
         // 波长默认范围 190-1100
-        double minWaveLength = 190.0;
-        double maxWaveLength = 1100.0;
+        double minWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMinWavelength());
+        double maxWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMaxWavelength());
 
         try {
             double waveLength = Double.parseDouble(waveLengthStr);
