@@ -12,8 +12,6 @@ package com.persee.workstation.uv_inexus.po.guide.instrumentPo.model;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
-import java.time.LocalDateTime;
-
 /**
  * @author xudian
  */
@@ -29,7 +27,10 @@ public class WorkTimeInfo {
     @ApiModelProperty("灯总工作时长，小时")
     private String totalWorkTime;
 
+    @ApiModelProperty("寿命，小时")
+    private String life;
+
     @ApiModelProperty("更新时间")
-    private LocalDateTime updateTime;
+    private String updateTime;
 
 }

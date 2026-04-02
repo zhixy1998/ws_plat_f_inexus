@@ -683,7 +683,8 @@ public class LiveDetectionDevicesWebSocket {
 
                             String message = "仪器无响应，请检查仪器状态和网线连接后，重新查找并联接仪器！";
 
-                            saveMessageInfo(message);
+                            assert info != null;
+                            saveMessageInfo(message, info.getUpdateBy());
 
                         }
                         scheduleNextMeasurement(taskInfo, startTime);
@@ -767,12 +768,14 @@ public class LiveDetectionDevicesWebSocket {
 
     }
 
-    private void saveMessageInfo(String message) {
+    private void saveMessageInfo(String message, String updateBy) {
         MessageInfoPO messageInfoPO = new MessageInfoPO();
         messageInfoPO.setMessageType(MessageTypeEnum.TYPE_INSTRUMENT_MESSAGE.getCode());
         messageInfoPO.setMessageSource(Constants.MESSAGE_SOURCE_DEVICE);
         messageInfoPO.setMessageContent(message);
         messageInfoPO.setMessageSummary("设备无响应!");
+        messageInfoPO.setCreateBy(updateBy);
+        messageInfoPO.setUpdateBy(updateBy);
         messageInfoService.saveMessageInfo(messageInfoPO);
     }
 
@@ -888,16 +891,17 @@ public class LiveDetectionDevicesWebSocket {
 
         if (StringUtils.hasText(destination) && destination.startsWith(messageTopic)) {
             String[] split = destination.split("/");
-            String deviceSerialNumber = split[split.length - 1];
+            String user = split[split.length - 1];
 
             // 检查此会话是否已经订阅了此设备
-            boolean isNewSubscription = addSubscription(sessionId, deviceSerialNumber);
+            boolean isNewSubscription = addSubscription(sessionId, user);
 
             if (isNewSubscription) {
                 log.info("新增消息订阅: 会话={}", sessionId);
             } else {
                 log.debug("重复消息订阅忽略: 会话={} ", sessionId);
             }
+
         }
     }
 

@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -46,6 +47,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
@@ -931,12 +933,19 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (DeviceCalibrationParamEnum.ScanSpeed.getType().equals(param)) {
 
             JSONObject scanSpeed = po.getScanSpeed();
+            Object defaultValue = MappingParamEnum.SCAN_SPEED.getDefaultValue();
+            String jsonString = JSONObject.toJSONString(defaultValue);
+            List<DeviceConfParam> options = JSON.parseArray(jsonString, DeviceConfParam.class);
+            Map<String, String> object = new HashMap<>();
+            for (DeviceConfParam option : options) {
+                object.put(option.getParamValue(), option.getParamName());
+            }
 
             List<DataNameValue> finalAns = new ArrayList<>();
             scanSpeed.forEach((k, v) -> {
                 DataNameValue value = new DataNameValue();
-                value.setDataKey(v.toString());
-                value.setDataValue(k);
+                value.setDataKey(object.get(v.toString()));
+                value.setDataValue(String.valueOf(v));
                 finalAns.add(value);
             });
             ans.addAll(finalAns);
@@ -1556,6 +1565,144 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return R.fail(YamlMessageSource.getMessageStatic("00203004"));
         }
 
+
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.Calibration.getOperation(), Constants.DEVICE_STATUS_CALIBRATION);
+        if (Objects.equals(dto.getCalibrationType(), DeviceCalibrationInfoEnum.T800Dark.getType())) {
+            double start = 900.0;
+            double end = 190.0;
+            double step = 0.5;
+
+            String scanSpeed = "medium";
+            double darkBand = 2.0;
+
+            double minWaveLength = 190.0;
+            double maxWaveLength = 1100.0;
+
+            if (StringUtils.hasText(deviceSerialNumber)) {
+                R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(deviceSerialNumber);
+                if (typeInfo.getSuccess()) {
+                    DeviceMeasureVO vo = typeInfo.getData();
+                    if (vo != null) {
+                        minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                        maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                    }
+
+                }
+            }
+
+            for (DataNameValue datum : dto.getData()) {
+                try {
+
+                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.Start.getType())) {
+                        start = Double.parseDouble(datum.getDataValue());
+                    }
+                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.End.getType())) {
+                        end = Double.parseDouble(datum.getDataValue());
+                    }
+                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.ScanSpeed.getType())) {
+                        scanSpeed = datum.getDataValue();
+                    }
+
+                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.WaveBrand.getType())) {
+                        darkBand = Double.parseDouble(datum.getDataValue());
+                    }
+                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.Step.getType())) {
+                        step = Double.parseDouble(datum.getDataValue());
+                    }
+                } catch (Exception e) {
+                    log.info("参数转换失败");
+                }
+            }
+
+            if (start < minWaveLength || start > maxWaveLength) {
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+                return R.fail(String.format("起始波长范围在 %s ~ %s 内", minWaveLength, maxWaveLength));
+            }
+            if (end < minWaveLength || end > maxWaveLength) {
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+                return R.fail(String.format("终止波长范围在 %s ~ %s 内", minWaveLength, maxWaveLength));
+            }
+
+
+            if (end >= start) {
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+                return R.fail("终止波长不能大于起始波长");
+            }
+
+            R<DeviceMeasureVO> r = infoService.queryDeviceTypeInfo(deviceSerialNumber);
+            if (!r.getSuccess()) {
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+                return R.fail(r.getMessage());
+            }
+            DeviceMeasureVO vo = r.getData();
+
+            List<String> bandWidth = vo.getBandWidth();
+            if (!bandWidth.contains(String.valueOf(darkBand))) {
+                log.info("当前仪器不支持该光谱带宽！");
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+                return R.fail("当前仪器不支持该光谱带宽！");
+            }
+            List<DeviceConfParam> speed = vo.getScanSpeed();
+            int deviceScanSpeed = -1;
+
+            for (DeviceConfParam s : speed) {
+                if (s.getParamName().equals(scanSpeed)) {
+                    deviceScanSpeed = Integer.parseInt(s.getParamValue());
+                    break;
+                }
+            }
+
+
+            if (deviceScanSpeed == -1) {
+                log.info("缺少扫描速度");
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+                return R.fail("当前仪器不支持该扫描速度");
+            }
+
+            start = start + step;
+            end = end - step;
+            DevOperationInputParam inputParam = new DevOperationInputParam();
+            inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+            SetParam param = new SetParam();
+            param.setScanWlInterval(step);
+            param.setStartWl(start);
+            param.setEndWl(end);
+            param.setScanSpeed(deviceScanSpeed);
+            param.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
+            inputParam.setDeviceSerialNumber(deviceSerialNumber);
+
+            Boolean needSetSit = infoService.isNeedSetSit(deviceSerialNumber);
+            if (needSetSit) {
+                param.setSlit1(darkBand);
+            }
+            inputParam.setParam(param);
+            R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+            if (!operation.getSuccess()) {
+                return R.fail(operation.getMessage());
+            }
+
+            inputParam.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
+        }
+
+        log.info("调用校准");
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setOperationType(OperationTypeEnums.Calibration.getType());
+        inputParam.setCalibrationType(dto.getCalibrationType());
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setUpdateBy(dto.getUpdateBy());
+        if (dto.getData() != null) {
+            inputParam.setCalibrationData(dto.getData());
+        }
+
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+            return R.fail(operation.getMessage());
+        }
+        log.info("校准成功");
+
         LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber)
                 .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
@@ -1594,113 +1741,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 }
             }
         }
-
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.Calibration.getOperation(), Constants.DEVICE_STATUS_CALIBRATION);
-        if (Objects.equals(dto.getCalibrationType(), DeviceCalibrationInfoEnum.T800Dark.getType())) {
-            double start = 900.0;
-            double end = 190.0;
-            double step = 0.5;
-
-            int scanSpeed = 3;
-            double darkBand = 2.0;
-
-            double minWaveLength = 190.0;
-            double maxWaveLength = 1100.0;
-
-            if (StringUtils.hasText(deviceSerialNumber)) {
-                R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(deviceSerialNumber);
-                if (typeInfo.getSuccess()) {
-                    DeviceMeasureVO vo = typeInfo.getData();
-                    if (vo != null) {
-                        minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
-                        maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
-                    }
-
-                }
-            }
-
-            for (DataNameValue datum : dto.getData()) {
-                try {
-
-                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.Start.getType())) {
-                        start = Double.parseDouble(datum.getDataValue());
-                    }
-                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.End.getType())) {
-                        end = Double.parseDouble(datum.getDataValue());
-                    }
-                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.ScanSpeed.getType())) {
-                        scanSpeed = Integer.parseInt(datum.getDataValue());
-                    }
-
-                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.WaveBrand.getType())) {
-                        darkBand = Double.parseDouble(datum.getDataValue());
-                    }
-                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.Step.getType())) {
-                        step = Double.parseDouble(datum.getDataValue());
-                    }
-                } catch (Exception e) {
-                    log.info("参数转换失败");
-                }
-            }
-
-            if (start < minWaveLength || start > maxWaveLength) {
-                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-                return R.fail(String.format("起始波长范围在 %s ~ %s 内", minWaveLength, maxWaveLength));
-            }
-            if (end < minWaveLength || end > maxWaveLength) {
-                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-                return R.fail(String.format("终止波长范围在 %s ~ %s 内", minWaveLength, maxWaveLength));
-            }
-
-
-            if (end >= start) {
-                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-                return R.fail("终止波长不能大于起始波长");
-            }
-
-            start = start + step;
-            end = end - step;
-            DevOperationInputParam inputParam = new DevOperationInputParam();
-            inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
-
-            SetParam param = new SetParam();
-            param.setScanWlInterval(step);
-            param.setStartWl(start);
-            param.setEndWl(end);
-            param.setScanSpeed(scanSpeed);
-            param.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
-            inputParam.setDeviceSerialNumber(deviceSerialNumber);
-
-            Boolean needSetSit = infoService.isNeedSetSit(deviceSerialNumber);
-            if (needSetSit) {
-                param.setSlit1(darkBand);
-            }
-            inputParam.setParam(param);
-            R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
-            if (!operation.getSuccess()) {
-                return R.fail(operation.getMessage());
-            }
-
-            inputParam.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
-        }
-
-        log.info("调用校准");
-
-        DevOperationInputParam inputParam = new DevOperationInputParam();
-        inputParam.setOperationType(OperationTypeEnums.Calibration.getType());
-        inputParam.setCalibrationType(dto.getCalibrationType());
-        inputParam.setDeviceSerialNumber(deviceSerialNumber);
-        inputParam.setUpdateBy(dto.getUpdateBy());
-        if (dto.getData() != null) {
-            inputParam.setCalibrationData(dto.getData());
-        }
-
-        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
-        if (!operation.getSuccess()) {
-            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-            return R.fail(operation.getMessage());
-        }
-        log.info("校准成功");
 
         if (Objects.equals(dto.getCalibrationType(), DeviceCalibrationInfoEnum.T800Dark.getType())) {
             new Thread(() -> {

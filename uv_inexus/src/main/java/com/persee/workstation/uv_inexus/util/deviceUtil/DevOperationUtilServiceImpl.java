@@ -51,6 +51,7 @@ import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.net.DatagramSocket;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -444,7 +445,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             data = r.getData();
             float totalWorkTime = data.getUseTime();
             timeInfo.setTotalWorkTime(String.valueOf(totalWorkTime));
-            timeInfo.setUpdateTime(LocalDateTime.now());
+            timeInfo.setUpdateTime(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 
             entity.add(timeInfo);
 

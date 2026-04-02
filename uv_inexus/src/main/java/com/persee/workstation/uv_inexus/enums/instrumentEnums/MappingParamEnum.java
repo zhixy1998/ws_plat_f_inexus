@@ -1,5 +1,7 @@
 package com.persee.workstation.uv_inexus.enums.instrumentEnums;
 
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -9,15 +11,15 @@ import java.util.List;
 public enum MappingParamEnum {
 
     LUMINOSITY("luminosity", "光度模式", Arrays.asList(
-            new ParamOption("Abs", "1"),
-            new ParamOption("T%", "2"),
-            new ParamOption("Es", "3"),
-            new ParamOption("Er", "4")
+            new DeviceConfParam("Abs", "1"),
+            new DeviceConfParam("T%", "2"),
+            new DeviceConfParam("Es", "3"),
+            new DeviceConfParam("Er", "4")
     )),
 
     LAMP_TYPE("lampType", "灯类型", Arrays.asList(
-            new ParamOption("钨灯", "0"),
-            new ParamOption("氘灯", "1")
+            new DeviceConfParam("钨灯", "0"),
+            new DeviceConfParam("氘灯", "1")
     )),
 
     GAIN("gain", "增益", Arrays.asList(1, 2, 3, 4)),
@@ -25,11 +27,11 @@ public enum MappingParamEnum {
     RESPONSE_TIME("responseTime", "响应时间", Arrays.asList("0.5", "1", "2")),
 
     SCAN_SPEED("scanSpeed", "扫描速度", Arrays.asList(
-            new ParamOption("最慢", "slowest"),
-            new ParamOption("慢速", "slow"),
-            new ParamOption("中速", "medium"),
-            new ParamOption("快速", "fast"),
-            new ParamOption("极快", "fastest")
+            new DeviceConfParam("最慢", "slowest"),
+            new DeviceConfParam("慢速", "slow"),
+            new DeviceConfParam("中速", "medium"),
+            new DeviceConfParam("快速", "fast"),
+            new DeviceConfParam("极快", "fastest")
     )),
 
     MIN_WAVELENGTH("minWavelength", "最小波长", "190"),
@@ -92,7 +94,7 @@ public enum MappingParamEnum {
             List<?> list = (List<?>) defaultValue;
             if (!list.isEmpty()) {
                 Object first = list.get(0);
-                if (first instanceof ParamOption) {
+                if (first instanceof DeviceConfParam) {
                     return ParamValueType.LIST_OBJECT;
                 } else if (first instanceof Integer) {
                     return ParamValueType.LIST_INTEGER;
@@ -141,35 +143,5 @@ public enum MappingParamEnum {
         }
     }
 
-    /**
-     * 参数选项内部类
-     */
-    public static class ParamOption {
-        private String paramName;
-        private String paramValue;
 
-        public ParamOption() {
-        }
-
-        public ParamOption(String paramName, String paramValue) {
-            this.paramName = paramName;
-            this.paramValue = paramValue;
-        }
-
-        public String getParamName() {
-            return paramName;
-        }
-
-        public void setParamName(String paramName) {
-            this.paramName = paramName;
-        }
-
-        public String getParamValue() {
-            return paramValue;
-        }
-
-        public void setParamValue(String paramValue) {
-            this.paramValue = paramValue;
-        }
-    }
 }

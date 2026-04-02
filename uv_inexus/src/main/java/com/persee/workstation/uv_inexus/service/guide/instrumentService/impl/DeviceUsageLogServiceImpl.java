@@ -178,7 +178,7 @@ public class DeviceUsageLogServiceImpl implements DeviceUsageLogService {
 
             DeviceUsageLogVO vo = new DeviceUsageLogVO();
             vo.setDeviceSerialNumber(deviceSn);
-            JSONObject obj = new JSONObject();
+            JSONObject obj = new JSONObject(true);
             for (YearMonth month : sortedMonths) {
 
                 long usageMinutes = deviceMonth.getOrDefault(month, 0L);

@@ -12,6 +12,7 @@ package com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices;
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.vo.messageVo.MessageReport;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -114,11 +115,29 @@ public class WebSocketSendUtil {
     }
 
     //新消息通知
-    public void newMessageReport() {
-        JSONObject message = new JSONObject();
-        message.put("newMessageReport", "新消息提醒");
+    public void newMessageReport(String updateBy, MessageReport message) {
+//        JSONObject message = new JSONObject();
+//        message.put("newMessageReport", "新消息提醒");
 
-        messagingTemplate.convertAndSend(messageTopic, message);
+        WebSocketResponseVO messageVO = new WebSocketResponseVO();
+        messageVO.setOperation(WebSocketOperationEnum.Message.getOperation());
+        messageVO.setData(message);
+        messagingTemplate.convertAndSend(messageTopic + "/" + updateBy, messageVO);
 
+    }
+
+    public void reportMessage(String updateBy, WebSocketResponseVO data) {
+        try {
+
+
+            data.setCurrentTime(LocalDateTime.now());
+
+            Result<Object> result = Result.ok(data);
+            messagingTemplate.convertAndSend(messageTopic + "/" + updateBy,
+                    result);
+
+        } catch (Exception e) {
+            log.error("发送消息失败: {} {}", deviceTopic, data, e);
+        }
     }
 }
