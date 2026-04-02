@@ -9,7 +9,12 @@ package com.persee.workstation.uv_inexus.component;
  *
  */
 
+import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
+import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
+import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CACHE;
@@ -22,6 +27,11 @@ import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CA
 public class TaskDeviceTypeCache {
     @Autowired
     private EhcacheUtil ehcacheUtil;
+    @Autowired
+    @Lazy
+    private TaskManagementService taskService;
+    @Autowired
+    private DeviceInfoService deviceInfoService;
 
     private static final String CACHE_KEY_PREFIX = "task_device_type:";
     /**
@@ -34,7 +44,13 @@ public class TaskDeviceTypeCache {
                 String.class,
                 Object.class
         );
-        return value != null ? (String) value : null;
+        if (ObjectUtils.isEmpty(value)) {
+            TaskManagement taskManagement = taskService.getById(taskId);
+            String s1 = deviceInfoService.queryDeviceTypeBySerialNumber(taskManagement.getOperationInstrument());
+            this.put(taskId, s1);
+            return s1;
+        }
+        return (String) value;
     }
 
     /**
