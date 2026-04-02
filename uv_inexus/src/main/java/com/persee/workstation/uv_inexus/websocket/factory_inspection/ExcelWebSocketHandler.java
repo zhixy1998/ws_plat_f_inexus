@@ -1614,8 +1614,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             }
                             //获取具体的样品池信息
                             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(string);
-                            Integer samplePoolNum = vo.getSamplePoolNum();
-//                            Integer samplePoolNum = 1;
+//                            Integer samplePoolNum = vo.getSamplePoolNum();
+                            Integer samplePoolNum = 1;
                             if (samplePoolNum <= 0) {
                                 log.info("样品池未识别");
                                 throw new BusinessException("样品池未识别");
@@ -2668,7 +2668,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             // 找到了 medium 对应的 key（如 "1"）
                             setParam.setScanSpeed(Integer.parseInt(key));
 
-//                            log.info("设备类型 {} 的扫描速度 medium 对应的值为：{}", devType, scanSpeedValue);
+                            log.info("设备类型 {} 的扫描速度对应的值为：{}", devType, setParam.getScanSpeed());
                             break;
                         }
                     }
