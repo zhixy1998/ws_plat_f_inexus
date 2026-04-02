@@ -6,10 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.persee.workstation.uv_inexus.component.DefaultTaskManager;
-import com.persee.workstation.uv_inexus.component.EhcacheUtil;
-import com.persee.workstation.uv_inexus.component.SmartExcelContentConverter;
-import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
+import com.persee.workstation.uv_inexus.component.*;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskMgrMapper;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
@@ -82,6 +79,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Autowired
     private ExcelCellLocator excelCellLocator;
 
+    @Autowired
+    private TaskDeviceTypeCache taskDeviceTypeCache;
     @Override
     public Result getList(TaskMgrQueryDto queryDto) {
         try {
@@ -648,6 +647,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 
             Workbook taskWorkbook = workbookCacheManager.getTaskWorkbook(taskId);
             Map<String, Object> smartContent = smartExcelContentConverter.convertToSimpleStructure(taskWorkbook);
+            String s = taskDeviceTypeCache.get(taskId);
+            smartContent.put("toolType", taskId);
             return Result.ok(smartContent);
 
         } catch (Exception e) {

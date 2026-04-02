@@ -16,6 +16,7 @@ import com.persee.workstation.uv_inexus.component.*;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.controller.guide.instrumentController.DeviceController;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
+import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceTypeInfoDAO;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.factoryInspection.AalysisMethodEnum;
@@ -28,6 +29,7 @@ import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.factory_inspection.*;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceTypeInfoPO;
 import com.persee.workstation.uv_inexus.service.factory_inspection.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
@@ -182,6 +184,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     //用任务id做主键，任务当前测量的检测项为值，线程安全
     private final Map<String, String> currentMeasureItemMap = new ConcurrentHashMap<>();
 
+    @Autowired
+    //任务 id 和仪器型号关联关系 - 使用自定义缓存包装类
+    private DeviceTypeInfoDAO deviceTypeInfoDAO;
 
     // 在类中添加缓存存储
     private final Map<String, List<JSONObject>> waveformCache = new ConcurrentHashMap<>();
@@ -221,7 +226,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, Boolean> halt = new ConcurrentHashMap<>();
     private List<ChangeParam> zeroList = new ArrayList<>();
     //任务id和仪器型号关联关系
-    private static final Map<String, String> taskAndVersionMap = new ConcurrentHashMap<>();
+
+    @Autowired
+    //任务 id 和仪器型号关联关系 - 使用自定义缓存包装类
+    private  TaskDeviceTypeCache taskAndVersionMap;
+
+
+
+// ... existing code ...
 
     // 在类中添加暂停控制类
     @Data
@@ -757,7 +769,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             // 启动心跳任务
             startHeartbeatTask(taskId);
 //            TaskManagement management = taskService.getById(taskId);
-
+            if (StringUtils.isBlank(String.valueOf(taskAndVersionMap.get(taskId)))) {
+                TaskManagement taskManagement = taskService.getById(taskId);
+                String s1 = deviceInfoService.queryDeviceTypeBySerialNumber(taskManagement.getOperationInstrument());
+                taskAndVersionMap.put(taskId, s1);
+            }
             super.afterConnectionEstablished(session);
         } catch (Exception e) {
             log.error("WebSocket连接建立失败", e);
@@ -853,7 +869,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         String taskId = root.get("taskId").asText();
 
         //得到当前任务的仪器类型，方便对之后的操作做界定
-        if (StringUtils.isBlank(MapUtils.getString(taskAndVersionMap, taskId))) {
+        if (StringUtils.isBlank(String.valueOf(taskAndVersionMap.get(taskId)))) {
             TaskManagement taskManagement = taskService.getById(taskId);
             String s1 = deviceInfoService.queryDeviceTypeBySerialNumber(taskManagement.getOperationInstrument());
             taskAndVersionMap.put(taskId, s1);
@@ -988,7 +1004,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 // 执行更新
                 taskService.update(updateWrapper);
             }
-            deviceInfoService.updateDeviceCurrentStatus(management1.getOperationInstrument(), DEVICE_STATUS_MEASURE);
+            management1 = taskService.getById(taskId);
+            if (StringUtils.isNotBlank(management1.getOperationInstrument())) {
+                //得到当前任务的仪器类型，方便对之后的操作做界定
+                if (StringUtils.isBlank(String.valueOf(taskAndVersionMap.get(taskId)))) {
+                    TaskManagement taskManagement = taskService.getById(taskId);
+                    String s1 = deviceInfoService.queryDeviceTypeBySerialNumber(taskManagement.getOperationInstrument());
+                    taskAndVersionMap.put(taskId, s1);
+                }
+                deviceInfoService.updateDeviceCurrentStatus(management1.getOperationInstrument(), DEVICE_STATUS_MEASURE);
+            }
             handleSingleItemInspection(session, request, taskId, updateBy, false);
         }
         if (AUTO.getCode().equals(type)) {
@@ -1478,6 +1503,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         String category = MapUtils.getString(dataMap, TEST_CATEGORY.getDescription());
         //检测项名称
         String projectName = MapUtils.getString(dataMap, PROJECT_NAME.getDescription());
+
+        
+
+
+
         //获取工作簿
         Workbook taskWorkbook = workbookCacheManager.getTaskWorkbook(taskId);
 
@@ -1584,8 +1614,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             }
                             //获取具体的样品池信息
                             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(string);
-                            Integer samplePoolNum = vo.getSamplePoolNum();
-//                            Integer samplePoolNum = 1;
+//                            Integer samplePoolNum = vo.getSamplePoolNum();
+                            Integer samplePoolNum = 1;
                             if (samplePoolNum <= 0) {
                                 log.info("样品池未识别");
                                 throw new BusinessException("样品池未识别");
@@ -2514,18 +2544,18 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         //如果是第一次进来的话
         if (d == 0) {
             if ((anEnum == abs || anEnum == tPercent)) {
-                if (org.apache.commons.lang3.StringUtils.equalsIgnoreCase(MapUtils.getString(taskAndVersionMap, taskId), "T800")) {
+                if (org.apache.commons.lang3.StringUtils.equalsIgnoreCase(String.valueOf(taskAndVersionMap.get(taskId)), "T800")) {
 
                     DevOperationInputParam devType = new DevOperationInputParam();
                     devType.setDeviceSerialNumber(deviceSerialNumber);
-                    SetParam setParam = new SetParam();
+                    SetParam devSetParam = new SetParam();
                     //设置起始波长
-                    setParam.setStartWl(startWavelength);
+                    devSetParam.setStartWl(startWavelength);
                     //设置终止波长
-                    setParam.setEndWl(endWavelength);
+                    devSetParam.setEndWl(endWavelength);
                     //设置扫描间隔
-                    setParam.setScanWlInterval(1.0);
-                    devType.setParam(setParam);
+                    devSetParam.setScanWlInterval(1.0);
+                    devType.setParam(devSetParam);
                     devType.setOperationType(OperationTypeEnums.SetParam.getType());
                     R<OperationResultEntity> opera =
                             devOperationUtilService.operation(devType);
@@ -2623,7 +2653,27 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             setParam.setPhotoMode(Integer.valueOf(Objects.requireNonNull(code)));
             //设置扫描速度
             String speedCode = ScanSpeedEnum.getCodeByName(scanSpeed);
-            setParam.setScanSpeed(Integer.valueOf(Objects.requireNonNull(speedCode)));
+            String s = taskAndVersionMap.get(taskId);
+            Map<String, Object> devType = new HashMap<>();
+            devType.put("dev_type", s);
+            List<DeviceTypeInfoPO> pos = deviceTypeInfoDAO.selectByMap(devType);
+            if (CollectionUtils.isNotEmpty(pos)){
+                DeviceTypeInfoPO deviceTypeInfoPO = pos.get(0);
+                com.alibaba.fastjson.JSONObject speedJson = deviceTypeInfoPO.getScanSpeed();
+                if (speedJson != null && !speedJson.isEmpty()) {
+                    // 遍历 JSON 对象，找到值为 "medium" 的 key
+                    for (String key : speedJson.keySet()) {
+                        String speedValue = speedJson.getString(key);
+                        if (speedCode.equals(speedValue)) {
+                            // 找到了 medium 对应的 key（如 "1"）
+                            setParam.setScanSpeed(Integer.parseInt(key));
+
+//                            log.info("设备类型 {} 的扫描速度 medium 对应的值为：{}", devType, scanSpeedValue);
+                            break;
+                        }
+                    }
+                }
+            }
             //设置起始波长
             setParam.setStartWl(startWavelength);
             //换灯波长
@@ -2925,6 +2975,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     return R.fail(map);
                 }
                 int i = 0;
+                JSONObject countJsonObject = getJsonObject(startWavelength, endWavelength, scanInterval);
+                sendToActiveSession(null, taskId, countJsonObject);
                 while (true) {
                     try {
                         taskStopFlag.put(taskId, true);
@@ -2938,6 +2990,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                            return map;
 //                        }
                         Object o = queue.pollMessage(deviceSerialNumber, Scan.getCmdId());
+//                        JSONObject jsonObject = new JSONObject();
+//                        jsonObject.put("xCount", );
+//                        sendToActiveSession(null,taskId,jsonObject);
+
+//                        log.info("光谱扫描总点数：{}, 起始波长：{}, 终止波长：{}, 扫描间隔：{}",
+//                                totalPoints, startWavelength, endWavelength, scanInterval);
+
                         if (o instanceof SpectrumPoint || o == null) {
                             SpectrumPoint p = (SpectrumPoint) o;
                             if (p != null) {
@@ -3064,14 +3123,45 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         return R.ok(map);
     }
-//
-//    //实时回显
-//    private void realTimeEcho(String taskId, String content) throws BusinessException {
-//        JSONObject jsonObject1 = new JSONObject();
-//        jsonObject1.put("liveEcho", content);
-//        sendToActiveSession(null, taskId, jsonObject1);
-//    }
 
+    private static JSONObject getJsonObject(Double startWavelength, Double endWavelength, Double scanInterval) {
+        HashMap<String, String> map1 = new HashMap<>();
+        map1.put("type", "spectrum");
+        map1.put("startWavelength", startWavelength.toString());
+        map1.put("endWavelength", endWavelength.toString());
+        map1.put("scanInterval", scanInterval.toString());
+//                        int totalPoints = calculateSpectrumPoints(startWavelength, endWavelength, scanInterval);
+        JSONObject countJsonObject = new JSONObject();
+        countJsonObject.put("horizontalAxis", map1);
+        return countJsonObject;
+    }
+
+    /**
+     * 计算光谱扫描的总点数
+     * 公式：总点数 = |终止波长 - 起始波长| / 扫描间隔 + 1
+     *
+     * @param startWavelength 起始波长
+     * @param endWavelength 终止波长
+     * @param scanInterval 扫描间隔
+     * @return 总点数
+     */
+    private int calculateSpectrumPoints(Double startWavelength, Double endWavelength, Double scanInterval) {
+        if (startWavelength == null || endWavelength == null || scanInterval == null || scanInterval <= 0) {
+            log.warn("波长或扫描间隔参数无效：startWavelength={}, endWavelength={}, scanInterval={}",
+                    startWavelength, endWavelength, scanInterval);
+            return 0;
+        }
+
+        // 计算波长范围的绝对值，确保起始和终止波长大小顺序不影响结果
+        double wavelengthRange = Math.abs(endWavelength - startWavelength);
+
+        // 计算点数：波长范围 / 扫描间隔 + 1
+        // 例如：起始 200nm，终止 800nm，间隔 1nm，则点数 = |800-200|/1 + 1 = 601 个点
+        // 例如：起始 800nm，终止 200nm，间隔 1nm，则点数 = |200-800|/1 + 1 = 601 个点
+        int totalPoints = (int) Math.round(wavelengthRange / scanInterval) + 1;
+
+        return totalPoints;
+    }
     /**
      * 提示用户放入物质并等待确认
      */
@@ -3455,6 +3545,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             //如果是光谱扫描
             if (YES.getDescription().equals(res)) {
                 log.info("光谱扫描>>>>>>>");
+
+                
                 map = spectrumScan(taskId, dataMap, deviceSerialNumber, list, b, itemId, d);
             } else if (scanCount != null) {
                 log.info("时间扫描>>>>>");
@@ -3464,6 +3556,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 map = intensityScan(taskId, dataMap, deviceSerialNumber, b, itemId, d);
             }
         } catch (Exception e) {
+            e.printStackTrace();
             log.info("fsdgfasdgfsdgdsgdegtrg");
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("error", e.getMessage());
@@ -3616,7 +3709,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     return R.fail(map);
                 }
 
-                if (org.apache.commons.lang3.StringUtils.equalsIgnoreCase(MapUtils.getString(taskAndVersionMap, taskId), "T800")) {
+                if (org.apache.commons.lang3.StringUtils.equalsIgnoreCase(String.valueOf(taskAndVersionMap.get(taskId)), "T800")) {
                     String[] parts = characteristic.split("[,，]");
 
                     // 解析特征波长并找出最大最小值
@@ -3932,6 +4025,23 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         R<OperationResultEntity> measure = devOperationUtilService.operation(param1);
         int i = 0;
         waveformCache.clear();
+
+        // 在循环开始前发送总点数给前端（时间扫描）
+//        int totalPoints = calculateTimeScanPoints(totalTime, timeInterval);
+//        JSONObject jsonObject = new JSONObject();
+//        jsonObject.put("xCount", totalPoints);
+//        sendToActiveSession(null, taskId, jsonObject);
+//        log.info("时间扫描总点数：{}, 总时间：{}秒，时间间隔：{}秒", totalPoints, totalTime, timeInterval);
+//
+
+        HashMap<String, String> map1 = new HashMap<>();
+        map1.put("type", "timeScan");
+        map1.put("totalTime", totalTime.toString());
+        map1.put("timeInterval", timeInterval.toString());
+        JSONObject horizontalAxis = new JSONObject();
+        horizontalAxis.put("horizontalAxis", map1);
+        sendToActiveSession(null, taskId, horizontalAxis);
+
         while (true) {
             try {
                 taskStopFlag.put(taskId, true);
@@ -4028,6 +4138,27 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
 
+    /**
+     * 计算时间扫描的总点数
+     * 公式：总点数 = 总时间 / 时间间隔
+     *
+     * @param totalTime 总时间（秒）
+     * @param timeInterval 时间间隔（秒）
+     * @return 总点数
+     */
+    private int calculateTimeScanPoints(Double totalTime, Double timeInterval) {
+        if (totalTime == null || timeInterval == null || timeInterval <= 0) {
+            log.warn("时间参数无效：totalTime={}, timeInterval={}", totalTime, timeInterval);
+            return 0;
+        }
+
+        // 计算点数：总时间 / 时间间隔
+        // 例如：总时间 60 秒，间隔 1 秒，则点数 = 60/1 = 60 个点
+        int totalPoints = (int) Math.round(totalTime / timeInterval);
+
+        return totalPoints;
+    }
+
     private R<Map<String, List<JSONObject>>> intensityScan(String taskId, Map<String, Object> dataMap, String deviceSerialNumber, boolean isMultiProductPool, String itemId, Integer d) throws BusinessException {
         //光度模式
         String luminosityMode = MapUtils.getString(dataMap, LUMINOSITY_MODE.getDescription());
@@ -4103,7 +4234,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     return R.fail(map);
                 }
 
-                if (org.apache.commons.lang3.StringUtils.equalsIgnoreCase(MapUtils.getString(taskAndVersionMap, taskId), "T800")) {
+                if (org.apache.commons.lang3.StringUtils.equalsIgnoreCase(String.valueOf(taskAndVersionMap.get(taskId)), "T800")) {
                     String[] parts = characteristic.split("[,，]");
 
                     // 解析特征波长并找出最大最小值
