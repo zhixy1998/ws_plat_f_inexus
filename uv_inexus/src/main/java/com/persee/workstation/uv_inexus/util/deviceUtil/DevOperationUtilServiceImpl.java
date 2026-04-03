@@ -326,8 +326,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
 
             Integer devStatus = OperationTypeEnums.getEnum(inputParam.getOperationType()).getStatus();
-
-            synchronized (this) {
+            // [适配出厂链接多仪器]使用设备序列号的字符串锁，而不是全局锁，允许多个任务并行操作不同仪器
+            synchronized (deviceSerialNumber.intern()) {
                 if (anEnum != OperationTypeEnums.Stop) {
                     R<Boolean> r = infoService.newUseDevice(deviceSerialNumber, devStatus);
                     if (!r.getSuccess()) {

@@ -326,9 +326,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         log.info("我被调用了" + payload.toString());
         try {
             if (originalSession != null && !isSessionValid(originalSession)) {
-                payload.put("taskId", taskId);
+                // 【修改】克隆 payload 对象，避免修改传入的对象导致线程安全问题
+                JSONObject payloadCopy = (JSONObject) payload.clone();
+                payloadCopy.put("taskId", taskId);
 
-                originalSession.sendMessage(new TextMessage(payload.toJSONString()));
+                originalSession.sendMessage(new TextMessage(payloadCopy.toJSONString()));
                 return true;
             }
             Set<WebSocketSession> sessions = sessionTaskMap.get(taskId);
@@ -337,11 +339,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 while (iterator.hasNext()) {
                     WebSocketSession session = iterator.next();
                     if (isSessionValid(session)) {
-                        log.info("准备发送消息到 sessionId: {}, 前端地址：{}, 消息内容：{}",
-                                session.getId(), getFrontendAddress(session), payload.toJSONString());
-                        payload.put("taskId", taskId);
+                        // 【修改】克隆 payload 对象，避免修改传入的对象导致线程安全问题
+                        JSONObject payloadCopy = (JSONObject) payload.clone();
+                        payloadCopy.put("taskId", taskId);
 
-                        session.sendMessage(new TextMessage(payload.toJSONString()));
+                        log.info("准备发送消息到 sessionId: {}, 前端地址：{}, 消息内容：{}",
+                                session.getId(), getFrontendAddress(session), payloadCopy.toJSONString());
+
+                        session.sendMessage(new TextMessage(payloadCopy.toJSONString()));
                         log.info("消息发送成功到 sessionId: {}", session.getId());
                     } else {
                         // 移除无效 session 时，也要清理对应的前端地址
@@ -1614,8 +1619,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             }
                             //获取具体的样品池信息
                             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(string);
-//                            Integer samplePoolNum = vo.getSamplePoolNum();
-                            Integer samplePoolNum = 1;
+                            Integer samplePoolNum = vo.getSamplePoolNum();
+//                            Integer samplePoolNum = 1;
                             if (samplePoolNum <= 0) {
                                 log.info("样品池未识别");
                                 throw new BusinessException("样品池未识别");

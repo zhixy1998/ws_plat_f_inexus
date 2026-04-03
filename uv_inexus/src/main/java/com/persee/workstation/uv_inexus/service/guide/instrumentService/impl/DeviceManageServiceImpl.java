@@ -71,6 +71,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CACHE;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.FACTORY_INSPECTION_TASK;
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.OutFactoryCheckEnum.OUT_FACTORY_CHECK_LIST;
 
 @Slf4j
@@ -1287,6 +1288,104 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
     }
 
+    public R<FindDeviceVO> factoryConnectBatch(SearchInfo param) {
+        Integer connectType = param.getConnectType();
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setOperationType(OperationTypeEnums.Connect.getType());
+        inputParam.setConnectType(connectType);
+        inputParam.setDeviceInfo(param);
+
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            OperationResultEntity data = operation.getData();
+            FindDeviceVO vo = new FindDeviceVO();
+
+            DeviceInfoPO info = infoService.getInfo(data.getDeviceSerialNumber());
+            if (info == null) {
+                info = new DeviceInfoPO();
+            }
+
+            BeanUtils.copyProperties(data, vo);
+            BeanUtils.copyProperties(data, info);
+
+            info.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
+            info.setIsDevOpened(1);
+
+            info.setDevicePort(data.getConnectPort());
+            info.setDeviceCurrentStatus(Constants.DEVICE_STATUS_IDLE);
+
+            String deviceModel = vo.getDeviceSerialNumber().substring(3, 8);
+            info.setDeviceModel(deviceModel);
+
+            LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(DeviceModelInfoPO::getDevModel, deviceModel);
+            DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
+
+            vo.setDeviceModelName(modelInfoPO.getDevName());
+            info.setDeviceModelName(modelInfoPO.getDevName());
+
+            if (StringUtils.hasText(info.getDeviceName())) {
+                vo.setDeviceName(info.getDeviceName());
+            } else {
+                vo.setDeviceName(modelInfoPO.getDevName());
+                info.setDeviceName(modelInfoPO.getDevName());
+            }
+
+            Integer i = infoService.queryDeviceActivationStatus(vo.getDeviceSerialNumber());
+            info.setIsActivated(i);
+
+            List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
+
+            //附件处理
+            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(vo.getAttachmentType());
+            LambdaQueryWrapper<InsConfigPO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(InsConfigPO::getDeviceSerialNumber, vo.getDeviceSerialNumber());
+
+            attachmentInfo.setDeviceSerialNumber(vo.getDeviceSerialNumber());
+            FSampleAttachTypeSaveDTO dto = new FSampleAttachTypeSaveDTO();
+
+            BeanUtils.copyProperties(vo, dto);
+            dto.setAttachmentTypeName(attachmentInfo.getAttachmentName());
+            samplePoolConfigService.saveSamplePoolInfo(dto);
+
+            info.setAttachmentName(attachmentInfo.getAttachmentName());
+            info.setUpdateBy(param.getUpdateBy());
+
+            LambdaQueryWrapper<DeviceInfoPO> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+            lambdaQueryWrapper.eq(DeviceInfoPO::getConnectStatus, Constants.CONNECT_DEVICE_SUCCESS)
+                    .eq(DeviceInfoPO::getUpdateBy, param.getUpdateBy())
+                    .orderByDesc(DeviceInfoPO::getUpdated);
+            //TODO 校验用户权限，是否可以连多个
+            int max = 1;
+
+
+            infoService.saveOrUpdateInfo(info);
+            boolean initRecord = true;
+
+            List<InitRecordPO> initList = initRecordService.searchInitStatus(vo.getDeviceSerialNumber(), info.getId());
+            if (initList == null || initList.isEmpty()) {
+                initRecord = false;
+            }
+
+            if (vo.getIsInited() == 0 || !initRecord) {
+                if (attachmentInfo.getAttachmentKind().equals(1)) {
+                    List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
+                    initRecordService.initAllTask(vo.getDeviceSerialNumber(), info.getId(), allInitEntry);
+                }
+                initRecordService.initAllTask(vo.getDeviceSerialNumber(), info.getId(), initEntry);
+            }
+
+            BeanUtils.copyProperties(info, vo);
+            vo.setAttachmentKind(attachmentInfo.getAttachmentKind());
+            vo.setLinearSegment(null);
+
+            return R.ok(vo);
+        }
+    }
+
     @Override
     public R<Boolean> disconnectDevice(String deviceSerialNumber, String updateBy) {
 
@@ -1925,7 +2024,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                     param.setConnectType(connectType);
 
                     // 调用单台设备连接方法
-                    R<FindDeviceVO> result = connect(param);
+                    R<FindDeviceVO> result = factoryConnectBatch(param);
                     if (result.getSuccess()) {
                         vos.add(result);
                         //                        R<Boolean> booleanR = startInitDevice(deviceSerialNumber, updateBy);
@@ -2127,6 +2226,7 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
             taskAddDto.setCreateBy(updateBy);
             taskAddDto.setCreated(LocalDateTime.now());
             taskAddDto.setSerialNumber(deviceSerialNumber);
+            taskAddDto.setTaskType(FACTORY_INSPECTION_TASK.getCode());
             Result<HashMap<String, String>> task = taskManagementService.newTask(taskAddDto);
             if (ObjectUtils.isEmpty(task)) {
                 throw new BusinessException("创建任务失败!");
