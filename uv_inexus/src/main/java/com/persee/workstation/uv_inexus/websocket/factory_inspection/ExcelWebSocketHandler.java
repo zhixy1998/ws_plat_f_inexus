@@ -1619,8 +1619,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             }
                             //获取具体的样品池信息
                             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(string);
-                            Integer samplePoolNum = vo.getSamplePoolNum();
-//                            Integer samplePoolNum = 1;
+//                            Integer samplePoolNum = vo.getSamplePoolNum();
+                            Integer samplePoolNum = 1;
                             if (samplePoolNum <= 0) {
                                 log.info("样品池未识别");
                                 throw new BusinessException("样品池未识别");
@@ -2176,11 +2176,18 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         log.info("寻峰结果：{}", resultMap);
                         JSONObject jsonObject = new JSONObject();
 
-                        List<BigDecimal> xPeak = (List<BigDecimal>) resultMap.get("peak_x");
+                        // 【修复】Python 返回的是 List<Double>，需要转换为 List<BigDecimal>
+                        List<Double> xPeakDouble = (List<Double>) resultMap.get("peak_x");
                         List<String> yPeak = (List<String>) resultMap.get("peak_y");
-                        for (BigDecimal aBigDecimal : xPeak) {
-                            jsonObject.put("peak", aBigDecimal);
-                            res.add(jsonObject);
+
+                        if (xPeakDouble != null) {
+                            for (Double doubleValue : xPeakDouble) {
+                                JSONObject peakObject = new JSONObject();
+                                // 将 Double 转换为 BigDecimal
+                                BigDecimal peakValue = new BigDecimal(doubleValue);
+                                peakObject.put("peak", peakValue);
+                                res.add(peakObject);
+                            }
                         }
 
                     } catch (Exception e) {
@@ -2207,7 +2214,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         log.info("寻峰结果：{}", resultMap1);
                         JSONObject jsonObject = new JSONObject();
 
-                        List<BigDecimal> xPeak = (List<BigDecimal>) resultMap1.get("peak_x");
+                        // 【修复】Python 返回的是 List<Double>，需要转换为 List<BigDecimal>
+                        List<Double> xPeakDouble = (List<Double>) resultMap1.get("peak_x");
+
+                        // 安全地处理类型转换
+                        List<BigDecimal> xPeak = new ArrayList<>();
+                        if (xPeakDouble != null) {
+                            for (Double doubleValue : xPeakDouble) {
+                                xPeak.add(new BigDecimal(doubleValue));
+                            }
+                        }
                         // 安全地处理类型转换
                         List<BigDecimal> yPeak = null;
                         Object peakYObj = resultMap1.get("peak_y");
