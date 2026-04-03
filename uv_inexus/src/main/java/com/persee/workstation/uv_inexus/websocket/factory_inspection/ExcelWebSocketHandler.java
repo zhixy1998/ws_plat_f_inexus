@@ -1619,8 +1619,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             }
                             //获取具体的样品池信息
                             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(string);
-//                            Integer samplePoolNum = vo.getSamplePoolNum();
-                            Integer samplePoolNum = 1;
+                            Integer samplePoolNum = vo.getSamplePoolNum();
+//                            Integer samplePoolNum = 1;
                             if (samplePoolNum <= 0) {
                                 log.info("样品池未识别");
                                 throw new BusinessException("样品池未识别");
@@ -4106,7 +4106,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             log.info("时间扫描停止标志");
                             return R.fail(map);
                         } else if (marker.getReason() == EndMarker.Reason.UN_NORMAL) {
-                            log.info("时间扫描异常结束标志");
+                            log.info("时间扫描停止标志");
                             setTaskMeasuring(taskId, false);
                             map.put("line", line);
                             return R.fail(map);
