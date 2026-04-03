@@ -112,7 +112,7 @@ public class MultiDeviceInspectionController {
      * @return
      * @throws InterruptedException
      */
-    @PostMapping("/init")
+    @GetMapping("/init")
     @ApiOperation("初始化仪器并创建任务")
     public Result<DeviceTaskDto> initDevice(@RequestParam String deviceSerialNumber, @RequestParam String templateCode, @RequestParam String updateBy) throws InterruptedException, BusinessException {
         return deviceManageService.createTaskAfterInstrumentInit(deviceSerialNumber, updateBy, templateCode);

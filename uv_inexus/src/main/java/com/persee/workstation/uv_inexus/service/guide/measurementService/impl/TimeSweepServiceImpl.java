@@ -55,6 +55,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
@@ -3909,10 +3910,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return R.fail(deviceMeasureVOR.getMessage());
         }
 
-        List<MappingParamEnum.ParamOption> defaultValue = (List<MappingParamEnum.ParamOption>) MappingParamEnum.LUMINOSITY.getDefaultValue();
+        List<DeviceConfParam> defaultValue = (List<DeviceConfParam>) MappingParamEnum.LUMINOSITY.getDefaultValue();
         // 使用steam流将defaultValue的value值取出来作为一个List<String>
         List<String> validLuminosityModes = defaultValue.stream()
-                .map(MappingParamEnum.ParamOption::getParamValue)
+                .map(DeviceConfParam::getParamValue)
                 .collect(Collectors.toList());
         if (!validLuminosityModes.contains(luminosity)) {
             return R.fail("光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：" + luminosity);

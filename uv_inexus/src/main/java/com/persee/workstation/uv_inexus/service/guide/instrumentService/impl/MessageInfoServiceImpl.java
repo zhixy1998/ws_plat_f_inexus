@@ -29,6 +29,7 @@ import com.persee.workstation.uv_inexus.enums.messageEnums.MessageTypeEnum;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.MessageInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.MessageInfoService;
 import com.persee.workstation.uv_inexus.vo.messageVo.MessageInfoVO;
+import com.persee.workstation.uv_inexus.vo.messageVo.MessageReport;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -148,7 +149,10 @@ public class MessageInfoServiceImpl implements MessageInfoService {
         }
         int i = dao.insert(po);
         if (i > 0) {
-            webSocketSendUtil.newMessageReport();
+            MessageReport message = new MessageReport();
+            BeanUtils.copyProperties(po, message);
+            message.setMessageTypeName(MessageTypeEnum.getDescription(po.getMessageType()));
+            webSocketSendUtil.newMessageReport(po.getUpdateBy(), message);
         }
 
         return i > 0;

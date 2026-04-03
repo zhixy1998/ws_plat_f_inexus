@@ -51,6 +51,7 @@ import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.net.DatagramSocket;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -325,8 +326,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
 
             Integer devStatus = OperationTypeEnums.getEnum(inputParam.getOperationType()).getStatus();
-
-            synchronized (this) {
+            // [适配出厂链接多仪器]使用设备序列号的字符串锁，而不是全局锁，允许多个任务并行操作不同仪器
+            synchronized (deviceSerialNumber.intern()) {
                 if (anEnum != OperationTypeEnums.Stop) {
                     R<Boolean> r = infoService.newUseDevice(deviceSerialNumber, devStatus);
                     if (!r.getSuccess()) {
@@ -444,7 +445,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             data = r.getData();
             float totalWorkTime = data.getUseTime();
             timeInfo.setTotalWorkTime(String.valueOf(totalWorkTime));
-            timeInfo.setUpdateTime(LocalDateTime.now());
+            timeInfo.setUpdateTime(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 
             entity.add(timeInfo);
 
