@@ -1622,8 +1622,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             Integer samplePoolNum = vo.getSamplePoolNum();
 //                            Integer samplePoolNum = 1;
                             if (samplePoolNum <= 0) {
-                                log.info("样品池未识别");
-                                throw new BusinessException("样品池未识别");
+                                log.info("样品池未识别,默认单池");
+                                samplePoolNum=1;
+//                                throw new BusinessException("样品池未识别");
                             }
                             if (samplePoolNum != 1) {
                                 //样品池的检测
@@ -4671,12 +4672,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
 
+
+    private static final int DEFAULT_DECIMAL_PLACES = 4;
+
+
     private void calculateFormulas(Workbook workbook) {
         try {
-            // 使用简单直接的方式计算所有公式
             FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
 
-            // 执行多次计算确保依赖关系正确处理
             for (int i = 0; i < 3; i++) {
                 evaluator.evaluateAll();
             }
@@ -4686,6 +4689,53 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             log.error("Formula calculation error", e);
         }
     }
+
+
+    private Object getCellValue(Cell cell, FormulaEvaluator evaluator) {
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                return formatValue(cell.getNumericCellValue());
+            case BOOLEAN:
+                return cell.getBooleanCellValue();
+            case FORMULA:
+                try {
+                    CellValue cellValue = evaluator.evaluate(cell);
+                    if (cellValue == null) {
+                        return "";
+                    }
+
+                    switch (cellValue.getCellType()) {
+                        case NUMERIC:
+                            return formatValue(cellValue.getNumberValue());
+                        case STRING:
+                            return cellValue.getStringValue();
+                        case BOOLEAN:
+                            return cellValue.getBooleanValue();
+                        case ERROR:
+                            return "#ERROR";
+                        default:
+                            return "";
+                    }
+                } catch (Exception e) {
+                    try {
+                        return getFallbackCellValue(cell);
+                    } catch (Exception ex) {
+                        return "#ERROR";
+                    }
+                }
+            default:
+                return "";
+        }
+    }
+
+    private String formatValue(double value) {
+        return String.format("%." + DEFAULT_DECIMAL_PLACES + "f", value);
+    }
+
+
+
 
 
     private boolean shouldCalculateAtLevel(Cell cell, int level) {
@@ -4866,48 +4916,48 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
     }
 
 
-    /**
-     * 获取单元格的值（带公式计算器）
-     */
-    private Object getCellValue(Cell cell, FormulaEvaluator evaluator) {
-        switch (cell.getCellType()) {
-            case STRING:
-                return cell.getStringCellValue();
-            case NUMERIC:
-                return cell.getNumericCellValue();
-            case BOOLEAN:
-                return cell.getBooleanCellValue();
-            case FORMULA:
-                try {
-                    CellValue cellValue = evaluator.evaluate(cell);
-                    if (cellValue == null) {
-                        return "";
-                    }
-
-                    switch (cellValue.getCellType()) {
-                        case NUMERIC:
-                            return cellValue.getNumberValue();
-                        case STRING:
-                            return cellValue.getStringValue();
-                        case BOOLEAN:
-                            return cellValue.getBooleanValue();
-                        case ERROR:
-                            return "#ERROR";
-                        default:
-                            return "";
-                    }
-                } catch (Exception e) {
-                    // 如果公式计算失败，尝试返回缓存值
-                    try {
-                        return getFallbackCellValue(cell);
-                    } catch (Exception ex) {
-                        return "#ERROR";
-                    }
-                }
-            default:
-                return "";
-        }
-    }
+//    /**
+//     * 获取单元格的值（带公式计算器）
+//     */
+//    private Object getCellValue(Cell cell, FormulaEvaluator evaluator) {
+//        switch (cell.getCellType()) {
+//            case STRING:
+//                return cell.getStringCellValue();
+//            case NUMERIC:
+//                return cell.getNumericCellValue();
+//            case BOOLEAN:
+//                return cell.getBooleanCellValue();
+//            case FORMULA:
+//                try {
+//                    CellValue cellValue = evaluator.evaluate(cell);
+//                    if (cellValue == null) {
+//                        return "";
+//                    }
+//
+//                    switch (cellValue.getCellType()) {
+//                        case NUMERIC:
+//                            return cellValue.getNumberValue();
+//                        case STRING:
+//                            return cellValue.getStringValue();
+//                        case BOOLEAN:
+//                            return cellValue.getBooleanValue();
+//                        case ERROR:
+//                            return "#ERROR";
+//                        default:
+//                            return "";
+//                    }
+//                } catch (Exception e) {
+//                    // 如果公式计算失败，尝试返回缓存值
+//                    try {
+//                        return getFallbackCellValue(cell);
+//                    } catch (Exception ex) {
+//                        return "#ERROR";
+//                    }
+//                }
+//            default:
+//                return "";
+//        }
+//    }
 
     private Object getFallbackCellValue(Cell cell) {
         // 尝试从单元格获取已缓存的值
