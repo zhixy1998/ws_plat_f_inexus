@@ -1665,7 +1665,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 if (!needSetSit) {
                                     if (Double.compare(narrow, 2.0) != 0) {
                                         JSONObject jsonObject = new JSONObject();
-                                        jsonObject.put("error", "仪器为固定狭缝，此项跳过");
+                                        jsonObject.put("warning", "仪器为固定狭缝，此项跳过");
                                         sendToActiveSession(null, taskId, jsonObject);
                                         setTaskMeasuring(taskId, false);
                                         return futureResult;
