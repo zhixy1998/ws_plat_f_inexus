@@ -560,7 +560,13 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                         ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
                         management.setTemplateName(excelTemplate.getTemplateName());
                         management.setTemplateCode(excelTemplate.getTemplateCode());
-
+                        R<String> device1 = deviceManageService.getConnectDevice(updateBy);
+                        String data1 = device1.getData();
+                        management.setOperationInstrument(data1);
+                        TaskManagement management1 = new TaskManagement();
+                        management1.setId(management.getId());
+                        management1.setOperationInstrument(data1);
+                        taskMgrMapper.updateById(management1);
                         return Result.ok(management);
                     }
                 }
