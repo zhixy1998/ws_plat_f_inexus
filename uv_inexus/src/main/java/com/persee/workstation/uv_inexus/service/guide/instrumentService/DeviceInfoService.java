@@ -27,7 +27,7 @@ public interface DeviceInfoService {
     //查找附件类型
     String getAttachmentType(String deviceSerialNumber);
 
-    DeviceAttachmentTypeVO getAttachment(Integer attachmentType);
+    DeviceAttachmentTypeVO getAttachment(Integer attachmentType, String deviceSerialNumber);
 
     DeviceAttachmentTypeVO getAttachmentInfo(String deviceSerialNumber);
 

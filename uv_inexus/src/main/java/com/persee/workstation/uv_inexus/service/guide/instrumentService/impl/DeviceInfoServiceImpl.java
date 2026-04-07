@@ -104,8 +104,9 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
     }
 
     @Override
-    public DeviceAttachmentTypeVO getAttachment(Integer attachmentType) {
-        return dao.getAttachmentInfoByAttachmentNum(attachmentType);
+    public DeviceAttachmentTypeVO getAttachment(Integer attachmentType, String deviceSerialNumber) {
+        String s = deviceSerialNumber.substring(3, 8);
+        return dao.getAttachmentInfoByAttachmentNum(attachmentType,s);
     }
 
     @Override

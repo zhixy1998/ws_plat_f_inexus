@@ -387,6 +387,7 @@ public class GuidePhotometricWebSocket {
                      if (!operation.getSuccess()) {
                          log.info("设置样品池位置出错");
                      }
+                     tSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, usefulLocation.get(0), updateBy);
 
                      JSONObject object = new JSONObject();
                      object.put("currentPoolNum", usefulLocation.get(0));

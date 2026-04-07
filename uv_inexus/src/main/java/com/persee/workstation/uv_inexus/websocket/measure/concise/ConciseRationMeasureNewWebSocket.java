@@ -143,6 +143,7 @@ public class ConciseRationMeasureNewWebSocket {
         String deviceSerialNumber = param.getDeviceSerialNumber();
         String dig = param.getDigit();
         String oneSampleId = param.getSampleId();
+        String updateBy = param.getUpdateBy();
         int di = digit;
         if (StringUtils.hasText(dig)) {
             di = Integer.parseInt(dig);
@@ -580,7 +581,7 @@ public class ConciseRationMeasureNewWebSocket {
                         if (!operation.getSuccess()) {
                             log.info("设置样品池位置出错");
                         }
-
+                        fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, usefulLocation.get(0), updateBy);
                         JSONObject object = new JSONObject();
                         object.put("currentPoolNum", usefulLocation.get(0));
                         sendMessage(deviceSerialNumber, object);

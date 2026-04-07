@@ -576,7 +576,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
 
             //附件处理
-            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(deviceVO.getAttachmentType());
+            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(deviceVO.getAttachmentType(), po.getDeviceModel());
             LambdaQueryWrapper<InsConfigPO> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(InsConfigPO::getDeviceSerialNumber, deviceVO.getDeviceSerialNumber());
             if (attachmentInfo == null) {
@@ -1230,7 +1230,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
 
             //附件处理
-            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(vo.getAttachmentType());
+            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(vo.getAttachmentType(), deviceModel);
             LambdaQueryWrapper<InsConfigPO> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(InsConfigPO::getDeviceSerialNumber, vo.getDeviceSerialNumber());
 
@@ -1340,7 +1340,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
 
             //附件处理
-            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(vo.getAttachmentType());
+            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(vo.getAttachmentType(), deviceModel);
             LambdaQueryWrapper<InsConfigPO> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(InsConfigPO::getDeviceSerialNumber, vo.getDeviceSerialNumber());
 
