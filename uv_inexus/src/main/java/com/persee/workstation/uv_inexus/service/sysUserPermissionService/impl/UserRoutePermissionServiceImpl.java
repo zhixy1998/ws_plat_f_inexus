@@ -158,12 +158,27 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
     // 创建路由节点
     private RouteNode createRouteNode(SysPermissionPO perm) {
         RouteNode node = new RouteNode();
+        // 设置基本字段
+        node.setId(perm.getId());
         node.setPath(perm.getPath());
         node.setName(perm.getPath()); // path和name都读取path字段
+        node.setPermName(perm.getPermName());
+        node.setPermCode(perm.getPermCode());
+        node.setPermType(perm.getPermType());
+        node.setParentId(perm.getParentId());
+        node.setIcon(perm.getIcon());
+        node.setSort(perm.getSort());
+        node.setStatus(perm.getStatus());
+        node.setHidden(perm.getHidden());
+        node.setNoAuth(perm.getNoAuth());
+        node.setQuickConfigType(perm.getQuickConfigType());
         
         // 设置meta
         RouteMeta meta = new RouteMeta();
         meta.setTitle(perm.getTitle());
+        meta.setIcon(perm.getIcon());
+        meta.setHidden(perm.getHidden());
+        meta.setNoAuth(perm.getNoAuth());
         node.setMeta(meta);
         
         // 设置redirect
@@ -181,14 +196,27 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
     
     // 路由节点类
     private static class RouteNode {
+        private String id;
         private String path;
         private String name;
         private RouteMeta meta;
         private String redirect;
         private List<RouteNode> children;
         private String component;
+        private String permName;
+        private String permCode;
+        private Integer permType;
+        private Integer parentId;
+        private String icon;
+        private Integer sort;
+        private Integer status;
+        private Integer hidden;
+        private Integer noAuth;
+        private Integer quickConfigType;
         
         // getters and setters
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
         public String getPath() { return path; }
         public void setPath(String path) { this.path = path; }
         public String getName() { return name; }
@@ -201,14 +229,43 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
         public void setChildren(List<RouteNode> children) { this.children = children; }
         public String getComponent() { return component; }
         public void setComponent(String component) { this.component = component; }
+        public String getPermName() { return permName; }
+        public void setPermName(String permName) { this.permName = permName; }
+        public String getPermCode() { return permCode; }
+        public void setPermCode(String permCode) { this.permCode = permCode; }
+        public Integer getPermType() { return permType; }
+        public void setPermType(Integer permType) { this.permType = permType; }
+        public Integer getParentId() { return parentId; }
+        public void setParentId(Integer parentId) { this.parentId = parentId; }
+        public String getIcon() { return icon; }
+        public void setIcon(String icon) { this.icon = icon; }
+        public Integer getSort() { return sort; }
+        public void setSort(Integer sort) { this.sort = sort; }
+        public Integer getStatus() { return status; }
+        public void setStatus(Integer status) { this.status = status; }
+        public Integer getHidden() { return hidden; }
+        public void setHidden(Integer hidden) { this.hidden = hidden; }
+        public Integer getNoAuth() { return noAuth; }
+        public void setNoAuth(Integer noAuth) { this.noAuth = noAuth; }
+        public Integer getQuickConfigType() { return quickConfigType; }
+        public void setQuickConfigType(Integer quickConfigType) { this.quickConfigType = quickConfigType; }
     }
     
     // 路由元数据类
     private static class RouteMeta {
         private String title;
+        private String icon;
+        private Integer hidden;
+        private Integer noAuth;
         
         public String getTitle() { return title; }
         public void setTitle(String title) { this.title = title; }
+        public String getIcon() { return icon; }
+        public void setIcon(String icon) { this.icon = icon; }
+        public Integer getHidden() { return hidden; }
+        public void setHidden(Integer hidden) { this.hidden = hidden; }
+        public Integer getNoAuth() { return noAuth; }
+        public void setNoAuth(Integer noAuth) { this.noAuth = noAuth; }
     }
 
     /**
