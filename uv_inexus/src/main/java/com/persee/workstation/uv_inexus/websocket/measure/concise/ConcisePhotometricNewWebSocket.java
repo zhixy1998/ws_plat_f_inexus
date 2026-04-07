@@ -394,6 +394,8 @@ public class ConcisePhotometricNewWebSocket {
                         log.info("设置样品池位置出错");
                     }
 
+                    fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, usefulLocation.get(0), updateBy);
+
                     JSONObject object = new JSONObject();
                     object.put("currentPoolNum", usefulLocation.get(0));
                     sendMessage(deviceSerialNumber, object);

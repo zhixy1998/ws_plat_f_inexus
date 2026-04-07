@@ -23,6 +23,7 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.MessageI
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
+import com.persee.workstation.uv_inexus.vo.messageVo.MessageReport;
 import com.persee.workstation.uv_inexus.websocket.measure.*;
 import com.persee.workstation.uv_inexus.websocket.measure.concise.*;
 import com.persee.workstation.uv_inexus.websocket.measure.param.*;
@@ -898,11 +899,32 @@ public class LiveDetectionDevicesWebSocket {
 
             if (isNewSubscription) {
                 log.info("新增消息订阅: 会话={}", sessionId);
+//                sendMessage(user);
             } else {
                 log.debug("重复消息订阅忽略: 会话={} ", sessionId);
             }
-
         }
+    }
+
+    private void sendMessage(String updateBy) {
+
+        WebSocketResponseVO webSocketResponseVO = new WebSocketResponseVO();
+        webSocketResponseVO.setOperation(WebSocketOperationEnum.Message.getOperation());
+        MessageReport messageInfo = new MessageReport();
+        for (int i = 0; i < 100; i++) {
+            try {
+                Thread.sleep(2000);
+            } catch (Exception ignored) {
+            }
+
+            messageInfo.setMessageType(1);
+            messageInfo.setMessageSource("系统消息");
+            messageInfo.setMessageSummary("第" + i + "条系统消息");
+            messageInfo.setReceiveTime(LocalDateTime.now());
+            messageInfo.setMessageTypeName("系统消息");
+            webSocketSendUtil.newMessageReport(updateBy, messageInfo);
+        }
+
     }
 
     /**
