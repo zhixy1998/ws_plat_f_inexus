@@ -535,7 +535,9 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                     management=list.get(0);
                     R<String> device = deviceManageService.getConnectDevice(updateBy);
                     String data = device.getData();
-                    if (StringUtils.isNotBlank(management.getOperationInstrument())&&!StringUtils.equals(management.getOperationInstrument(),data)){
+                    String instrument = management.getOperationInstrument() == null ? "" : management.getOperationInstrument().trim();
+                    String deviceData = data == null ? "" : data.trim();
+                    if (!instrument.equals(deviceData)){
                         TaskAddDto addDto = new TaskAddDto();
                         addDto.setDetectName(management.getDetectName()+System.currentTimeMillis());
                         ExcelTemplate template = templateService.getById(management.getUseTemplate());

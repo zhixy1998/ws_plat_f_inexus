@@ -602,9 +602,96 @@ public class WorkbookCacheManager {
         cell.setCellValue(trimmedValue);
     }
 
+//    /**
+//     * 提取 Sheet 数据（用于返回给前端）
+//     */
+//    private Map<String, Object> extractSheetData(Sheet sheet, Workbook workbook) {
+//        Map<String, Object> sheetDto = new HashMap<>();
+//        sheetDto.put("sheetName", sheet.getSheetName());
+//        sheetDto.put("firstRowNum", sheet.getFirstRowNum());
+//        sheetDto.put("lastRowNum", sheet.getLastRowNum());
+//
+//        // 公式评估器
+//        FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+//        evaluator.clearAllCachedResultValues();
+//
+//        // 提取合并区域
+//        List<Map<String, Object>> mergedRegions = new ArrayList<>();
+//        for (CellRangeAddress region : sheet.getMergedRegions()) {
+//            Map<String, Object> merged = new HashMap<>();
+//            merged.put("firstRow", region.getFirstRow());
+//            merged.put("lastRow", region.getLastRow());
+//            merged.put("firstCol", region.getFirstColumn());
+//            merged.put("lastCol", region.getLastColumn());
+//
+//            // 获取合并区域的值
+//            Row row = sheet.getRow(region.getFirstRow());
+//            if (row != null) {
+//                Cell cell = row.getCell(region.getFirstColumn());
+//                if (cell != null) {
+//                    merged.put("value", getCellValueAsString(cell, evaluator));
+//                }
+//            }
+//            mergedRegions.add(merged);
+//        }
+//        sheetDto.put("mergedRegions", mergedRegions);
+//
+//        // 提取普通单元格数据
+//        Map<String, Map<String, Object>> rowData = new HashMap<>();
+//        for (int rowNum = sheet.getFirstRowNum(); rowNum <= sheet.getLastRowNum(); rowNum++) {
+//            Row row = sheet.getRow(rowNum);
+//            if (row != null) {
+//                Map<String, Object> cellData = new HashMap<>();
+//                for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
+//                    Cell cell = row.getCell(cellNum);
+//                    if (cell != null) {
+//                        cellData.put(String.valueOf(cellNum), getCellValueAsString(cell, evaluator));
+//                    }
+//                }
+//                if (!cellData.isEmpty()) {
+//                    rowData.put(String.valueOf(rowNum), cellData);
+//                }
+//            }
+//        }
+//        sheetDto.put("rows", rowData);
+//
+//        return sheetDto;
+//    }
+
     /**
-     * 提取 Sheet 数据（用于返回给前端）
+     * 获取单元格值（字符串格式）
      */
+    private String getCellValueAsString(Cell cell, FormulaEvaluator evaluator) {
+        try {
+            switch (cell.getCellType()) {
+                case FORMULA:
+                    // 使用 evaluator 获取公式计算结果
+                    org.apache.poi.ss.usermodel.CellValue cellValue = evaluator.evaluate(cell);
+                    switch (cellValue.getCellType()) {
+                        case NUMERIC:
+                            return String.valueOf(cellValue.getNumberValue());
+                        case STRING:
+                            return cellValue.getStringValue();
+                        case BOOLEAN:
+                            return String.valueOf(cellValue.getBooleanValue());
+                        default:
+                            return "";
+                    }
+                case NUMERIC:
+                    return String.valueOf(cell.getNumericCellValue());
+                case STRING:
+                    return cell.getStringCellValue();
+                case BOOLEAN:
+                    return String.valueOf(cell.getBooleanCellValue());
+                default:
+                    return "";
+            }
+        } catch (Exception e) {
+            log.warn("获取单元格值失败：{}", e.getMessage());
+            return "";
+        }
+    }
+
     private Map<String, Object> extractSheetData(Sheet sheet, Workbook workbook) {
         Map<String, Object> sheetDto = new HashMap<>();
         sheetDto.put("sheetName", sheet.getSheetName());
@@ -642,13 +729,18 @@ public class WorkbookCacheManager {
             Row row = sheet.getRow(rowNum);
             if (row != null) {
                 Map<String, Object> cellData = new HashMap<>();
+                boolean hasValidContent = false;
                 for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
                     Cell cell = row.getCell(cellNum);
                     if (cell != null) {
-                        cellData.put(String.valueOf(cellNum), getCellValueAsString(cell, evaluator));
+                        Object value = getCellValueAsString(cell, evaluator);
+                        if (value != null && !"".equals(value)) {
+                            cellData.put(String.valueOf(cellNum), value);
+                            hasValidContent = true;
+                        }
                     }
                 }
-                if (!cellData.isEmpty()) {
+                if (hasValidContent && !cellData.isEmpty()) {
                     rowData.put(String.valueOf(rowNum), cellData);
                 }
             }
@@ -657,41 +749,6 @@ public class WorkbookCacheManager {
 
         return sheetDto;
     }
-
-    /**
-     * 获取单元格值（字符串格式）
-     */
-    private String getCellValueAsString(Cell cell, FormulaEvaluator evaluator) {
-        try {
-            switch (cell.getCellType()) {
-                case FORMULA:
-                    // 使用 evaluator 获取公式计算结果
-                    org.apache.poi.ss.usermodel.CellValue cellValue = evaluator.evaluate(cell);
-                    switch (cellValue.getCellType()) {
-                        case NUMERIC:
-                            return String.valueOf(cellValue.getNumberValue());
-                        case STRING:
-                            return cellValue.getStringValue();
-                        case BOOLEAN:
-                            return String.valueOf(cellValue.getBooleanValue());
-                        default:
-                            return "";
-                    }
-                case NUMERIC:
-                    return String.valueOf(cell.getNumericCellValue());
-                case STRING:
-                    return cell.getStringCellValue();
-                case BOOLEAN:
-                    return String.valueOf(cell.getBooleanCellValue());
-                default:
-                    return "";
-            }
-        } catch (Exception e) {
-            log.warn("获取单元格值失败：{}", e.getMessage());
-            return "";
-        }
-    }
-
 
 
 

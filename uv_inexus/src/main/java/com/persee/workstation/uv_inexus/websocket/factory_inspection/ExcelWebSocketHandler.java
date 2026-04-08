@@ -4861,59 +4861,117 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
     }
 
 
-    private SheetDto extractSheetData(Sheet sheet, Workbook workbook) {
-        SheetDto sheetDto = new SheetDto();
-        sheetDto.setSheetName(sheet.getSheetName());
-        sheetDto.setFirstRowNum(sheet.getFirstRowNum());
-        sheetDto.setLastRowNum(sheet.getLastRowNum());
+//    private SheetDto extractSheetData(Sheet sheet, Workbook workbook) {
+//        SheetDto sheetDto = new SheetDto();
+//        sheetDto.setSheetName(sheet.getSheetName());
+//        sheetDto.setFirstRowNum(sheet.getFirstRowNum());
+//        sheetDto.setLastRowNum(sheet.getLastRowNum());
+//
+//        // 为每次提取数据创建新的公式评估器
+//        FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+//        evaluator.clearAllCachedResultValues();
+//
+//        // 提取合并区域
+//        List<MergedRegionDto> mergedRegions = new ArrayList<>();
+//
+//        for (CellRangeAddress region : sheet.getMergedRegions()) {
+//            MergedRegionDto merged = new MergedRegionDto();
+//            merged.setFirstRow(region.getFirstRow());
+//            merged.setLastRow(region.getLastRow());
+//            merged.setFirstCol(region.getFirstColumn());
+//            merged.setLastCol(region.getLastColumn());
+//
+//            // 获取左上角单元格的值
+//            Row row = sheet.getRow(region.getFirstRow());
+//            if (row != null) {
+//                Cell cell = row.getCell(region.getFirstColumn());
+//                if (cell != null) {
+//                    merged.setValue(String.valueOf(getCellValue(cell, evaluator)));
+//                }
+//            }
+//            mergedRegions.add(merged);
+//        }
+//        sheetDto.setMergedRegions(mergedRegions);
+//
+//        // 提取普通单元格数据
+//        Map<String, Map<String, Object>> rowData = new HashMap<>();
+//        for (int rowNum = sheet.getFirstRowNum(); rowNum <= sheet.getLastRowNum(); rowNum++) {
+//            Row row = sheet.getRow(rowNum);
+//            if (row != null) {
+//                Map<String, Object> cellData = new HashMap<>();
+//                for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
+//                    Cell cell = row.getCell(cellNum);
+//                    if (cell != null) {
+//                        cellData.put(String.valueOf(cellNum), getCellValue(cell, evaluator));
+//                    }
+//                }
+//                if (!cellData.isEmpty()) {
+//                    rowData.put(String.valueOf(rowNum), cellData);
+//                }
+//            }
+//        }
+//        sheetDto.setRows(rowData);
+//
+//        return sheetDto;
+//    }
+private SheetDto extractSheetData(Sheet sheet, Workbook workbook) {
+    SheetDto sheetDto = new SheetDto();
+    sheetDto.setSheetName(sheet.getSheetName());
+    sheetDto.setFirstRowNum(sheet.getFirstRowNum());
+    sheetDto.setLastRowNum(sheet.getLastRowNum());
 
-        // 为每次提取数据创建新的公式评估器
-        FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
-        evaluator.clearAllCachedResultValues();
+    // 为每次提取数据创建新的公式评估器
+    FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+    evaluator.clearAllCachedResultValues();
 
-        // 提取合并区域
-        List<MergedRegionDto> mergedRegions = new ArrayList<>();
+    // 提取合并区域
+    List<MergedRegionDto> mergedRegions = new ArrayList<>();
 
-        for (CellRangeAddress region : sheet.getMergedRegions()) {
-            MergedRegionDto merged = new MergedRegionDto();
-            merged.setFirstRow(region.getFirstRow());
-            merged.setLastRow(region.getLastRow());
-            merged.setFirstCol(region.getFirstColumn());
-            merged.setLastCol(region.getLastColumn());
+    for (CellRangeAddress region : sheet.getMergedRegions()) {
+        MergedRegionDto merged = new MergedRegionDto();
+        merged.setFirstRow(region.getFirstRow());
+        merged.setLastRow(region.getLastRow());
+        merged.setFirstCol(region.getFirstColumn());
+        merged.setLastCol(region.getLastColumn());
 
-            // 获取左上角单元格的值
-            Row row = sheet.getRow(region.getFirstRow());
-            if (row != null) {
-                Cell cell = row.getCell(region.getFirstColumn());
-                if (cell != null) {
-                    merged.setValue(String.valueOf(getCellValue(cell, evaluator)));
-                }
+        // 获取左上角单元格的值
+        Row row = sheet.getRow(region.getFirstRow());
+        if (row != null) {
+            Cell cell = row.getCell(region.getFirstColumn());
+            if (cell != null) {
+                merged.setValue(String.valueOf(getCellValue(cell, evaluator)));
             }
-            mergedRegions.add(merged);
         }
-        sheetDto.setMergedRegions(mergedRegions);
+        mergedRegions.add(merged);
+    }
+    sheetDto.setMergedRegions(mergedRegions);
 
-        // 提取普通单元格数据
-        Map<String, Map<String, Object>> rowData = new HashMap<>();
-        for (int rowNum = sheet.getFirstRowNum(); rowNum <= sheet.getLastRowNum(); rowNum++) {
-            Row row = sheet.getRow(rowNum);
-            if (row != null) {
-                Map<String, Object> cellData = new HashMap<>();
-                for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
-                    Cell cell = row.getCell(cellNum);
-                    if (cell != null) {
-                        cellData.put(String.valueOf(cellNum), getCellValue(cell, evaluator));
+    // 提取普通单元格数据
+    Map<String, Map<String, Object>> rowData = new HashMap<>();
+    for (int rowNum = sheet.getFirstRowNum(); rowNum <= sheet.getLastRowNum(); rowNum++) {
+        Row row = sheet.getRow(rowNum);
+        if (row != null) {
+            Map<String, Object> cellData = new HashMap<>();
+            boolean hasValidContent = false;
+            for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
+                Cell cell = row.getCell(cellNum);
+                if (cell != null) {
+                    Object value = getCellValue(cell, evaluator);
+                    if (value != null && !"".equals(value)) {
+                        cellData.put(String.valueOf(cellNum), value);
+                        hasValidContent = true;
                     }
                 }
-                if (!cellData.isEmpty()) {
-                    rowData.put(String.valueOf(rowNum), cellData);
-                }
+            }
+            if (hasValidContent && !cellData.isEmpty()) {
+                rowData.put(String.valueOf(rowNum), cellData);
             }
         }
-        sheetDto.setRows(rowData);
-
-        return sheetDto;
     }
+    sheetDto.setRows(rowData);
+
+    return sheetDto;
+}
 
 
 //    /**
