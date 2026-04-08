@@ -325,7 +325,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
     private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
-        log.info("我被调用了" + payload.toString());
+//        log.info("我被调用了" + payload.toString());
         try {
             if (originalSession != null && !isSessionValid(originalSession)) {
                 // 【修改】克隆 payload 对象，避免修改传入的对象导致线程安全问题
@@ -716,6 +716,25 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             JSONObject statusMessage = new JSONObject();
             statusMessage.put("isMeasuring", isTaskMeasuring(taskId));
             sendToActiveSession(session, taskId, statusMessage);
+
+            // 发送当前检测项信息
+            String currentMeasureItem = getCurrentMeasureItem(taskId);
+            if (StringUtils.isNotBlank(currentMeasureItem)) {
+                ExcelDataAsset asset = dataAssetService.getById(currentMeasureItem);
+                if (asset != null) {
+                    Map<String, Object> dataMap = asset.getDataMap();
+                    Integer repeatCount = MapUtils.getInteger(dataMap, REPEAT_COUNT.getDescription());
+
+                    JSONObject currentItemMessage = new JSONObject();
+                    JSONObject currentItemData = new JSONObject();
+                    currentItemData.put("itemId", currentMeasureItem);
+                    currentItemData.put("checkCount", repeatCount != null ? repeatCount : 1);
+                    currentItemMessage.put("currentItem", currentItemData);
+
+                    sendToActiveSession(session, taskId, currentItemMessage);
+                    log.info("已发送当前检测项信息，任务ID: {}, 检测项ID: {}", taskId, currentMeasureItem);
+                }
+            }
 
             //如果是选择过标准物的任务，则需要修改工作簿的特征值和标准值
             LambdaQueryWrapper<TaskExecutionDetail> queryWrapper = new LambdaQueryWrapper<>();

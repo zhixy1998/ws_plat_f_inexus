@@ -576,17 +576,29 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             }
             if (OPEN_BOX_INSPECTION.getCode().equals(taskId)) {
                 TaskManagement management = null;
-
+                R<String> device = deviceManageService.getConnectDevice(updateBy);
+                String data = device.getData();
                 LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
                 //查找的是开箱验证任务
-                wrapper.eq(TaskManagement::getTaskType, "2");
+                wrapper.eq(TaskManagement::getTaskType, "2")
+                        .eq(TaskManagement::getOperationInstrument,data);
                 List<TaskManagement> list = this.list(wrapper);
                 if (CollectionUtils.isEmpty(list)) {
                     return Result.fail("未找到开箱验证任务");
                 }else {
+                    if (CollectionUtils.isEmpty(list)){
+                        LambdaQueryWrapper<TaskManagement> wrapper1 = new LambdaQueryWrapper<>();
+                        //查找的是开箱验证任务
+                        wrapper1.eq(TaskManagement::getTaskType, "2")
+                                .isNull(TaskManagement::getOperationInstrument);
+                        list = this.list(wrapper);
+                    }
                     management=list.get(0);
-                    R<String> device = deviceManageService.getConnectDevice(updateBy);
-                    String data = device.getData();
+
+
+                    if (management.getOperationInstrument() == null){
+                        management.setOperationInstrument(data);
+                    }
                     String instrument = management.getOperationInstrument() == null ? "" : management.getOperationInstrument().trim();
                     String deviceData = data == null ? "" : data.trim();
                     if (!instrument.equals(deviceData)){
