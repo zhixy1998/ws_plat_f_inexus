@@ -41,4 +41,16 @@ public class TaskExecutionDetail {
      */
     @TableField(value = "standard_type")
     private String standardType;
+//    /**
+//     * 未检测0，检测成功1，检测失败2
+//     */
+//    @TableField(value = "measured")
+//    @ApiModelProperty(value = "检测状态：未检测0，检测成功1，检测失败2")
+//    private String measured;
+//    /**
+//     * 未检测0，合格1，不合格2
+//     */
+//    @TableField(value = "check_result")
+//    @ApiModelProperty(value = "检测结果：未检测0，合格1，不合格2")
+//    private String checkResult;
 }

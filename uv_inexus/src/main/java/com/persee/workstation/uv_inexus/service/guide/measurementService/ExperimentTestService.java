@@ -13,6 +13,7 @@ import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.vo.measurementVo.MethodNameAndIdVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
@@ -138,6 +139,8 @@ public interface ExperimentTestService {
      * 任务终止
      */
     Result taskTermination(String taskId);
+
+    Result<List<MethodNameAndIdVO>> queryMethodNameAndId(String measureType, String projectId, String standardId);
 
 
 }

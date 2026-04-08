@@ -99,7 +99,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Autowired
     DevOperationUtilService devOperationUtilService;
     @Autowired
-    PublicUtilService publicUtilService;
+    GuidePublicUtilService publicUtilService;
 
     @Autowired
     SamplePoolConfigService tSamplePoolConfigService;
@@ -363,6 +363,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         tMeasureMethod.setMethodCreator(updateBy);
         tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         tMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
+        tMeasureMethod.setPreprocessKey(photometricParameter.getPreprocessKey());
         boolean save = tMeasureMethodService.save(tMeasureMethod);
         if (save) {
             //创建成功

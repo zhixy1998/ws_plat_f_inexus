@@ -2824,6 +2824,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureMethod.setMethodCreator(updateBy);
         tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         tMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
+        tMeasureMethod.setPreprocessKey(timeSweepParamter.getPreprocessKey());
         boolean save = tMeasureMethodService.save(tMeasureMethod);
         if ( save){
             //创建成功

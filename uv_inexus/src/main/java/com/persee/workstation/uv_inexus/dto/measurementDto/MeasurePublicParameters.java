@@ -38,4 +38,6 @@ public class MeasurePublicParameters {
     // 增益
     @Min(value = 0, message = "增益不能小于0")
     private Integer gain;
+
+    private String preprocessKey;
 }

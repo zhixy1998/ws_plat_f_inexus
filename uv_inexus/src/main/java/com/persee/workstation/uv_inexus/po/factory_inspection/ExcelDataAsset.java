@@ -28,10 +28,10 @@ public class ExcelDataAsset extends BasePO {
     private String structuredData; // JSON格式的结构化数据
     @TableField(value = "import_status")
     private String importStatus;
-    @TableField(value = "measured")
-    private String measured;
-    @TableField(value = "check_result")
-    private String checkResult;
+//    @TableField(value = "measured")
+//    private String measured;
+//    @TableField(value = "check_result")
+//    private String checkResult;
 
     // 获取结构化数据Map
     public Map<String, Object> getDataMap() {
