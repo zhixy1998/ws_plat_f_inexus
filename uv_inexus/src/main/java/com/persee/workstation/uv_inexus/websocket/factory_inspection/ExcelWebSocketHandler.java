@@ -131,6 +131,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     private CalArtifactsService calArtifactsService;
     @Autowired
+    private TaskItemStatusService taskItemStatusService;
+    @Autowired
     private CalStdCatsService catsService;
     @Autowired
     private ExcelCellComparator excelCellComparator;
@@ -1377,6 +1379,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             setTaskMeasuring(taskId, false);
                             return;
                         }
+                        deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_MEASURE);
+
                         this.handleSingleItemInspection(session, request, taskId, updateBy, true);
 
                         //同一个任务，同一时间只有一个检测项在跑
@@ -1881,15 +1885,28 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             value = "0";
         }
 
-        // 异步更新数据资产
+        // 异步更新任务检测项状态
         CompletableFuture.runAsync(() -> {
-            ExcelDataAsset asset = new ExcelDataAsset();
-            asset.setId(itemId);
-            asset.setMeasured(measured);
-            asset.setCheckResult(value);
-            boolean b = dataAssetService.updateById(asset);
-            if (!b) {
-                log.error("更新数据资产失败，ID: {}", itemId);
+            try {
+                LambdaQueryWrapper<TaskItemStatus> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(TaskItemStatus::getTaskId, taskId)
+                        .eq(TaskItemStatus::getItemId, itemId);
+                TaskItemStatus status = taskItemStatusService.getOne(wrapper);
+
+                if (status != null) {
+                    TaskItemStatus updateStatus = new TaskItemStatus();
+                    updateStatus.setId(status.getId());
+                    updateStatus.setMeasured(measured);
+                    updateStatus.setCheckResult(value);
+                    boolean b = taskItemStatusService.updateById(updateStatus);
+                    if (!b) {
+                        log.error("更新任务检测项状态失败，任务ID: {}, 检测项ID: {}", taskId, itemId);
+                    }
+                } else {
+                    log.warn("未找到任务检测项状态记录，任务ID: {}, 检测项ID: {}", taskId, itemId);
+                }
+            } catch (Exception e) {
+                log.error("更新任务检测项状态异常，任务ID: {}, 检测项ID: {}", taskId, itemId, e);
             }
         }, taskExecutor);
 
@@ -2952,7 +2969,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             CalStdCats cats = calStdCatsService.getById(detail.getStandardId());
                             if (cats == null) {
                                 CalArtifacts calArtifacts = calArtifactsService.getById(detail.getStandardId());
-                                standardName = calArtifacts.getName();
+                                if (calArtifacts != null) {
+                                    standardName = calArtifacts.getName();
+                                }
                             } else {
                                 standardName = cats.getName();
                             }

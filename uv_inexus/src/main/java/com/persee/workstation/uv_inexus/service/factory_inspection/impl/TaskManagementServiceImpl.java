@@ -65,6 +65,9 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Autowired
     private CalStdCatsService catsService;
     @Autowired
+    private TaskItemStatusService taskItemStatusService;
+
+    @Autowired
     private WorkbookCacheManager workbookCacheManager;
     @Autowired
     private EhcacheUtil ehcacheUtil;
@@ -192,6 +195,9 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             if (!save) {
                 return Result.fail(null);
             }
+            // 为新任务初始化任务执行详情和检测项状态
+            initializeTaskExecutionDetails(management.getId(), task.getUseTemplate());
+
             if (save) {
                 HashMap<String, String> map = new HashMap<>();
 //                ExcelTemplate template = templateService.getById(management.getUseTemplate());
@@ -211,6 +217,50 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         }
         return Result.fail(null);
     }
+    /**
+     * 为新任务初始化任务执行详情记录和检测项状态
+     *
+     * @param taskId 任务ID
+     * @param templateCode 模板编码
+     */
+    private void initializeTaskExecutionDetails(String taskId, String templateCode) {
+        try {
+            // 查询模板对应的所有检测项
+            LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(ExcelDataAsset::getTemplateCode, templateCode);
+            List<ExcelDataAsset> assets = dataAssetService.list(wrapper);
+
+            if (CollectionUtils.isEmpty(assets)) {
+                log.warn("模板 {} 没有检测项", templateCode);
+                return;
+            }
+
+            // 为每个检测项创建任务执行详情记录和状态记录
+            List<TaskItemStatus> statusList = new ArrayList<>();
+
+            for (ExcelDataAsset asset : assets) {
+
+                // 创建任务检测项状态（用于记录测量状态）
+                TaskItemStatus status = new TaskItemStatus();
+                status.setId(IdGeneratorUtil.generateId());
+                status.setTaskId(taskId);
+                status.setItemId(asset.getId());
+                status.setMeasured("0");
+                status.setCheckResult("0");
+                statusList.add(status);
+            }
+
+
+
+            if (!statusList.isEmpty()) {
+                taskItemStatusService.saveBatch(statusList);
+                log.info("为任务 {} 初始化了 {} 个检测项状态", taskId, statusList.size());
+            }
+        } catch (Exception e) {
+            log.error("初始化任务执行详情失败，任务ID: {}", taskId, e);
+        }
+    }
+
 
     //这个需要完整的复制
     // task_management   task_execution_detail
@@ -258,6 +308,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             map.put("taskId", task.getId());
             map.put("templateCode", template.getTemplateCode());
 
+            // 为新任务初始化任务执行详情和检测项状态
+            initializeTaskExecutionDetails(management.getId(), template.getTemplateCode());
 
             ExcelTemplate excelTemplate = new ExcelTemplate();
             excelTemplate.setId(template.getId());
@@ -990,6 +1042,23 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         if (CollectionUtils.isEmpty(assets)) {
             return checkItems;
         }
+        // 查询任务的所有检测项状态
+        LambdaQueryWrapper<TaskItemStatus> statusWrapper = new LambdaQueryWrapper<>();
+        // 需要从details中获取taskId
+        String taskId = CollectionUtils.isNotEmpty(details) ? details.get(0).getTaskId() : null;
+        Map<String, TaskItemStatus> statusMap = new HashMap<>();
+        if (taskId != null) {
+            List<TaskItemStatus> statusList = taskItemStatusService.list(statusWrapper.eq(TaskItemStatus::getTaskId, taskId));
+            if (CollectionUtils.isNotEmpty(statusList)) {
+                statusMap = statusList.stream()
+                        .collect(Collectors.toMap(
+                                TaskItemStatus::getItemId,
+                                status -> status,
+                                (existing, replacement) -> existing
+                        ));
+            }
+        }
+
         // 处理每个检测项
         for (ExcelDataAsset asset : assets) {
             TaskCheckItemDto.CheckItem item = createBasicCheckItem(asset);
@@ -999,10 +1068,20 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             }
             // 设置可选择的标准物质列表
             setAvailableStandards(item);
-            item.setMeasured(asset.getMeasured());
-            item.setCheckResult(asset.getCheckResult());
+
+            // 从任务检测项状态表中获取测量状态和检测结果
+            TaskItemStatus status = statusMap.get(asset.getId());
+            if (status != null) {
+                item.setMeasured(status.getMeasured() != null ? status.getMeasured() : "0");
+                item.setCheckResult(status.getCheckResult() != null ? status.getCheckResult() : "0");
+            } else {
+                // 如果没有对应的状态记录，设置为默认值
+                item.setMeasured("0");
+                item.setCheckResult("0");
+            }
             checkItems.add(item);
         }
+
         //先按照group排序，再按照itemName排序
         checkItems.sort(Comparator.comparing(TaskCheckItemDto.CheckItem::getGroupName).thenComparing(TaskCheckItemDto.CheckItem::getItemName));
         return checkItems;
