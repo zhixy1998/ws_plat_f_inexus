@@ -1874,7 +1874,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return R.fail("未找到该设备");
         }
 
-        if (info.getWorkTimeInfo() == null || info.getWorkTimeInfo().isEmpty() || isUpdate) {
+        if (info.getWorkTimeInfo() == null) {
+            info.setWorkTimeInfo(new ArrayList<>());
+        }
+
+        if (isUpdate) {
             //查询信息
             String type = deviceModelInfoDAO.getDevTypeByDevModel(info.getDeviceModel());
 

@@ -21,6 +21,7 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.Sampl
 import com.persee.workstation.uv_inexus.service.guide.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.SampleHeadTemplateService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.MethodBaseVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.MethodNameAndIdVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleTemplateVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
@@ -410,6 +411,12 @@ public class ExperimentTestController {
     @ApiOperation("任务终止")
     public Result taskTermination(@RequestParam String taskId) {
         return experimentTestService.taskTermination(taskId);
+    }
+
+    @GetMapping("queryMethodByStandId")
+    @ApiOperation("查询标准创建的方法")
+    public Result<List<MethodNameAndIdVO>> queryStandardCreateMethod(@RequestParam String measureType, @RequestParam String projectId, @RequestParam String standardId) {
+        return experimentTestService.queryMethodNameAndId(measureType, projectId, standardId);
     }
 
 }

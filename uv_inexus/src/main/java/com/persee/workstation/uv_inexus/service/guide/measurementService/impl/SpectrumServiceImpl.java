@@ -509,6 +509,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         tMeasureMethod.setMethodCreator(updateBy);
         tMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
+        tMeasureMethod.setPreprocessKey(spectrumParameter.getPreprocessKey());
         boolean save = tMeasureMethodService.save(tMeasureMethod);
         if (save) {
             //创建成功
