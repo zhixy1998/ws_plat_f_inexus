@@ -207,7 +207,7 @@ public class GuidePhotometricWebSocket {
                       List<FSamplePoolStatus> list = poolInfoVO.getPoolStatusList();
                       boolean poolCanUse = false;
                       for (FSamplePoolStatus pool : list) {
-                          if (pool.getPoolStatus()) {
+                          if (pool.getPoolNum().equals(currentPoolNum) && pool.getPoolStatus()) {
                               poolCanUse = true;
                               break;
                           }

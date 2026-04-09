@@ -214,7 +214,7 @@ public class ConcisePhotometricNewWebSocket {
                     List<FSamplePoolStatus> list = poolInfoVO.getPoolStatusList();
                     boolean poolCanUse = false;
                     for (FSamplePoolStatus poolStatus : list) {
-                        if (poolStatus.getPoolNum().equals(currentPoolNum)) {
+                        if (poolStatus.getPoolNum().equals(currentPoolNum) && poolStatus.getPoolStatus()) {
                             poolCanUse = true;
                             break;
                         }
