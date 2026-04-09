@@ -800,6 +800,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 String s1 = deviceInfoService.queryDeviceTypeBySerialNumber(taskManagement.getOperationInstrument());
                 taskAndVersionMap.put(taskId, s1);
             }
+            TaskManagement management = new TaskManagement();
+            management.setId(taskId);
+            management.setUpdated(LocalDateTime.now());
+            boolean b = taskService.updateById(management);
             super.afterConnectionEstablished(session);
         } catch (Exception e) {
             log.error("WebSocket连接建立失败", e);

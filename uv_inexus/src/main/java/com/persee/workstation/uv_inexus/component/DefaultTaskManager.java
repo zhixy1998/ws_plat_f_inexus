@@ -135,7 +135,7 @@ public class DefaultTaskManager {
                     new LambdaQueryWrapper<TaskManagement>()
                             .eq(TaskManagement::getCreateBy, updateBy)
                             .eq(TaskManagement::getTaskType, "1")
-                            .orderByDesc(TaskManagement::getCreated)  // 按创建时间降序
+                            .orderByDesc(TaskManagement::getUpdated)  // 按创建时间降序
                             .last("LIMIT 1")  // 只取最新的一条
             );
             this.defaultTaskId = task1.getId();
