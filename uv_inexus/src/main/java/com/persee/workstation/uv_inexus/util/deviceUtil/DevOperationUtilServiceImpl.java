@@ -1150,7 +1150,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         continue;
                     }
 
-                    DeviceAttachmentTypeVO attachment = infoService.getAttachment(result.getAttachmentType(), deviceInfo.getDeviceSerialNumber());
+                    DeviceAttachmentTypeVO attachment = infoService.getAttachment(result.getAttachmentType(), result.getDeviceSerialNumber());
                     if (attachment == null || attachment.getAttachmentKind() == null) {
                         continue;
                     }
