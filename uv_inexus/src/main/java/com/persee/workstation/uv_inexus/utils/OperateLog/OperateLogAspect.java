@@ -216,6 +216,25 @@ public class OperateLogAspect {
                     String resultJson = buildResultJson(result);
                     logPO.setResult(resultJson);
                 }
+
+                if (operateLog.compare()) {
+                    Object oldData = LogContext.getOldData();
+                    Object newData = LogContext.getNewData();
+
+                    if (oldData != null && newData != null) {
+                        String beforeData = JSON.toJSONString(oldData);
+                        String afterData = JSON.toJSONString(newData);
+                        logPO.setBeforeData(beforeData);
+                        logPO.setAfterData(afterData);
+
+                        // 自动生成中文变更描述
+                        String changeContent = LogCompareUtil.generateCompareContent(oldData, newData);
+                        logPO.setChangeContent(changeContent);
+                    }
+
+                    // 用完清空
+                    LogContext.clear();
+                }
             }
 
             return result;

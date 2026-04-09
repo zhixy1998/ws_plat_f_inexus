@@ -99,4 +99,8 @@ public class OperateLogPO {
      * 功能类型（1-收费功能，2-非收费功能）
      */
     private Integer logType;
+
+    private String beforeData;    // 修改前数据
+    private String afterData;     // 修改后数据
+    private String changeContent;// 中文变更内容
 }
