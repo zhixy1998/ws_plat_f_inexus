@@ -3147,6 +3147,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
         }
         try {
+            if (halt.get(taskId)) {
+                map.put("line", list);
+                return R.fail(map);
+            }
             res = analysisProcess(xList, yList, bigDecimalList, methodType);
         } catch (Exception e) {
             log.error("任务执行失败：", e);
@@ -3552,7 +3556,26 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            // 使用 Future 实现可中断的异步调用
+            java.util.concurrent.Future<ResponseEntity<Map>> future = taskExecutor.submit(() ->
+                    restTemplate.postForEntity(url, request, Map.class)
+            );
+
+            // 设置超时时间（例如 30 秒）
+            ResponseEntity<Map> response;
+            try {
+                response = future.get(30, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (java.util.concurrent.TimeoutException e) {
+                future.cancel(true);
+                throw new BusinessException("算法服务调用超时");
+            } catch (java.util.concurrent.ExecutionException e) {
+                throw new BusinessException("算法服务调用失败: " + e.getCause().getMessage());
+            } catch (InterruptedException e) {
+                future.cancel(true);
+                Thread.currentThread().interrupt();
+                throw new BusinessException("算法服务调用被中断");
+            }
+
             Map<String, Object> responseBody = response.getBody();
 
             // 检查响应体是否为空
@@ -3569,12 +3592,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
             return responseBody;
 
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("算法服务异常", e);
-            // 兜底异常（包括上面 throw 的 RuntimeException）
             throw new BusinessException("算法服务异常,请重启服务");
         }
     }
+
 
 
     // 发送缓存的波形图数据
