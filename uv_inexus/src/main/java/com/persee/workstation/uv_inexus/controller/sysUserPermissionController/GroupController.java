@@ -72,12 +72,20 @@ public class GroupController {
         return sysGroupService.addGroup(saveDTO);
     }
 
+//    @ButtonPermission("catEditUserEditGroupNameInfo")
+//    @OperateLog(module = "用户管理-用户权限管理", description = "执行用户管理-用户权限管理-修改小组信息操作", recordParams = true)
+//    @PutMapping("/updateGroup")
+//    @ApiOperation("修改小组")
+//    public Result<String> updateGroup(@RequestBody @Valid GroupSaveDTO saveDTO) {
+//        return sysGroupService.updateGroup(saveDTO);
+//    }
+
     @ButtonPermission("catEditUserEditGroupNameInfo")
     @OperateLog(
             module = "用户管理-用户权限管理",
             description = "执行用户管理-用户权限管理-修改小组信息操作",
             recordParams = true,
-            compare = true  // 🔥 开启对比
+            compare = true  // 开启对比
     )
     @PutMapping("/updateGroup")
     @ApiOperation("修改小组")

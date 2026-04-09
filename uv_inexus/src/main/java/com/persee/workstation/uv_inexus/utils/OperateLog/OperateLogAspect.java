@@ -222,17 +222,11 @@ public class OperateLogAspect {
                     Object newData = LogContext.getNewData();
 
                     if (oldData != null && newData != null) {
-                        String beforeData = JSON.toJSONString(oldData);
-                        String afterData = JSON.toJSONString(newData);
-                        logPO.setBeforeData(beforeData);
-                        logPO.setAfterData(afterData);
-
-                        // 自动生成中文变更描述
+                        logPO.setBeforeData(JSON.toJSONString(oldData));
+                        logPO.setAfterData(JSON.toJSONString(newData));
                         String changeContent = LogCompareUtil.generateCompareContent(oldData, newData);
-                        logPO.setChangeContent(changeContent);
+                        logPO.setChangeContent(changeContent); // 🔥 赋值
                     }
-
-                    // 用完清空
                     LogContext.clear();
                 }
             }
