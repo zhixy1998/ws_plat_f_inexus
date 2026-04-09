@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.component.*;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskMgrMapper;
+import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceTypeInfoDAO;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -85,6 +86,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Autowired
     private TaskDeviceTypeCache taskDeviceTypeCache;
 
+    @Autowired
+    private DeviceTypeInfoDAO deviceTypeInfoDAO;
     @Override
     public Result getList(TaskMgrQueryDto queryDto) {
         try {
@@ -771,8 +774,16 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             Map<String, Object> smartContent = smartExcelContentConverter.convertToSimpleStructure(taskWorkbook);
             String s = taskDeviceTypeCache.get(taskId);
             smartContent.put("toolType", taskId);
+            TaskManagement management = this.getById(taskId);
+            if (management != null) {
+                if (StringUtils.isNotBlank(management.getOperationInstrument())) {
+                    List<String> list = deviceTypeInfoDAO.queryDeviceTypeBySerialNumber(management.getOperationInstrument());
+                    if (CollectionUtils.isNotEmpty(list)) {
+                        smartContent.put("operationInstrument", list.get(0));
+                    }
+                }
+            }
             return Result.ok(smartContent);
-
         } catch (Exception e) {
             log.error("生成报告失败", e);
         }
