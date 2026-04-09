@@ -292,6 +292,31 @@ public class ConciseTimeNewWebSocket {
                     executeSampleMeasurement(session, context, param, sample, updateBy);
                 }
             }
+            // 根据序列号查询对应的附件配置表信息
+            QueryWrapper<SamplePoolConfigPO> wrapper1 = new QueryWrapper<>();
+            wrapper1.eq("device_serial_number", deviceSerialNumber);
+            SamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper1);
+            if (configPO == null) {
+                sendError(deviceSerialNumber,  "没有找到对应的附件配置信息");
+                return;
+            }
+            if (configPO.getIsAutoChangePool()) {
+                SetParam setParam = new SetParam();
+                setParam.setCellPos(Integer.parseInt(Constants.PARAM_ONE));
+                boolean status = timeSweepConciseService.setInstrumentParameters(deviceSerialNumber, setParam);
+                if (!status) {
+                    sendError(deviceSerialNumber,  "设置出错");
+                    return;
+                }
+                Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(Constants.PARAM_ONE), updateBy);
+                if (b) {
+                    log.info("自动切换样品池恢复样品池到1号池");
+                }else{
+                    log.info("自动切换样品池恢复样品池到1号池失败");
+                }
+            }
+
+
 
             // 只有在正常完成（没有被停止）的情况下才发送"扫描成功"
             if (Constants.measureStopStatus.get(session.getDeviceSerialNumber())) {
