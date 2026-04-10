@@ -1133,7 +1133,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R<List<SearchInfo>> searchDevice(Integer connectType) {
+    public R<List<SearchInfo>> searchDevice(Integer connectType, String updateBy) {
 
         if (connectType == null) {
             R<DeviceConfigVO> r = newQueryDeviceConfig();
@@ -1146,6 +1146,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Find.getType());
         inputParam.setConnectType(connectType);
+        inputParam.setUpdateBy(updateBy);
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
             return R.fail(operation.getMessage());
@@ -1421,11 +1422,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             if(info.getIsActivated().equals(Constants.DEVICE_ACTIVE_NO) || !info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
                 info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
                 info.setDeviceId("");
-                info.setConnectType(-1);
-                info.setIp("");
-                info.setIsInited(0);
-                info.setMachineIp("");
-                info.setDevicePort(-1);
+//                info.setConnectType(-1);
+//                info.setIp("");
+//                info.setIsInited(0);
+//                info.setMachineIp("");
+//                info.setDevicePort(-1);
                 info.setUpdateBy(updateBy);
                 infoService.saveOrUpdateInfo(info);
                 deviceUsageLogService.saveDeviceUsageLog(logPO);
@@ -1435,15 +1436,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
 
         } else {
-            OperationResultEntity data = operation.getData();
 
             info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
             info.setDeviceId("");
-            info.setConnectType(-1);
-            info.setIp("");
-            info.setIsInited(0);
-            info.setMachineIp("");
-            info.setDevicePort(-1);
+//            info.setConnectType(-1);
+//            info.setIp("");
+//            info.setIsInited(0);
+//            info.setMachineIp("");
+//            info.setDevicePort(-1);
             info.setUpdateBy(updateBy);
             infoService.saveOrUpdateInfo(info);
             deviceUsageLogService.saveDeviceUsageLog(logPO);

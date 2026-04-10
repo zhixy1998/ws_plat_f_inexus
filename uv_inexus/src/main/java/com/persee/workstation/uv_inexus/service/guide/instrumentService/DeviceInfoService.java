@@ -57,6 +57,8 @@ public interface DeviceInfoService {
 
     List<DeviceInfoPO> getLastConnectDevice();
 
+    List<DeviceInfoPO> getUserLastConnectDevice(String updateBy);
+
     void checkDeviceStatus();
 
     R<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber);

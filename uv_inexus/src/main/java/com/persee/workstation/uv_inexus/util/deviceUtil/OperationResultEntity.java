@@ -44,6 +44,9 @@ public class OperationResultEntity {
     @ApiModelProperty("联机端口")
     private Integer connectPort;
 
+    @ApiModelProperty("仪器mac地址")
+    private String deviceMac;
+
     @ApiModelProperty("搜索仪器结果")
     private List<SearchInfo> searchInfo;
 
