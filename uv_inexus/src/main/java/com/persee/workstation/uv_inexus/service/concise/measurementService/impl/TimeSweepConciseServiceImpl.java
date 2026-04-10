@@ -593,8 +593,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         double response = Double.parseDouble(paramDto.getParameter().getResponseTime());
         double interval = Double.parseDouble(paramDto.getParameter().getIntervalTime());
-        if (response >= interval) {
-            return Result.fail("响应时间必须小于时间间隔");
+        if (response > interval) {
+            return Result.fail("响应时间必须小于等于时间间隔");
         }
         // 仪器下发参数校验
         if (paramDto.getDeviceSerialNumber()!=null&& !paramDto.getDeviceSerialNumber().isEmpty()){
@@ -761,7 +761,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
             wrapper.eq("task_id", taskId);
             wrapper.eq("is_save", "1");
-            wrapper.last("limit 1");
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
             if (measureDataList.isEmpty()) {
                 return Result.ok();

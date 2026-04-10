@@ -429,8 +429,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     public Result updateMethodParameter(TimeSweepMethodParameterDto paramDto) {
         double response = Double.parseDouble(paramDto.getResponseTime());
         double interval = Double.parseDouble(paramDto.getIntervalTime());
-        if (response >= interval) {
-            return Result.fail("响应时间必须小于时间间隔");
+        if (response > interval) {
+            return Result.fail("响应时间必须小于等于时间间隔");
         }
         SetParam setParam = new SetParam();
         setParam.setPhotoMode(Integer.valueOf(paramDto.getLuminosity()));
@@ -2795,6 +2795,13 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, TimeSweepParamter timeSweepParamter) {
+        Double intervalTime = Double.valueOf(timeSweepParamter.getIntervalTime());
+        Double responseTime = Double.valueOf(timeSweepParamter.getResponseTime());
+        if (intervalTime < responseTime) {
+            //间隔时间不能小于响应时间
+            return Result.fail("响应时间必须小于等于时间间隔");
+
+        }
         R<Boolean> r = checkParam(timeSweepParamter,methodDto.getDeviceSerialNumber());
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());

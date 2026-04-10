@@ -888,12 +888,16 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             //该方法下没有草稿,请新建草稿
             return Result.fail(YamlMessageSource.getMessageStatic("00100010"));
         }
+        // 根据任务id查询任务
+        FMeasureTask task1 = fMeasureTaskService.getById(taskId);
+        List<FTaskSpecimen> sampleList = JSON.parseArray(task1.getSampleKey(), FTaskSpecimen.class);
+        List<String> list = sampleList.stream().filter(sample -> sample.getIsTested().equals(Constants.PARAM_ONE))
+                .map(sample -> sample.getSpecimenKey()).collect(Collectors.toList());
         if (isSave) {
             // 根据任务id查询测量数据表的测量数据
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
             wrapper.eq("task_id", taskId);
-            wrapper.eq("is_save", "1");
-            wrapper.last("limit 1");
+            wrapper.in("is_save", list);
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
             if (measureDataList.isEmpty()) {
                 return Result.ok();

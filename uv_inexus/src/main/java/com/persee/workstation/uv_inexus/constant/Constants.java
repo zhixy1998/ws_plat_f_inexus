@@ -155,6 +155,16 @@ public class Constants {
     public static final String machine_status_error = "error"; // 仪器故障，处理待定
 
 
+    /// 测量
+
+    // 推送间隔
+    public static volatile Double pushInterval = null;
+    // 第一个数据时间戳
+    public static volatile Long firstDataTime = null;
+    // 第二个数据时间戳
+    public static volatile Long secondDataTime = null;
+
+
 
     /**
      * 查询用户时，权限校验结果
