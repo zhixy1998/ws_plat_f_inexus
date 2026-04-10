@@ -62,7 +62,10 @@ public class LogCompareUtil {
             case "ip": return "IP地址";
             case "instrumentName": return "仪器名称";
 
-            // 你以后加的表
+            // 样品
+            case "sampleName": return "样品名称";
+
+            // 格式
             // case "xxx": return "XXX";
 
             default: return field;

@@ -225,7 +225,7 @@ public class OperateLogAspect {
                         logPO.setBeforeData(JSON.toJSONString(oldData));
                         logPO.setAfterData(JSON.toJSONString(newData));
                         String changeContent = LogCompareUtil.generateCompareContent(oldData, newData);
-                        logPO.setChangeContent(changeContent); // 🔥 赋值
+                        logPO.setChangeContent(changeContent); //  赋值
                     }
                     LogContext.clear();
                 }
