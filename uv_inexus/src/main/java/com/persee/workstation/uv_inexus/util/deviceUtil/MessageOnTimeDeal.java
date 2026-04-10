@@ -498,6 +498,18 @@ public class MessageOnTimeDeal {
                                         esResult != null ? esResult.getEs() : "-",
                                         erResult != null ? erResult.getEr() : "-");
 
+                                if (Constants.firstDataTime != null && Constants.secondDataTime != null){
+                                    Constants.pushInterval = (Constants.secondDataTime - Constants.firstDataTime) / 1000.0;
+                                    log.info("计算得到推送间隔: {} 秒", Constants.pushInterval);
+                                }
+
+                                if (Constants.firstDataTime != null && Constants.secondDataTime == null){
+                                    Constants.secondDataTime=System.currentTimeMillis();
+                                }
+                                if (Constants.firstDataTime == null){
+                                    Constants.firstDataTime=System.currentTimeMillis();
+                                }
+
                             } else {
                                 sp.setBaselineRsd(temp);
                                 log.info("[光谱计算] wl={}, r={}, s={}, d={}",
