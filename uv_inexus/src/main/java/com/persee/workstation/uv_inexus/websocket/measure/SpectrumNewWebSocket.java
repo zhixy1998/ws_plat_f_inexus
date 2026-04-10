@@ -8,6 +8,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -46,10 +47,7 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -144,6 +142,54 @@ public class SpectrumNewWebSocket {
         private Integer digit;
         private Integer batchSize; // 批次大小
 
+        // 匀速推送调度器映射：sampleId_count -> SmoothPushScheduler
+        private final Map<String, SmoothPushScheduler> smoothPushSchedulers = new ConcurrentHashMap<>();
+        private SpectrumNewWebSocket parent; // 父类引用
+
+        public void setParent(SpectrumNewWebSocket parent) {
+            this.parent = parent;
+        }
+
+        public SmoothPushScheduler getOrCreateScheduler(String sampleId, Integer count, Integer digit, String luminosity,
+                                                        java.util.function.Supplier<String> currentSampleCellSupplier) {
+            String key = sampleId + "_" + count;
+            return smoothPushSchedulers.computeIfAbsent(key, k ->
+                    new SmoothPushScheduler(parent, deviceSerialNumber, sampleId, count, digit, luminosity, currentSampleCellSupplier));
+        }
+
+        public void cleanupScheduler(String sampleId, Integer count) {
+            String key = sampleId + "_" + count;
+            SmoothPushScheduler scheduler = smoothPushSchedulers.remove(key);
+            if (scheduler != null) scheduler.cleanup();
+        }
+
+        public void cleanupAllSchedulers() {
+            for (SmoothPushScheduler scheduler : smoothPushSchedulers.values()) {
+                scheduler.cleanup();
+            }
+            smoothPushSchedulers.clear();
+        }
+
+        public void waitForAllSchedulersToFinish(long timeoutMs) {
+            long startTime = System.currentTimeMillis();
+            for (SmoothPushScheduler scheduler : smoothPushSchedulers.values()) {
+                long remaining = timeoutMs - (System.currentTimeMillis() - startTime);
+                if (remaining <= 0) {
+                    log.warn("等待调度器完成超时，session: {}", deviceSerialNumber);
+                    break;
+                }
+                while (scheduler.isRunning() && System.currentTimeMillis() - startTime < timeoutMs) {
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+            log.info("所有调度器已停止或超时，session: {}", deviceSerialNumber);
+        }
+
         /**
          * 设置批次大小
          */
@@ -174,8 +220,8 @@ public class SpectrumNewWebSocket {
          * 获取并清空批次缓冲区
          */
         public BatchData getAndClearBatchBuffer(String sessionId, Integer count, String sampleId,
-                                                                            Integer digit, SpectrumParameter parameter,
-                                                                            TMeasureTask task) {
+                                                Integer digit, SpectrumParameter parameter,
+                                                TMeasureTask task) {
             synchronized (batchXBuffer) {
                 if (batchXBuffer.isEmpty()) {
                     return null;
@@ -215,6 +261,197 @@ public class SpectrumNewWebSocket {
         }
     }
 
+
+    /**
+     * 匀速推送调度器 - 使用 Constants.pushInterval 作为推送间隔
+     */
+    private static class SmoothPushScheduler {
+        private final String sessionId;
+        private final String sampleId;
+        private final Integer count;
+        private final Integer digit;
+        private final String luminosity;
+        private final AtomicBoolean isRunning = new AtomicBoolean(false);
+        private final Queue<SmoothPushTask> pendingQueue = new ConcurrentLinkedQueue<>();
+        private ScheduledExecutorService scheduler;
+        private long intervalMs = 0;
+
+        private final SpectrumNewWebSocket parent;
+        private final java.util.function.Supplier<String> currentSampleCellSupplier;
+
+        public SmoothPushScheduler(SpectrumNewWebSocket parent,
+                                   String sessionId,
+                                   String sampleId,
+                                   Integer count,
+                                   Integer digit,
+                                   String luminosity,
+                                   java.util.function.Supplier<String> currentSampleCellSupplier) {
+            this.parent = parent;
+            this.sessionId = sessionId;
+            this.sampleId = sampleId;
+            this.count = count;
+            this.digit = digit;
+            this.luminosity = luminosity;
+            this.currentSampleCellSupplier = currentSampleCellSupplier;
+        }
+
+        public synchronized void receiveBatch(List<Double> xBatch, List<Double> yBatch) {
+            // 将本批次所有点加入队列
+            for (int i = 0; i < xBatch.size(); i++) {
+                pendingQueue.add(new SmoothPushTask(xBatch.get(i), yBatch.get(i)));
+            }
+
+            parent.log.info("接收批次数据: session={}, 点数={}, 队列总点数={}",
+                    sessionId, xBatch.size(), pendingQueue.size());
+
+            // 如果还没有启动调度器，则启动
+            if (!isRunning.get() && !pendingQueue.isEmpty()) {
+                // 使用 Constants.pushInterval 作为推送间隔（秒转毫秒）
+                if (Constants.pushInterval != null && Constants.pushInterval > 0) {
+                    intervalMs = (long) (Constants.pushInterval * 1000);
+                    if (intervalMs < 1) intervalMs = 1;
+                    parent.log.info("使用推送间隔: {} 秒 = {} ms", Constants.pushInterval, intervalMs);
+                } else {
+                    // 默认 10ms，保证推送速度
+                    intervalMs = 10;
+                    parent.log.info("未设置推送间隔，使用默认值: {} ms", intervalMs);
+                }
+                startScheduling();
+            }
+        }
+
+        private void startScheduling() {
+            if (isRunning.compareAndSet(false, true)) {
+                parent.log.info("启动匀速推送调度: session={}, 待推送点数={}, 推送间隔={}ms",
+                        sessionId, pendingQueue.size(), intervalMs);
+                scheduler = Executors.newSingleThreadScheduledExecutor();
+                scheduler.scheduleAtFixedRate(() -> {
+                    pushOnePoint();
+                }, 0, intervalMs, TimeUnit.MILLISECONDS);
+            }
+        }
+
+        private void pushOnePoint() {
+            SmoothPushTask task = pendingQueue.poll();
+            if (task == null) return;
+
+            SessionState state = sessionStates.get(sessionId);
+            if (state == null || state.sessionClosing.get()) {
+                stopScheduling();
+                return;
+            }
+
+            try {
+                JSONArray dataArray = new JSONArray();
+                JSONObject point = new JSONObject();
+                point.put("x", task.x);
+
+                Double value = DataCountUtil.formatValue(digit, task.y);
+                String valueY = DataCountUtil.addZero(value, digit);
+                point.put("y", task.y);
+                point.put("roundOffY", valueY);
+                point.put("xType", "nm");
+
+                String luminosityType = luminosity.equals("1") ? "Abs" :
+                        luminosity.equals("2") ? "T%" :
+                                luminosity.equals("3") ? "Es" : "Er";
+                point.put("yType", luminosityType);
+                dataArray.add(point);
+
+                JSONObject payload = new JSONObject();
+                payload.put("data", dataArray);
+                payload.put("sampleId", sampleId);
+                payload.put("count", count);
+                payload.put("currentPoolNum", currentSampleCellSupplier.get());
+                payload.put("smoothPush", true);
+
+                parent.sendMessage(sessionId, payload);
+                log.info("匀速推送一个点: x={}, y={}, 剩余点数={}", task.x, task.y, pendingQueue.size());
+            } catch (Exception e) {
+                parent.log.error("匀速推送单点失败", e);
+            }
+        }
+
+        private void stopScheduling() {
+            if (isRunning.compareAndSet(true, false)) {
+                if (scheduler != null && !scheduler.isShutdown()) {
+                    scheduler.shutdown();
+                    try {
+                        if (!scheduler.awaitTermination(2, TimeUnit.SECONDS)) {
+                            scheduler.shutdownNow();
+                        }
+                    } catch (InterruptedException e) {
+                        scheduler.shutdownNow();
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                parent.log.info("匀速推送调度停止: session={}", sessionId);
+            }
+        }
+
+        /**
+         * 测量结束时调用：立即停止调度器并推送所有剩余点
+         */
+        public synchronized void flush() {
+            stopScheduling();
+            if (pendingQueue.isEmpty()) return;
+            parent.log.info("测量结束，立即推送所有剩余点: session={}, 点数={}", sessionId, pendingQueue.size());
+            SmoothPushTask task;
+            while ((task = pendingQueue.poll()) != null) {
+                pushSinglePointDirect(task.x, task.y);
+            }
+        }
+
+        private void pushSinglePointDirect(Double x, Double y) {
+            if (x == null || y == null) return;
+            SessionState state = sessionStates.get(sessionId);
+            if (state == null || state.sessionClosing.get()) return;
+
+            try {
+                JSONArray dataArray = new JSONArray();
+                JSONObject point = new JSONObject();
+                point.put("x", x);
+                Double value = DataCountUtil.formatValue(digit, y);
+                String valueY = DataCountUtil.addZero(value, digit);
+                point.put("y", y);
+                point.put("roundOffY", valueY);
+                point.put("xType", "nm");
+                String luminosityType = luminosity.equals("1") ? "Abs" :
+                        luminosity.equals("2") ? "T%" :
+                                luminosity.equals("3") ? "Es" : "Er";
+                point.put("yType", luminosityType);
+                dataArray.add(point);
+
+                JSONObject payload = new JSONObject();
+                payload.put("data", dataArray);
+                payload.put("sampleId", sampleId);
+                payload.put("count", count);
+                payload.put("currentPoolNum", currentSampleCellSupplier.get());
+                payload.put("smoothPush", true);
+                parent.sendMessage(sessionId, payload);
+            } catch (Exception e) {
+                parent.log.error("直接推送单点失败", e);
+            }
+        }
+
+        public boolean isRunning() {
+            return isRunning.get();
+        }
+
+        public void cleanup() {
+            stopScheduling();
+            pendingQueue.clear();
+        }
+
+        private static class SmoothPushTask {
+            final Double x;
+            final Double y;
+            SmoothPushTask(Double x, Double y) {
+                this.x = x;
+                this.y = y;
+            }
+        }
+    }
     /**
      * 批次数据容器
      */
@@ -256,6 +493,7 @@ public class SpectrumNewWebSocket {
         currentSampleCell=null;
         // 初始化会话状态
         SessionState state = new SessionState();
+        state.setParent(this);
         sessionStates.put(param.getDeviceSerialNumber(), state);
 
         deviceSerialNumber = param.getDeviceSerialNumber();
@@ -377,7 +615,7 @@ public class SpectrumNewWebSocket {
         inputParam.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setAction(ActionCmdEnum.Scan);
-        if (spectrumParameter.getScanSpeed().equals(Constants.PARAM_FOUR)) {
+        if (spectrumParameter.getScanSpeed().equals(ScanSpeedEnum.EXTREME_FAST.getCode())) {
             inputParam.setAction(ActionCmdEnum.ScanFast);
         }
 
@@ -430,6 +668,8 @@ public class SpectrumNewWebSocket {
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
                                 sendMessage(deviceSerialNumber, payload);
+                            }else{
+                                break;
                             }
                         }else{
                             break;
@@ -517,13 +757,29 @@ public class SpectrumNewWebSocket {
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
                                 sendMessage(deviceSerialNumber, payload);
+                            }else{
+                                break;
                             }
                         }else{
                             break;
                         }
                     }
                 }
-
+                if (configPO.getIsAutoChangePool()) {
+                    SetParam setParam = new SetParam();
+                    setParam.setCellPos(Integer.parseInt(Constants.PARAM_ONE));
+                    boolean status = spectrumService.setInstrumentParameters(deviceSerialNumber, setParam);
+                    if (!status) {
+                        sendError(deviceSerialNumber,  "设置出错");
+                        return;
+                    }
+                    Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(Constants.PARAM_ONE), updateBy);
+                    if (b) {
+                        log.info("自动切换样品池恢复样品池到1号池");
+                    }else{
+                        log.info("自动切换样品池恢复样品池到1号池失败");
+                    }
+                }
 
                 JSONObject payload = new JSONObject();
                 if (Constants.measureStopStatus.get(deviceSerialNumber)){
@@ -656,6 +912,9 @@ public class SpectrumNewWebSocket {
                     Thread.currentThread().interrupt();
                 }
             }
+            // 等待调度器完成推送
+            state.waitForAllSchedulersToFinish(5000);
+            state.cleanupAllSchedulers();
             // 等待所有存储操作完成
             boolean allStorageCompleted = waitForAllStorageComplete(sessionId);
             if (!allStorageCompleted) {
@@ -882,6 +1141,10 @@ public class SpectrumNewWebSocket {
         } finally {
             storageLatches.remove(storageKey);
         }
+        // 强制刷新调度器（处理只有一组数据的情况）
+        SmoothPushScheduler scheduler = state.getOrCreateScheduler(sampleId, count, state.digit,
+                spectrumParameter.getLuminosity(), () -> currentSampleCell);
+        scheduler.flush();
 
         // 存储完成后才通知前端
         JSONObject finishMessage = new JSONObject();
@@ -933,7 +1196,7 @@ public class SpectrumNewWebSocket {
         List<ChangeParam> changeParams = new ArrayList<>();
 
         // 判断是否为极快扫描模式
-        boolean isFastScan = Constants.PARAM_FOUR.equals(spectrumParameter.getScanSpeed());
+        boolean isFastScan = ScanSpeedEnum.EXTREME_FAST.getCode().equals(spectrumParameter.getScanSpeed());
 
         if (isFastScan) {
             // 极快扫描模式：优化版本（保持不变）
@@ -1081,6 +1344,20 @@ public class SpectrumNewWebSocket {
                         log.info("追加数据到 originalYValues, key: {}, 当前总点数: {}, 本次追加: {}",
                                 key, existingData.size(), batchData.yBatch.size());
                     }
+
+                    // ========== 新增：剩余批次数据也需要提交给调度器 ==========
+                    java.util.function.Supplier<String> cellSupplier = () -> currentSampleCell;
+                    SmoothPushScheduler scheduler = state.getOrCreateScheduler(
+                            batchData.sampleId,
+                            batchData.count,
+                            batchData.digit,
+                            spectrumParameter.getLuminosity(),
+                            cellSupplier);
+                    // 剩余批次数据也需要通过调度器推送（注意：这里传入的是原始 yBatch，因为台阶消除已在 processBatchDataAsync 中处理过）
+                    scheduler.receiveBatch(batchData.xBatch, batchData.yBatch);
+
+                    // 更新已推送点数
+                    state.incrementPushedPoints(batchData.xBatch.size());
                 }
 
                 // 等待所有异步处理完成
@@ -1211,10 +1488,15 @@ public class SpectrumNewWebSocket {
                 // 调用新的存储方法，处理数据库的首次创建或追加
                 handleBatchDataStorage(batchData, isFirstBatch);
 
-                // 推送处理后的数据
-                pushBatchDataDirectly(batchData.xBatch, processedY,
-                        batchData.count, batchData.sampleId,
-                        batchData.parameter.getLuminosity(), batchData.digit);
+                // 获取调度器，并将数据交给调度器（不直接推送）
+                java.util.function.Supplier<String> cellSupplier = () -> currentSampleCell;
+                SmoothPushScheduler scheduler = state.getOrCreateScheduler(
+                        batchData.sampleId,
+                        batchData.count,
+                        batchData.digit,
+                        batchData.parameter.getLuminosity(),
+                        cellSupplier);
+                scheduler.receiveBatch(batchData.xBatch, processedY);
 
                 // 更新已推送点数
                 if (state != null) {
@@ -1762,10 +2044,10 @@ public class SpectrumNewWebSocket {
      * 台阶消除
      */
     public List<Double> processAndSaveDataStep(TMeasureTask task,
-                                           List<Double> x,
-                                           List<Double> y,
-                                           SpectrumParameter parameter,
-                                           String sampleId) {
+                                               List<Double> x,
+                                               List<Double> y,
+                                               SpectrumParameter parameter,
+                                               String sampleId) {
 
         String luminosityMode = parameter.getLuminosity();
         boolean ladderCorrection = parameter.getLadderCorrection();
@@ -1836,10 +2118,10 @@ public class SpectrumNewWebSocket {
      * 消除尖刺
      */
     public List<Double> processAndSaveDataSpine(TMeasureTask task,
-                                               List<Double> x,
-                                               List<Double> y,
-                                               SpectrumParameter parameter,
-                                               String sampleId) {
+                                                List<Double> x,
+                                                List<Double> y,
+                                                SpectrumParameter parameter,
+                                                String sampleId) {
 
         String luminosityMode = parameter.getLuminosity();
         boolean eliminateSpine = parameter.getSpikeRemoval();
@@ -1979,7 +2261,7 @@ public class SpectrumNewWebSocket {
         TMeasureSample sample = tMeasureSampleService.getById(taskSpecimen.getSpecimenKey());
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-        Boolean isScanFast = spectrumParameter.getScanSpeed().equals(Constants.PARAM_FOUR);
+        Boolean isScanFast = spectrumParameter.getScanSpeed().equals(ScanSpeedEnum.EXTREME_FAST.getCode());
         try {
             SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
             // 1. 处理峰谷数据
@@ -2149,6 +2431,7 @@ public class SpectrumNewWebSocket {
                     measureData.setMeasurementEndTime(endTime);
                     measureData.setIsSave("1");
                     traceDataService.saveOrUpdate(measureData);
+                    analysisData.setMeasureDataId(measureData.getId());
                     analysisData.setAnalysisParam(JSON.toJSONString(changeParamList));
                     analysisData.setAnalysisResult(JSON.toJSONString(result));
                     if (peakValleys != null) {
@@ -2290,6 +2573,9 @@ public class SpectrumNewWebSocket {
         Constants.startTime = null;
         Constants.endTime = null;
         Constants.measureStopStatus.clear();
+        Constants.pushInterval = null;
+        Constants.firstDataTime = null;
+        Constants.secondDataTime = null;
     }
 
     // 返回测量结果的类

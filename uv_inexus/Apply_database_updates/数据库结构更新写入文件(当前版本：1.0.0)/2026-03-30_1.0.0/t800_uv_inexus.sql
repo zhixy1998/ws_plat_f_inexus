@@ -1,9 +1,8 @@
--- 更新 T600/T700 的 scan_speed
 UPDATE `t800_uv_inexus`.`t_device_type_info`
 SET `scan_speed` = JSON_OBJECT(
-    '0', '3',
+    '0', '1',
     '1', '2',
-    '2', '1',
+    '2', '3',
     '111', '4'
 )
 WHERE `id` = 1;

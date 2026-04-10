@@ -134,6 +134,7 @@ public class RationMeasureNewWebSocket{
         String deviceSerialNumber = param.getDeviceSerialNumber();
         String dig = param.getDigit();
         String oneSampleId = param.getSampleId();
+        String updateBy = param.getUpdateBy();
         int di = digit;
         if (StringUtils.hasText(dig)) {
             di = Integer.parseInt(dig);
@@ -959,6 +960,7 @@ public class RationMeasureNewWebSocket{
                         if (!operation.getSuccess()) {
                             log.info("设置样品池位置出错");
                         }
+                        samplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, usefulLocation.get(0), updateBy);
 
                         JSONObject object = new JSONObject();
                         object.put("currentPoolNum", usefulLocation.get(0));

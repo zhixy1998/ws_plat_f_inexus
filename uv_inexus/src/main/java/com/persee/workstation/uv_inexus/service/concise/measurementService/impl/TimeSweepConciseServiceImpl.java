@@ -224,6 +224,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         // 波长默认范围 190-1100
         double minWaveLength = 190.0;
         double maxWaveLength = 1100.0;
+        double minLampWaveLength = 330;
+        double maxLampWaveLength = 390;
 
         if (StringUtils.hasText(deviceSerialNumber)) {
             R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(deviceSerialNumber);
@@ -232,6 +234,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 if (vo != null) {
                     minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
                     maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                    minLampWaveLength = StringUtils.hasText(vo.getMinLampWavelength()) ? Double.parseDouble(vo.getMinLampWavelength()) : minLampWaveLength;
+                    maxLampWaveLength = StringUtils.hasText(vo.getMaxLampWavelength()) ? Double.parseDouble(vo.getMaxLampWavelength()) : maxLampWaveLength;
                 }
 
             }
@@ -364,7 +368,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         try {
             double waveVal = Double.parseDouble(changeLampWave);
-            if (waveVal < 330 || waveVal > 390) {
+            if (waveVal < minLampWaveLength || waveVal > maxLampWaveLength) {
                 return R.fail(YamlMessageSource.getMessageStatic("0010202A", waveVal));
             }
         } catch (NumberFormatException e) {
@@ -590,8 +594,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         double response = Double.parseDouble(paramDto.getParameter().getResponseTime());
         double interval = Double.parseDouble(paramDto.getParameter().getIntervalTime());
-        if (response >= interval) {
-            return Result.fail("响应时间必须小于时间间隔");
+        if (response > interval) {
+            return Result.fail("响应时间必须小于等于时间间隔");
         }
         // 仪器下发参数校验
         if (paramDto.getDeviceSerialNumber()!=null&& !paramDto.getDeviceSerialNumber().isEmpty()){
@@ -758,7 +762,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
             wrapper.eq("task_id", taskId);
             wrapper.eq("is_save", "1");
-            wrapper.last("limit 1");
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
             if (measureDataList.isEmpty()) {
                 return Result.ok();

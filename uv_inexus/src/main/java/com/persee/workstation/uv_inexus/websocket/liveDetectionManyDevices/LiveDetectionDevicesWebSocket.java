@@ -23,6 +23,7 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.MessageI
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
+import com.persee.workstation.uv_inexus.vo.messageVo.MessageReport;
 import com.persee.workstation.uv_inexus.websocket.measure.*;
 import com.persee.workstation.uv_inexus.websocket.measure.concise.*;
 import com.persee.workstation.uv_inexus.websocket.measure.param.*;
@@ -632,7 +633,7 @@ public class LiveDetectionDevicesWebSocket {
                     if (!Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
                         log.info("设备已断开，暂停测量: {}", taskInfo.deviceSerialNumber);
                         taskInfo.isRunning = false;
-                        webSocketSendUtil.sendDeviceDisConnectMessage(taskInfo.deviceSerialNumber);
+//                        webSocketSendUtil.sendDeviceDisConnectMessage(taskInfo.deviceSerialNumber);
                         if (device != null) {
                             deviceManager.removeDevice(deviceId);
                         }
@@ -683,7 +684,8 @@ public class LiveDetectionDevicesWebSocket {
 
                             String message = "仪器无响应，请检查仪器状态和网线连接后，重新查找并联接仪器！";
 
-                            saveMessageInfo(message);
+                            assert info != null;
+                            saveMessageInfo(message, info.getUpdateBy());
 
                         }
                         scheduleNextMeasurement(taskInfo, startTime);
@@ -767,12 +769,14 @@ public class LiveDetectionDevicesWebSocket {
 
     }
 
-    private void saveMessageInfo(String message) {
+    private void saveMessageInfo(String message, String updateBy) {
         MessageInfoPO messageInfoPO = new MessageInfoPO();
         messageInfoPO.setMessageType(MessageTypeEnum.TYPE_INSTRUMENT_MESSAGE.getCode());
         messageInfoPO.setMessageSource(Constants.MESSAGE_SOURCE_DEVICE);
         messageInfoPO.setMessageContent(message);
         messageInfoPO.setMessageSummary("设备无响应!");
+        messageInfoPO.setCreateBy(updateBy);
+        messageInfoPO.setUpdateBy(updateBy);
         messageInfoService.saveMessageInfo(messageInfoPO);
     }
 
@@ -888,17 +892,39 @@ public class LiveDetectionDevicesWebSocket {
 
         if (StringUtils.hasText(destination) && destination.startsWith(messageTopic)) {
             String[] split = destination.split("/");
-            String deviceSerialNumber = split[split.length - 1];
+            String user = split[split.length - 1];
 
             // 检查此会话是否已经订阅了此设备
-            boolean isNewSubscription = addSubscription(sessionId, deviceSerialNumber);
+            boolean isNewSubscription = addSubscription(sessionId, user);
 
             if (isNewSubscription) {
                 log.info("新增消息订阅: 会话={}", sessionId);
+//                sendMessage(user);
             } else {
                 log.debug("重复消息订阅忽略: 会话={} ", sessionId);
             }
         }
+    }
+
+    private void sendMessage(String updateBy) {
+
+        WebSocketResponseVO webSocketResponseVO = new WebSocketResponseVO();
+        webSocketResponseVO.setOperation(WebSocketOperationEnum.Message.getOperation());
+        MessageReport messageInfo = new MessageReport();
+        for (int i = 0; i < 100; i++) {
+            try {
+                Thread.sleep(2000);
+            } catch (Exception ignored) {
+            }
+
+            messageInfo.setMessageType(1);
+            messageInfo.setMessageSource("系统消息");
+            messageInfo.setMessageSummary("第" + i + "条系统消息");
+            messageInfo.setReceiveTime(LocalDateTime.now());
+            messageInfo.setMessageTypeName("系统消息");
+            webSocketSendUtil.newMessageReport(updateBy, messageInfo);
+        }
+
     }
 
     /**

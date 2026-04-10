@@ -24,6 +24,7 @@ import com.persee.workstation.uv_inexus.service.guide.measurementService.Experim
 import com.persee.workstation.uv_inexus.service.guide.measurementService.SampleHeadTemplateService;
 import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.measurementVo.MethodBaseVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.MethodNameAndIdVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleTemplateVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
@@ -447,6 +448,12 @@ public class ExperimentTestController {
     public Result<Boolean> checkOperatePermission(PermLogOccupyDTO requestDTO) {
 
         return Result.ok(true);
+    }
+
+    @GetMapping("queryMethodByStandId")
+    @ApiOperation("查询标准创建的方法")
+    public Result<List<MethodNameAndIdVO>> queryStandardCreateMethod(@RequestParam String measureType, @RequestParam String projectId, @RequestParam String standardId) {
+        return experimentTestService.queryMethodNameAndId(measureType, projectId, standardId);
     }
 
 }

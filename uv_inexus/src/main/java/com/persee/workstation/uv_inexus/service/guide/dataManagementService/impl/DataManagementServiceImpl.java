@@ -1235,6 +1235,11 @@ public class DataManagementServiceImpl implements DataManagementService {
         return Result.ok(res.getData());
     }
 
+    /**
+     * 删除任务
+     * @param List
+     * @return
+     */
     @Override
     public Result<String> deleteTask(Box List) {
         List<String> deleteTaskIdList = List.getParams();

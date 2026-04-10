@@ -37,6 +37,8 @@ public enum WebSocketOperationEnum {
     TimeMeasure("timeMeasure", "向导-时间测量"),
     TimeMeasureOne("timeMeasureOne", "向导-时间测量(单扫)"),
 
+    Message("message", "消息"),
+
 
     DeviceStatus("deviceStatus", "仪器实时状态值"),
     //仪器校准

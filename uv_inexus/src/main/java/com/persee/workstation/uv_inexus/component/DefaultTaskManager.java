@@ -5,18 +5,26 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelDataAsset;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
+import com.persee.workstation.uv_inexus.po.factory_inspection.TaskItemStatus;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
+import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelDataAssetService;
+import com.persee.workstation.uv_inexus.service.factory_inspection.TaskItemStatusService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
 
@@ -30,6 +38,7 @@ import static com.persee.workstation.uv_inexus.enums.factoryInspection.Calibrati
  */
 @Component
 @DS("factory_inspection")
+@Slf4j
 public class DefaultTaskManager {
 
     @Autowired
@@ -39,6 +48,10 @@ public class DefaultTaskManager {
     @Autowired
     private DeviceManageService deviceManageService;
 
+    @Autowired
+    private ExcelDataAssetService dataAssetService;
+    @Autowired
+    private TaskItemStatusService taskItemStatusService;
     private volatile String defaultTaskId;
 
     // 获取默认任务ID
@@ -48,7 +61,48 @@ public class DefaultTaskManager {
         }
         return defaultTaskId;
     }
+    /**
+     * 为新任务初始化任务执行详情记录和检测项状态
+     *
+     * @param taskId       任务ID
+     * @param templateCode 模板编码
+     */
+    private void initializeTaskExecutionDetails(String taskId, String templateCode) {
+        try {
+            // 查询模板对应的所有检测项
+            LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(ExcelDataAsset::getTemplateCode, templateCode);
+            List<ExcelDataAsset> assets = dataAssetService.list(wrapper);
 
+            if (CollectionUtils.isEmpty(assets)) {
+                log.warn("模板 {} 没有检测项", templateCode);
+                return;
+            }
+
+            // 为每个检测项创建任务执行详情记录和状态记录
+            List<TaskItemStatus> statusList = new ArrayList<>();
+
+            for (ExcelDataAsset asset : assets) {
+
+                // 创建任务检测项状态（用于记录测量状态）
+                TaskItemStatus status = new TaskItemStatus();
+                status.setId(IdGeneratorUtil.generateId());
+                status.setTaskId(taskId);
+                status.setItemId(asset.getId());
+                status.setMeasured("0");
+                status.setCheckResult("0");
+                statusList.add(status);
+            }
+
+
+            if (!statusList.isEmpty()) {
+                taskItemStatusService.saveBatch(statusList);
+                log.info("为任务 {} 初始化了 {} 个检测项状态", taskId, statusList.size());
+            }
+        } catch (Exception e) {
+            log.error("初始化任务执行详情失败，任务ID: {}", taskId, e);
+        }
+    }
     // 确保存在未开始的默认任务
     @Transactional(rollbackFor = Exception.class)
     public void ensureDefaultTaskExists(String updateBy) {
@@ -62,12 +116,16 @@ public class DefaultTaskManager {
 //
         //看一下有没有updateBy创建的任务
         LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(TaskManagement::getCreateBy, updateBy);
+        wrapper.eq(TaskManagement::getCreateBy, updateBy)
+                .eq(TaskManagement::getTaskType, "1");
         long count = taskManagementService.count(wrapper);
 //        long count = taskManagementService.count();
         if (count == 0) {
             // 创建新默认任务
             TaskManagement newTask = createDefaultTask(updateBy);
+            ExcelTemplate excelTemplate = templateService.getById(newTask.getUseTemplate());
+            initializeTaskExecutionDetails(newTask.getId(), excelTemplate.getTemplateCode());
+
             taskManagementService.save(newTask);
             this.defaultTaskId = newTask.getId();
 
@@ -76,7 +134,8 @@ public class DefaultTaskManager {
             TaskManagement task1 = taskManagementService.getOne(
                     new LambdaQueryWrapper<TaskManagement>()
                             .eq(TaskManagement::getCreateBy, updateBy)
-                            .orderByDesc(TaskManagement::getCreated)  // 按创建时间降序
+                            .eq(TaskManagement::getTaskType, "1")
+                            .orderByDesc(TaskManagement::getUpdated)  // 按创建时间降序
                             .last("LIMIT 1")  // 只取最新的一条
             );
             this.defaultTaskId = task1.getId();

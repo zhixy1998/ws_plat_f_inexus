@@ -4584,4 +4584,39 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
 
     }
+
+    @Override
+    public Result<List<MethodNameAndIdVO>> queryMethodNameAndId(String measureType, String projectId, String standardId) {
+
+        // 分开校验入参
+        if (measureType==null||measureType.equals("")){
+            return Result.fail("测量类型不能为空");
+        }
+        if (projectId==null||projectId.equals("")){
+            return Result.fail(YamlMessageSource.getMessageStatic("项目不能为空"));
+        }
+        if (standardId==null||standardId.equals("")){
+            return Result.fail(YamlMessageSource.getMessageStatic("参考标准不能为空"));
+        }
+
+        LambdaQueryWrapper<TMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureMethod::getProjectItemKey, projectId)
+                .eq(TMeasureMethod::getIsDelete, Constants.PARAM_ZERO)
+                .eq(TMeasureMethod::getMeasurementType, measureType)
+                .eq(TMeasureMethod::getPreprocessKey, standardId)
+                .orderByDesc(TMeasureMethod::getMethodCreateTime);
+        List<TMeasureMethod> list = tMeasureMethodService.list(queryWrapper);
+
+        if (list == null || list.isEmpty()) {
+            return Result.ok(new ArrayList<>());
+        }
+
+        List<MethodNameAndIdVO> voList = list.stream().map(method -> {
+            MethodNameAndIdVO vo = new MethodNameAndIdVO();
+            vo.setId(method.getId());
+            vo.setMethodName(method.getMethodName());
+            return vo;
+        }).collect(Collectors.toList());
+        return Result.ok(voList);
+    }
 }

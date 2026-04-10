@@ -21,7 +21,7 @@ import java.util.*;
 public enum DevXmlEnums {
 
     T800("T800", "newFile/T800.xml", "T800", 8000,
-            Arrays.asList("Connect", "GetSn", "GetAccessoryType", "GetInitStatus", "GetCellPos"),
+            Arrays.asList("Connect", "GetSn", "GetAccessoryType", "SetCellPos", "GetInitStatus", "GetCellPos"),
             Arrays.asList("GetPhotoMode", "GetResponseTime", "Measure", "GetChangeLampWl", "GetCellPos", "GetLampPos", "GetWLampStatus", "GetDLampStatus", "GetCurrentNegativeHV"),
  new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
@@ -33,7 +33,7 @@ public enum DevXmlEnums {
             false),
 
     T600AndT700("T600/T700", "newFile/T600.1.xml", "T600/T700", 5000,
-            Arrays.asList("Connect", "GetSn", "GetAccessoryType", "GetInitStatus", "GetCellPos", "GetWlList"),
+            Arrays.asList("Connect", "GetSn", "GetAccessoryType", "SetCellPos", "GetInitStatus", "GetCellPos", "GetWlList"),
             Arrays.asList("GetPhotoMode", "GetResponseTime", "Measure", "GetChangeLampWl", "GetCellPos", "GetLampPos","GetWLampStatus","GetDLampStatus"),
             new byte[]{(byte) 0xFF, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,

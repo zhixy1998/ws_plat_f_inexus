@@ -31,6 +31,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
@@ -231,7 +232,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 波长默认范围 190-1100
         double minWaveLength = 190.0;
         double maxWaveLength = 1100.0;
-
+        double minLampWaveLength = 330;
+        double maxLampWaveLength = 390;
         if (StringUtils.hasText(deviceSerialNumber)) {
             R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(deviceSerialNumber);
             if (typeInfo.getSuccess()) {
@@ -239,6 +241,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 if (vo != null) {
                     minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
                     maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                    minLampWaveLength = StringUtils.hasText(vo.getMinLampWavelength()) ? Double.parseDouble(vo.getMinLampWavelength()) : minLampWaveLength;
+                    maxLampWaveLength = StringUtils.hasText(vo.getMaxLampWavelength()) ? Double.parseDouble(vo.getMaxLampWavelength()) : maxLampWaveLength;
                 }
 
             }
@@ -405,7 +409,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         try {
             double waveVal = Double.parseDouble(changeLampWave);
-            if (waveVal < 330 || waveVal > 390) {
+            if (waveVal < minLampWaveLength || waveVal > maxLampWaveLength) {
                 return R.fail(YamlMessageSource.getMessageStatic("0010202A", waveVal));
             }
         } catch (NumberFormatException e) {
@@ -721,24 +725,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             paramDto.getParameter().setLadderCorrection(false);
         }
         boolean update1 = Double.parseDouble(paramDto.getParameter().getWaveLengthInterval()) < 1;
-        if (paramDto.getParameter().getScanSpeed().equals(Constants.PARAM_FOUR) && update1) {
+        if (paramDto.getParameter().getScanSpeed().equals(ScanSpeedEnum.EXTREME_FAST.getCode()) && update1) {
             return Result.fail("极快扫描速度时,扫描间隔不能小于1秒");
         }
-        double start = Double.parseDouble(paramDto.getParameter().getStartWaveLength());
-        double end = Double.parseDouble(paramDto.getParameter().getEndWaveLength());
-        // 校验方法参数中起始波长不能小于终止波长,小于则友好提示
-        if (start <= end) {
-            //起始波长不能小于等于停止波长
-            return Result.fail(YamlMessageSource.getMessageStatic("00104015"));
-        }
-        // 校验幻灯波长在330~390之间
-        double changeWavelength = Double.parseDouble(paramDto.getParameter().getChangeLampWaveLength());
-        if (changeWavelength < 330.0 || changeWavelength > 390.0) {
-            return Result.fail("幻灯波长在330~390之间");
-        }
-        if (paramDto.getParameter().getScanSpeed().equals(Constants.PARAM_FOUR) && (start > 1100 || start < 380)) {
-            return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
-        }
+
         if (param.getSpikeRemoval()==null){
             paramDto.getParameter().setSpikeRemoval(false);
         }
@@ -899,12 +889,16 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             //该方法下没有草稿,请新建草稿
             return Result.fail(YamlMessageSource.getMessageStatic("00100010"));
         }
+        // 根据任务id查询任务
+        FMeasureTask task1 = fMeasureTaskService.getById(taskId);
+        List<FTaskSpecimen> sampleList = JSON.parseArray(task1.getSampleKey(), FTaskSpecimen.class);
+        List<String> list = sampleList.stream().filter(sample -> sample.getIsTested().equals(Constants.PARAM_ONE))
+                .map(sample -> sample.getSpecimenKey()).collect(Collectors.toList());
         if (isSave) {
             // 根据任务id查询测量数据表的测量数据
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
             wrapper.eq("task_id", taskId);
-            wrapper.eq("is_save", "1");
-            wrapper.last("limit 1");
+            wrapper.in("is_save", list);
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
             if (measureDataList.isEmpty()) {
                 return Result.ok();
@@ -2392,7 +2386,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             setParam.setSlit1(Double.valueOf(spectrumParam.getSpectralBandwidth()));
         }
         // 6. 扫描速度
-        if (!spectrumParam.getScanSpeed().equals(Constants.PARAM_FOUR)) {
+        if (!spectrumParam.getScanSpeed().equals(ScanSpeedEnum.EXTREME_FAST.getCode())) {
             R<DeviceMeasureVO> deviceTypeInfo = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
             String ScanSpeed = deviceTypeInfo.getData().getScanSpeed().stream()
                     .filter(obj -> obj.getParamName().equals(spectrumParam.getScanSpeed()))

@@ -27,7 +27,7 @@ public interface DeviceInfoService {
     //查找附件类型
     String getAttachmentType(String deviceSerialNumber);
 
-    DeviceAttachmentTypeVO getAttachment(Integer attachmentType);
+    DeviceAttachmentTypeVO getAttachment(Integer attachmentType, String deviceSerialNumber);
 
     DeviceAttachmentTypeVO getAttachmentInfo(String deviceSerialNumber);
 
@@ -65,5 +65,9 @@ public interface DeviceInfoService {
      * 没有波长列表时的系数
      */
     Double queryCoefficient(String deviceSerialNumber);
+    /**
+     * 获取设备类型
+     */
+    String queryDeviceTypeBySerialNumber(String deviceSerialNumber);
 
 }

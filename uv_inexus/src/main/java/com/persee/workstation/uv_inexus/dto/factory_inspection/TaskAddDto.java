@@ -48,4 +48,7 @@ public class TaskAddDto {
     private LocalDateTime updated;
     @ApiModelProperty("仪器序列号")
     private String serialNumber;
+
+    @ApiModelProperty("任务类型")
+    private String taskType;
 }

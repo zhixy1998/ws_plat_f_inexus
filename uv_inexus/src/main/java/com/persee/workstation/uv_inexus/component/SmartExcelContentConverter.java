@@ -29,91 +29,14 @@ import static com.persee.workstation.uv_inexus.enums.factoryInspection.Calibrati
  */
 @Component
 public class SmartExcelContentConverter {
+
+    private static final int DEFAULT_DECIMAL_PLACES = 4;
+
     @Autowired
     private ExcelCellLocator excelCellLocator;
 
-    /**
-     * 主转换方法 - 返回扁平化的内容Map
-     */
-    public Map<String, Object> convertToSimpleStructure(Workbook workbook) {
-        FormulaEvaluator evaluator = createFormulaEvaluator(workbook);
-        Map<String, Object> result = new LinkedHashMap<>();
+// ... existing code ...
 
-        List<Map<String, Object>> worksheets = new ArrayList<>();
-
-        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
-            Sheet sheet = workbook.getSheetAt(i);
-            worksheets.addAll(processSimpleSheet(sheet, evaluator));
-        }
-
-        result.put("worksheets", worksheets);
-        return result;
-    }
-
-    /**
-     * 创建公式计算器
-     */
-    private FormulaEvaluator createFormulaEvaluator(Workbook workbook) {
-        if (workbook instanceof XSSFWorkbook) {
-            return new XSSFFormulaEvaluator((XSSFWorkbook) workbook);
-        } else if (workbook instanceof org.apache.poi.hssf.usermodel.HSSFWorkbook) {
-            return new HSSFFormulaEvaluator((org.apache.poi.hssf.usermodel.HSSFWorkbook) workbook);
-        } else {
-            return workbook.getCreationHelper().createFormulaEvaluator();
-        }
-    }
-
-    /**
-     * 处理单个工作表为简化结构
-     */
-//    private  Map<String, Object> processSimpleSheet(Sheet sheet, FormulaEvaluator evaluator) {
-//        Map<String, Object> worksheet = new LinkedHashMap<>();
-//
-//        // 确定是否为表格结构
-//        boolean isTableStructure = analyzeIfTableStructure(sheet);
-//
-//        if (isTableStructure) {
-//            // 提取表头和数据
-//            List<String> columns = extractHeaders(sheet, evaluator);
-//            HashMap<String, Object> hashMap = extractDataRowsWithMergedCells(sheet, evaluator, columns.size());
-//            List<List<String>> rows  = (List<List<String>>) MapUtils.getObject(hashMap, "rows");
-//            HashSet<String> firstColumn = (HashSet<String>) MapUtils.getObject(hashMap, "firstColumn");
-//            worksheet.put("name", sheet.getSheetName());
-//            HashMap<String, Object> objectHashMap = new HashMap<>();
-//            HashMap<String, Object> table_data = new HashMap<>();
-//            table_data.put("columns", columns);
-//            table_data.put("rows", rows);
-//            HashMap<String, String> map = new HashMap<>();
-//            if (CollectionUtils.isNotEmpty(firstColumn)) {
-//                for (String s : firstColumn) {
-//
-//                    List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "波长示值误差", s);
-//                    List<ExcelCellLocator.CellPosition> positions1 = excelCellLocator.findCellPositions(sheet, "波长重复性", s);
-//                    if (CollectionUtils.isNotEmpty(positions) && CollectionUtils.isNotEmpty(positions1)) {
-//                        String value = positions.get(0).getValue();
-//                        String value1 = positions1.get(0).getValue();
-//
-//                        String qualifiedLine = "波长示值误差" + ":" + value + ":" + "波长重复性" + ":" + value1;
-//                        map.put(s, qualifiedLine);
-//                    }
-//                }
-//            }
-//            //合格线
-//            objectHashMap.put("qualifiedLine", map);
-//            objectHashMap.put("table_data", table_data);
-//            worksheet.put("sections", objectHashMap);
-//
-//        } else {
-//            // 非表格结构，返回原始数据
-//            List<List<String>> rawRows = extractAllRows(sheet, evaluator);
-//            worksheet.put("name", sheet.getSheetName());
-//            worksheet.put("rows", rawRows);
-//        }
-//
-//        worksheet.put("hasMergedCells", sheet.getNumMergedRegions() > 0);
-//
-//        return worksheet;
-//    }
     private List<Map<String, Object>> processSimpleSheet(Sheet sheet, FormulaEvaluator evaluator) {
 
         Map<String, Object> worksheet = new LinkedHashMap<>();
@@ -169,11 +92,11 @@ public class SmartExcelContentConverter {
                             String value1 = "";
                             if (CollectionUtils.isNotEmpty(positions) || CollectionUtils.isNotEmpty(positions1)) {
                                 if (CollectionUtils.isNotEmpty(positions)) {
-                                    value = positions.get(0).getValue();
+                                    value = formatNumericValue(positions.get(0).getValue());
                                 }
                                 if (CollectionUtils.isNotEmpty(positions1)) {
 
-                                    value1 = positions1.get(0).getValue();
+                                    value1 = formatNumericValue(positions1.get(0).getValue());
                                 }
                                 if (i == 0) {
                                     qualifiedLine = "波长示值误差" + ":" + value + ":" + "波长重复性" + ":" + value1;
@@ -260,22 +183,22 @@ public class SmartExcelContentConverter {
                         String value1 = "";
                         if (CollectionUtils.isNotEmpty(positions) || CollectionUtils.isNotEmpty(positions1)) {
                             if (CollectionUtils.isNotEmpty(positions)) {
-                                value = positions.get(0).getValue();
+                                value = formatNumericValue(positions.get(0).getValue());
                             }
                             if (CollectionUtils.isNotEmpty(positions1)) {
 
-                                value1 = positions1.get(0).getValue();
+                                value1 = formatNumericValue(positions1.get(0).getValue());
                             }
                             if (i == 0) {
-                                qualifiedLine = "波长示值误差" + ":" + value + ":" + "波长重复性" + ":" + value1;
+                                qualifiedLine = "波长示值误差" + "<=" + value + ";" + "波长重复性" + "<=" + value1;
                             } else if (i == 1) {
-                                qualifiedLine = "透射比示值误差" + ":" + value + ":" + "透射比重复性" + ":" + value1;
+                                qualifiedLine = "透射比示值误差" + "<=" + value + ";" + "透射比重复性" + "<=" + value1;
                             } else if (i == 2) {
-                                qualifiedLine = "指标要求" + ":" + value;
+                                qualifiedLine = "指标要求" + "<=" + value;
                             } else if (i == 3) {
-                                qualifiedLine = "误差范围（%）" + ":" + value;
+                                qualifiedLine = "误差范围（%）" + "<=" + value;
                             } else {
-                                qualifiedLine = "垂直距离范围（mm）" + ":" + value;
+                                qualifiedLine = "垂直距离范围（mm）" + "<=" + value;
                             }
                             // 构建嵌套结构
                             Map<String, Object> itemData = new HashMap<>();
@@ -355,11 +278,11 @@ public class SmartExcelContentConverter {
                     String value1 = "";
                     if (CollectionUtils.isNotEmpty(positions) || CollectionUtils.isNotEmpty(positions1)) {
                         if (CollectionUtils.isNotEmpty(positions)) {
-                            value = positions.get(0).getValue();
+                            value = formatNumericValue(positions.get(0).getValue());
                         }
                         if (CollectionUtils.isNotEmpty(positions1)) {
 
-                            value1 = positions1.get(0).getValue();
+                            value1 = formatNumericValue(positions1.get(0).getValue());
                         }
                         if (i == 0) {
                             qualifiedLine = "波长示值误差" + ":" + value + ":" + "波长重复性" + ":" + value1;
@@ -410,6 +333,125 @@ public class SmartExcelContentConverter {
         list.add(worksheet);
         return list;
     }
+
+    /**
+     * 格式化数值字符串，避免科学计数法
+     */
+    private String formatNumericValue(String value) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+
+        try {
+            // 尝试解析为数字
+            double numValue = Double.parseDouble(value);
+
+            // 检查是否是科学计数法或需要格式化的数值
+            if (value.contains("E") || value.contains("e")) {
+                return String.format("%." + DEFAULT_DECIMAL_PLACES + "f", numValue);
+            }
+
+            // 对于普通数值，如果小数位过多也进行格式化
+            if (value.contains(".")) {
+                String[] parts = value.split("\\.");
+                if (parts.length == 2 && parts[1].length() > DEFAULT_DECIMAL_PLACES) {
+                    return String.format("%." + DEFAULT_DECIMAL_PLACES + "f", numValue);
+                }
+            }
+
+            return value;
+        } catch (NumberFormatException e) {
+            // 不是数值，直接返回原值
+            return value;
+        }
+    }
+
+// ... existing code ...
+
+
+    /**
+     * 主转换方法 - 返回扁平化的内容Map
+     */
+    public Map<String, Object> convertToSimpleStructure(Workbook workbook) {
+        FormulaEvaluator evaluator = createFormulaEvaluator(workbook);
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        List<Map<String, Object>> worksheets = new ArrayList<>();
+
+        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+            Sheet sheet = workbook.getSheetAt(i);
+            worksheets.addAll(processSimpleSheet(sheet, evaluator));
+        }
+
+        result.put("worksheets", worksheets);
+        return result;
+    }
+
+    /**
+     * 创建公式计算器
+     */
+    private FormulaEvaluator createFormulaEvaluator(Workbook workbook) {
+        if (workbook instanceof XSSFWorkbook) {
+            return new XSSFFormulaEvaluator((XSSFWorkbook) workbook);
+        } else if (workbook instanceof org.apache.poi.hssf.usermodel.HSSFWorkbook) {
+            return new HSSFFormulaEvaluator((org.apache.poi.hssf.usermodel.HSSFWorkbook) workbook);
+        } else {
+            return workbook.getCreationHelper().createFormulaEvaluator();
+        }
+    }
+
+    /**
+     * 处理单个工作表为简化结构
+     */
+//    private  Map<String, Object> processSimpleSheet(Sheet sheet, FormulaEvaluator evaluator) {
+//        Map<String, Object> worksheet = new LinkedHashMap<>();
+//
+//        // 确定是否为表格结构
+//        boolean isTableStructure = analyzeIfTableStructure(sheet);
+//
+//        if (isTableStructure) {
+//            // 提取表头和数据
+//            List<String> columns = extractHeaders(sheet, evaluator);
+//            HashMap<String, Object> hashMap = extractDataRowsWithMergedCells(sheet, evaluator, columns.size());
+//            List<List<String>> rows  = (List<List<String>>) MapUtils.getObject(hashMap, "rows");
+//            HashSet<String> firstColumn = (HashSet<String>) MapUtils.getObject(hashMap, "firstColumn");
+//            worksheet.put("name", sheet.getSheetName());
+//            HashMap<String, Object> objectHashMap = new HashMap<>();
+//            HashMap<String, Object> table_data = new HashMap<>();
+//            table_data.put("columns", columns);
+//            table_data.put("rows", rows);
+//            HashMap<String, String> map = new HashMap<>();
+//            if (CollectionUtils.isNotEmpty(firstColumn)) {
+//                for (String s : firstColumn) {
+//
+//                    List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "波长示值误差", s);
+//                    List<ExcelCellLocator.CellPosition> positions1 = excelCellLocator.findCellPositions(sheet, "波长重复性", s);
+//                    if (CollectionUtils.isNotEmpty(positions) && CollectionUtils.isNotEmpty(positions1)) {
+//                        String value = positions.get(0).getValue();
+//                        String value1 = positions1.get(0).getValue();
+//
+//                        String qualifiedLine = "波长示值误差" + ":" + value + ":" + "波长重复性" + ":" + value1;
+//                        map.put(s, qualifiedLine);
+//                    }
+//                }
+//            }
+//            //合格线
+//            objectHashMap.put("qualifiedLine", map);
+//            objectHashMap.put("table_data", table_data);
+//            worksheet.put("sections", objectHashMap);
+//
+//        } else {
+//            // 非表格结构，返回原始数据
+//            List<List<String>> rawRows = extractAllRows(sheet, evaluator);
+//            worksheet.put("name", sheet.getSheetName());
+//            worksheet.put("rows", rawRows);
+//        }
+//
+//        worksheet.put("hasMergedCells", sheet.getNumMergedRegions() > 0);
+//
+//        return worksheet;
+//    }
+
 
     /**
      * 筛选与指定项目名称相关的数据行
@@ -653,11 +695,15 @@ public class SmartExcelContentConverter {
         }
     }
 
+
     private String formatNumber(double number) {
-        if (number == (long) number) {
+        if (number == (long) number && Math.abs(number) < 1e15) {
             return String.valueOf((long) number);
         } else {
-            return String.valueOf(number);
+            return String.format("%." + DEFAULT_DECIMAL_PLACES + "f", number);
         }
     }
 }
+
+
+

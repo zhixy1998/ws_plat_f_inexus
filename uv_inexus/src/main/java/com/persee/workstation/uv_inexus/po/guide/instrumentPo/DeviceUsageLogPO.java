@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.po.guide.instrumentPo;
 
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
@@ -19,7 +20,7 @@ import java.time.LocalDateTime;
 @TableName("t_ins_usage_log")
 public class DeviceUsageLogPO {
 
-    @TableField("id")
+    @TableId("id")
     private String id;
 
     @TableField("device_serial_number")

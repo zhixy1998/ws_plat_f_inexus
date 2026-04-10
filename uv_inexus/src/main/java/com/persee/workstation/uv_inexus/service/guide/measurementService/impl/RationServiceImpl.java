@@ -117,9 +117,6 @@ public class RationServiceImpl implements RationService {
     SamplePoolConfigService tSamplePoolConfigService;
 
     @Autowired
-    PublicUtilService publicUtilService;
-
-    @Autowired
     DevMessageUtil devMessageUtil;
 
     @Autowired
@@ -322,6 +319,7 @@ public class RationServiceImpl implements RationService {
         tMeasureMethod.setMethodCreator(updateBy);
         tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         tMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
+        tMeasureMethod.setPreprocessKey(rationParameter.getPreprocessKey());
         boolean save = tMeasureMethodService.save(tMeasureMethod);
         if (save) {
             //创建成功
@@ -2790,7 +2788,7 @@ public class RationServiceImpl implements RationService {
 
                 if (data.getIsAutoChangePool()) {
                     List<Integer> usefulLocation = tSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
-                    publicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+                    guidePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
                 }
             }
         }

@@ -24,6 +24,7 @@ import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMap
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.experimentTest.TimeSweepMethodParamsDto;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.MappingParamEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.RationChangeMethodTypeEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
@@ -55,6 +56,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
@@ -289,7 +291,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     @Override
-    public Result<MethodChangeCheckVO> checkMethodParam(TimeSweepMethodParamsDto methodParam) {
+    public Result checkMethodParam(TimeSweepMethodParamsDto methodParam) {
 
         if (!StringUtils.hasText(methodParam.getCurrentMethodId())) {
             //请选择当前方法
@@ -303,13 +305,26 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         TimeSweepParamter newMethodParam = new TimeSweepParamter();
         BeanUtils.copyProperties(methodParam, newMethodParam);
 
-        R<Boolean> r = checkParam(newMethodParam);
+        // 仪器下发参数校验
+        if (methodParam.getDeviceSerialNumber()!=null&& !methodParam.getDeviceSerialNumber().isEmpty()){
+            R rdata = IssueCheckParam(newMethodParam, methodParam.getDeviceSerialNumber());
+            if (!rdata.getSuccess()) {
+                return Result.checkFail(rdata.getData());
+            }
+        }
+
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(methodParam.getDeviceSerialNumber());
+        if (!deviceMeasureVOR.getSuccess()) {
+            return Result.fail(deviceMeasureVOR.getMessage());
+        }
+
+        R<Boolean> r = checkParam(newMethodParam,methodParam.getDeviceSerialNumber());
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
 
-        double minWaveLength = 190.0;
-        double maxWaveLength = 1100.0;
+        double minWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMinWavelength());
+        double maxWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMaxWavelength());
 
         if (StringUtils.hasText(methodParam.getDeviceSerialNumber())) {
             R<DeviceMeasureVO> typeInfo = deviceInfoService.queryDeviceTypeInfo(methodParam.getDeviceSerialNumber());
@@ -415,8 +430,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     public Result updateMethodParameter(TimeSweepMethodParameterDto paramDto) {
         double response = Double.parseDouble(paramDto.getResponseTime());
         double interval = Double.parseDouble(paramDto.getIntervalTime());
-        if (response >= interval) {
-            return Result.fail("响应时间必须小于时间间隔");
+        if (response > interval) {
+            return Result.fail("响应时间必须小于等于时间间隔");
         }
         SetParam setParam = new SetParam();
         setParam.setPhotoMode(Integer.valueOf(paramDto.getLuminosity()));
@@ -2807,7 +2822,14 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, TimeSweepParamter timeSweepParamter) {
-        R<Boolean> r = checkParam(timeSweepParamter);
+        Double intervalTime = Double.valueOf(timeSweepParamter.getIntervalTime());
+        Double responseTime = Double.valueOf(timeSweepParamter.getResponseTime());
+        if (intervalTime < responseTime) {
+            //间隔时间不能小于响应时间
+            return Result.fail("响应时间必须小于等于时间间隔");
+
+        }
+        R<Boolean> r = checkParam(timeSweepParamter,methodDto.getDeviceSerialNumber());
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
@@ -2836,6 +2858,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureMethod.setMethodCreator(updateBy);
         tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         tMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
+        tMeasureMethod.setPreprocessKey(timeSweepParamter.getPreprocessKey());
         boolean save = tMeasureMethodService.save(tMeasureMethod);
         if ( save){
             //创建成功
@@ -3906,7 +3929,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @param parameter 时间扫描参数
      * @return 校验结果
      */
-    private R<Boolean> checkParam(TimeSweepParamter parameter) {
+    private R<Boolean> checkParam(TimeSweepParamter parameter,String deviceSerialNumber) {
         // 1. 根对象非空校验
         if (parameter == null) {
             return R.fail(YamlMessageSource.getMessageStatic("00102003"));
@@ -3917,7 +3940,16 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (!StringUtils.hasText(luminosity)) {
             return R.fail("光度模式不能为空");
         }
-        List<String> validLuminosityModes = Arrays.asList("1", "2", "3", "4"); // 1.abs 2.T% 3.Es 4.Er
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!deviceMeasureVOR.getSuccess()) {
+            return R.fail(deviceMeasureVOR.getMessage());
+        }
+
+        List<DeviceConfParam> defaultValue = (List<DeviceConfParam>) MappingParamEnum.LUMINOSITY.getDefaultValue();
+        // 使用steam流将defaultValue的value值取出来作为一个List<String>
+        List<String> validLuminosityModes = defaultValue.stream()
+                .map(DeviceConfParam::getParamValue)
+                .collect(Collectors.toList());
         if (!validLuminosityModes.contains(luminosity)) {
             return R.fail("光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：" + luminosity);
         }
@@ -3929,8 +3961,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
 
         // 波长默认范围 190-1100
-        double minWaveLength = 190.0;
-        double maxWaveLength = 1100.0;
+        double minWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMinWavelength());
+        double maxWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMaxWavelength());
 
         try {
             double waveLength = Double.parseDouble(waveLengthStr);
@@ -4047,11 +4079,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             double bandwidth = Double.parseDouble(spectralBandwidth);
             if (bandwidth <= 0) {
                 return R.fail("光谱带宽必须大于0，当前值：" + bandwidth);
-            }
-            // 常见光谱带宽值校验（可选，根据业务决定是否强制）
-            List<Double> validBandwidths = Arrays.asList(0.5, 1.0, 2.0, 4.0, 5.0);
-            if (!validBandwidths.contains(bandwidth)) {
-                return R.fail("光谱带宽值不合法，常见值：" + validBandwidths);
             }
         } catch (NumberFormatException e) {
             return R.fail("光谱带宽格式错误，必须为数字");

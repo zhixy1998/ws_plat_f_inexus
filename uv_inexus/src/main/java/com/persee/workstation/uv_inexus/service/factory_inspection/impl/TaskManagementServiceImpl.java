@@ -6,12 +6,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.persee.workstation.uv_inexus.component.DefaultTaskManager;
-import com.persee.workstation.uv_inexus.component.EhcacheUtil;
-import com.persee.workstation.uv_inexus.component.SmartExcelContentConverter;
-import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
+import com.persee.workstation.uv_inexus.component.*;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskMgrMapper;
+import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceTypeInfoDAO;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -68,6 +66,9 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Autowired
     private CalStdCatsService catsService;
     @Autowired
+    private TaskItemStatusService taskItemStatusService;
+
+    @Autowired
     private WorkbookCacheManager workbookCacheManager;
     @Autowired
     private EhcacheUtil ehcacheUtil;
@@ -82,6 +83,11 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Autowired
     private ExcelCellLocator excelCellLocator;
 
+    @Autowired
+    private TaskDeviceTypeCache taskDeviceTypeCache;
+
+    @Autowired
+    private DeviceTypeInfoDAO deviceTypeInfoDAO;
     @Override
     public Result getList(TaskMgrQueryDto queryDto) {
         try {
@@ -152,7 +158,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 //                }
                 List<TaskExecutionDetail> list = taskExecutionDetailMapper.initTaskCal(dto.getTaskId());
                 // 构建检测项列表
-                List<TaskCheckItemDto.CheckItem> checkItems = this.buildCheckItems(list, excelTemplate);
+                List<TaskCheckItemDto.CheckItem> checkItems = this.buildCheckItems(list, excelTemplate,id);
                 dto.setCheckItems(checkItems);
             }
             return Result.ok(dto);
@@ -186,10 +192,16 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             if (device.getData() != null) {
                 management.setOperationInstrument(device.getData());
             }
+            if (StringUtils.isNotBlank(task.getTaskType())) {
+                management.setTaskType(task.getTaskType());
+            }
             boolean save = this.save(management);
             if (!save) {
                 return Result.fail(null);
             }
+            // 为新任务初始化任务执行详情和检测项状态
+            initializeTaskExecutionDetails(management.getId(), task.getUseTemplate());
+
             if (save) {
                 HashMap<String, String> map = new HashMap<>();
 //                ExcelTemplate template = templateService.getById(management.getUseTemplate());
@@ -209,6 +221,96 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         }
         return Result.fail(null);
     }
+
+    /**
+     * 为新任务初始化任务执行详情记录和检测项状态
+     *
+     * @param taskId       任务ID
+     * @param templateCode 模板编码
+     */
+    private void initializeTaskExecutionDetails(String taskId, String templateCode) {
+        try {
+            // 查询模板对应的所有检测项
+            LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(ExcelDataAsset::getTemplateCode, templateCode);
+            List<ExcelDataAsset> assets = dataAssetService.list(wrapper);
+
+            if (CollectionUtils.isEmpty(assets)) {
+                log.warn("模板 {} 没有检测项", templateCode);
+                return;
+            }
+
+            // 为每个检测项创建任务执行详情记录和状态记录
+            List<TaskItemStatus> statusList = new ArrayList<>();
+
+            for (ExcelDataAsset asset : assets) {
+
+                // 创建任务检测项状态（用于记录测量状态）
+                TaskItemStatus status = new TaskItemStatus();
+                status.setId(IdGeneratorUtil.generateId());
+                status.setTaskId(taskId);
+                status.setItemId(asset.getId());
+                status.setMeasured("0");
+                status.setCheckResult("0");
+                statusList.add(status);
+            }
+
+
+            if (!statusList.isEmpty()) {
+                taskItemStatusService.saveBatch(statusList);
+                log.info("为任务 {} 初始化了 {} 个检测项状态", taskId, statusList.size());
+            }
+        } catch (Exception e) {
+            log.error("初始化任务执行详情失败，任务ID: {}", taskId, e);
+        }
+    }
+/* /**
+ * 为任务初始化任务执行详情和检测项状态
+ */
+/*private void initializeTaskDetailsAndStatus(String taskId, String templateCode) {
+    try {
+        // 查询模板对应的所有检测项
+        LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ExcelDataAsset::getTemplateCode, templateCode);
+        List<ExcelDataAsset> assets = dataAssetService.list(wrapper);
+
+        if (CollectionUtils.isEmpty(assets)) {
+            return;
+        }
+
+        // 为每个检测项创建任务执行详情记录和状态记录
+        List<TaskExecutionDetail> detailList = new ArrayList<>();
+        List<TaskItemStatus> statusList = new ArrayList<>();
+
+        for (ExcelDataAsset asset : assets) {
+            // 创建任务执行详情（用于绑定标准物质）
+            TaskExecutionDetail detail = new TaskExecutionDetail();
+            detail.setId(IdGeneratorUtil.generateId());
+            detail.setTaskId(taskId);
+            detail.setItemId(asset.getId());
+            detailList.add(detail);
+
+            // 创建任务检测项状态（用于记录测量状态）
+            TaskItemStatus status = new TaskItemStatus();
+            status.setId(IdGeneratorUtil.generateId());
+            status.setTaskId(taskId);
+            status.setItemId(asset.getId());
+            status.setMeasured("0");
+            status.setCheckResult("0");
+            statusList.add(status);
+        }
+
+        if (!detailList.isEmpty()) {
+            taskExecutionDetailService.saveBatch(detailList);
+        }
+
+        if (!statusList.isEmpty()) {
+            taskItemStatusService.saveBatch(statusList);
+        }
+    } catch (Exception e) {
+        // 记录日志但不影响任务创建
+    }
+}*/
 
     //这个需要完整的复制
     // task_management   task_execution_detail
@@ -256,6 +358,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             map.put("taskId", task.getId());
             map.put("templateCode", template.getTemplateCode());
 
+            // 为新任务初始化任务执行详情和检测项状态
+            initializeTaskExecutionDetails(task.getId(), template.getTemplateCode());
 
             ExcelTemplate excelTemplate = new ExcelTemplate();
             excelTemplate.setId(template.getId());
@@ -361,36 +465,37 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 
     @Override
     public Result<Boolean> checkTaskUsage(TaskUsageDto dto) {
-        if (StringUtils.equals(dto.getTaskId(), DEFAULT_TASK.getCode())) {
-            LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode())
-                    .eq(TaskManagement::getCreateBy, dto.getUpdateBy());
-            //这里查询出内置任务
-            TaskManagement one = this.getOne(wrapper);
-            dto.setTaskId(one.getId());
-        }
-
-        String taskId = dto.getTaskId();
-        String updateBy = dto.getUpdateBy();
-
-        // 先检查是否正在被其他用户编辑
-        if (workbookCacheManager.isTaskBeingEditedByOthers(taskId, updateBy)) {
-            String editor = workbookCacheManager.getCurrentEditor(taskId);
-            log.info("任务正在被其他用户编辑：taskId={}, 当前用户={}, 编辑者={}", taskId, updateBy, editor);
-            return Result.ok(false);  // 返回 false 表示不能使用
-        }
-
-        // 尝试获取编辑锁
-        boolean acquired = workbookCacheManager.acquireEditLock(taskId, updateBy);
-        if (acquired) {
-            log.info("获取任务编辑锁成功：taskId={}, updateBy={}", taskId, updateBy);
-            return Result.ok(true);  // 返回 true 表示可以使用
-        } else {
-            // 获取失败，说明被其他用户占用了
-            String editor = workbookCacheManager.getCurrentEditor(taskId);
-            log.warn("获取任务编辑锁失败：taskId={}, 当前用户={}, 占用者={}", taskId, updateBy, editor);
-            return Result.ok(false);  // 返回 false 表示不能使用
-        }
+        return Result.ok(true);
+//        if (StringUtils.equals(dto.getTaskId(), DEFAULT_TASK.getCode())) {
+//            LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+//            wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode())
+//                    .eq(TaskManagement::getCreateBy, dto.getUpdateBy());
+//            //这里查询出内置任务
+//            TaskManagement one = this.getOne(wrapper);
+//            dto.setTaskId(one.getId());
+//        }
+//
+//        String taskId = dto.getTaskId();
+//        String updateBy = dto.getUpdateBy();
+//
+//        // 先检查是否正在被其他用户编辑
+//        if (workbookCacheManager.isTaskBeingEditedByOthers(taskId, updateBy)) {
+//            String editor = workbookCacheManager.getCurrentEditor(taskId);
+//            log.info("任务正在被其他用户编辑：taskId={}, 当前用户={}, 编辑者={}", taskId, updateBy, editor);
+//            return Result.ok(false);  // 返回 false 表示不能使用
+//        }
+//
+//        // 尝试获取编辑锁
+//        boolean acquired = workbookCacheManager.acquireEditLock(taskId, updateBy);
+//        if (acquired) {
+//            log.info("获取任务编辑锁成功：taskId={}, updateBy={}", taskId, updateBy);
+//            return Result.ok(true);  // 返回 true 表示可以使用
+//        } else {
+//            // 获取失败，说明被其他用户占用了
+//            String editor = workbookCacheManager.getCurrentEditor(taskId);
+//            log.warn("获取任务编辑锁失败：taskId={}, 当前用户={}, 占用者={}", taskId, updateBy, editor);
+//            return Result.ok(false);  // 返回 false 表示不能使用
+//        }
     }
 
 
@@ -522,21 +627,69 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             }
             if (OPEN_BOX_INSPECTION.getCode().equals(taskId)) {
                 TaskManagement management = null;
-
+                R<String> device = deviceManageService.getConnectDevice(updateBy);
+                String data = device.getData();
                 LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
                 //查找的是开箱验证任务
-                wrapper.eq(TaskManagement::getTaskType, "2");
+                wrapper.eq(TaskManagement::getTaskType, "2")
+                        .eq(TaskManagement::getOperationInstrument, data);
                 List<TaskManagement> list = this.list(wrapper);
                 if (CollectionUtils.isEmpty(list)) {
-                    return Result.fail("未找到开箱验证任务");
-                }else {
-                    management=list.get(0);
+                    LambdaQueryWrapper<TaskManagement> wrapper1 = new LambdaQueryWrapper<>();
+                    //查找的是开箱验证任务
+                    wrapper1.eq(TaskManagement::getTaskType, "2")
+                            .isNull(TaskManagement::getOperationInstrument);
+                    list = this.list(wrapper1);
+                    if (CollectionUtils.isEmpty(list)){
+                        LambdaQueryWrapper<TaskManagement> wrapper2 = new LambdaQueryWrapper<>();
+                        //查找的是开箱验证任务
+                        wrapper2.eq(TaskManagement::getTaskType, "2");
+                        list = this.list(wrapper2);
+                    }
                 }
-                ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
-                management.setTemplateName(excelTemplate.getTemplateName());
-                management.setTemplateCode(excelTemplate.getTemplateCode());
+                management = list.get(0);
 
-                return Result.ok(management);
+
+                if (management.getOperationInstrument() == null) {
+                    management.setOperationInstrument(data);
+                }
+                String instrument = management.getOperationInstrument() == null ? "" : management.getOperationInstrument().trim();
+                String deviceData = data == null ? "" : data.trim();
+                if (!instrument.equals(deviceData)) {
+                    TaskAddDto addDto = new TaskAddDto();
+                    addDto.setDetectName(management.getDetectName() + System.currentTimeMillis());
+                    ExcelTemplate template = templateService.getById(management.getUseTemplate());
+                    addDto.setUseTemplate(template.getTemplateCode());
+                    addDto.setContentCategory(management.getContentCategory());
+                    addDto.setCreateBy(updateBy);
+                    addDto.setUpdateBy(updateBy);
+                    addDto.setSerialNumber(data);
+                    addDto.setCreated(LocalDateTime.now());
+                    addDto.setUpdated(LocalDateTime.now());
+                    addDto.setTaskType(INSTALLATION_ACCEPTANCE.getCode());
+                    Result<HashMap<String, String>> task = newTask(addDto);
+                    if (task.getCode() == 200) {
+                        String newTaskId = task.getData().get("taskId");
+                        TaskManagement newManagement = this.getById(newTaskId);
+                        ExcelTemplate excelTemplate = templateService.getById(newManagement.getUseTemplate());
+                        newManagement.setTemplateName(excelTemplate.getTemplateName());
+                        newManagement.setTemplateCode(excelTemplate.getTemplateCode());
+                        return Result.ok(newManagement);
+                    }
+                } else {
+                    ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
+                    management.setTemplateName(excelTemplate.getTemplateName());
+                    management.setTemplateCode(excelTemplate.getTemplateCode());
+                    R<String> device1 = deviceManageService.getConnectDevice(updateBy);
+                    String data1 = device1.getData();
+                    management.setOperationInstrument(data1);
+                    TaskManagement management1 = new TaskManagement();
+                    management1.setId(management.getId());
+                    management1.setOperationInstrument(data1);
+                    taskMgrMapper.updateById(management1);
+                    return Result.ok(management);
+                }
+
             }
             if (FACTORY_INSPECTION.getCode().equals(taskId)) {
                 TaskManagement task = defaultTaskManager.createFactoryInspectionTask(updateBy);
@@ -620,8 +773,18 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 
             Workbook taskWorkbook = workbookCacheManager.getTaskWorkbook(taskId);
             Map<String, Object> smartContent = smartExcelContentConverter.convertToSimpleStructure(taskWorkbook);
+            String s = taskDeviceTypeCache.get(taskId);
+            smartContent.put("toolType", taskId);
+            TaskManagement management = this.getById(taskId);
+            if (management != null) {
+                if (StringUtils.isNotBlank(management.getOperationInstrument())) {
+                    List<String> list = deviceTypeInfoDAO.queryDeviceTypeBySerialNumber(management.getOperationInstrument());
+                    if (CollectionUtils.isNotEmpty(list)) {
+                        smartContent.put("operationInstrument", list.get(0));
+                    }
+                }
+            }
             return Result.ok(smartContent);
-
         } catch (Exception e) {
             log.error("生成报告失败", e);
         }
@@ -946,13 +1109,32 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
      * @param template 模板信息
      * @return 检查项列表
      */
-    private List<TaskCheckItemDto.CheckItem> buildCheckItems(List<TaskExecutionDetail> details, ExcelTemplate template) {
+    private List<TaskCheckItemDto.CheckItem> buildCheckItems(List<TaskExecutionDetail> details, ExcelTemplate template,String taskId) {
         ArrayList<TaskCheckItemDto.CheckItem> checkItems = new ArrayList<>();
         // 获取所有检测项
         List<ExcelDataAsset> assets = getExcelDataAssets(template);
         if (CollectionUtils.isEmpty(assets)) {
             return checkItems;
         }
+        // 查询任务的所有检测项状态
+//        LambdaQueryWrapper<TaskItemStatus> statusWrapper = new LambdaQueryWrapper<>();
+        // 需要从details中获取taskId
+//        String taskId = CollectionUtils.isNotEmpty(details) ? details.get(0).getTaskId() : null;
+        Map<String, TaskItemStatus> statusMap = new HashMap<>();
+        if (taskId != null) {
+            LambdaQueryWrapper<TaskItemStatus> statusWrapper = new LambdaQueryWrapper<>();
+            statusWrapper.eq(TaskItemStatus::getTaskId, taskId);
+            List<TaskItemStatus> statusList = taskItemStatusService.list(statusWrapper);
+            if (CollectionUtils.isNotEmpty(statusList)) {
+                statusMap = statusList.stream()
+                        .collect(Collectors.toMap(
+                                TaskItemStatus::getItemId,
+                                status -> status,
+                                (existing, replacement) -> existing
+                        ));
+            }
+        }
+
         // 处理每个检测项
         for (ExcelDataAsset asset : assets) {
             TaskCheckItemDto.CheckItem item = createBasicCheckItem(asset);
@@ -962,10 +1144,20 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             }
             // 设置可选择的标准物质列表
             setAvailableStandards(item);
-            item.setMeasured(asset.getMeasured());
-            item.setCheckResult(asset.getCheckResult());
+
+            // 从任务检测项状态表中获取测量状态和检测结果
+            TaskItemStatus status = statusMap.get(asset.getId());
+            if (status != null) {
+                item.setMeasured(status.getMeasured() != null ? status.getMeasured() : "0");
+                item.setCheckResult(status.getCheckResult() != null ? status.getCheckResult() : "0");
+            } else {
+                // 如果没有对应的状态记录，设置为默认值
+                item.setMeasured("0");
+                item.setCheckResult("0");
+            }
             checkItems.add(item);
         }
+
         //先按照group排序，再按照itemName排序
         checkItems.sort(Comparator.comparing(TaskCheckItemDto.CheckItem::getGroupName).thenComparing(TaskCheckItemDto.CheckItem::getItemName));
         return checkItems;

@@ -104,8 +104,9 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
     }
 
     @Override
-    public DeviceAttachmentTypeVO getAttachment(Integer attachmentType) {
-        return dao.getAttachmentInfoByAttachmentNum(attachmentType);
+    public DeviceAttachmentTypeVO getAttachment(Integer attachmentType, String deviceSerialNumber) {
+        String s = deviceSerialNumber.substring(3, 8);
+        return dao.getAttachmentInfoByAttachmentNum(attachmentType,s);
     }
 
     @Override
@@ -491,6 +492,15 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             return 50.0;
         }
         return deviceTypeInfoPO.getCoefficient() == null ? 50.0 : deviceTypeInfoPO.getCoefficient();
+    }
+
+    @Override
+    public String queryDeviceTypeBySerialNumber(String deviceSerialNumber) {
+        List<String> list = deviceTypeInfoDAO.queryDeviceTypeBySerialNumber(deviceSerialNumber);
+        if (list != null && !list.isEmpty()) {
+            return list.get(0);
+        }
+        return "";
     }
 
     private DeviceMeasureVO changeType(DeviceTypeInfoPO po) {

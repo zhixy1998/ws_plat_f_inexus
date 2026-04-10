@@ -214,7 +214,7 @@ public class ConcisePhotometricNewWebSocket {
                     List<FSamplePoolStatus> list = poolInfoVO.getPoolStatusList();
                     boolean poolCanUse = false;
                     for (FSamplePoolStatus poolStatus : list) {
-                        if (poolStatus.getPoolNum().equals(currentPoolNum)) {
+                        if (poolStatus.getPoolNum().equals(currentPoolNum) && poolStatus.getPoolStatus()) {
                             poolCanUse = true;
                             break;
                         }
@@ -393,6 +393,8 @@ public class ConcisePhotometricNewWebSocket {
                     if (!operation.getSuccess()) {
                         log.info("设置样品池位置出错");
                     }
+
+                    fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, usefulLocation.get(0), updateBy);
 
                     JSONObject object = new JSONObject();
                     object.put("currentPoolNum", usefulLocation.get(0));

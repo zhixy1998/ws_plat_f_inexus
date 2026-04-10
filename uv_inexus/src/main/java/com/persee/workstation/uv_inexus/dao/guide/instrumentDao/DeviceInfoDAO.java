@@ -24,7 +24,7 @@ public interface DeviceInfoDAO extends BaseMapper<DeviceInfoPO> {
     DeviceAttachmentTypeVO getAttachmentInfo(@Param("device_serial_number") String deviceSerialNumber);
 
 
-    DeviceAttachmentTypeVO getAttachmentInfoByAttachmentNum(@Param("attachment_num") Integer attachmentNum);
+    DeviceAttachmentTypeVO getAttachmentInfoByAttachmentNum(@Param("attachment_num") Integer attachmentNum, @Param("device_model") String deviceModel);
 
     //修改计算公式
     int updateFormula(@Param("deviceSerialNumber") String deviceSerialNumber, @Param("linearSegment") String linearSegment);
