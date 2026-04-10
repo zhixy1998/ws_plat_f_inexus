@@ -66,7 +66,9 @@ public class UserPermissionController {
             @ApiParam(value = "权限类型：1-菜单路由权限，2-操作权限，3-数据权限，多个用逗号分隔，如1,2,3，null表示所有类型")
             @RequestParam(required = false) String permType,  // 修改为String类型接收多个值
             @ApiParam(value = "组ID", required = true)
-            @RequestParam String groupId) {
+            @RequestParam String groupId,
+            @ApiParam(value = "快捷配置类型：0-普通用户，1-GMP，null表示所有类型")
+            @RequestParam(required = false) Integer quickConfigType) {
         // 将字符串转换为Integer列表
         List<Integer> permTypeList = null;
         if (permType != null && !permType.isEmpty()) {
@@ -74,7 +76,7 @@ public class UserPermissionController {
                     .map(Integer::parseInt)
                     .collect(Collectors.toList());
         }
-        return userPermissionService.getPermissionTreeByTypeAndUser(permTypeList, groupId);
+        return userPermissionService.getPermissionTreeByTypeAndUser(permTypeList, groupId, quickConfigType);
     }
 
     @PostMapping("/update-group-perm")

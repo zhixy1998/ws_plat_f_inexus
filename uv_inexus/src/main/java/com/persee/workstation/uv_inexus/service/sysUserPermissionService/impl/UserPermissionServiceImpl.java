@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,6 +33,7 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMap
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPermissionPO;
@@ -290,7 +290,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
      * 核心方法：按小组→角色→权限逻辑查询树形权限结构，标记小组是否拥有该权限
      */
     @Override
-    public Result<List<PermissionTreeDTO>> getPermissionTreeByTypeAndUser(List<Integer> permTypeList, String groupId) {
+    public Result<List<PermissionTreeDTO>> getPermissionTreeByTypeAndUser(List<Integer> permTypeList, String groupId, Integer quickConfigType) {
         try {
             // 1. 校验小组ID有效性
             if (!StringUtils.hasText(groupId)) {
@@ -339,8 +339,8 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             // 4. 查询该小组已拥有的权限ID
             Set<String> groupPermIds = getPermIdsByGroupId(groupId);
             
-            // 5. 查询角色拥有的所有权限详情（按权限类型筛选）
-            List<SysPermissionPO> rolePermissions = queryPermissionsByTypeAndIds(permTypeList, rolePermIds);
+            // 5. 查询角色拥有的所有权限详情（按权限类型和快捷配置类型筛选）
+            List<SysPermissionPO> rolePermissions = queryPermissionsByTypeAndIds(permTypeList, rolePermIds, quickConfigType);
             if (CollectionUtils.isEmpty(rolePermissions)) {
                 return Result.ok(new ArrayList<>());
             }
@@ -380,7 +380,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
     /**
      * 根据权限类型和权限ID列表查询权限详情
      */
-    private List<SysPermissionPO> queryPermissionsByTypeAndIds(List<Integer> permTypeList, List<String> permIds) {
+    private List<SysPermissionPO> queryPermissionsByTypeAndIds(List<Integer> permTypeList, List<String> permIds, Integer quickConfigType) {
         QueryWrapper<SysPermissionPO> queryWrapper = new QueryWrapper<>();
         queryWrapper.in("id", permIds)
                     .eq("status", 1)
@@ -390,6 +390,11 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         // 按类型筛选（如无类型限制则查询所有）
         if (permTypeList != null && !permTypeList.isEmpty()) {
             queryWrapper.in("perm_type", permTypeList);
+        }
+        
+        // 按快捷配置类型筛选（如无类型限制则查询所有）
+        if (quickConfigType != null) {
+            queryWrapper.eq("quick_config_type", quickConfigType);
         }
         
         return sysPermissionMapper.selectList(queryWrapper);
