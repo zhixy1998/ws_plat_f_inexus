@@ -30,6 +30,10 @@ public class DeviceInfoPO extends BasePO {
     @TableField("device_ip")
     private String ip;
 
+    @ApiModelProperty("设备mac地址")
+    @TableField("device_mac")
+    private String deviceMac;
+
     @ApiModelProperty("联机方式")
     @TableField("connect_type")
     private Integer connectType;
@@ -49,6 +53,10 @@ public class DeviceInfoPO extends BasePO {
     @ApiModelProperty("仪器型号名称")
     @TableField("device_model_name")
     private String deviceModelName;
+
+    @ApiModelProperty("xmlKey")
+    @TableField("xml_key")
+    private String xmlKey;
 
     @ApiModelProperty("连接仪器的ip")
     @TableField("machine_ip")

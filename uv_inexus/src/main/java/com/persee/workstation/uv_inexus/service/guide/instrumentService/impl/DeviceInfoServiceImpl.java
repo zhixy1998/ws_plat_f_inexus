@@ -385,7 +385,22 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         return dao.selectList(query);
     }
 
-//    @PostConstruct        需注释
+    @Override
+    public List<DeviceInfoPO> getUserLastConnectDevice(String updateBy) {
+        LambdaQueryWrapper<DeviceInfoPO> query = new LambdaQueryWrapper<>();
+        query.eq(DeviceInfoPO::getUpdateBy, updateBy)
+                .eq(DeviceInfoPO::getConnectStatus, Constants.CONNECT_DEVICE_STOP)
+                .isNotNull(DeviceInfoPO::getDeviceId).ne(DeviceInfoPO::getDeviceId, "")
+                .isNotNull(DeviceInfoPO::getDeviceSerialNumber).ne(DeviceInfoPO::getDeviceSerialNumber, "")
+                .isNotNull(DeviceInfoPO::getDevicePort).ne(DeviceInfoPO::getDevicePort, "")
+                .isNotNull(DeviceInfoPO::getDeviceMac).ne(DeviceInfoPO::getDeviceMac, "")
+                .orderByDesc(DeviceInfoPO::getUpdated);
+        List<DeviceInfoPO> pos = dao.selectList(query);
+
+        return pos;
+    }
+
+    //    @PostConstruct        需注释
     @Override
     public void checkDeviceStatus() {
         log.info("[检查设备状态] 开始检查设备状态");
