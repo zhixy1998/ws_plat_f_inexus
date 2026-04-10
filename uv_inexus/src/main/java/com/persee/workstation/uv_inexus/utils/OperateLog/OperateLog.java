@@ -49,4 +49,6 @@ public @interface OperateLog {
     int logType() default 2;
 
     boolean compare() default false;
+
+    boolean ignore() default false; // 关闭基本日志，走详情日志
 }

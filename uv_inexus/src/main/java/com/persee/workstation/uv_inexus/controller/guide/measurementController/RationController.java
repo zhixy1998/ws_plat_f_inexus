@@ -63,7 +63,7 @@ public class RationController {
         return rationService.queryMethodParam(methodId);
     }
 
-    @ButtonPermission("wizardModeQuantityModifySampleInformation")
+    @ButtonPermission("wizardModeQuantityModifyMethodParams")
     @OperateLog(module = "实验测试-向导模式-定量测量-修改方法参数", description = "执行实验测试-向导模式-定量测量-修改方法参数操作", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
@@ -100,8 +100,8 @@ public class RationController {
 //            description = "执行实验测试-经典模式-定量测量-{operateType}样品操作",
 //            recordParams = true
 //    )
-    @ButtonPermission("wizardModeLumneSetSample")
-    @OperateLog(module = "实验测试-向导模式-定量测量-设置样品", description = "执行实验测试-向导模式-定量测量-设置样品操作", recordParams = true)
+    @ButtonPermission("wizardModeQuantitySetSample")
+    @OperateLog(module = "实验测试-向导模式-定量测量-设置样品", description = "执行实验测试-向导模式-定量测量-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSample")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSample(@RequestBody RationAddOrDeleteSampleDTO dto) {

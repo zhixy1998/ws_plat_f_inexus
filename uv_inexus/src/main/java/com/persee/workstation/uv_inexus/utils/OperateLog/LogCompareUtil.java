@@ -64,7 +64,7 @@ public class LogCompareUtil {
 
             // 样品
             case "sampleName": return "样品名称";
-
+            case "sampleNumber": return "样品编号";
             // 格式
             // case "xxx": return "XXX";
 

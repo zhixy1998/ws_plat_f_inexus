@@ -50,6 +50,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
@@ -1153,6 +1154,17 @@ public class PhotometricServiceImpl implements PhotometricService {
                     one.setIsDelete(deleteType);
                     tMeasureDataService.updateById(one);
                 }
+
+                TMeasureSample oldSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (oldSample != null) {
+                    String name = oldSample.getSampleName();
+                    String no = oldSample.getSampleNumber();
+                    LogManualUtil.saveDeleteLog(
+                            "实验测试-向导模式-光度测量-设置样品",
+                            "删除样品：编号["+no+"]，名称["+name+"]",
+                            oldSample
+                    );
+                }
             }
         }
 
@@ -1228,7 +1240,15 @@ public class PhotometricServiceImpl implements PhotometricService {
             }
 
             if (StringUtils.hasText(newSample.getId())) {
+                TMeasureSample oldSample = tMeasureSampleService.getById(newSample.getId());
                 tMeasureSampleService.updateById(newSample);
+                if (!oldSample.equals(newSample)) {
+                    LogManualUtil.saveUpdateLog(
+                            "实验测试-向导模式-光度测量-设置样品",
+                            oldSample,
+                            newSample
+                    );
+                }
             } else {
                 TaskSpecimen specimen = new TaskSpecimen();
                 specimen.setDeleteType(createType);
@@ -1238,6 +1258,13 @@ public class PhotometricServiceImpl implements PhotometricService {
                 tMeasureSampleService.save(newSample);
                 specimen.setSpecimenKey(newSample.getId());
                 taskSpecimen.add(specimen);
+
+                String sampleName = StringUtils.hasText(newSample.getSampleName()) ? newSample.getSampleName() : "未命名样品";
+                String sampleNo = StringUtils.hasText(newSample.getSampleNumber()) ? newSample.getSampleNumber() : "无编号";
+                LogManualUtil.saveAddLog(
+                        "实验测试-向导模式-光度测量-设置样品",
+                        String.format("新增样品：编号[%s]，名称[%s]", sampleNo, sampleName)
+                );
             }
         }
 

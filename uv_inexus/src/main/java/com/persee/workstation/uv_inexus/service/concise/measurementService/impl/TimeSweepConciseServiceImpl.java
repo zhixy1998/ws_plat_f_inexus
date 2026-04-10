@@ -56,6 +56,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
@@ -1058,6 +1059,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 if (specimen != null) {
                     specimen.setDeleteType(deleteType);
 
+                    FMeasureSample oldSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                    if (oldSample != null) {
+                        String name = oldSample.getSampleName();
+                        String no = oldSample.getSampleNumber();
+                        LogManualUtil.saveDeleteLog(
+                                "实验测试-经典模式-时间扫描-设置样品",
+                                "删除样品：编号["+no+"]，名称["+name+"]",
+                                oldSample,
+                                dto
+                        );
+                    }
+
                     handleDeleteForNonRepeatMode(delSampleId, task.getId());
                 }
             }
@@ -1121,7 +1134,16 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
                 if (StringUtils.hasText(newSample.getId())) {
                     // 更新现有样品
+                    FMeasureSample oldSample = fMeasureSampleService.getById(newSample.getId());
                     fMeasureSampleService.updateById(newSample);
+                    if (!oldSample.equals(newSample)) {
+                        LogManualUtil.saveUpdateLog(
+                                "实验测试-经典模式-时间扫描-设置样品",
+                                oldSample,
+                                newSample,
+                                dto
+                        );
+                    }
                     FTaskSpecimen specimen = oldMap.get(newSample.getId());
                     if (specimen != null) {
                         specimen.setSampleType(newSample.getSampleType());
@@ -1138,6 +1160,14 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     specimen.setSpecimenKey(newSample.getId());
                     oldMap.put(newSample.getId(), specimen);
                     taskSpecimen.add(specimen);
+
+                    String sampleName = StringUtils.hasText(newSample.getSampleName()) ? newSample.getSampleName() : "未命名样品";
+                    String sampleNo = StringUtils.hasText(newSample.getSampleNumber()) ? newSample.getSampleNumber() : "无编号";
+                    LogManualUtil.saveAddLog(
+                            "实验测试-经典模式-时间扫描-设置样品",
+                            String.format("新增样品：编号[%s]，名称[%s]", sampleNo, sampleName),
+                            dto
+                    );
                 }
             }
         }

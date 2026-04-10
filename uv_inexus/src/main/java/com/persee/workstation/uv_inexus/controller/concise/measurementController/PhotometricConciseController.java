@@ -142,7 +142,7 @@ public class PhotometricConciseController {
 //            recordParams = true
 //    )
     @ButtonPermission("lumnsetSample")
-    @OperateLog(module = "实验测试-经典模式-光度测量-设置样品", description = "执行实验测试-经典模式-光度测量-设置样品操作", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-光度测量-设置样品", description = "执行实验测试-经典模式-光度测量-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSample")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSample(@RequestBody FAddOrDeleteSampleDTO dto) {

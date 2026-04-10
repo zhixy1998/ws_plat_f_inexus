@@ -112,7 +112,7 @@ public class TimeSweepConciseController {
 //            recordParams = true
 //    )
     @ButtonPermission("timeScanSetSample")
-    @OperateLog(module = "实验测试-经典模式-时间扫描-设置样品", description = "执行实验测试-经典模式-时间扫描-设置样品操作", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-时间扫描-设置样品", description = "执行实验测试-经典模式-时间扫描-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSamplePort(@RequestBody FAddOrDeleteSampleDTO paramDto) {
