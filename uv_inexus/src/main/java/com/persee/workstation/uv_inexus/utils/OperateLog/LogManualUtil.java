@@ -148,6 +148,40 @@ public class LogManualUtil {
         }
     }
 
+    // ===================== 【专用】重新测量操作日志 =====================
+    public static void saveReMeasureLog(String module, String content, String username, String clientIp, Object params) {
+        try {
+            if (!StringUtils.hasText(content)) return;
+
+            // 用户名：优先传进来的
+            String realUser = StringUtils.hasText(username) ? username : getDefaultUsername();
+            // IP：优先传进来的真实IP，没有就自动获取
+            String realIp = StringUtils.hasText(clientIp) ? clientIp : getIp();
+
+            OperateLogPO log = new OperateLogPO();
+            log.setModule(module);
+            log.setDescription("重新测量操作"); // 固定写死
+            log.setChangeContent("重新测量：" + content);
+            log.setUsername(realUser);
+            log.setCreateTime(new Date());
+            log.setStatus(1);
+            log.setOperateTime(System.currentTimeMillis() / 1000);
+            log.setIp(realIp);
+            log.setMethod(getMethod());
+            log.setParams(safeStr(JSON.toJSONString(params)));
+            log.setResult("");
+            log.setLogType(1);
+            log.setErrorMsg("");
+            log.setPermission("");
+            log.setAfterData("");
+            log.setBeforeData("");
+
+            logMapper.insert(log);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void saveDeleteLog(String module, String content, Object oldObj, Object params) {
         saveDeleteLog(module, content, oldObj, null, params);
     }

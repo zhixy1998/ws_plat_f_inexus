@@ -194,11 +194,11 @@ public class ConcisePhotometricNewWebSocket {
                 removeOldData(taskId, sampleId);
 
                 FMeasureSample measureSample = tMeasureSampleService.getById(sampleId);
-                LogManualUtil.saveAddLog(
+                LogManualUtil.saveReMeasureLog(
                         "实验测试-经典模式-光度测量-重新测量",
                         String.format("重测样品：编号[%s]，名称[%s]", measureSample.getSampleNumber(), measureSample.getSampleName()),
-                        param.getUpdateBy(),   // ✅ 传入用户名
-
+                        param.getUpdateBy(),   // 传入用户名
+                        null,
                         param
                 );
                 if (measureSample == null) {
