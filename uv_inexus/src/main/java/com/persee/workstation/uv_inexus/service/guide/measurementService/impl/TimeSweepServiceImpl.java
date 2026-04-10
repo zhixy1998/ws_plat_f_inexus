@@ -1162,7 +1162,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                     LogManualUtil.saveDeleteLog(
                             "实验测试-向导模式-时间扫描-设置样品",
                             "删除样品：编号["+no+"]，名称["+name+"]",
-                            oldSample
+                            oldSample,
+                            paramDto
                     );
                 }
             }
@@ -1196,7 +1197,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                     LogManualUtil.saveUpdateLog(
                             "实验测试-向导模式-时间扫描-设置样品",
                             oldSample,
-                            newSample
+                            newSample,
+                            paramDto
                     );
                 }
             } else {
@@ -1212,7 +1214,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 String sampleNo = StringUtils.hasText(newSample.getSampleNumber()) ? newSample.getSampleNumber() : "无编号";
                 LogManualUtil.saveAddLog(
                         "实验测试-向导模式-时间扫描-设置样品",
-                        String.format("新增样品：编号[%s]，名称[%s]", sampleNo, sampleName)
+                        String.format("新增样品：编号[%s]，名称[%s]", sampleNo, sampleName),
+                        paramDto
                 );
             }
         }

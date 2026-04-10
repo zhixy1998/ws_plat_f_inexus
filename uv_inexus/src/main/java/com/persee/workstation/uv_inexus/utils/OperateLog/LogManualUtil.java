@@ -3,10 +3,13 @@ package com.persee.workstation.uv_inexus.utils.OperateLog;
 import com.alibaba.fastjson.JSON;
 import com.persee.workstation.uv_inexus.dao.OperateLog.OperateLogMapper;
 import com.persee.workstation.uv_inexus.po.OperateLog.OperateLogPO;
+import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.HandlerMapping;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Date;
@@ -16,149 +19,136 @@ public class LogManualUtil {
 
     private static OperateLogMapper logMapper;
 
-    // 注入Mapper
     public LogManualUtil(OperateLogMapper logMapper) {
         LogManualUtil.logMapper = logMapper;
     }
 
-    // ===================== 工具方法：统一截断超长字段，避免数据库报错 =====================
-    private static String safeStr(String str) {
-        if (str == null) return "";
-        // 按数据库字段最大长度截断（params/result等text字段，统一2000字符）
-        return str.length() > 2000 ? str.substring(0, 2000) + "..." : str;
+    // 获取当前登录人（仅HTTP可用）
+    private static String getDefaultUsername() {
+        try {
+            LoginUserInfoVO user = UserContext.getCurrentUser();
+            if (user != null && StringUtils.hasText(user.getUsername())) {
+                return user.getUsername();
+            }
+        } catch (Exception e) {
+        }
+        return "系统操作";
     }
 
-    // ===================== 工具方法：稳定获取客户端真实IP =====================
-    private static String getClientIp() {
+    private static String getMethod() {
         try {
-            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            if (attributes == null) return "127.0.0.1"; // 兜底
-            HttpServletRequest request = attributes.getRequest();
-
-            String ip = request.getHeader("X-Forwarded-For");
-            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-                ip = request.getHeader("Proxy-Client-IP");
-            }
-            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-                ip = request.getHeader("WL-Proxy-Client-IP");
-            }
-            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-                ip = request.getHeader("HTTP_CLIENT_IP");
-            }
-            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-                ip = request.getHeader("HTTP_X_FORWARDED_FOR");
-            }
-            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-                ip = request.getRemoteAddr();
-            }
-            // 多级代理取第一个有效IP
-            if (ip != null && ip.contains(",")) {
-                ip = ip.split(",")[0].trim();
-            }
-            return ip;
+            ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attrs == null) return "";
+            HttpServletRequest request = attrs.getRequest();
+            HandlerMethod handler = (HandlerMethod) request.getAttribute(HandlerMapping.BEST_MATCHING_HANDLER_ATTRIBUTE);
+            return handler.getBeanType().getName() + "." + handler.getMethod().getName();
         } catch (Exception e) {
-            return "127.0.0.1"; // 异常兜底
+            return "";
         }
     }
 
-    // ===================== 新增日志（全字段非空） =====================
+    private static String getIp() {
+        try {
+            return ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest().getRemoteAddr();
+        } catch (Exception e) {
+            return "127.0.0.1";
+        }
+    }
+
+    private static String safeStr(String s) {
+        return s == null ? "" : s;
+    }
+
+    // ===================== 【核心】带用户名的方法 =====================
+    public static void saveAddLog(String module, String content, String username, Object params) {
+        try {
+            if (!StringUtils.hasText(content)) return;
+
+            // 如果传了用户名，用传入的；否则用自动获取
+            String realUser = StringUtils.hasText(username) ? username : getDefaultUsername();
+
+            OperateLogPO log = new OperateLogPO();
+            log.setModule(module);
+            log.setDescription("新增操作");
+            log.setChangeContent("新增操作：" + content);
+            log.setUsername(realUser); // ✅ 使用传入的用户名
+            log.setCreateTime(new Date());
+            log.setStatus(1);
+            log.setOperateTime(System.currentTimeMillis() / 1000);
+            log.setIp(getIp());
+            log.setMethod(getMethod());
+            log.setParams(safeStr(JSON.toJSONString(params)));
+            log.setResult("");
+            logMapper.insert(log);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 兼容旧方法
     public static void saveAddLog(String module, String content, Object params) {
-        if (!StringUtils.hasText(content)) return;
-        OperateLogPO log = new OperateLogPO();
-
-        // 核心业务字段
-        log.setModule(module);
-        log.setDescription("新增操作");
-        log.setChangeContent(safeStr("新增操作：" + content));
-        log.setBeforeData("");
-        log.setAfterData("");
-
-        // 通用字段（全非空）
-        log.setUsername(UserContext.getCurrentUser().getUsername());
-        log.setCreateTime(new Date());
-        log.setStatus(1);
-        log.setOperateTime(System.currentTimeMillis() / 1000); // 秒级时间戳，适配int(11)
-        log.setIp(safeStr(getClientIp()));
-        log.setLogType(1);
-        log.setErrorMsg("");
-        log.setPermission("");
-        log.setMethod(""); // 手动日志不自动获取method，避免上下文问题，保持空字符串（非null）
-        log.setParams(safeStr(JSON.toJSONString(params))); // 入参直接序列化，永不为null
-        log.setResult(""); // 占位，永不为null
-        log.setChangeContent(safeStr("新增操作：" + content));
-
-        logMapper.insert(log);
+        saveAddLog(module, content, null, params);
     }
 
-    // ===================== 修改日志（全字段非空） =====================
+    // ===================== 修改日志 =====================
+    public static void saveUpdateLog(String module, Object oldObj, Object newObj, String username, Object params) {
+        try {
+            String changeContent = LogCompareUtil.generateCompareContent(oldObj, newObj);
+            if (!StringUtils.hasText(changeContent)) return;
+
+            String realUser = StringUtils.hasText(username) ? username : getDefaultUsername();
+
+            OperateLogPO log = new OperateLogPO();
+            log.setModule(module);
+            log.setDescription("修改操作");
+            log.setBeforeData(JSON.toJSONString(oldObj));
+            log.setAfterData(JSON.toJSONString(newObj));
+            log.setChangeContent(changeContent);
+            log.setUsername(realUser);
+            log.setCreateTime(new Date());
+            log.setStatus(1);
+            log.setOperateTime(System.currentTimeMillis() / 1000);
+            log.setIp(getIp());
+            log.setMethod(getMethod());
+            log.setParams(safeStr(JSON.toJSONString(params)));
+            log.setResult("");
+            logMapper.insert(log);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void saveUpdateLog(String module, Object oldObj, Object newObj, Object params) {
-        String changeContent = LogCompareUtil.generateCompareContent(oldObj, newObj);
-        if (!StringUtils.hasText(changeContent)) return;
-
-        OperateLogPO log = new OperateLogPO();
-
-        // 核心业务字段
-        log.setModule(module);
-        log.setDescription("修改操作");
-        log.setBeforeData(safeStr(JSON.toJSONString(oldObj)));
-        log.setAfterData(safeStr(JSON.toJSONString(newObj)));
-        log.setChangeContent(safeStr("修改操作：" + changeContent));
-
-        // 通用字段（全非空）
-        log.setUsername(UserContext.getCurrentUser().getUsername());
-        log.setCreateTime(new Date());
-        log.setStatus(1);
-        log.setOperateTime(System.currentTimeMillis() / 1000);
-        log.setIp(safeStr(getClientIp()));
-        log.setLogType(1);
-        log.setErrorMsg("");
-        log.setPermission("");
-        log.setMethod("");
-        log.setParams(safeStr(JSON.toJSONString(params)));
-        log.setResult("");
-
-        logMapper.insert(log);
+        saveUpdateLog(module, oldObj, newObj, null, params);
     }
 
-    // ===================== 删除日志（全字段非空） =====================
+    // ===================== 删除日志 =====================
+    public static void saveDeleteLog(String module, String content, Object oldObj, String username, Object params) {
+        try {
+            if (!StringUtils.hasText(content)) return;
+
+            String realUser = StringUtils.hasText(username) ? username : getDefaultUsername();
+
+            OperateLogPO log = new OperateLogPO();
+            log.setModule(module);
+            log.setDescription("删除操作");
+            log.setChangeContent(content);
+            log.setBeforeData(JSON.toJSONString(oldObj));
+            log.setUsername(realUser);
+            log.setCreateTime(new Date());
+            log.setStatus(1);
+            log.setOperateTime(System.currentTimeMillis() / 1000);
+            log.setIp(getIp());
+            log.setMethod(getMethod());
+            log.setParams(safeStr(JSON.toJSONString(params)));
+            log.setResult("");
+            logMapper.insert(log);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void saveDeleteLog(String module, String content, Object oldObj, Object params) {
-        if (!StringUtils.hasText(content)) return;
-        OperateLogPO log = new OperateLogPO();
-
-        // 核心业务字段
-        log.setModule(module);
-        log.setDescription("删除操作");
-        log.setChangeContent(safeStr("删除操作：" + content));
-        log.setBeforeData(safeStr(JSON.toJSONString(oldObj)));
-        log.setAfterData("");
-
-        // 通用字段（全非空）
-        log.setUsername(UserContext.getCurrentUser().getUsername());
-        log.setCreateTime(new Date());
-        log.setStatus(1);
-        log.setOperateTime(System.currentTimeMillis() / 1000);
-        log.setIp(safeStr(getClientIp()));
-        log.setLogType(1);
-        log.setErrorMsg("");
-        log.setPermission("");
-        log.setMethod("");
-        log.setParams(safeStr(JSON.toJSONString(params)));
-        log.setResult("");
-
-        logMapper.insert(log);
-    }
-
-    // ===================== 兼容老调用（不传params也永不为null） =====================
-    public static void saveAddLog(String module, String content) {
-        saveAddLog(module, content, "");
-    }
-    public static void saveUpdateLog(String module, Object oldObj, Object newObj) {
-        saveUpdateLog(module, oldObj, newObj, "");
-    }
-    public static void saveDeleteLog(String module, String content, Object oldObj) {
-        saveDeleteLog(module, content, oldObj, "");
-    }
-    public static void saveDeleteLog(String module, Object oldObj) {
-        saveDeleteLog(module, JSON.toJSONString(oldObj), oldObj, "");
+        saveDeleteLog(module, content, oldObj, null, params);
     }
 }

@@ -1306,7 +1306,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         LogManualUtil.saveDeleteLog(
                                 "实验测试-经典模式-光谱扫描-设置样品",
                                 "删除样品：编号["+no+"]，名称["+name+"]",
-                                oldSample
+                                oldSample,
+                                dto
                         );
                     }
 
@@ -1386,7 +1387,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         LogManualUtil.saveUpdateLog(
                                 "实验测试-经典模式-光谱扫描-设置样品",
                                 oldSample,
-                                newSample
+                                newSample,
+                                dto
                         );
                     }
                     FTaskSpecimen specimen = oldMap.get(newSample.getId());
@@ -1410,7 +1412,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     String sampleNo = StringUtils.hasText(newSample.getSampleNumber()) ? newSample.getSampleNumber() : "无编号";
                     LogManualUtil.saveAddLog(
                             "实验测试-经典模式-光谱扫描-设置样品",
-                            String.format("新增样品：编号[%s]，名称[%s]", sampleNo, sampleName)
+                            String.format("新增样品：编号[%s]，名称[%s]", sampleNo, sampleName),
+                            dto
                     );
                 }
             }
