@@ -49,6 +49,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCountDataInfo;
@@ -1263,7 +1264,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             }
 
             if (StringUtils.hasText(newSample.getId())) {
+                FMeasureSample oldSample = fMeasureSampleService.getById(newSample.getId());
                 fMeasureSampleService.updateById(newSample);
+                LogManualUtil.saveUpdateLog("光度测量-样品管理", oldSample, newSample);
                 FTaskSpecimen specimen = oldMap.get(newSample.getId());
                 specimen.setSampleType(newSample.getSampleType());
                 oldMap.put(newSample.getId(), specimen);
@@ -1274,6 +1277,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 specimen.setSampleType(newSample.getSampleType());
                 log.info("新增的样品：{}", newSample);
                 fMeasureSampleService.save(newSample);
+                LogManualUtil.saveAddLog("光度测量-样品管理", "新增样品：" + newSample.getSampleName());
                 specimen.setSpecimenKey(newSample.getId());
                 oldMap.put(newSample.getId(), specimen);
                 taskSpecimen.add(specimen);
