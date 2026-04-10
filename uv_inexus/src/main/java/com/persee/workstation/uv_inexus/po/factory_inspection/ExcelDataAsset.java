@@ -40,5 +40,8 @@ public class ExcelDataAsset extends BasePO {
         return dataMap;
     }
 
+    public void setTemplateCode(String templateCode) {
+        this.templateCode = templateCode;
+    }
 }
 

@@ -39,9 +39,9 @@ public class ExcelTemplate extends BasePO {
     @TableField("column_config")
     private String columnConfig; // JSON格式的列配置
     /**
-     * 状态1：正常，0：禁用
+     * 模板类型 1检定校准模板2出厂检验模板3开箱检验模板
      */
-    @ApiModelProperty("状态")
+    @ApiModelProperty("模板类型 1检定校准模板2出厂检验模板3开箱检验模板")
     @TableField("status")
     private Integer status;
     /**
@@ -86,6 +86,17 @@ public class ExcelTemplate extends BasePO {
     // 获取列配置列表
     public List<ColumnConfig> getColumnConfigList() {
         return JSON.parseArray(columnConfig, ColumnConfig.class);
+    }
+    /**
+     * 重写 setId，使 templateCode 始终与 id 保持一致
+     */
+    public void setId(String id) {
+        this.id = id;
+        this.templateCode = id;
+    }
+
+    public void setTemplateCode(String templateCode) {
+        this.templateCode = templateCode;
     }
 
     @Data
