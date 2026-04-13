@@ -2809,25 +2809,24 @@ public class RationServiceImpl implements RationService {
         } else {
             attachment = r.getData();
 
+            if (attachment == null){
+                attachment = new TMeasureTaskAttachment();
+            }
+
             if (!StringUtils.hasText(attachment.getDataParam())) {
-                attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                taskAttachmentService.saveOrUpdate(attachment);
                 recount = true;
             } else {
                 QueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
                 if (dataDTO.getDigit() == null || !dataDTO.getDigit().equals(digit)) {
                     recount = true;
-
-                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                    taskAttachmentService.saveOrUpdate(attachment);
                 } else if (dataDTO.getOtherDigit() == null || !dataDTO.getOtherDigit().equals(otherDigit)) {
                     recount = true;
-
-                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                    taskAttachmentService.saveOrUpdate(attachment);
                 }
             }
         }
+        attachment.setTaskId(taskId);
+        attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+        taskAttachmentService.saveOrUpdate(attachment);
 
         if (recount) {
             changeStandSampleDataDigit(taskId, digit);

@@ -143,5 +143,35 @@ public enum MappingParamEnum {
         }
     }
 
+    /**
+     * 根据扫描速度的paramValue获取对应的DeviceConfParam对象
+     * @param paramValue 速度值（如 "slowest", "slow", "medium", "fast", "fastest"）
+     * @return 匹配的DeviceConfParam对象，未找到返回null
+     */
+    public DeviceConfParam getScanSpeedByValue(String paramValue) {
+        List<?> list = (List<?>) SCAN_SPEED.defaultValue;
+        for (Object item : list) {
+            DeviceConfParam param = (DeviceConfParam) item;
+            if (param.getParamValue().equals(paramValue)) {
+                return param;
+            }
+        }
+        return null;
+    }
 
+    /**
+     * 根据扫描速度的paramName获取对应的DeviceConfParam对象
+     * @param paramName 速度名称（如 "最慢", "慢速", "中速", "快速", "极快"）
+     * @return 匹配的DeviceConfParam对象，未找到返回null
+     */
+    public DeviceConfParam getScanSpeedByName(String paramName) {
+        List<?> list = (List<?>) SCAN_SPEED.defaultValue;
+        for (Object item : list) {
+            DeviceConfParam param = (DeviceConfParam) item;
+            if (param.getParamName().equals(paramName)) {
+                return param;
+            }
+        }
+        return null;
+    }
 }

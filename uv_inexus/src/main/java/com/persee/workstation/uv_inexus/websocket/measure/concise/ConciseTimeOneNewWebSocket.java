@@ -316,6 +316,9 @@ public class ConciseTimeOneNewWebSocket {
                 Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(context.deviceSerialNumber, Integer.parseInt(Constants.PARAM_ONE), updateBy);
                 if (b) {
                     log.info("自动切换样品池恢复样品池到1号池");
+                    JSONObject object = new JSONObject();
+                    object.put("currentPoolNum", Constants.PARAM_ONE);
+                    sendMessage(context.deviceSerialNumber, object);
                 }else{
                     log.info("自动切换样品池恢复样品池到1号池失败");
                 }
@@ -365,16 +368,6 @@ public class ConciseTimeOneNewWebSocket {
 
         // 获取当前样品的信息
         FMeasureSample sample = tMeasureSampleService.getById(sampleId);
-
-        // 获取当前样品的下一个序列号
-        FMeasureData lastData = tMeasureDataService.getOne(
-                new QueryWrapper<FMeasureData>()
-                        .eq("task_id", context.task.getId())
-                        .eq("sample_key", sampleId)
-                        .orderByDesc("serial_number")
-                        .last("LIMIT 1")
-        );
-        context.currentSerialNumber = lastData != null ? lastData.getSerialNumber() + 1 : 1;
 
         // 使用BigDecimal避免浮点数精度问题
         BigDecimal interval = new BigDecimal(param.getIntervalTime());

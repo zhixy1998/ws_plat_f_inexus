@@ -681,6 +681,9 @@ public class SpectrumOneNewWebSocket {
                     Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(Constants.PARAM_ONE), updateBy);
                     if (b) {
                         log.info("自动切换样品池恢复样品池到1号池");
+                        JSONObject object = new JSONObject();
+                        object.put("currentPoolNum", Constants.PARAM_ONE);
+                        sendMessage(deviceSerialNumber, object);
                     }else{
                         log.info("自动切换样品池恢复样品池到1号池失败");
                     }

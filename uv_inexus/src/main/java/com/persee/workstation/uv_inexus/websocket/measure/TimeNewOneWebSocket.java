@@ -316,6 +316,9 @@ public class TimeNewOneWebSocket {
                 Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(context.deviceSerialNumber, Integer.parseInt(Constants.PARAM_ONE), updateBy);
                 if (b) {
                     log.info("自动切换样品池恢复样品池到1号池");
+                    JSONObject object = new JSONObject();
+                    object.put("currentPoolNum", Constants.PARAM_ONE);
+                    sendMessage(context.deviceSerialNumber, object);
                 }else{
                     log.info("自动切换样品池恢复样品池到1号池失败");
                 }
@@ -366,17 +369,7 @@ public class TimeNewOneWebSocket {
         // 根据样品id查询样品信息
         TMeasureSample sample = tMeasureSampleService.getById(sampleId);
 
-        // 获取当前样品的下一个序列号
-        TMeasureData lastData = tMeasureDataService.getOne(
-                new QueryWrapper<TMeasureData>()
-                        .eq("task_id", context.task.getId())
-                        .eq("sample_key", sampleId)
-                        .orderByDesc("serial_number")
-                        .last("LIMIT 1")
-        );
-        context.currentSerialNumber = lastData != null ? lastData.getSerialNumber() + 1 : 1;
-
-        // ========== 新增：判断是否是重新测量 ==========
+        // 判断是否是重新测量
         // 检查是否已经存在已完成的测量数据（isSave = "1"）
         QueryWrapper<TMeasureData> checkQuery = new QueryWrapper<>();
         checkQuery.eq("task_id", context.task.getId())

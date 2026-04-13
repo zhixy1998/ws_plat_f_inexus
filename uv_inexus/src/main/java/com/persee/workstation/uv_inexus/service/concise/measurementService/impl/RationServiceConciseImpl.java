@@ -3408,19 +3408,25 @@ public class RationServiceConciseImpl implements RationConciseService {
         } else {
             attachment = r.getData();
 
+            if (attachment == null){
+                attachment = new FMeasureTaskAttachment();
+            }
+
             if (!StringUtils.hasText(attachment.getDataParam())) {
-                attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                fMeasureTaskAttachmentService.saveOrUpdate(attachment);
                 recount = true;
             } else {
                 FQueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
                 if (dataDTO.getDigit() == null || !dataDTO.getDigit().equals(digit)) {
                     recount = true;
+                } else if (dataDTO.getOtherDigit() == null || !dataDTO.getOtherDigit().equals(otherDigit)) {
+                    recount = true;
                 }
-                attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                fMeasureTaskAttachmentService.saveOrUpdate(attachment);
             }
         }
+        attachment.setTaskId(taskId);
+        attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+        fMeasureTaskAttachmentService.saveOrUpdate(attachment);
+
 
         if (recount) {
             changeStandSampleDataDigit(taskId, digit);
