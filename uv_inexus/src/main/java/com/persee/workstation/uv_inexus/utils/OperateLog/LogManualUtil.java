@@ -182,6 +182,56 @@ public class LogManualUtil {
         }
     }
 
+    // ===================== 【专用】用户登录日志 =====================
+    public static void saveLoginLog(String content, String username, Object params) {
+        try {
+            if (!StringUtils.hasText(content)) return;
+
+            String realUser = StringUtils.hasText(username) ? username : getDefaultUsername();
+
+            OperateLogPO log = new OperateLogPO();
+            log.setModule("用户登录");
+            log.setDescription("登录操作"); // ✅ 正确描述
+            log.setChangeContent(content);
+            log.setUsername(realUser);
+            log.setCreateTime(new Date());
+            log.setStatus(1);
+            log.setOperateTime(System.currentTimeMillis() / 1000);
+            log.setIp(getIp());
+            log.setMethod(getMethod());
+            log.setParams(safeStr(JSON.toJSONString(params)));
+            log.setResult("");
+            logMapper.insert(log);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ===================== 【专用】用户登出日志 =====================
+    public static void saveLogoutLog(String content, String username, Object params) {
+        try {
+            if (!StringUtils.hasText(content)) return;
+
+            String realUser = StringUtils.hasText(username) ? username : getDefaultUsername();
+
+            OperateLogPO log = new OperateLogPO();
+            log.setModule("用户登出");
+            log.setDescription("登出操作"); // ✅ 正确描述
+            log.setChangeContent(content);
+            log.setUsername(realUser);
+            log.setCreateTime(new Date());
+            log.setStatus(1);
+            log.setOperateTime(System.currentTimeMillis() / 1000);
+            log.setIp(getIp());
+            log.setMethod(getMethod());
+            log.setParams(safeStr(JSON.toJSONString(params)));
+            log.setResult("");
+            logMapper.insert(log);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void saveDeleteLog(String module, String content, Object oldObj, Object params) {
         saveDeleteLog(module, content, oldObj, null, params);
     }
