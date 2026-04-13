@@ -31,6 +31,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
@@ -362,6 +363,9 @@ public class ConciseTimeOneNewWebSocket {
         context.clearData();
         context.currentSampleId = sampleId;
 
+        // 获取当前样品的信息
+        FMeasureSample sample = tMeasureSampleService.getById(sampleId);
+
         // 获取当前样品的下一个序列号
         FMeasureData lastData = tMeasureDataService.getOne(
                 new QueryWrapper<FMeasureData>()
@@ -394,6 +398,13 @@ public class ConciseTimeOneNewWebSocket {
             clearExistingMeasurementData(context.task.getId(), sampleId, context.currentSerialNumber);
 
             /// 打印日志是否重新测量
+            LogManualUtil.saveReMeasureLog(
+                    "实验测试-经典模式-时间扫描-重新测量",
+                    String.format("重测样品：编号[%s]，名称[%s]", sample.getSampleNumber(), sample.getSampleName()),
+                    updateBy,   // 传入用户名
+                    null,
+                    session
+            );
         }
 
         log.info("开始样品测量: {}, 序列号: {}, 间隔: {}s, 总数: {}, 是否重新测量: {}",

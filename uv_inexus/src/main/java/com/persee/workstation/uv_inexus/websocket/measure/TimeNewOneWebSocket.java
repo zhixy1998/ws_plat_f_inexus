@@ -35,6 +35,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
@@ -362,6 +363,9 @@ public class TimeNewOneWebSocket {
         context.clearData();
         context.currentSampleId = sampleId;
 
+        // 根据样品id查询样品信息
+        TMeasureSample sample = tMeasureSampleService.getById(sampleId);
+
         // 获取当前样品的下一个序列号
         TMeasureData lastData = tMeasureDataService.getOne(
                 new QueryWrapper<TMeasureData>()
@@ -390,6 +394,13 @@ public class TimeNewOneWebSocket {
             clearExistingMeasurementData(context.task.getId(), sampleId, context.currentSerialNumber);
 
             /// 打印日志是否重新测量
+            LogManualUtil.saveReMeasureLog(
+                    "实验测试-向导模式-时间扫描-重新测量",
+                    String.format("重测样品：编号[%s]，名称[%s]", sample.getSampleNumber(), sample.getSampleName()),
+                    updateBy,   // 传入用户名
+                    null,
+                    session
+            );
         }
 
 

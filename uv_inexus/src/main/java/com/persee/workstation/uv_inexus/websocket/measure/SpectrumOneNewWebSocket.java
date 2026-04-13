@@ -35,6 +35,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
@@ -667,7 +668,7 @@ public class SpectrumOneNewWebSocket {
         Thread taskThread = new Thread(() -> {
             try {
                 Integer number = Integer.valueOf(analysisNumber);
-                doOneMeasurementSerial(inputParam, spectrumParameter, task, taskId, sampleId, number);
+                doOneMeasurementSerial(param,inputParam, spectrumParameter, task, taskId, sample, number , updateBy);
 
                 if (configPO.getIsAutoChangePool()) {
                     SetParam setParam = new SetParam();
@@ -858,19 +859,22 @@ public class SpectrumOneNewWebSocket {
      * @param spectrumParameter
      * @param task
      * @param taskId
-     * @param sampleId
+     * @param sample
      * @param count
      * @throws IOException
      */
-    private void doOneMeasurementSerial(DevOperationInputParam command,
+    private void doOneMeasurementSerial(SpectrumNewWebSocketParam param,
+                                        DevOperationInputParam command,
                                         SpectrumParameter spectrumParameter,
                                         TMeasureTask task,
                                         String taskId,
-                                        String sampleId,
-                                        Integer count) throws IOException {
+                                        TMeasureSample sample,
+                                        Integer count,
+                                        String updateBy) throws IOException {
 
         String sessionId = deviceSerialNumber;
         SessionState state = sessionStates.get(sessionId);
+        String sampleId = sample.getId();
 
         synchronized (originalYValues) {
             // 清理当前session和sampleId的所有数据（不管number是多少）
@@ -909,6 +913,16 @@ public class SpectrumOneNewWebSocket {
             boolean isRemeasure = existingData != null;
             state.setRemeasurement(sampleId, count, isRemeasure);
             log.info("测量开始: sampleId={}, count={}, isRemeasurement={}", sampleId, count, isRemeasure);
+        }
+
+        if (state.isRemeasurement(sampleId, count)){
+            LogManualUtil.saveReMeasureLog(
+                    "实验测试-向导模式-光谱扫描-重新测量",
+                    String.format("重测样品：编号[%s]，名称[%s]", sample.getSampleNumber(), sample.getSampleName()),
+                    updateBy,   // 传入用户名
+                    null,
+                    param
+            );
         }
 
         // 采集数据 & 返回测量结果
