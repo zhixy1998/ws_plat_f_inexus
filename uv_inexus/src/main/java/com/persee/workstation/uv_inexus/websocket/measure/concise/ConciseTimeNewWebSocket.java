@@ -311,6 +311,9 @@ public class ConciseTimeNewWebSocket {
                 Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(Constants.PARAM_ONE), updateBy);
                 if (b) {
                     log.info("自动切换样品池恢复样品池到1号池");
+                    JSONObject object = new JSONObject();
+                    object.put("currentPoolNum", Constants.PARAM_ONE);
+                    sendMessage(deviceSerialNumber, object);
                 }else{
                     log.info("自动切换样品池恢复样品池到1号池失败");
                 }
@@ -359,16 +362,6 @@ public class ConciseTimeNewWebSocket {
                                           FTimeSweepParamter param, FTaskSpecimen sample, String updateBy) {
         context.clearData();
         context.currentSampleId = sample.getSpecimenKey();
-
-        // 获取当前样品的下一个序列号
-        FMeasureData lastData = tMeasureDataService.getOne(
-                new QueryWrapper<FMeasureData>()
-                        .eq("task_id", context.task.getId())
-                        .eq("sample_key", sample.getSpecimenKey())
-                        .orderByDesc("serial_number")
-                        .last("LIMIT 1")
-        );
-        context.currentSerialNumber = lastData != null ? lastData.getSerialNumber() + 1 : 1;
 
 
         // 检查是否需要设置样品池位置

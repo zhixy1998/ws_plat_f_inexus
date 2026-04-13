@@ -22,6 +22,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConfig;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNumConfig;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.MappingParamEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
@@ -1018,8 +1019,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
             vo.setStartWaveLength(param.getStartWaveLength() + "nm");
             vo.setEndWaveLength(param.getEndWaveLength() + "nm");
-            // (0.慢速 1.中速 2.快速 3.极快)
-            vo.setScanSpeed(param.getScanSpeed().equals("0") ? "慢速" : param.getScanSpeed().equals("1") ? "中速" : param.getScanSpeed().equals("2") ? "快速" : "极快");
+            DeviceConfParam scanSpeedByValue = MappingParamEnum.SCAN_SPEED.getScanSpeedByValue(param.getScanSpeed());
+            if (scanSpeedByValue != null) {
+                vo.setScanSpeed(scanSpeedByValue.getParamName());
+            }
             if (param.getRepetitionPattern().equals("单池重复")) {
                 vo.setTimeInterval(param.getTimeInterval());
                 vo.setIsRepeat(true);
