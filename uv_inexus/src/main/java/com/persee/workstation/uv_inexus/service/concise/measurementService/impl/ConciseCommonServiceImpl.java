@@ -108,7 +108,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     private PhotometricConciseService photometricService;
 
     @Autowired
-    private RationConciseService rationService;
+    private RationConciseService rationConciseService;
 
     @Autowired
     private SamplePoolConfigService fSamplePoolConfigService;
@@ -127,8 +127,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     @Autowired
     LaTeXConverter latexConverter;
-    @Autowired
-    RationConciseService rationConciseService;
 
     @Autowired
     DeviceInfoService deviceInfoService;
@@ -1421,11 +1419,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             case "定量测定": {
                 FRationReportDataVO vo = new FRationReportDataVO();
-                Result<List<FHeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
+                Result<List<FHeadVO>> standHeads = rationConciseService.getStandSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (standHeads.getCode() == 200) {
                     vo.setStandHeadList(standHeads.getData());
                 }
-                Result<List<FHeadVO>> unknowHeads = rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
+                Result<List<FHeadVO>> unknowHeads = rationConciseService.getUnknownSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (unknowHeads.getCode() == 200) {
                     vo.setUnknowHeadList(unknowHeads.getData());
                 }
@@ -1436,7 +1434,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                     dataDTO.setDigit(digit);
                     dataDTO.setOption(new ArrayList<>());
                 }
-                Result<FRationSampleDataVO> data = rationService.querySampleData(dataDTO);
+                Result<FRationSampleDataVO> data = rationConciseService.querySampleData(dataDTO);
                 if (data.getCode() == 200) {
                     FRationSampleDataVO sampleDataVO = data.getData();
                     vo.setStandDataList(sampleDataVO.getStandSampleData());
@@ -1447,7 +1445,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                     FTaskHeadSnapshot unknownHead = shot.getUnknownHead();
                     vo.setMapRelation(unknownHead.getMapRelation());
                 }
-                Result<FRationFitCurveVO> curveInfo = rationService.queryCurveInfo(taskId, task.getMethodKey());
+                Result<FRationFitCurveVO> curveInfo = rationConciseService.queryCurveInfo(taskId, task.getMethodKey());
                 if (curveInfo.getCode() == 200) {
                     vo.setCurveInfo(curveInfo.getData());
                 }
