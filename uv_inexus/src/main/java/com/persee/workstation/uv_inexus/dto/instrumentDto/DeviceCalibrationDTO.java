@@ -33,6 +33,9 @@ public class DeviceCalibrationDTO {
     @ApiModelProperty("仪器序列号")
     private String deviceSerialNumber;
 
+    @ApiModelProperty("操作类型")
+    private String operateType;
+
     @ApiModelProperty("操作人")
     private String updateBy;
 }
