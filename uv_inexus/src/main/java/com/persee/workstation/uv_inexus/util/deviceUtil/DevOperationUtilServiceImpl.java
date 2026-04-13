@@ -985,14 +985,14 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             //wifi
             macAddress = connectUtil.getWifiMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查wifi连接！");
+                return R.fail("请检查wifi连接和仪器电源是否开启！");
             }
 
         } else {
 
             macAddress = connectUtil.getEthernetMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查网线连接！");
+                return R.fail("请检查网线连接和仪器电源是否开启！");
             }
 
         }
