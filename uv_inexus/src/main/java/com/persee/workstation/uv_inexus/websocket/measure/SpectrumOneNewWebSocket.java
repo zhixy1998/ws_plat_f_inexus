@@ -35,6 +35,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
@@ -155,6 +156,25 @@ public class SpectrumOneNewWebSocket {
 
         public void setParent(SpectrumOneNewWebSocket parent) {
             this.parent = parent;
+        }
+
+        private final Map<String, AtomicBoolean> isRemeasurement = new ConcurrentHashMap<>();
+
+        public void setRemeasurement(String sampleId, Integer count, boolean isRemeasure) {
+            String key = sampleId + "_" + count;
+            isRemeasurement.computeIfAbsent(key, k -> new AtomicBoolean(false)).set(isRemeasure);
+            log.info("设置重新测量标志: sampleId={}, count={}, isRemeasure={}", sampleId, count, isRemeasure);
+        }
+
+        public boolean isRemeasurement(String sampleId, Integer count) {
+            String key = sampleId + "_" + count;
+            AtomicBoolean flag = isRemeasurement.get(key);
+            return flag != null && flag.get();
+        }
+
+        public void clearRemeasurementFlag(String sampleId, Integer count) {
+            String key = sampleId + "_" + count;
+            isRemeasurement.remove(key);
         }
 
         public SmoothPushScheduler getOrCreateScheduler(String sampleId, Integer count, Integer digit, String luminosity,
@@ -648,7 +668,7 @@ public class SpectrumOneNewWebSocket {
         Thread taskThread = new Thread(() -> {
             try {
                 Integer number = Integer.valueOf(analysisNumber);
-                doOneMeasurementSerial(inputParam, spectrumParameter, task, taskId, sampleId, number);
+                doOneMeasurementSerial(param,inputParam, spectrumParameter, task, taskId, sample, number , updateBy);
 
                 if (configPO.getIsAutoChangePool()) {
                     SetParam setParam = new SetParam();
@@ -839,19 +859,22 @@ public class SpectrumOneNewWebSocket {
      * @param spectrumParameter
      * @param task
      * @param taskId
-     * @param sampleId
+     * @param sample
      * @param count
      * @throws IOException
      */
-    private void doOneMeasurementSerial(DevOperationInputParam command,
+    private void doOneMeasurementSerial(SpectrumNewWebSocketParam param,
+                                        DevOperationInputParam command,
                                         SpectrumParameter spectrumParameter,
                                         TMeasureTask task,
                                         String taskId,
-                                        String sampleId,
-                                        Integer count) throws IOException {
+                                        TMeasureSample sample,
+                                        Integer count,
+                                        String updateBy) throws IOException {
 
         String sessionId = deviceSerialNumber;
         SessionState state = sessionStates.get(sessionId);
+        String sampleId = sample.getId();
 
         synchronized (originalYValues) {
             // 清理当前session和sampleId的所有数据（不管number是多少）
@@ -877,6 +900,30 @@ public class SpectrumOneNewWebSocket {
         Constants.originalCalculationData.clear();
         Constants.startTime = LocalDateTime.now();
         Constants.endTime = null;
+
+
+        if (state != null) {
+            // 检查是否已经存在已完成的测量数据（isSave = "1"）
+            QueryWrapper<TMeasureData> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("task_id", taskId)
+                    .eq("sample_key", sampleId)
+                    .eq("serial_number", count)
+                    .eq("is_save", "1");
+            TMeasureData existingData = tMeasureDataService.getOne(queryWrapper);
+            boolean isRemeasure = existingData != null;
+            state.setRemeasurement(sampleId, count, isRemeasure);
+            log.info("测量开始: sampleId={}, count={}, isRemeasurement={}", sampleId, count, isRemeasure);
+        }
+
+        if (state.isRemeasurement(sampleId, count)){
+            LogManualUtil.saveReMeasureLog(
+                    "实验测试-向导模式-光谱扫描-重新测量",
+                    String.format("重测样品：编号[%s]，名称[%s]", sample.getSampleNumber(), sample.getSampleName()),
+                    updateBy,   // 传入用户名
+                    null,
+                    param
+            );
+        }
 
         // 采集数据 & 返回测量结果
         MeasurementResult result = doOneMeasurementCore(command, spectrumParameter, task, sampleId, count);
@@ -906,12 +953,6 @@ public class SpectrumOneNewWebSocket {
             log.info("设置测量结束时间: " + Constants.endTime);
         }
 
-        // 立即清空缓存，释放锁
-        Constants.instrumentData.clear();
-        Constants.measurd_data.clear();
-        Constants.originalCalculationData.clear();
-        Constants.startTime = null;
-        Constants.endTime = null;
         // 标记当前测量完成
         if (state != null) {
             state.currentMeasurementCompleted.set(true);
@@ -1351,7 +1392,7 @@ public class SpectrumOneNewWebSocket {
 
 
     /**
-     * 处理批次数据的数据库存储（首次创建，后续追加）
+     * 处理批次数据的数据库存储（支持首次创建、重新测量和追加）
      *
      * @param batchData    批次数据
      * @param isFirstBatch 是否是当前样品的第一次批次
@@ -1361,9 +1402,14 @@ public class SpectrumOneNewWebSocket {
             String taskId = batchData.task.getId();
             String sampleId = batchData.sampleId;
             Integer count = batchData.count;
+            String sessionId = batchData.sessionId;
+            SessionState state = sessionStates.get(sessionId);
 
-            log.info("处理批次数据存储: sampleId={}, count={}, 点数={}, isFirstBatch={}",
-                    sampleId, count, batchData.xBatch.size(), isFirstBatch);
+            // 判断是否是重新测量
+            boolean isRemeasurement = state != null && state.isRemeasurement(sampleId, count);
+
+            log.info("处理批次数据存储: sampleId={}, count={}, 点数={}, isFirstBatch={}, isRemeasurement={}",
+                    sampleId, count, batchData.xBatch.size(), isFirstBatch, isRemeasurement);
 
             // 构建当前批次的结果字符串
             List<String> batchResult = new ArrayList<>();
@@ -1371,25 +1417,108 @@ public class SpectrumOneNewWebSocket {
                 batchResult.add(batchData.xBatch.get(i) + "," + batchData.yBatch.get(i));
             }
 
-            if (isFirstBatch) {
-                // 第一次批次，创建新记录
+            // 查询已存在的记录
+            QueryWrapper<TMeasureData> dataQuery = new QueryWrapper<>();
+            dataQuery.eq("task_id", taskId)
+                    .eq("sample_key", sampleId)
+                    .eq("serial_number", count);
+            TMeasureData existingMeasureData = tMeasureDataService.getOne(dataQuery);
 
-                // 1. 创建测量数据记录（只放数据，其他字段为空）
+            QueryWrapper<TMeasureAnalysisData> analysisQuery = new QueryWrapper<>();
+            analysisQuery.eq("task_id", taskId)
+                    .eq("sample_key", sampleId)
+                    .eq("analysis_number", count)
+                    .eq("analysis_type", "5");
+            TMeasureAnalysisData existingAnalysisData = tMeasureAnalysisDataService.getOne(analysisQuery);
+
+            // ========== 重新测量模式：清空原有数据，重新开始 ==========
+            if (isRemeasurement && isFirstBatch) {
+                log.info("重新测量模式: sampleId={}, count={}, 将清空原有数据并重新写入", sampleId, count);
+
+                if (existingMeasureData != null) {
+                    // 清空并重置测量数据
+                    existingMeasureData.setOriginalCalculationData(JSON.toJSONString(batchResult));
+                    existingMeasureData.setInstrumentData(null); // 清空仪器数据，等最终保存时再设置
+                    existingMeasureData.setMeasurementStartTime(null);
+                    existingMeasureData.setMeasurementEndTime(null);
+                    existingMeasureData.setIsSave("0"); // 标记为未完成
+                    tMeasureDataService.saveOrUpdate(existingMeasureData);
+                    log.info("重新测量：已重置测量数据记录, measureDataId={}", existingMeasureData.getId());
+                } else {
+                    // 如果测量数据不存在，创建新的
+                    TMeasureData newMeasureData = new TMeasureData();
+                    newMeasureData.setSerialNumber(count);
+                    newMeasureData.setTaskId(taskId);
+                    newMeasureData.setSampleKey(sampleId);
+                    newMeasureData.setOriginalCalculationData(JSON.toJSONString(batchResult));
+                    newMeasureData.setIsDelete("0");
+                    newMeasureData.setIsSave("0");
+                    tMeasureDataService.save(newMeasureData);
+                    existingMeasureData = newMeasureData;
+                    log.info("重新测量：创建新的测量数据记录, measureDataId={}", newMeasureData.getId());
+                }
+
+                if (existingAnalysisData != null) {
+                    // 清空并重置分析数据
+                    existingAnalysisData.setAnalysisResult(JSON.toJSONString(batchResult));
+                    existingAnalysisData.setAnalysisParam(null);
+                    existingAnalysisData.setPeak(null);
+                    existingAnalysisData.setGrain(null);
+                    existingAnalysisData.setIsSave("0");
+                    tMeasureAnalysisDataService.saveOrUpdate(existingAnalysisData);
+                    log.info("重新测量：已重置分析数据记录, analysisDataId={}", existingAnalysisData.getId());
+                } else {
+                    // 如果分析数据不存在，创建新的
+                    TMeasureSample sample = tMeasureSampleService.getById(sampleId);
+                    String sampleName = sample != null ? sample.getSampleName() : "样品";
+
+                    TMeasureAnalysisData newAnalysisData = new TMeasureAnalysisData();
+                    newAnalysisData.setAnalysisNumber(count);
+                    newAnalysisData.setAnalysisName(sampleName + "-" + count);
+                    newAnalysisData.setTaskId(taskId);
+                    newAnalysisData.setSampleKey(sampleId);
+                    newAnalysisData.setMeasureDataId(existingMeasureData != null ? existingMeasureData.getId() : null);
+                    newAnalysisData.setAnalysisResult(JSON.toJSONString(batchResult));
+                    newAnalysisData.setAnalysisType("5");
+                    newAnalysisData.setColor(ColorUtil.getRandomColor());
+                    newAnalysisData.setIsDelete("0");
+                    newAnalysisData.setIsSave("0");
+                    tMeasureAnalysisDataService.save(newAnalysisData);
+                    existingAnalysisData = newAnalysisData;
+                    log.info("重新测量：创建新的分析数据记录, analysisDataId={}", newAnalysisData.getId());
+                }
+
+                // 确保图片记录存在
+                if (existingAnalysisData != null) {
+                    TMeasureAnalysisImage analysisImage = tMeasureAnalysisImageService.getOne(
+                            new QueryWrapper<TMeasureAnalysisImage>().eq("analysis_id", existingAnalysisData.getId()));
+                    if (analysisImage == null) {
+                        analysisImage = new TMeasureAnalysisImage();
+                        analysisImage.setAnalysisId(existingAnalysisData.getId());
+                        tMeasureAnalysisImageService.save(analysisImage);
+                    }
+                }
+
+                return; // 重新测量的第一批次处理完成，直接返回
+            }
+
+            // ========== 首次测量模式：创建新记录 ==========
+            if (existingMeasureData == null && isFirstBatch) {
+                // 1. 创建测量数据记录
                 TMeasureData measureData = new TMeasureData();
                 measureData.setSerialNumber(count);
                 measureData.setTaskId(taskId);
                 measureData.setSampleKey(sampleId);
                 measureData.setOriginalCalculationData(JSON.toJSONString(batchResult));
-                // 其他字段暂时不设置
                 measureData.setIsDelete("0");
-                measureData.setIsSave("0"); // 标记为未完成
+                measureData.setIsSave("0");
                 tMeasureDataService.save(measureData);
 
-                // 2. 获取样品名称用于分析数据名称
+                // 2. 获取样品名称
                 TMeasureSample sample = tMeasureSampleService.getById(sampleId);
                 String sampleName = sample != null ? sample.getSampleName() : "样品";
 
-                // 3. 创建分析数据记录（只放数据，其他字段为空）
+                // 3. 创建分析数据记录
                 TMeasureAnalysisData analysisData = new TMeasureAnalysisData();
                 analysisData.setAnalysisNumber(count);
                 analysisData.setAnalysisName(sampleName + "-" + count);
@@ -1400,117 +1529,66 @@ public class SpectrumOneNewWebSocket {
                 analysisData.setAnalysisType("5");
                 analysisData.setColor(ColorUtil.getRandomColor());
                 analysisData.setIsDelete("0");
-                analysisData.setIsSave("0"); // 标记为未完成
+                analysisData.setIsSave("0");
                 tMeasureAnalysisDataService.save(analysisData);
 
-                // 4. 创建关联的图片记录（空记录）
+                // 4. 创建图片记录
                 TMeasureAnalysisImage analysisImage = new TMeasureAnalysisImage();
                 analysisImage.setAnalysisId(analysisData.getId());
                 tMeasureAnalysisImageService.save(analysisImage);
 
                 log.info("首次创建数据记录: measureDataId={}, analysisDataId={}",
                         measureData.getId(), analysisData.getId());
+                return;
+            }
 
-            } else {
-                // 后续批次，追加数据到已有记录
+            // ========== 追加数据模式（同一测量的后续批次） ==========
+            if (existingMeasureData != null && !isFirstBatch) {
+                // 追加到测量数据记录
+                String existingDataStr = existingMeasureData.getOriginalCalculationData();
+                List<String> existingData = parseExistingData(existingDataStr);
+                existingData.addAll(batchResult);
+                existingMeasureData.setOriginalCalculationData(JSON.toJSONString(existingData));
+                tMeasureDataService.saveOrUpdate(existingMeasureData);
 
-                // 1. 查询已存在的测量数据记录
-                QueryWrapper<TMeasureData> dataQuery = new QueryWrapper<>();
-                dataQuery.eq("task_id", taskId)
-                        .eq("sample_key", sampleId)
-                        .eq("serial_number", count);
-                TMeasureData existingMeasureData = tMeasureDataService.getOne(dataQuery);
+                log.info("追加数据到测量记录: 原有{}点, 新增{}点, 总计{}点",
+                        existingData.size() - batchResult.size(), batchResult.size(), existingData.size());
+            }
 
-                if (existingMeasureData != null) {
-                    // 获取已有数据
-                    String existingDataStr = existingMeasureData.getOriginalCalculationData();
-                    List<String> existingData = new ArrayList<>();
-                    if (existingDataStr != null && !"[]".equals(existingDataStr) && !existingDataStr.isEmpty()) {
-                        try {
-                            existingData = JSON.parseArray(existingDataStr, String.class);
-                        } catch (Exception e) {
-                            log.error("解析已有数据失败", e);
-                            existingData = new ArrayList<>();
-                        }
-                    }
+            // 追加到分析数据记录
+            if (existingAnalysisData != null && !isFirstBatch) {
+                String existingResultStr = existingAnalysisData.getAnalysisResult();
+                List<String> existingResult = parseExistingData(existingResultStr);
+                existingResult.addAll(batchResult);
+                existingAnalysisData.setAnalysisResult(JSON.toJSONString(existingResult));
+                tMeasureAnalysisDataService.saveOrUpdate(existingAnalysisData);
 
-                    // 追加新数据
-                    existingData.addAll(batchResult);
-
-                    // 更新记录
-                    existingMeasureData.setOriginalCalculationData(JSON.toJSONString(existingData));
-                    tMeasureDataService.saveOrUpdate(existingMeasureData);
-
-                    log.info("追加数据到测量记录: 原有{}点, 新增{}点, 总计{}点",
-                            existingData.size() - batchResult.size(), batchResult.size(), existingData.size());
-                } else {
-                    log.warn("未找到对应的测量数据记录，重新创建: taskId={}, sampleId={}, count={}",
-                            taskId, sampleId, count);
-                    // 如果找不到记录，重新创建（兜底逻辑）
-                    TMeasureData newMeasureData = new TMeasureData();
-                    newMeasureData.setSerialNumber(count);
-                    newMeasureData.setTaskId(taskId);
-                    newMeasureData.setSampleKey(sampleId);
-                    newMeasureData.setOriginalCalculationData(JSON.toJSONString(batchResult));
-                    newMeasureData.setIsDelete("0");
-                    newMeasureData.setIsSave("0");
-                    tMeasureDataService.save(newMeasureData);
-                }
-
-                // 2. 查询已存在的分析数据记录
-                QueryWrapper<TMeasureAnalysisData> analysisQuery = new QueryWrapper<>();
-                analysisQuery.eq("task_id", taskId)
-                        .eq("sample_key", sampleId)
-                        .eq("analysis_number", count)
-                        .eq("analysis_type", "5");
-                TMeasureAnalysisData existingAnalysisData = tMeasureAnalysisDataService.getOne(analysisQuery);
-
-                if (existingAnalysisData != null) {
-                    // 获取已有数据
-                    String existingResultStr = existingAnalysisData.getAnalysisResult();
-                    List<String> existingResult = new ArrayList<>();
-                    if (existingResultStr != null && !"[]".equals(existingResultStr) && !existingResultStr.isEmpty()) {
-                        try {
-                            existingResult = JSON.parseArray(existingResultStr, String.class);
-                        } catch (Exception e) {
-                            log.error("解析已有分析结果失败", e);
-                            existingResult = new ArrayList<>();
-                        }
-                    }
-
-                    // 追加新数据
-                    existingResult.addAll(batchResult);
-
-                    // 更新记录
-                    existingAnalysisData.setAnalysisResult(JSON.toJSONString(existingResult));
-                    tMeasureAnalysisDataService.saveOrUpdate(existingAnalysisData);
-
-                    log.info("追加数据到分析记录: 原有{}点, 新增{}点, 总计{}点",
-                            existingResult.size() - batchResult.size(), batchResult.size(), existingResult.size());
-                } else {
-                    log.warn("未找到对应的分析数据记录，重新创建: taskId={}, sampleId={}, count={}",
-                            taskId, sampleId, count);
-                    // 如果找不到记录，重新创建（兜底逻辑）
-                    TMeasureSample sample = tMeasureSampleService.getById(sampleId);
-                    String sampleName = sample != null ? sample.getSampleName() : "样品";
-
-                    TMeasureAnalysisData newAnalysisData = new TMeasureAnalysisData();
-                    newAnalysisData.setAnalysisNumber(count);
-                    newAnalysisData.setAnalysisName(sampleName + "-" + count);
-                    newAnalysisData.setTaskId(taskId);
-                    newAnalysisData.setSampleKey(sampleId);
-                    newAnalysisData.setAnalysisResult(JSON.toJSONString(batchResult));
-                    newAnalysisData.setAnalysisType("5");
-                    newAnalysisData.setColor(ColorUtil.getRandomColor());
-                    newAnalysisData.setIsDelete("0");
-                    newAnalysisData.setIsSave("0");
-                    tMeasureAnalysisDataService.save(newAnalysisData);
-                }
+                log.info("追加数据到分析记录: 原有{}点, 新增{}点, 总计{}点",
+                        existingResult.size() - batchResult.size(), batchResult.size(), existingResult.size());
+            } else if (existingAnalysisData == null && !isFirstBatch) {
+                log.warn("未找到对应的分析数据记录，跳过追加: taskId={}, sampleId={}, count={}",
+                        taskId, sampleId, count);
             }
 
         } catch (Exception e) {
             log.error("处理批次数据存储异常", e);
         }
+    }
+
+    /**
+     * 解析已存在的数据字符串
+     */
+    private List<String> parseExistingData(String dataStr) {
+        List<String> existingData = new ArrayList<>();
+        if (dataStr != null && !"[]".equals(dataStr) && !dataStr.isEmpty()) {
+            try {
+                existingData = JSON.parseArray(dataStr, String.class);
+            } catch (Exception e) {
+                log.error("解析已有数据失败", e);
+                existingData = new ArrayList<>();
+            }
+        }
+        return existingData;
     }
 
     /**
@@ -2337,6 +2415,8 @@ public class SpectrumOneNewWebSocket {
             SessionState state = sessionStates.get(sessionId);
             if (state != null) {
                 state.currentMeasurementCompleted.set(true);
+                // 清理重新测量标志
+                state.clearRemeasurementFlag(sampleId, number);
             }
 
             log.info("数据保存完成: 样品={}, 计数={}, session={}", sampleId, number, sessionId);

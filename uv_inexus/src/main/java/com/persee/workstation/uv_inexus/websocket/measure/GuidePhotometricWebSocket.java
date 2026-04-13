@@ -35,6 +35,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
@@ -200,6 +201,7 @@ public class GuidePhotometricWebSocket {
                       sendError(deviceSerialNumber, "无样品池信息");
                       return;
                   }
+
                   FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
                   Integer currentPoolNum = poolInfoVO.getCurrentPoolNum();
                   boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool() != null && poolInfoVO.getIsAutoChangePool();
@@ -227,7 +229,13 @@ public class GuidePhotometricWebSocket {
 //                      sendError(deviceSerialNumber, setParams.getMessage());
 //                      return;
 //                  }
-
+                  LogManualUtil.saveReMeasureLog(
+                          "实验测试-向导模式-光度测量-重新测量",
+                          String.format("重测样品：编号[%s]，名称[%s]", measureSample.getSampleNumber(), measureSample.getSampleName()),
+                          param.getUpdateBy(),   // 传入用户名
+                          null,
+                          param
+                  );
                   if (parameter.getRepetitionPattern().equals("单池重复")) {
                       measure = singleSampleRepeatMeasure(measureSample, parameter, task, deviceSerialNumber);
                   } else {

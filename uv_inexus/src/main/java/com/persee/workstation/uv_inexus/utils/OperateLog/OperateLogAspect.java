@@ -1,12 +1,3 @@
-/*
- * *
- *  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
- *  * 本软件受商业机密法和版权法保护。
- *  * 本代码仅限与北京普析通用仪器有限责任公司签订有效协议的授权用户内部使用。
- *  * 任何未经明确许可的复制、使用、修改、分发或公开均被严格禁止。
- *
- */
-
 package com.persee.workstation.uv_inexus.utils.OperateLog;
 
 import java.lang.reflect.Field;
@@ -36,86 +27,67 @@ import com.persee.workstation.uv_inexus.po.OperateLog.OperateLogPO;
 import com.persee.workstation.uv_inexus.util.UserPermissionUtil;
 import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
 
-/**
- * 操作日志AOP切面：拦截@OperateLog注解的方法，自动记录日志
- * 核心增强：
- * 1. 仅有权限通过时才记录日志（复用ButtonPermissionAspect的权限校验逻辑）
- * 2. 读取operateType，动态匹配permissionMapping，生成对应日志描述
- * 3. 新增operateTypeExt纯占位字段（带中文映射），支持{operateTypeExt}占位符
- * 4. 优化参数记录：过滤MultipartFile类型参数，避免序列化错误
- */
 @Aspect
 @Component
 public class OperateLogAspect {
 
     private static final Logger log = LoggerFactory.getLogger(OperateLogAspect.class);
 
-    // 注入日志DAO（操作数据库）
     @Autowired
     private OperateLogMapper operateLogMapper;
 
-    // 注入项目已有的权限工具类（和ButtonPermissionAspect复用）
     @Autowired
     private UserPermissionUtil userPermissionUtil;
 
-    // 1. 定义切点：拦截所有标注@OperateLog注解的方法
     @Pointcut("@annotation(com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog)")
     public void operateLogPointCut() {}
 
-    // 2. 环绕通知：方法执行前后记录日志（仅有权限通过时记录）
     @Around("operateLogPointCut()")
     public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
         long startTime = System.currentTimeMillis();
-        OperateLogPO logPO = null; // 初始化为null，无权限时不创建
+        OperateLogPO logPO = null;
         Object result = null;
-        boolean hasPermission = false; // 权限标记
+        boolean hasPermission = false;
+
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        Method method = signature.getMethod();
+        OperateLog operateLog = method.getAnnotation(OperateLog.class);
+
+        // 🔥 【关键】只要 ignore=true，直接跳过所有逻辑，不生成任何日志！
+        if (operateLog != null && operateLog.ignore()) {
+            return joinPoint.proceed();
+        }
 
         try {
-            // -------------------------- 1. 获取注解配置 --------------------------
-            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-            Method method = signature.getMethod();
-
-            // 2.1 读取OperateLog注解（基础配置）
-            OperateLog operateLog = method.getAnnotation(OperateLog.class);
-
-            // 2.2 读取ButtonPermission注解（核心：解析permissionMapping和operateType）
+            // 👇 下面不再重复定义 signature/method/operateLog
             ButtonPermission buttonPermission = method.getAnnotation(ButtonPermission.class);
             Map<String, String> operatePermissionMap = new HashMap<>();
             String currentOperateType = "";
-            String actualPermission = null; // 最终要校验的权限标识
+            String actualPermission = null;
 
             if (buttonPermission != null) {
-                // 解析permissionMapping（和ButtonPermissionAspect逻辑完全一致）
                 String permissionMapping = buttonPermission.permissionMapping();
                 String basePermission = buttonPermission.value();
 
-                // 读取DTO中的operateType字段
                 currentOperateType = getFieldValueFromArgs(joinPoint.getArgs(), "operateType");
                 log.info("解析到当前操作类型：{}", currentOperateType);
 
-                // ========== 核心：复用ButtonPermissionAspect的权限标识解析逻辑 ==========
-                // 场景1：新写法（配置了permissionMapping）
                 if (!permissionMapping.isEmpty()) {
                     if (currentOperateType == null || currentOperateType.isEmpty()) {
                         log.warn("操作类型（operateType）不能为空，权限校验失败");
                     } else {
-                        // 解析operateType对应的权限标识
                         actualPermission = getPermissionFromMapping(buttonPermission, currentOperateType);
                         if (actualPermission == null || actualPermission.isEmpty()) {
                             log.warn("操作类型[" + currentOperateType + "]未配置对应的权限标识");
                         }
                     }
-                }
-                // 场景2：老写法（仅配置了value）
-                else if (!basePermission.isEmpty()) {
-                    actualPermission = basePermission; // 直接用value作为权限标识
+                } else if (!basePermission.isEmpty()) {
+                    actualPermission = basePermission;
                 }
 
-                // ========== 核心：复用项目已有的权限校验逻辑 ==========
                 if (actualPermission != null && !actualPermission.isEmpty()) {
                     LoginUserInfoVO currentUser = UserContext.getCurrentUser();
                     if (currentUser != null) {
-                        // 调用和ButtonPermissionAspect完全一样的权限校验逻辑
                         hasPermission = hasButtonPermission(currentUser, actualPermission);
                     } else {
                         log.warn("未获取到当前用户信息，权限校验失败");
@@ -124,17 +96,14 @@ public class OperateLogAspect {
                 log.info("权限校验结果：operateType={}, permission={}, hasPermission={}",
                         currentOperateType, actualPermission, hasPermission);
 
-                // -------------------------- 仅有权限时初始化日志 --------------------------
                 if (hasPermission) {
                     logPO = new OperateLogPO();
-                    // 初始化日志基础信息
                     logPO.setCreateTime(new Date());
                     logPO.setIp(LogUtils.getRealIp());
                     logPO.setStatus(1);
                     logPO.setModule(operateLog.module());
                     logPO.setLogType(operateLog.logType());
 
-                    // 2.3 动态生成日志描述和权限标识
                     String dynamicDesc = operateLog.description();
                     String dynamicPermission = "";
                     if (StringUtils.hasText(currentOperateType)) {
@@ -156,12 +125,12 @@ public class OperateLogAspect {
                         operateDescMap.put("wmquantityGenerationReport", "定量测量-生成报告");
                         operateDescMap.put("wmspectralGenerationReport", "光谱扫描-生成报告");
                         operateDescMap.put("wmtimeScanGenerationReport", "时间扫描-生成报告");
+                        operateDescMap.put("instrumentCalibrationWavelengthCorrection", "波长校正");
+                        operateDescMap.put("instrumentCalibrationDarkCurrentCorrection", "暗电流校正");
 
-                        // 替换描述中的operateType占位符
                         String operateName = operateDescMap.getOrDefault(currentOperateType, currentOperateType);
                         dynamicDesc = dynamicDesc.replace("{operateType}", operateName);
 
-                        // ========== 新增：operateTypeExt纯占位映射 ==========
                         String currentOperateTypeExt = getFieldValueFromArgs(joinPoint.getArgs(), "operateTypeExt");
                         log.info("解析到纯占位操作类型：{}", currentOperateTypeExt);
 
@@ -174,52 +143,55 @@ public class OperateLogAspect {
                                 : "无";
                         dynamicDesc = dynamicDesc.replace("{operateTypeExt}", operateExtName);
 
-                        // 获取对应的权限标识
-                        dynamicPermission = actualPermission; // 使用解析后的真实权限标识
+                        dynamicPermission = actualPermission;
                     }
 
                     logPO.setDescription(dynamicDesc);
                     logPO.setPermission(dynamicPermission);
 
-                    // 记录方法信息
                     String className = joinPoint.getTarget().getClass().getName();
                     String methodName = signature.getName();
                     logPO.setMethod(className + "." + methodName);
 
-                    // 优化：记录请求参数（解决超长+MultipartFile序列化问题）
                     if (operateLog.recordParams()) {
                         logPO.setParams(buildParamsJson(joinPoint.getArgs()));
                     }
                 }
             }
 
-            // -------------------------- 5. 执行目标方法 --------------------------
             result = joinPoint.proceed();
 
-            // -------------------------- 6. 仅有权限时补充日志信息 --------------------------
             if (hasPermission && logPO != null) {
-                // 获取用户信息
                 LoginUserInfoVO currentUser = UserContext.getCurrentUser();
                 if (currentUser != null) {
                     logPO.setUserId(currentUser.getId());
                     logPO.setUsername(currentUser.getUsername());
-                    log.info("日志切面获取到用户信息：id={}, username={}", currentUser.getId(), currentUser.getUsername());
                 } else {
                     logPO.setUsername("anonymous");
-                    log.warn("日志切面未获取到用户信息，记录为匿名");
                 }
 
-                // 记录返回结果
                 if (operateLog.recordParams()) {
                     String resultJson = buildResultJson(result);
                     logPO.setResult(resultJson);
+                }
+
+                if (operateLog.compare()) {
+                    Object oldData = LogContext.getOldData();
+                    Object newData = LogContext.getNewData();
+
+                    if (oldData != null && newData != null) {
+                        logPO.setBeforeData(JSON.toJSONString(oldData));
+                        logPO.setAfterData(JSON.toJSONString(newData));
+                        String changeContent = LogCompareUtil.generateCompareContent(oldData, newData);
+                        logPO.setChangeContent(changeContent);
+                    }
+                    LogContext.clear();
                 }
             }
 
             return result;
 
         } catch (Exception e) {
-            // 仅有权限时记录异常信息
             if (hasPermission && logPO != null) {
                 logPO.setStatus(0);
                 logPO.setErrorMsg(e.getMessage());
@@ -230,7 +202,6 @@ public class OperateLogAspect {
             throw e;
 
         } finally {
-            // -------------------------- 仅有权限时保存日志 --------------------------
             if (hasPermission && logPO != null) {
                 logPO.setOperateTime(System.currentTimeMillis() - startTime);
                 asyncSaveOperateLog(logPO);
@@ -241,10 +212,6 @@ public class OperateLogAspect {
         }
     }
 
-    // ========== 复用ButtonPermissionAspect的核心辅助方法 ==========
-    /**
-     * 解析permissionMapping，获取operateType对应的权限标识
-     */
     private String getPermissionFromMapping(ButtonPermission buttonPermission, String operateType) {
         String permissionMapping = buttonPermission.permissionMapping();
         Map<String, String> permissionMap = new HashMap<>();
@@ -258,9 +225,6 @@ public class OperateLogAspect {
         return permissionMap.get(operateType);
     }
 
-    /**
-     * 复用ButtonPermissionAspect的权限校验逻辑
-     */
     private boolean hasButtonPermission(LoginUserInfoVO user, String permission) {
         try {
             List<String> userPermissions = getUserPermissions(user);
@@ -271,32 +235,19 @@ public class OperateLogAspect {
         }
     }
 
-    /**
-     * 复用项目已有的权限获取方法
-     */
     private List<String> getUserPermissions(LoginUserInfoVO user) {
         return userPermissionUtil.getCurrentUserPermissionCodes();
     }
 
-    /**
-     * 通用字段读取方法（支持operateType/operateTypeExt，解耦）
-     * @param args 接口入参
-     * @param fieldName 要读取的字段名
-     * @return 字段值（空则返回""）
-     */
     private String getFieldValueFromArgs(Object[] args, String fieldName) {
         if (args == null || args.length == 0 || !StringUtils.hasText(fieldName)) {
             return "";
         }
 
-        // 遍历所有参数，找包含目标字段的对象
         for (Object arg : args) {
-            if (arg == null) {
-                continue;
-            }
+            if (arg == null) continue;
 
             try {
-                // 先查当前类，再查父类
                 Field targetField = null;
                 try {
                     targetField = arg.getClass().getDeclaredField(fieldName);
@@ -317,32 +268,25 @@ public class OperateLogAspect {
                 continue;
             }
         }
-
         return "";
     }
 
-    /**
-     * 构建参数JSON（优化：1. 过滤MultipartFile避免序列化错误 2. 精简超长参数）
-     */
     private String buildParamsJson(Object[] args) {
         if (args == null || args.length == 0) {
             return "[]";
         }
 
         try {
-            // 第一步：处理MultipartFile类型参数，避免序列化错误
             Object[] safeArgs = new Object[args.length];
             for (int i = 0; i < args.length; i++) {
                 Object arg = args[i];
                 if (arg != null && arg.getClass().getName().contains("MultipartFile")) {
-                    // 过滤MultipartFile类型，替换为可读字符串，避免序列化失败
                     safeArgs[i] = "[MultipartFile: " + arg.toString() + "]";
                 } else {
                     safeArgs[i] = arg;
                 }
             }
 
-            // 第二步：针对不同参数类型做精简处理，避免数据库字段溢出
             StringBuilder paramsBuilder = new StringBuilder();
             for (Object arg : safeArgs) {
                 if (arg == null) {
@@ -350,22 +294,17 @@ public class OperateLogAspect {
                     continue;
                 }
 
-                // 1. List类型：记录数量+前10个元素
                 if (arg instanceof List) {
                     List<?> list = (List<?>) arg;
                     int size = list.size();
                     String listStr = size > 10 ? list.subList(0, 10).toString() + "..." : list.toString();
                     paramsBuilder.append(String.format("List(size=%d):%s,", size, listStr));
-                }
-                // 2. Map类型：记录key数量+前5个键值对
-                else if (arg instanceof Map) {
+                } else if (arg instanceof Map) {
                     Map<?, ?> map = (Map<?, ?>) arg;
                     int size = map.size();
                     String mapStr = map.toString().length() > 200 ? map.toString().substring(0, 200) + "..." : map.toString();
                     paramsBuilder.append(String.format("Map(size=%d):%s,", size, mapStr));
-                }
-                // 3. 普通DTO/POJO：序列化后截断
-                else {
+                } else {
                     String json = JSON.toJSONString(arg, SerializerFeature.DisableCircularReferenceDetect);
                     paramsBuilder.append(json.length() > 500 ? json.substring(0, 500) + "...,": json + ",");
                 }
@@ -378,29 +317,23 @@ public class OperateLogAspect {
             return JSON.toJSONString(args, SerializerFeature.DisableCircularReferenceDetect);
         }
     }
-    
-    /**
-     * 构建返回结果JSON（优化：过滤InputStreamResource等不可序列化类型）
-     */
+
     private String buildResultJson(Object result) {
         if (result == null) {
             return "null";
         }
 
         try {
-            // 处理常见的不可序列化类型
-            if (result.getClass().getName().contains("InputStreamResource") || 
-                result.getClass().getName().contains("FileInputStream") ||
-                result.getClass().getName().contains("ByteArrayInputStream")) {
+            if (result.getClass().getName().contains("InputStreamResource") ||
+                    result.getClass().getName().contains("FileInputStream") ||
+                    result.getClass().getName().contains("ByteArrayInputStream")) {
                 return "[StreamResource: 二进制流数据]";
             }
-            
-            // 处理ResponseEntity类型
+
             if (result.getClass().getName().contains("ResponseEntity")) {
                 return "[ResponseEntity: HTTP响应对象]";
             }
-            
-            // 普通对象序列化
+
             String json = JSON.toJSONString(result, SerializerFeature.DisableCircularReferenceDetect);
             return json.length() > 500 ? json.substring(0, 500) + "..." : json;
         } catch (Exception e) {
@@ -409,17 +342,14 @@ public class OperateLogAspect {
         }
     }
 
-    // 3. 异步保存日志（增加容错：字段超长自动截断）
     @Async
     public void asyncSaveOperateLog(OperateLogPO logPO) {
         try {
             operateLogMapper.insert(logPO);
         } catch (Exception e) {
-            // 捕获字段超长异常，自动截断后重试
             if (e.getMessage() != null && e.getMessage().contains("Data too long for column")) {
                 log.warn("日志插入失败（字段超长），自动截断后重试：{}", e.getMessage());
 
-                // 截断超长字段
                 if (logPO.getPermission() != null && logPO.getPermission().length() > 100) {
                     logPO.setPermission(logPO.getPermission().substring(0, 100));
                 }
@@ -430,7 +360,6 @@ public class OperateLogAspect {
                     logPO.setErrorMsg(logPO.getErrorMsg().substring(0, 500) + "...");
                 }
 
-                // 重试插入
                 try {
                     operateLogMapper.insert(logPO);
                 } catch (Exception retryE) {

@@ -22,6 +22,7 @@ import com.persee.workstation.uv_inexus.dto.factory_inspection.DeviceTaskDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TaskAddDto;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.enums.factoryInspection.OutFactoryCheckEnum;
+import com.persee.workstation.uv_inexus.enums.factoryInspection.TemplateTypeEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
@@ -122,6 +123,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
     DeviceUsageLogService deviceUsageLogService;
+
 
 //    @Autowired
 //    LiveDetectionDevicesWebSocket liveDetectionManyDevicesWebSocket;
@@ -1131,7 +1133,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R<List<SearchInfo>> searchDevice(Integer connectType) {
+    public R<List<SearchInfo>> searchDevice(Integer connectType, String updateBy) {
 
         if (connectType == null) {
             R<DeviceConfigVO> r = newQueryDeviceConfig();
@@ -1144,6 +1146,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Find.getType());
         inputParam.setConnectType(connectType);
+        inputParam.setUpdateBy(updateBy);
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
             return R.fail(operation.getMessage());
@@ -1419,11 +1422,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             if(info.getIsActivated().equals(Constants.DEVICE_ACTIVE_NO) || !info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
                 info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
                 info.setDeviceId("");
-                info.setConnectType(-1);
-                info.setIp("");
-                info.setIsInited(0);
-                info.setMachineIp("");
-                info.setDevicePort(-1);
+//                info.setConnectType(-1);
+//                info.setIp("");
+//                info.setIsInited(0);
+//                info.setMachineIp("");
+//                info.setDevicePort(-1);
                 info.setUpdateBy(updateBy);
                 infoService.saveOrUpdateInfo(info);
                 deviceUsageLogService.saveDeviceUsageLog(logPO);
@@ -1433,15 +1436,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
 
         } else {
-            OperationResultEntity data = operation.getData();
 
             info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
             info.setDeviceId("");
-            info.setConnectType(-1);
-            info.setIp("");
-            info.setIsInited(0);
-            info.setMachineIp("");
-            info.setDevicePort(-1);
+//            info.setConnectType(-1);
+//            info.setIp("");
+//            info.setIsInited(0);
+//            info.setMachineIp("");
+//            info.setDevicePort(-1);
             info.setUpdateBy(updateBy);
             infoService.saveOrUpdateInfo(info);
             deviceUsageLogService.saveDeviceUsageLog(logPO);
@@ -2079,6 +2081,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public Result<DeviceTaskDto> createTaskAfterInstrumentInit(String deviceSerialNumber, String updateBy, String templateCode) throws BusinessException {
+
+
+
         R<Boolean> booleanR = startInitDevice(deviceSerialNumber, updateBy);
 
         DeviceInfoPO deviceInfoPO = infoService.getInfo(deviceSerialNumber);
@@ -2205,8 +2210,33 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
 
         //这里初始化之后还要创建新的任务，根据当前选定的模板创建任务，其实就是检定校准的任务
         if (deviceInfoPO.getIsInited() == 1) {
+            //先根据仪器序列号找出这个仪器的型号
+            List<String> list1 = deviceTypeInfoDAO.queryDeviceTypeBySerialNumber(deviceSerialNumber);
+            LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
+
+            if (!CollectionUtils.isEmpty(list1)){
+                //找到了仪器型号
+                String deviceType = list1.get(0);
+
+
+                //找出该型号的出厂检验模板
+                queryWrapper.eq(ExcelTemplate::getStatus, TemplateTypeEnum.OUT_FACTORY_CHECK.getCode())
+                        .like(ExcelTemplate::getModel, deviceType);
+                List<ExcelTemplate> list2 = templateService.list(queryWrapper);
+                if (!CollectionUtils.isEmpty(list2)){
+                    templateCode=list2.get(0).getTemplateCode();
+                }else{
+                    log.info("未找到模板!");
+                    throw new BusinessException("未找到出厂模板!");
+                }
+            }else {
+                log.info("未找到该序列号对应的仪器型号!");
+                throw new BusinessException("未找到该序列号对应的仪器型号!");
+            }
+
             LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(TaskManagement::getOperationInstrument, deviceSerialNumber);
+            wrapper.eq(TaskManagement::getOperationInstrument, deviceSerialNumber)
+                    .eq(TaskManagement::getTaskType, FACTORY_INSPECTION_TASK.getCode());
             List<TaskManagement> list = taskManagementService.list(wrapper);
             if (!CollectionUtils.isEmpty(list)) {
                 TaskManagement taskManagement = list.get(0);
@@ -2295,6 +2325,7 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
                             }
                             // 确保设备序列号不变
                             item.setDeviceSerialNumber(deviceSerialNumber);
+                            item.setStatus(updatedData.getStatus());
                             dtoList.set(i, item);
                             found = true;
                             log.info("已更新缓存中设备信息：deviceSerialNumber={}", deviceSerialNumber);

@@ -508,6 +508,69 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         return R.ok(result);
     }
 
+    private SearchInfo addLastDevice(DeviceInfoPO info) {
+        String ip = info.getIp();
+        Integer port = info.getDevicePort();
+
+        String xmlKey = info.getXmlKey();
+        String deviceMac = info.getDeviceMac();
+        Integer connectType = info.getConnectType();
+
+        String deviceId = deviceManager.getOrCreateDeviceId(ip, port, connectType);
+        deviceManager.updateDeviceInfo(deviceId, Constants.CONNECT_DEVICE_NO, deviceMac, xmlKey);
+
+        SearchInfo result = new SearchInfo();
+        result.setDeviceIp(ip);
+        result.setConnectPort(port.toString());
+        result.setDeviceMac(deviceMac);
+        result.setConnectType(connectType);
+        result.setDeviceId(deviceId);
+        result.setUpdateBy(info.getUpdateBy());
+        return result;
+    }
+
+    private Boolean checkDeviceConnect(SearchInfo info) {
+        String deviceId = info.getDeviceId();
+        Integer connectType = info.getConnectType();
+
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String devType = device.getXmlKey();
+        DevXmlEnums anEnum = DevXmlEnums.getEnum(devType);
+        String comId = ConnectEnum.Connect.getComId();
+        Map<String, Transition> xml = xmlManage.getXmlInfo(devType);
+
+        Transition transition = xml.get(comId);
+        int replyNumber = transition.getReplyNumber();
+        int timeout = transition.getTimeout();
+        List<String> headReceiveBytes = transition.getHeadReceiveBytes();
+
+        Object[] param = new Object[6];
+        String[] macParts = info.getDeviceMac().split(":");
+        // 将上位机的前 6 个 MAC 地址部分插入到 param 数组的前 6 个位置
+        for (int i = 0; i < 6; i++) {
+
+            int anInt = Integer.parseInt(macParts[i], 16);
+
+            param[i] = anInt;
+        }
+
+        byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
+        R<Object> r;
+        if (replyNumber < 0) {
+            r = udpSendUtil.unknownReceive(deviceId, comId, bytes, timeout, false, null, null, headReceiveBytes);
+        } else {
+            r = udpSendUtil.knowTotalReceiveSend(deviceId, comId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+
+        }
+        if (!r.getSuccess()) {
+            deviceManager.removeDevice(deviceId);
+            return false;
+        }
+
+        return true;
+
+    }
+
     private R<OperationResultEntity> stop(DevOperationInputParam inputParam) {
 
         String deviceSerialNumber = inputParam.getDeviceSerialNumber();
@@ -922,14 +985,14 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             //wifi
             macAddress = connectUtil.getWifiMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查wifi连接！");
+                return R.fail("请检查wifi连接和仪器电源是否开启！");
             }
 
         } else {
 
             macAddress = connectUtil.getEthernetMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查网线连接！");
+                return R.fail("请检查网线连接和仪器电源是否开启！");
             }
 
         }
@@ -970,10 +1033,30 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     xmlManage.setDevice(info.getDeviceIp(), anEnum.getDevType());
                     xmlManage.setDevice(info.getDeviceMac(), anEnum.getDevType());
                     deviceManager.updateDeviceInfo(info.getDeviceId(), Constants.CONNECT_DEVICE_NO, info.getDeviceMac(), anEnum.getDevType());
+                }
+            }
+        }
+
+        if (allDevice.isEmpty()) {
+            //连接上次连接的仪器
+            List<DeviceInfoPO> poList = infoService.getUserLastConnectDevice(inputParam.getUpdateBy());
+
+            if (poList != null && !poList.isEmpty()) {
+
+                for (DeviceInfoPO infoPO : poList) {
+
+                    SearchInfo info = addLastDevice(infoPO);
+                    Boolean b = checkDeviceConnect(info);
+                    if (b) {
+                        allDevice.add(info);
+                        xmlManage.setDevice(info.getDeviceIp(), infoPO.getXmlKey());
+                        xmlManage.setDevice(info.getDeviceMac(), infoPO.getXmlKey());
+                    }
 
 
                 }
             }
+
         }
 
         operationResultEntity.setSearchInfo(allDevice);
@@ -1221,6 +1304,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         if (result.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
             setDeviceDefaultStatus(result.getDeviceId(), result.getDeviceSerialNumber());
         }
+        result.setXmlKey(devType);
+        result.setDeviceMac(macAddress);
 
         return R.ok(result);
     }

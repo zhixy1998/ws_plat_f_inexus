@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 
 import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CACHE;
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.OutFactoryCheckEnum.OUT_FACTORY_CHECK_LIST;
 
 /**
  * 任务管理表(task_management)数据DAO
@@ -692,8 +693,23 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 
             }
             if (FACTORY_INSPECTION.getCode().equals(taskId)) {
-                TaskManagement task = defaultTaskManager.createFactoryInspectionTask(updateBy);
-                return Result.ok(task);
+//                TaskManagement task = defaultTaskManager.createFactoryInspectionTask(updateBy);
+                Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
+                List<DeviceTaskDto> dtoList;
+                if (cachedObject instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<DeviceTaskDto> checkedList = (List<DeviceTaskDto>) cachedObject;
+                    dtoList = checkedList;
+                } else {
+                    dtoList = new ArrayList<DeviceTaskDto>();
+                }
+                if (!CollectionUtils.isEmpty(dtoList)) {
+                    DeviceTaskDto dto = dtoList.get(0);
+                    String taskId1 = dto.getTaskId();
+                    TaskManagement task = this.getById(taskId1);
+                    return Result.ok(task);
+                }
+                return Result.fail(null);
             }
             TaskManagement management = this.getById(taskId);
             ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());

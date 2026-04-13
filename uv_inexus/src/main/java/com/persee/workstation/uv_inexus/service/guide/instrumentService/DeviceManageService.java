@@ -121,7 +121,7 @@ public interface DeviceManageService {
 
     void test();
 
-    R<List<SearchInfo>> searchDevice(Integer connectType);
+    R<List<SearchInfo>> searchDevice(Integer connectType, String updateBy);
     R<List<SearchInfo>> searchDevice();
 
     R<FindDeviceVO> connect(SearchInfo param);

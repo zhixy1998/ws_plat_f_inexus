@@ -161,8 +161,8 @@ public class DeviceController {
     @GetMapping("/searchDevice")
     @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
     @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true, recordResult = true)
-    public Result<List<SearchInfo>> searchDevice(@RequestParam(required = false) Integer connectType) {
-        R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType);
+    public Result<List<SearchInfo>> searchDevice(@RequestParam(required = false) Integer connectType, @RequestParam String updateBy) {
+        R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType, updateBy);
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         } else {
@@ -482,8 +482,17 @@ public class DeviceController {
 //            return Result.fail(r.getMessage());
 //        }
 //    }
-    @ButtonPermission("instrumentCalibrationWavelengthCorrection")
-    @OperateLog(module = "仪器管理-仪器校正-波长校正", description = "执行仪器管理-仪器校正-波长校正记录", recordParams = true)
+//    @ButtonPermission("instrumentCalibrationWavelengthCorrection")
+//    @OperateLog(module = "仪器管理-仪器校正-波长校正", description = "执行仪器管理-仪器校正-波长校正记录", recordParams = true)
+    @ButtonPermission(
+            description = "实验测试-经典模式-删除历史文件数据", // 操作描述
+            permissionMapping = "instrumentCalibrationWavelengthCorrection=instrumentCalibrationWavelengthCorrection,instrumentCalibrationWavelengthCorrection=instrumentCalibrationWavelengthCorrection" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-仪器管理",
+            description = "执行仪器管理-仪器校正-{operateType}",
+            recordParams = true
+    )
     @PostMapping("/calibration")
     @ApiOperation("仪器校准")
     public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto) {

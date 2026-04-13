@@ -9,6 +9,8 @@
 
 package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
+import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,6 +27,8 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
 
 /**
  * 用户登录控制器
@@ -46,12 +50,12 @@ public class SysUserLoginController {
     @PostMapping("/login")
     @ApiOperation("用户登录接口")
 //    @OperateLog(module = "用户登录", description = "用户登录", recordParams = true, logType = 1)
-    @OperateLog(module = "用户登录", description = "用户登录", recordParams = true) // 默认logType = 2
+//    @OperateLog(module = "用户登录", description = "用户登录", recordParams = true) // 默认logType = 2
     public Result<LoginUserInfoVO> login(@RequestBody UserLoginDTO loginDTO) {
 
         if (loginDTO.getIsFastLogin() != null && loginDTO.getIsFastLogin() == 1) {
             log.info("触发快捷登录，使用默认用户");
-            
+
             loginDTO.setUserName("kh-admin");
             loginDTO.setPassword("123456");
         }
@@ -62,6 +66,11 @@ public class SysUserLoginController {
         // 适配原有Result响应格式（R→Result）
         if (loginResult.getSuccess()) {
             log.info("登录成功，username={}", loginDTO.getUserName());
+            LogManualUtil.saveLoginLog(
+                    "用户登录成功：" + loginDTO.getUserName(),
+                    loginDTO.getUserName(),
+                    loginDTO
+            );
             return Result.ok(loginResult.getData());
         } else {
             log.info("登录失败，username={}，原因：{}", loginDTO.getUserName(), loginResult.getMessage());
@@ -71,8 +80,17 @@ public class SysUserLoginController {
 
     @PostMapping("/logout")
     @ApiOperation("用户登出接口")
-    @OperateLog(module = "用户登出", description = "用户登出", recordParams = true)
-    public Result<Boolean> loginOut(){
+// @OperateLog(module = "用户登出", description = "用户登出", recordParams = true)
+    public Result<Boolean> loginOut(@RequestBody Map<String, String> params){
+
+        String username = params.get("updateBy");
+
+        LogManualUtil.saveLogoutLog(
+                "用户登出成功",
+                username,
+                params
+        );
+
         return Result.ok(true);
     }
 }

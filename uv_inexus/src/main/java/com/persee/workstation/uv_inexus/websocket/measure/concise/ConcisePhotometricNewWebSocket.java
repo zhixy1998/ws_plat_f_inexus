@@ -33,6 +33,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
@@ -193,6 +194,13 @@ public class ConcisePhotometricNewWebSocket {
                 removeOldData(taskId, sampleId);
 
                 FMeasureSample measureSample = tMeasureSampleService.getById(sampleId);
+                LogManualUtil.saveReMeasureLog(
+                        "实验测试-经典模式-光度测量-重新测量",
+                        String.format("重测样品：编号[%s]，名称[%s]", measureSample.getSampleNumber(), measureSample.getSampleName()),
+                        param.getUpdateBy(),   // 传入用户名
+                        null,
+                        param
+                );
                 if (measureSample == null) {
                     sendError(deviceSerialNumber, "样品不存在");
                     return;

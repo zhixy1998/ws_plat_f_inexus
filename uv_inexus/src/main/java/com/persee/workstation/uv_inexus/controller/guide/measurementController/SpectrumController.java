@@ -166,7 +166,7 @@ public class SpectrumController {
 //            recordParams = true
 //    )
     @ButtonPermission("spectralScanSetSample")
-    @OperateLog(module = "实验测试-向导模式-光谱扫描-设置样品", description = "执行实验测试-向导模式-光谱扫描-设置样品操作", recordParams = true)
+    @OperateLog(module = "实验测试-向导模式-光谱扫描-设置样品", description = "执行实验测试-向导模式-光谱扫描-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSamplePort(@RequestBody AddOrDeleteSampleDTO paramDto) {

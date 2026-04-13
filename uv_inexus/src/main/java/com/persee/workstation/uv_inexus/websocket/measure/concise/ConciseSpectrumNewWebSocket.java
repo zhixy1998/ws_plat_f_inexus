@@ -1162,12 +1162,6 @@ public class ConciseSpectrumNewWebSocket {
             log.info("设置测量结束时间: " + Constants.endTime);
         }
 
-        // 立即清空缓存，释放锁
-        Constants.instrumentData.clear();
-        Constants.measurd_data.clear();
-        Constants.originalCalculationData.clear();
-        Constants.startTime = null;
-        Constants.endTime = null;
         // 标记当前测量完成
         if (state != null) {
             state.currentMeasurementCompleted.set(true);
@@ -1333,14 +1327,19 @@ public class ConciseSpectrumNewWebSocket {
                         x.add(message.getWavelength());
                         if (spectrumParameter.getLuminosity().equals("1")) {
                             y.add(Double.valueOf(message.getAbsResult().getAbs()));
+                            Constants.instrumentData.add(message.getWavelength()+","+message.getAbsResult().getAbs());
                         }else if (spectrumParameter.getLuminosity().equals("2")) {
                             y.add(Double.valueOf(message.getTResult().getTPercent()));
+                            Constants.instrumentData.add(message.getWavelength()+","+message.getAbsResult().getTPercent());
                         }else if (spectrumParameter.getLuminosity().equals("3")) {
                             y.add(Double.valueOf(message.getEsResult().getEs()));
+                            Constants.instrumentData.add(message.getWavelength()+","+message.getAbsResult().getEs());
                         }else {
                             y.add(Double.valueOf(message.getErResult().getEr()));
+                            Constants.instrumentData.add(message.getWavelength()+","+message.getAbsResult().getEr());
                         }
                         changeParams.add(message.getScanRsd());
+
 
 
                         // 将新点添加到批次缓冲区，并检查是否达到批次大小
@@ -2446,7 +2445,7 @@ public class ConciseSpectrumNewWebSocket {
                 measureData.setSerialNumber(1);
                 measureData.setTaskId(taskId);
                 measureData.setSampleKey(sampleId);
-                measureData.setInstrumentData(JSON.toJSONString(changeParams));
+                measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
                 measureData.setOriginalCalculationData(JSON.toJSONString(result));
                 measureData.setMeasurementStartTime(startTime);
                 measureData.setMeasurementEndTime(endTime);
@@ -2497,7 +2496,7 @@ public class ConciseSpectrumNewWebSocket {
                                     .eq("sample_key", sampleId)
                                     .eq("serial_number", number)
                     );
-                    measureData.setInstrumentData(JSON.toJSONString(changeParams));
+                    measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
                     measureData.setOriginalCalculationData(JSON.toJSONString(result));
                     measureData.setMeasurementStartTime(startTime);
                     measureData.setMeasurementEndTime(endTime);
