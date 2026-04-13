@@ -1088,12 +1088,6 @@ public class SpectrumNewWebSocket {
                 log.info("设置测量结束时间: " + Constants.endTime);
             }
 
-            // 立即清空缓存，释放锁
-            Constants.instrumentData.clear();
-            Constants.measurd_data.clear();
-            Constants.originalCalculationData.clear();
-            Constants.startTime = null;
-            Constants.endTime = null;
 
             try {
                 Constants.MEASURE_LOCK.unlock();

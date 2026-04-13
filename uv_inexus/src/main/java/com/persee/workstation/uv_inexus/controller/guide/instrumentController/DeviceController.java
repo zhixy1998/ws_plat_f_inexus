@@ -161,8 +161,8 @@ public class DeviceController {
     @GetMapping("/searchDevice")
     @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
     @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true, recordResult = true)
-    public Result<List<SearchInfo>> searchDevice(@RequestParam(required = false) Integer connectType) {
-        R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType);
+    public Result<List<SearchInfo>> searchDevice(@RequestParam(required = false) Integer connectType, @RequestParam String updateBy) {
+        R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType, updateBy);
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         } else {

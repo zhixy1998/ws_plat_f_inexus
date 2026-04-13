@@ -230,11 +230,10 @@ public class OpenBoxCheckServiceImpl implements OpenBoxCheckService {
             if (one != null) {
                 return Result.fail("模板名称重复！！");
             }
-            String templateCode = "TEMP_" + IdGeneratorUtil.generateShortId() + System.currentTimeMillis();
 
             // 创建新模板
             ExcelTemplate template = new ExcelTemplate();
-            template.setTemplateCode(templateCode);
+//            template.setTemplateCode(templateCode);
             template.setTemplateName(request.getTemplateName());
             template.setCreateBy(request.getUpdateBy());
             //非内置模板
@@ -243,6 +242,8 @@ public class OpenBoxCheckServiceImpl implements OpenBoxCheckService {
             template.setId(IdGeneratorUtil.generateIdWithPrefix("template"));
             template.setParentId(request.getTemplateCode());
             template.setColumnConfig("{}");
+            String templateCode = template.getId();
+
             // 保存到数据库
             boolean saved = templateService.save(template);
             LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();

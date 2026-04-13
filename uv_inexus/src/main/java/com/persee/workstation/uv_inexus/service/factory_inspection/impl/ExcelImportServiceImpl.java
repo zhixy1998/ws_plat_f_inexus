@@ -354,10 +354,11 @@ public class ExcelImportServiceImpl implements ExcelImportService {
 //            String uniqueFilename = IdGeneratorUtil.generateIdWithPrefix("IE") + fileExtension;
 //            String fullPath = projectRoot+"/"+excelSavePath + uniqueFilename;
 //
-
+            ExcelTemplate template = new ExcelTemplate();
+            template.setId(IdGeneratorUtil.generateIdWithPrefix("template"));
             /*保存模板信息*/
             // 生成模板编码
-            String templateCode = "TEMP_" + IdGeneratorUtil.generateShortId() + System.currentTimeMillis();
+            String templateCode = template.getId();
             boolean b = workbookDataService.uploadExcel(workbook, templateCode);
             if (!b) {
                 log.error("保存模板信息失败");
@@ -380,9 +381,8 @@ public class ExcelImportServiceImpl implements ExcelImportService {
             }
 
             // 创建模板
-            ExcelTemplate template = new ExcelTemplate();
-            template.setId(IdGeneratorUtil.generateIdWithPrefix("template"));
-            template.setTemplateCode(templateCode);
+
+//            template.setTemplateCode(templateCode);
             //设置文件名
             String originalFilename = file.getOriginalFilename();
             String filenameWithoutExtension = originalFilename;
@@ -390,7 +390,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                 filenameWithoutExtension = originalFilename.substring(0, originalFilename.lastIndexOf("."));
             }
             template.setTemplateName(filenameWithoutExtension);
-            template.setStatus(1); // 启用状态
+            template.setStatus(1); // 模板为检定校准模板
             // 构建列配置
             List<ExcelTemplate.ColumnConfig> columnConfigs = new ArrayList<>();
             List<String> headers = headList.get(0);
