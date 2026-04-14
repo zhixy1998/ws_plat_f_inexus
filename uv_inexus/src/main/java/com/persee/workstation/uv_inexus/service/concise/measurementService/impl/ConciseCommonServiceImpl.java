@@ -22,6 +22,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConfig;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNumConfig;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.MappingParamEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
@@ -108,7 +109,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     private PhotometricConciseService photometricService;
 
     @Autowired
-    private RationConciseService rationService;
+    private RationConciseService rationConciseService;
 
     @Autowired
     private SamplePoolConfigService fSamplePoolConfigService;
@@ -127,8 +128,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     @Autowired
     LaTeXConverter latexConverter;
-    @Autowired
-    RationConciseService rationConciseService;
 
     @Autowired
     DeviceInfoService deviceInfoService;
@@ -1020,8 +1019,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
             vo.setStartWaveLength(param.getStartWaveLength() + "nm");
             vo.setEndWaveLength(param.getEndWaveLength() + "nm");
-            // (0.慢速 1.中速 2.快速 3.极快)
-            vo.setScanSpeed(param.getScanSpeed().equals("0") ? "慢速" : param.getScanSpeed().equals("1") ? "中速" : param.getScanSpeed().equals("2") ? "快速" : "极快");
+            DeviceConfParam scanSpeedByValue = MappingParamEnum.SCAN_SPEED.getScanSpeedByValue(param.getScanSpeed());
+            if (scanSpeedByValue != null) {
+                vo.setScanSpeed(scanSpeedByValue.getParamName());
+            }
             if (param.getRepetitionPattern().equals("单池重复")) {
                 vo.setTimeInterval(param.getTimeInterval());
                 vo.setIsRepeat(true);
@@ -1421,11 +1422,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             case "定量测定": {
                 FRationReportDataVO vo = new FRationReportDataVO();
-                Result<List<FHeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
+                Result<List<FHeadVO>> standHeads = rationConciseService.getStandSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (standHeads.getCode() == 200) {
                     vo.setStandHeadList(standHeads.getData());
                 }
-                Result<List<FHeadVO>> unknowHeads = rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
+                Result<List<FHeadVO>> unknowHeads = rationConciseService.getUnknownSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (unknowHeads.getCode() == 200) {
                     vo.setUnknowHeadList(unknowHeads.getData());
                 }
@@ -1436,7 +1437,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                     dataDTO.setDigit(digit);
                     dataDTO.setOption(new ArrayList<>());
                 }
-                Result<FRationSampleDataVO> data = rationService.querySampleData(dataDTO);
+                Result<FRationSampleDataVO> data = rationConciseService.querySampleData(dataDTO);
                 if (data.getCode() == 200) {
                     FRationSampleDataVO sampleDataVO = data.getData();
                     vo.setStandDataList(sampleDataVO.getStandSampleData());
@@ -1447,7 +1448,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                     FTaskHeadSnapshot unknownHead = shot.getUnknownHead();
                     vo.setMapRelation(unknownHead.getMapRelation());
                 }
-                Result<FRationFitCurveVO> curveInfo = rationService.queryCurveInfo(taskId, task.getMethodKey());
+                Result<FRationFitCurveVO> curveInfo = rationConciseService.queryCurveInfo(taskId, task.getMethodKey());
                 if (curveInfo.getCode() == 200) {
                     vo.setCurveInfo(curveInfo.getData());
                 }

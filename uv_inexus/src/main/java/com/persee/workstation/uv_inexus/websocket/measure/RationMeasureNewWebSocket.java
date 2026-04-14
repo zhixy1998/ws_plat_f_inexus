@@ -33,6 +33,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
@@ -213,7 +214,13 @@ public class RationMeasureNewWebSocket{
 //                    sendError(deviceSerialNumber, setParams.getMessage());
 //                    return;
 //                }
-
+                LogManualUtil.saveReMeasureLog(
+                        "实验测试-向导模式-定量测量-重新测量",
+                        String.format("重测样品：编号[%s]，名称[%s]", dealSample.getSampleNumber(), dealSample.getSampleName()),
+                        param.getUpdateBy(),   // 传入用户名
+                        null,
+                        param
+                );
                 boolean repeat = parameter.getRepeatMode().equals("单池重复");
                 dealSample.setSampleLocation(null);
                 R<RationDataVO> r;

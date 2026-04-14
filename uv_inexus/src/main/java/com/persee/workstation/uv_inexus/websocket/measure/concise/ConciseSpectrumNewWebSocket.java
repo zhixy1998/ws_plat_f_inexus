@@ -52,10 +52,7 @@ import org.springframework.web.socket.WebSocketSession;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -136,6 +133,9 @@ public class ConciseSpectrumNewWebSocket {
         private final AtomicBoolean sessionClosing = new AtomicBoolean(false);
         // 当前测量完成标志
         private final AtomicBoolean currentMeasurementCompleted = new AtomicBoolean(true);
+        // 匀速推送调度器映射：sampleId_count -> SmoothPushScheduler
+        private final Map<String, SmoothPushScheduler> smoothPushSchedulers = new ConcurrentHashMap<>();
+        private ConciseSpectrumNewWebSocket parent;
 
         // 批次数据缓冲区
         private final List<Double> batchXBuffer = Collections.synchronizedList(new ArrayList<>());
@@ -156,6 +156,11 @@ public class ConciseSpectrumNewWebSocket {
             this.batchSize = batchSize;
             log.info("设置批次大小: {}", batchSize);
         }
+
+        public void setParent(ConciseSpectrumNewWebSocket parent) {
+            this.parent = parent;
+        }
+
 
         /**
          * 获取批次大小
@@ -204,6 +209,31 @@ public class ConciseSpectrumNewWebSocket {
         }
 
         /**
+         * 等待所有调度器完成推送
+         * @param timeoutMs 超时时间（毫秒）
+         */
+        public void waitForAllSchedulersToFinish(long timeoutMs) {
+            long startTime = System.currentTimeMillis();
+            for (SmoothPushScheduler scheduler : smoothPushSchedulers.values()) {
+                long remaining = timeoutMs - (System.currentTimeMillis() - startTime);
+                if (remaining <= 0) {
+                    log.warn("等待调度器完成超时，session: {}", deviceSerialNumber);
+                    break;
+                }
+                // 等待该调度器停止
+                while (scheduler.isRunning() && System.currentTimeMillis() - startTime < timeoutMs) {
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+            log.info("所有调度器已停止或超时，session: {}", deviceSerialNumber);
+        }
+
+        /**
          * 获取剩余数据（测量结束时使用）
          */
         public BatchData getRemainingBatchBuffer(Integer count, String sampleId,
@@ -218,8 +248,243 @@ public class ConciseSpectrumNewWebSocket {
         public void incrementPushedPoints(int count) {
             pushedPointsCount.addAndGet(count);
         }
+
+        /**
+         * 获取或创建匀速推送调度器
+         */
+        public SmoothPushScheduler getOrCreateScheduler(String sampleId, Integer count, Integer digit, String luminosity,
+                                                        java.util.function.Supplier<String> currentSampleCellSupplier) {
+            String key = sampleId + "_" + count;
+            return smoothPushSchedulers.computeIfAbsent(key, k ->
+                    new SmoothPushScheduler(parent, deviceSerialNumber, sampleId, count, digit, luminosity, currentSampleCellSupplier));
+        }
+
+        /**
+         * 清理指定样品的调度器
+         */
+        public void cleanupScheduler(String sampleId, Integer count) {
+            String key = sampleId + "_" + count;
+            SmoothPushScheduler scheduler = smoothPushSchedulers.remove(key);
+            if (scheduler != null) {
+                scheduler.cleanup();
+            }
+        }
+
+        /**
+         * 清理所有调度器
+         */
+        public void cleanupAllSchedulers() {
+            for (SmoothPushScheduler scheduler : smoothPushSchedulers.values()) {
+                scheduler.cleanup();
+            }
+            smoothPushSchedulers.clear();
+        }
     }
 
+    /**
+     * 匀速推送调度器 - 支持外部指定间隔（秒，小数）
+     */
+    private static class SmoothPushScheduler {
+        private final String sessionId;
+        private final String sampleId;
+        private final Integer count;
+        private final Integer digit;
+        private final String luminosity;
+        private final AtomicBoolean isRunning = new AtomicBoolean(false);
+        private final AtomicBoolean isFinished = new AtomicBoolean(false);
+        // 待推送队列（按顺序存储）
+        private final Queue<SmoothPushTask> pendingQueue = new ConcurrentLinkedQueue<>();
+        private ScheduledExecutorService scheduler;
+        private long intervalMs = 0;          // 匀速推送间隔（毫秒）
+        private boolean intervalCalculated = false;
+
+        private final ConciseSpectrumNewWebSocket parent;
+        private final java.util.function.Supplier<String> currentSampleCellSupplier;
+
+        public SmoothPushScheduler(ConciseSpectrumNewWebSocket parent,
+                                   String sessionId,
+                                   String sampleId,
+                                   Integer count,
+                                   Integer digit,
+                                   String luminosity,
+                                   java.util.function.Supplier<String> currentSampleCellSupplier) {
+            this.parent = parent;
+            this.sessionId = sessionId;
+            this.sampleId = sampleId;
+            this.count = count;
+            this.digit = digit;
+            this.luminosity = luminosity;
+            this.currentSampleCellSupplier = currentSampleCellSupplier;
+        }
+
+        public synchronized void receiveBatch(List<Double> xBatch, List<Double> yBatch) {
+            long currentTime = System.currentTimeMillis();
+
+            for (int i = 0; i < xBatch.size(); i++) {
+                pendingQueue.add(new SmoothPushTask(xBatch.get(i), yBatch.get(i)));
+            }
+
+            parent.log.info("接收批次数据: session={}, 点数={}, 队列总点数={}", sessionId, xBatch.size(), pendingQueue.size());
+
+            // 如果外部指定了推送间隔且有效，直接使用
+            if (Constants.pushInterval != null && Constants.pushInterval > 0 && Constants.pushInterval < 10) {
+                intervalMs = (long) (Constants.pushInterval * 1000);
+                if (intervalMs < 1) intervalMs = 1;
+                parent.log.info("使用外部指定推送间隔: {} 秒 = {} ms", Constants.pushInterval, intervalMs);
+                intervalCalculated = true;
+                startScheduling();
+                return;
+            } else if (Constants.pushInterval != null) {
+                parent.log.warn("推送间隔 {} 秒 不合理，使用默认 10ms", Constants.pushInterval);
+                intervalMs = 10;
+                intervalCalculated = true;
+                startScheduling();
+                return;
+            }
+        }
+
+        private void startScheduling() {
+            if (isRunning.compareAndSet(false, true)) {
+                parent.log.info("启动匀速推送调度: session={}, 待推送点数={}, 推送间隔={}ms",
+                        sessionId, pendingQueue.size(), intervalMs);
+                scheduler = Executors.newSingleThreadScheduledExecutor();
+                // 立即开始，每 intervalMs 推送一个点
+                scheduler.scheduleAtFixedRate(() -> {
+                    pushOnePoint();
+                }, 0, intervalMs, TimeUnit.MILLISECONDS);
+            }
+        }
+
+        private void pushOnePoint() {
+            if (isFinished.get()) return;
+
+            SmoothPushTask task = pendingQueue.poll();
+            if (task == null) {
+                // 队列为空，但测量可能尚未结束，调度器继续等待新数据（不停止）
+                return;
+            }
+
+            SessionState state = sessionStates.get(sessionId);
+            if (state == null || state.sessionClosing.get()) {
+                stopScheduling();
+                return;
+            }
+
+            try {
+                JSONArray dataArray = new JSONArray();
+                JSONObject point = new JSONObject();
+                point.put("x", task.x);
+
+                Double value = DataCountUtil.formatValue(digit, task.y);
+                String valueY = DataCountUtil.addZero(value, digit);
+                point.put("y", task.y);
+                point.put("roundOffY", valueY);
+                point.put("xType", "nm");
+
+                String luminosityType = luminosity.equals("1") ? "Abs" :
+                        luminosity.equals("2") ? "T%" :
+                                luminosity.equals("3") ? "Es" : "Er";
+                point.put("yType", luminosityType);
+                dataArray.add(point);
+
+                JSONObject payload = new JSONObject();
+                payload.put("data", dataArray);
+                payload.put("sampleId", sampleId);
+                payload.put("count", count);
+                payload.put("currentPoolNum", currentSampleCellSupplier.get());
+                payload.put("smoothPush", true);
+
+                parent.sendMessage(sessionId, payload);
+//                parent.log.debug("匀速推送一个点: x={}, y={}, 剩余点数={}", task.x, task.y, pendingQueue.size());
+                log.info("匀速推送一个点: x={}, y={}, 剩余点数={}", task.x, task.y, pendingQueue.size());
+            } catch (Exception e) {
+                parent.log.error("匀速推送单点失败", e);
+            }
+        }
+
+        private void stopScheduling() {
+            if (isRunning.compareAndSet(true, false)) {
+                if (scheduler != null && !scheduler.isShutdown()) {
+                    scheduler.shutdown();
+                    try {
+                        if (!scheduler.awaitTermination(2, TimeUnit.SECONDS)) {
+                            scheduler.shutdownNow();
+                        }
+                    } catch (InterruptedException e) {
+                        scheduler.shutdownNow();
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                parent.log.info("匀速推送调度停止: session={}", sessionId);
+            }
+        }
+
+        /**
+         * 测量结束时调用：立即停止调度器并推送所有剩余点
+         */
+        public synchronized void flush() {
+            // 停止定时器
+            stopScheduling();
+            // 推送所有剩余点
+            if (pendingQueue.isEmpty()) return;
+            parent.log.info("测量结束，立即推送所有剩余点: session={}, 点数={}", sessionId, pendingQueue.size());
+            SmoothPushTask task;
+            while ((task = pendingQueue.poll()) != null) {
+                pushSinglePointSmoothDirect(task.x, task.y);
+            }
+        }
+
+        private void pushSinglePointSmoothDirect(Double x, Double y) {
+            if (x == null || y == null) return;
+            SessionState state = sessionStates.get(sessionId);
+            if (state == null || state.sessionClosing.get()) return;
+
+            try {
+                JSONArray dataArray = new JSONArray();
+                JSONObject point = new JSONObject();
+                point.put("x", x);
+                Double value = DataCountUtil.formatValue(digit, y);
+                String valueY = DataCountUtil.addZero(value, digit);
+                point.put("y", y);
+                point.put("roundOffY", valueY);
+                point.put("xType", "nm");
+                String luminosityType = luminosity.equals("1") ? "Abs" :
+                        luminosity.equals("2") ? "T%" :
+                                luminosity.equals("3") ? "Es" : "Er";
+                point.put("yType", luminosityType);
+                dataArray.add(point);
+
+                JSONObject payload = new JSONObject();
+                payload.put("data", dataArray);
+                payload.put("sampleId", sampleId);
+                payload.put("count", count);
+                payload.put("currentPoolNum", currentSampleCellSupplier.get());
+                payload.put("smoothPush", true);
+                parent.sendMessage(sessionId, payload);
+            } catch (Exception e) {
+                parent.log.error("直接推送单点失败", e);
+            }
+        }
+
+        public boolean isRunning() {
+            return isRunning.get();
+        }
+
+        public void cleanup() {
+            isFinished.set(true);
+            stopScheduling();
+            pendingQueue.clear();
+        }
+
+        private static class SmoothPushTask {
+            final Double x;
+            final Double y;
+            SmoothPushTask(Double x, Double y) {
+                this.x = x;
+                this.y = y;
+            }
+        }
+    }
     /**
      * 批次数据容器
      */
@@ -257,6 +522,7 @@ public class ConciseSpectrumNewWebSocket {
 
         // 初始化会话状态
         SessionState state = new SessionState();
+        state.setParent(this);
         sessionStates.put(param.getDeviceSerialNumber(), state);
 
         currentSampleCell=null;
@@ -416,6 +682,8 @@ public class ConciseSpectrumNewWebSocket {
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
                                 sendMessage(deviceSerialNumber, payload);
+                            }else{
+                                break;
                             }
                         } else {
                             break;
@@ -497,10 +765,30 @@ public class ConciseSpectrumNewWebSocket {
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
                                 sendMessage(deviceSerialNumber, payload);
+                            }else{
+                               break;
                             }
                         } else {
                             break;
                         }
+                    }
+                }
+                if (configPO.getIsAutoChangePool()) {
+                    SetParam setParam = new SetParam();
+                    setParam.setCellPos(Integer.parseInt(Constants.PARAM_ONE));
+                    boolean status = spectrumService.setInstrumentParameters(deviceSerialNumber, setParam);
+                    if (!status) {
+                        sendError(deviceSerialNumber,  "设置出错");
+                        return;
+                    }
+                    Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(Constants.PARAM_ONE), updateBy);
+                    if (b) {
+                        log.info("自动切换样品池恢复样品池到1号池");
+                        JSONObject object = new JSONObject();
+                        object.put("currentPoolNum", Constants.PARAM_ONE);
+                        sendMessage(deviceSerialNumber, object);
+                    }else{
+                        log.info("自动切换样品池恢复样品池到1号池失败");
                     }
                 }
 
@@ -631,6 +919,12 @@ public class ConciseSpectrumNewWebSocket {
                     log.warn("等待任务线程结束被中断, session: {}", sessionId);
                     Thread.currentThread().interrupt();
                 }
+            }
+            if (state != null) {
+                // 等待所有调度器完成推送（最多等待5秒）
+                state.waitForAllSchedulersToFinish(5000);
+                // 然后清理资源（确保不再引用）
+                state.cleanupAllSchedulers();
             }
             // 等待所有存储操作完成
             boolean allStorageCompleted = waitForAllStorageComplete(sessionId);
@@ -871,16 +1165,11 @@ public class ConciseSpectrumNewWebSocket {
             log.info("设置测量结束时间: " + Constants.endTime);
         }
 
-        // 立即清空缓存，释放锁
-        Constants.instrumentData.clear();
-        Constants.measurd_data.clear();
-        Constants.originalCalculationData.clear();
-        Constants.startTime = null;
-        Constants.endTime = null;
         // 标记当前测量完成
         if (state != null) {
             state.currentMeasurementCompleted.set(true);
         }
+
 
         // 异步保存数据，不阻塞测量流程
         MeasurementResult finalResult = result;
@@ -1041,14 +1330,19 @@ public class ConciseSpectrumNewWebSocket {
                         x.add(message.getWavelength());
                         if (spectrumParameter.getLuminosity().equals("1")) {
                             y.add(Double.valueOf(message.getAbsResult().getAbs()));
+                            Constants.instrumentData.add(message.getWavelength()+","+message.getAbsResult().getAbs());
                         }else if (spectrumParameter.getLuminosity().equals("2")) {
                             y.add(Double.valueOf(message.getTResult().getTPercent()));
+                            Constants.instrumentData.add(message.getWavelength()+","+message.getAbsResult().getTPercent());
                         }else if (spectrumParameter.getLuminosity().equals("3")) {
                             y.add(Double.valueOf(message.getEsResult().getEs()));
+                            Constants.instrumentData.add(message.getWavelength()+","+message.getAbsResult().getEs());
                         }else {
                             y.add(Double.valueOf(message.getErResult().getEr()));
+                            Constants.instrumentData.add(message.getWavelength()+","+message.getAbsResult().getEr());
                         }
                         changeParams.add(message.getScanRsd());
+
 
 
                         // 将新点添加到批次缓冲区，并检查是否达到批次大小
@@ -1100,6 +1394,20 @@ public class ConciseSpectrumNewWebSocket {
                         log.info("追加数据到 originalYValues, key: {}, 当前总点数: {}, 本次追加: {}",
                                 key, existingData.size(), batchData.yBatch.size());
                     }
+
+                    // ========== 新增：剩余批次数据也需要提交给调度器 ==========
+                    java.util.function.Supplier<String> cellSupplier = () -> currentSampleCell;
+                    SmoothPushScheduler scheduler = state.getOrCreateScheduler(
+                            batchData.sampleId,
+                            batchData.count,
+                            batchData.digit,
+                            spectrumParameter.getLuminosity(),
+                            cellSupplier);
+                    // 剩余批次数据也需要通过调度器推送（注意：这里传入的是原始 yBatch，因为台阶消除已在 processBatchDataAsync 中处理过）
+                    scheduler.receiveBatch(batchData.xBatch, batchData.yBatch);
+
+                    // 更新已推送点数
+                    state.incrementPushedPoints(batchData.xBatch.size());
                 }
 
                 // 等待所有异步处理完成
@@ -1229,26 +1537,35 @@ public class ConciseSpectrumNewWebSocket {
                 // 调用新的存储方法，处理数据库的首次创建或追加
                 handleBatchDataStorage(batchData, isFirstBatch);
 
-                // 推送处理后的数据
-                pushBatchDataDirectly(batchData.xBatch, processedY,
-                        batchData.count, batchData.sampleId,
-                        batchData.parameter.getLuminosity(), batchData.digit);
+                java.util.function.Supplier<String> cellSupplier = () -> currentSampleCell;
+
+                SmoothPushScheduler scheduler = state.getOrCreateScheduler(
+                        batchData.sampleId,
+                        batchData.count,
+                        batchData.digit,
+                        batchData.parameter.getLuminosity(),
+                        cellSupplier);
+
+                // 将处理后的数据交给调度器（不直接推送）
+                scheduler.receiveBatch(batchData.xBatch, processedY);
 
                 // 更新已推送点数
                 if (state != null) {
                     state.incrementPushedPoints(batchData.xBatch.size());
                 }
 
-                log.info("批次数据推送完成，点数: " + batchData.xBatch.size());
+                log.info("批次数据已提交给匀速推送调度器，点数: " + batchData.xBatch.size());
             } catch (Exception e) {
                 log.error("处理批次数据异常", e);
-                // 如果发生异常，尝试推送原始数据
+                // 如果发生异常，尝试立即推送原始数据作为降级方案
                 try {
-                    pushBatchDataDirectly(batchData.xBatch, batchData.yBatch,
-                            batchData.count, batchData.sampleId,
-                            batchData.parameter.getLuminosity(), batchData.digit);
+                    if (batchData.xBatch != null && !batchData.xBatch.isEmpty()) {
+                        pushBatchDataDirectly(batchData.xBatch, batchData.yBatch,
+                                batchData.count, batchData.sampleId,
+                                batchData.parameter.getLuminosity(), batchData.digit);
+                    }
                 } catch (IOException ioException) {
-                    log.error("推送原始数据也失败", ioException);
+                    log.error("降级推送原始数据也失败", ioException);
                 }
             }
         });
@@ -1257,12 +1574,12 @@ public class ConciseSpectrumNewWebSocket {
     /**
      * 直接推送批次数据（不进行台阶消除）
      */
-    private void pushBatchDataDirectly(List<Double> xBatch,
-                                       List<Double> yBatch,
-                                       Integer count,
-                                       String sampleId,
-                                       String luminosity,
-                                       Integer digit) throws IOException {
+    private void  pushBatchDataDirectly(List<Double> xBatch,
+                                        List<Double> yBatch,
+                                        Integer count,
+                                        String sampleId,
+                                        String luminosity,
+                                        Integer digit) throws IOException {
         if (xBatch.isEmpty() || yBatch.isEmpty()) {
             return;
         }
@@ -1800,10 +2117,10 @@ public class ConciseSpectrumNewWebSocket {
      * 台阶消除
      */
     public List<Double> processAndSaveDataStep(FMeasureTask task,
-                                           List<Double> x,
-                                           List<Double> y,
-                                           FSpectrumParameter parameter,
-                                           String sampleId) {
+                                               List<Double> x,
+                                               List<Double> y,
+                                               FSpectrumParameter parameter,
+                                               String sampleId) {
 
         String luminosityMode = parameter.getLuminosity();
         boolean ladderCorrection = parameter.getLadderCorrection();
@@ -2131,7 +2448,7 @@ public class ConciseSpectrumNewWebSocket {
                 measureData.setSerialNumber(1);
                 measureData.setTaskId(taskId);
                 measureData.setSampleKey(sampleId);
-                measureData.setInstrumentData(JSON.toJSONString(changeParams));
+                measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
                 measureData.setOriginalCalculationData(JSON.toJSONString(result));
                 measureData.setMeasurementStartTime(startTime);
                 measureData.setMeasurementEndTime(endTime);
@@ -2182,12 +2499,13 @@ public class ConciseSpectrumNewWebSocket {
                                     .eq("sample_key", sampleId)
                                     .eq("serial_number", number)
                     );
-                    measureData.setInstrumentData(JSON.toJSONString(changeParams));
+                    measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
                     measureData.setOriginalCalculationData(JSON.toJSONString(result));
                     measureData.setMeasurementStartTime(startTime);
                     measureData.setMeasurementEndTime(endTime);
                     measureData.setIsSave("1");
                     traceDataService.saveOrUpdate(measureData);
+                    analysisData.setMeasureDataId(measureData.getId());
                     analysisData.setAnalysisParam(JSON.toJSONString(changeParams));
                     analysisData.setAnalysisResult(JSON.toJSONString(result));
                     if (peakValleys != null) {
@@ -2322,6 +2640,9 @@ public class ConciseSpectrumNewWebSocket {
         Constants.sendMeasureThread = null;
         Constants.startTime = null;
         Constants.endTime = null;
+        Constants.pushInterval = null;
+        Constants.firstDataTime = null;
+        Constants.secondDataTime = null;
     }
 
     // 返回测量结果的类

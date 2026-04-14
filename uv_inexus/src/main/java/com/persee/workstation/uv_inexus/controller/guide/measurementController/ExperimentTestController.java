@@ -9,6 +9,8 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
+import com.persee.workstation.uv_inexus.dto.concise.common.PermLogOccupyDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
 import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
@@ -20,6 +22,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.SampleHeadTemplateService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.measurementVo.MethodBaseVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.MethodNameAndIdVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleTemplateVO;
@@ -88,13 +91,30 @@ public class ExperimentTestController {
     public Result createMethodPort(@RequestBody MethodParamRequestDto methodDto) {
             return experimentTestService.createMethodPort(methodDto);
     }
-
+    @ButtonPermission(
+            description = "实验测试-向导模式-基本信息创建任务", // 操作描述
+            permissionMapping = "lumne=lumneDeleteMethod,quantity=quantityDeleteMethod,spectralScan=spectralScanDeleteMethod,timeScan=timeScanDeleteMethod" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-向导模式-{operateType}-基本信息创建任务",
+            recordParams = true
+    )
     @PostMapping("createTask")
     @ApiOperation("新建任务接口")
     public Result createTask(@RequestBody CreateTaskParamDto paramDto) {
         return experimentTestService.createTask(paramDto);
     }
 
+    @ButtonPermission(
+            description = "实验测试-向导模式-修改附件参数", // 操作描述
+            permissionMapping = "lumne=wizardModeLumneModifyAttachmentParams,quantity=wizardModeQuantityModifyAttachmentParams,spectralScan=wizardModeSpectralScanModifyAttachmentParams,timeScan=wizardModeTimeScanModifyAttachmentParams" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-向导模式-{operateType}-修改附件参数任务",
+            recordParams = true
+    )
     @PostMapping("changeSampleAttachmentInfo")
     @ApiOperation("修改样品池信息")
     public Result<Boolean> changeSampleAttachmentInfo(@RequestBody FSamplePoolInfoChangeDto dto) {
@@ -411,6 +431,23 @@ public class ExperimentTestController {
     @ApiOperation("任务终止")
     public Result taskTermination(@RequestParam String taskId) {
         return experimentTestService.taskTermination(taskId);
+    }
+
+
+    @ButtonPermission(
+            description = "实验测试-向导模式-测量", // 操作描述
+            permissionMapping = "lumne=wizardModeLumneMeasurement,quantity=wizardModeQuantityMeasurement,spectralScan=wizardModeSpectralScanScan,timeScan=wizardModeTimeScanScan" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-向导模式",
+            description = "执行实验测试-向导模式-{operateType}-测量操作",
+            recordParams = true
+    )
+    @GetMapping("checkOperatePermission")
+    @ApiOperation("校验操作类型权限（返回true/false）")
+    public Result<Boolean> checkOperatePermission(PermLogOccupyDTO requestDTO) {
+
+        return Result.ok(true);
     }
 
     @GetMapping("queryMethodByStandId")

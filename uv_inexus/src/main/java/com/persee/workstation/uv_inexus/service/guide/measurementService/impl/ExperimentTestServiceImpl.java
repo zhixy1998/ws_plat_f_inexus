@@ -25,6 +25,7 @@ import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConfig;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNumConfig;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.MappingParamEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
@@ -54,6 +55,7 @@ import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUser
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.SaveStateVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
@@ -3528,8 +3530,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
             vo.setStartWaveLength(param.getStartWaveLength() + "nm");
             vo.setEndWaveLength(param.getEndWaveLength() + "nm");
-            // (0.慢速 1.中速 2.快速 3.极快)
-            vo.setScanSpeed(param.getScanSpeed().equals("0") ? "慢速" : param.getScanSpeed().equals("1") ? "中速" : param.getScanSpeed().equals("2") ? "快速" : "极快");
+            DeviceConfParam scanSpeedByValue = MappingParamEnum.SCAN_SPEED.getScanSpeedByValue(param.getScanSpeed());
+            if (scanSpeedByValue != null) {
+                vo.setScanSpeed(scanSpeedByValue.getParamName());
+            }
+
             if (param.getRepetitionPattern().equals("单池重复")) {
                 vo.setTimeInterval(param.getTimeInterval());
                 vo.setIsRepeat(true);
@@ -4587,6 +4592,17 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Override
     public Result<List<MethodNameAndIdVO>> queryMethodNameAndId(String measureType, String projectId, String standardId) {
+
+        // 分开校验入参
+        if (measureType==null||measureType.equals("")){
+            return Result.fail("测量类型不能为空");
+        }
+        if (projectId==null||projectId.equals("")){
+            return Result.fail(YamlMessageSource.getMessageStatic("项目不能为空"));
+        }
+        if (standardId==null||standardId.equals("")){
+            return Result.fail(YamlMessageSource.getMessageStatic("参考标准不能为空"));
+        }
 
         LambdaQueryWrapper<TMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureMethod::getProjectItemKey, projectId)

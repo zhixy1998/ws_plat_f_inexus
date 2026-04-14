@@ -62,6 +62,7 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
@@ -1643,6 +1644,18 @@ public class RationServiceConciseImpl implements RationConciseService {
                     one.setIsSave(noSave);
                     fMeasureDataService.updateById(one);
                 }
+
+                FMeasureSample oldSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (oldSample != null) {
+                    String name = oldSample.getSampleName();
+                    String no = oldSample.getSampleNumber();
+                    LogManualUtil.saveDeleteLog(
+                            "实验测试-经典模式-定量测量-设置样品",
+                            "删除样品：编号["+no+"]，名称["+name+"]",
+                            oldSample,
+                            dto
+                    );
+                }
             }
             oldMap.putIfAbsent(specimen.getSpecimenKey(), specimen);
         }
@@ -1708,7 +1721,16 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
 
                 if (StringUtils.hasText(newSample.getId())) {
+                    FMeasureSample oldSample = fMeasureSampleService.getById(newSample.getId());
                     fMeasureSampleService.updateById(newSample);
+                    if (!oldSample.equals(newSample)) {
+                        LogManualUtil.saveUpdateLog(
+                                "实验测试-经典模式-定量测量-设置样品",
+                                oldSample,
+                                newSample,
+                                dto
+                        );
+                    }
                     FTaskSpecimen specimen = oldMap.get(newSample.getId());
                     specimen.setSampleKind(stand);
                     specimen.setSampleType(newSample.getSampleType());
@@ -1725,6 +1747,14 @@ public class RationServiceConciseImpl implements RationConciseService {
                     specimen.setSpecimenKey(newSample.getId());
                     oldMap.put(newSample.getId(), specimen);
                     taskSpecimen.add(specimen);
+
+                    String sampleName = StringUtils.hasText(newSample.getSampleName()) ? newSample.getSampleName() : "未命名样品";
+                    String sampleNo = StringUtils.hasText(newSample.getSampleNumber()) ? newSample.getSampleNumber() : "无编号";
+                    LogManualUtil.saveAddLog(
+                            "实验测试-经典模式-定量测量-设置样品",
+                            String.format("新增标准样品：编号[%s]，名称[%s]", sampleNo, sampleName),
+                            dto
+                    );
                 }
             }
         }
@@ -1755,7 +1785,16 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
 
             if (StringUtils.hasText(newSample.getId())) {
+                FMeasureSample oldSample = fMeasureSampleService.getById(newSample.getId());
                 fMeasureSampleService.updateById(newSample);
+                if (!oldSample.equals(newSample)) {
+                    LogManualUtil.saveUpdateLog(
+                            "实验测试-经典模式-定量测量-设置样品",
+                            oldSample,
+                            newSample,
+                            dto
+                    );
+                }
                 FTaskSpecimen specimen = oldMap.get(newSample.getId());
                 specimen.setSampleKind(unknown);
                 specimen.setSampleType(newSample.getSampleType());
@@ -1771,6 +1810,14 @@ public class RationServiceConciseImpl implements RationConciseService {
                 specimen.setSpecimenKey(newSample.getId());
                 oldMap.put(newSample.getId(), specimen);
                 taskSpecimen.add(specimen);
+
+                String sampleName = StringUtils.hasText(newSample.getSampleName()) ? newSample.getSampleName() : "未命名样品";
+                String sampleNo = StringUtils.hasText(newSample.getSampleNumber()) ? newSample.getSampleNumber() : "无编号";
+                LogManualUtil.saveAddLog(
+                        "实验测试-经典模式-定量测量-设置样品",
+                        String.format("新增未知样品：编号[%s]，名称[%s]", sampleNo, sampleName),
+                        dto
+                );
             }
         }
 
@@ -3361,19 +3408,25 @@ public class RationServiceConciseImpl implements RationConciseService {
         } else {
             attachment = r.getData();
 
+            if (attachment == null){
+                attachment = new FMeasureTaskAttachment();
+            }
+
             if (!StringUtils.hasText(attachment.getDataParam())) {
-                attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                fMeasureTaskAttachmentService.saveOrUpdate(attachment);
                 recount = true;
             } else {
                 FQueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
                 if (dataDTO.getDigit() == null || !dataDTO.getDigit().equals(digit)) {
                     recount = true;
+                } else if (dataDTO.getOtherDigit() == null || !dataDTO.getOtherDigit().equals(otherDigit)) {
+                    recount = true;
                 }
-                attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                fMeasureTaskAttachmentService.saveOrUpdate(attachment);
             }
         }
+        attachment.setTaskId(taskId);
+        attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+        fMeasureTaskAttachmentService.saveOrUpdate(attachment);
+
 
         if (recount) {
             changeStandSampleDataDigit(taskId, digit);

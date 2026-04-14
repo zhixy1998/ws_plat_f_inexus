@@ -51,6 +51,7 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
@@ -396,14 +397,16 @@ public class RationServiceImpl implements RationService {
                 vo.setTaskId(task.getId());
                 vo.setTaskName(task.getTaskName());
                 vo.setTaskStatus(task.getTaskStatus());
+
+                TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+                if (project != null) {
+                    vo.setProjectId(project.getId());
+                    vo.setProjectName(project.getProjectName());
+                }
+                return Result.ok(vo);
             }
 
-            TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
-            if (project != null) {
-                vo.setProjectId(project.getId());
-                vo.setProjectName(project.getProjectName());
-            }
-            return Result.ok(vo);
+
         }
         wrapper.clear();
         wrapper.eq(TMeasureTask::getTaskName, Constants.DEFAULT_TASK)
@@ -1559,6 +1562,18 @@ public class RationServiceImpl implements RationService {
                     one.setIsSave(createType);
                     tMeasureDataService.updateById(one);
                 }
+
+                TMeasureSample oldSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (oldSample != null) {
+                    String name = oldSample.getSampleName();
+                    String no = oldSample.getSampleNumber();
+                    LogManualUtil.saveDeleteLog(
+                            "实验测试-向导模式-定量测量-设置样品",
+                            "删除样品：编号["+no+"]，名称["+name+"]",
+                            oldSample,
+                            dto
+                    );
+                }
             }
             oldMap.put(specimen.getSpecimenKey(), specimen);
         }
@@ -1626,7 +1641,16 @@ public class RationServiceImpl implements RationService {
                 }
 
                 if (StringUtils.hasText(newSample.getId())) {
+                    TMeasureSample oldSample = tMeasureSampleService.getById(newSample.getId());
                     tMeasureSampleService.updateById(newSample);
+                    if (!oldSample.equals(newSample)) {
+                        LogManualUtil.saveUpdateLog(
+                                "实验测试-向导模式-定量测量-设置样品",
+                                oldSample,
+                                newSample,
+                                dto
+                        );
+                    }
                     TaskSpecimen specimen = oldMap.get(newSample.getId());
                     specimen.setSampleKind(stand);
                     specimen.setSampleType(newSample.getSampleType());
@@ -1642,6 +1666,14 @@ public class RationServiceImpl implements RationService {
                     specimen.setSpecimenKey(newSample.getId());
                     oldMap.put(newSample.getId(), specimen);
                     taskSpecimen.add(specimen);
+
+                    String sampleName = StringUtils.hasText(newSample.getSampleName()) ? newSample.getSampleName() : "未命名样品";
+                    String sampleNo = StringUtils.hasText(newSample.getSampleNumber()) ? newSample.getSampleNumber() : "无编号";
+                    LogManualUtil.saveAddLog(
+                            "实验测试-向导模式-定量测量-设置样品",
+                            String.format("新增标准样品：编号[%s]，名称[%s]", sampleNo, sampleName),
+                            dto
+                    );
                 }
             }
         }
@@ -1674,8 +1706,16 @@ public class RationServiceImpl implements RationService {
             }
 
             if (StringUtils.hasText(newSample.getId())) {
+                TMeasureSample oldSample = tMeasureSampleService.getById(newSample.getId());
                 tMeasureSampleService.updateById(newSample);
-
+                if (!oldSample.equals(newSample)) {
+                    LogManualUtil.saveUpdateLog(
+                            "实验测试-向导模式-定量测量-设置样品",
+                            oldSample,
+                            newSample,
+                            dto
+                    );
+                }
                 TaskSpecimen specimen = oldMap.get(newSample.getId());
                 specimen.setSampleKind(unknown);
                 specimen.setSampleType(newSample.getSampleType());
@@ -1691,6 +1731,14 @@ public class RationServiceImpl implements RationService {
                 specimen.setSpecimenKey(newSample.getId());
                 oldMap.put(newSample.getId(), specimen);
                 taskSpecimen.add(specimen);
+
+                String sampleName = StringUtils.hasText(newSample.getSampleName()) ? newSample.getSampleName() : "未命名样品";
+                String sampleNo = StringUtils.hasText(newSample.getSampleNumber()) ? newSample.getSampleNumber() : "无编号";
+                LogManualUtil.saveAddLog(
+                        "实验测试-向导模式-定量测量-设置样品",
+                        String.format("新增未知样品：编号[%s]，名称[%s]", sampleNo, sampleName),
+                        dto
+                );
             }
         }
 
@@ -2763,25 +2811,24 @@ public class RationServiceImpl implements RationService {
         } else {
             attachment = r.getData();
 
+            if (attachment == null){
+                attachment = new TMeasureTaskAttachment();
+            }
+
             if (!StringUtils.hasText(attachment.getDataParam())) {
-                attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                taskAttachmentService.saveOrUpdate(attachment);
                 recount = true;
             } else {
                 QueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
                 if (dataDTO.getDigit() == null || !dataDTO.getDigit().equals(digit)) {
                     recount = true;
-
-                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                    taskAttachmentService.saveOrUpdate(attachment);
                 } else if (dataDTO.getOtherDigit() == null || !dataDTO.getOtherDigit().equals(otherDigit)) {
                     recount = true;
-
-                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                    taskAttachmentService.saveOrUpdate(attachment);
                 }
             }
         }
+        attachment.setTaskId(taskId);
+        attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+        taskAttachmentService.saveOrUpdate(attachment);
 
         if (recount) {
             changeStandSampleDataDigit(taskId, digit);

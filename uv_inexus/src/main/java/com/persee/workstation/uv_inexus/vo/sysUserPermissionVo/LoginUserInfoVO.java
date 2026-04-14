@@ -48,4 +48,10 @@ public class LoginUserInfoVO {
 
     @ApiModelProperty("角色编码")
     private String roleCode;
+    
+    @ApiModelProperty("角色ID")
+    private Integer roleId;
+    
+    @ApiModelProperty("用户所在的小组ID列表")
+    private java.util.List<String> groupIds;
 }

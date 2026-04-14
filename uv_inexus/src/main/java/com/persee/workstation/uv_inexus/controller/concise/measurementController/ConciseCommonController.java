@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddSampleDTO;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.DatabaseEnum;
@@ -18,6 +19,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
@@ -25,7 +27,9 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveD
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -86,17 +90,34 @@ public class ConciseCommonController {
     public Result queryMethodParameter(@RequestParam String methodId) {
         return conciseCommonService.queryMethodParameter(methodId);
     }
-
+    @ButtonPermission(
+            description = "实验测试-经典模式-重命名方法名称", // 操作描述
+            permissionMapping = "lumne=lumneRenameMethodName,quantity=quantityRenameMethodName,spectralScan=spectralScanRenameMethodName,timeScan=timeScanRenameMethodName" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-经典模式-{operateType}-重命名方法名称操作",
+            recordParams = true
+    )
     @PostMapping("updateMethod")
     @ApiOperation("修改方法名称")
     public Result<String> updateMethod(@RequestBody UpdateMethodDto updateMethodDto) {
         return conciseCommonService.updateMethod(updateMethodDto);
     }
-
+    @ButtonPermission(
+            description = "实验测试-经典模式-删除历史方法数据", // 操作描述
+            permissionMapping = "lumne=lumneDeleteMethod,quantity=quantityDeleteMethod,spectralScan=spectralScanDeleteMethod,timeScan=timeScanDeleteMethod" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-经典模式-{operateType}-删除历史方法数据操作",
+            recordParams = true
+    )
     @GetMapping("delMethod")
     @ApiOperation("删除方法")
-    public Result<String> delMethod(@RequestParam("methodId") String methodId) {
-        return conciseCommonService.delMethod(methodId);
+    public Result delMethod(PermLogOccupyDTO requestDTO) {
+        // 调用服务层，传递需要的参数
+        return conciseCommonService.delTask(requestDTO.getMethodId());
     }
 
     @PostMapping("queryHistoryTask")
@@ -104,19 +125,45 @@ public class ConciseCommonController {
     public Result<Page<FMeasureTaskDTO>> queryHistoryTask(@RequestBody SelectTaskDto selectTaskDto) {
         return conciseCommonService.queryHistoryTask(selectTaskDto);
     }
-
+    @ButtonPermission(
+            description = "实验测试-经典模式-重命名历史文件名称", // 操作描述
+            permissionMapping = "lumne=lumneRenameMethodName,quantity=quantityRenameDataName,spectralScan=spectralScanRenameDataName,timeScan=timeScanRenameDataName" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-经典模式-{operateType}-重命名历史文件名称操作",
+            recordParams = true
+    )
     @PostMapping("updateTask")
     @ApiOperation("修改任务名称")
     public Result updateTask(@RequestBody UpdateTaskDto updateTaskDto) {
         return conciseCommonService.updateTask(updateTaskDto);
     }
-
+    @ButtonPermission(
+            description = "实验测试-经典模式-删除历史文件数据", // 操作描述
+            permissionMapping = "lumne=lumneDeleteData,quantity=quantityDeleteData,spectralScan=spectralScanDeleteData,timeScan=timeScanDeleteData" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-经典模式-{operateType}-删除历史文件数据操作",
+            recordParams = true
+    )
     @GetMapping("delTask")
     @ApiOperation("删除历史文件")
-    public Result delTask(@RequestParam("taskId") String taskId) {
-        return conciseCommonService.delTask(taskId);
+    public Result delTask(PermLogOccupyDTO requestDTO) {
+        // 调用服务层，传递需要的参数
+        return conciseCommonService.delTask(requestDTO.getTaskId());
     }
 
+    @ButtonPermission(
+            description = "实验测试-经典模式-光度测量-设置样品", // 操作描述
+            permissionMapping = "lumne=lumneModifyAttachmentParams,quantity=quantityModifyMethodParams,spectralScan=spectralScanModifyMethodParams,timeScan=timeScanModifyAttachmentParams" // 自定义操作类型→驼峰权限标识
+    )
+    @OperateLog(
+            module = "实验测试-经典模式",
+            description = "执行实验测试-经典模式-{operateType}-修改方法参数操作",
+            recordParams = true
+    )
     @PostMapping("changeSampleAttachmentInfo")
     @ApiOperation("修改样品池信息")
     public Result<Boolean> changeSampleAttachmentInfo(@RequestBody FSamplePoolInfoChangeDto dto) {
@@ -233,6 +280,42 @@ public class ConciseCommonController {
                                       @RequestParam String deviceSerialNumber,
                                       @RequestParam String measureType) {
         return conciseCommonService.setUpParametersPort(taskId,deviceSerialNumber,measureType);
+    }
+
+    @ButtonPermission(
+            description = "通用websocket前置判断接口",
+            permissionMapping =
+                    "lumne=lumneMeasurement," +
+                    "quantity=quantityMeasurement," +
+                    "spectralScan=spectralScanScan," +
+                    "timeScan=timeScanScan," +
+                    "spectralScanBaseline=spectralScanBaseline," +
+                    "wmLumne=wizardModeLumneMeasurement," +
+                    "wmQuantity=wizardModeQuantityMeasurement," +
+                    "wmSpectralScan=wizardModeSpectralScanScan," +
+                    "wmTimeScan=wizardModeTimeScanScan," +
+                    "spectralScanBaseline=spectralScanBaseline," +
+                    "timeScanBaseline=timeScanBaseline," +
+                    "wmSpectralScanBaseline=wizardModeSpectralScanBaseline," +
+                    "wmTimeScanBaseline=wizardModeTimeScanBaseline," +
+                    "lumnePreviewReport=lumnePreviewReport," +
+                    "quantityPreviewReport=quantityPreviewReport," +
+                    "spectralPreviewReport=spectralPreviewReport," +
+                    "timeScanPreviewReport=timeScanPreviewReport," +
+                    "wmlumneGenerationReport=wmlumneGenerationReport," +
+                    "wmquantityGenerationReport=wmquantityGenerationReport," +
+                    "wmspectralGenerationReport=wmspectralGenerationReport," +
+                    "wmtimeScanGenerationReport=wmtimeScanGenerationReport,"
+    )
+    @OperateLog(
+            module = "实验测试-经典模式或向导模式",
+            description = "执行实验测试-{operateTypeExt}-{operateType}-操作",
+            recordParams = true
+    )
+    @GetMapping("checkOperatePermission")
+    @ApiOperation("校验操作类型权限（返回true/false）")
+    public Result<Boolean> checkOperatePermission(PermLogOccupyDTO requestDTO) {
+        return Result.ok(true);
     }
 
     @PostMapping("queryMultipleTaskSample")

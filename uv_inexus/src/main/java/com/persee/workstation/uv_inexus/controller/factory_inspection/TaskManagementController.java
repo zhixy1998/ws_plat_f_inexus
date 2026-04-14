@@ -33,7 +33,7 @@ public class TaskManagementController {
     @Autowired
     private TaskManagementService taskManagementService;
     @RequestMapping("/list")
-    public Result getList(@RequestParam(required = false) String query, @RequestParam String updateBy,@RequestParam Integer pageNum, @RequestParam Integer pageSize) {
+    public Result getList(@RequestParam(required = false) String query, @RequestParam String updateBy,@RequestParam Integer pageNum, @RequestParam Integer pageSize,@RequestParam(required = false) String taskType) {
         TaskMgrQueryDto taskMgrQueryDto = new TaskMgrQueryDto();
         taskMgrQueryDto.setQuery(query);
         taskMgrQueryDto.setUpdateBy(updateBy);
@@ -41,7 +41,7 @@ public class TaskManagementController {
         taskMgrQueryDto.setPageSize(pageSize);
 
 
-        return taskManagementService.getList(taskMgrQueryDto);
+        return taskManagementService.getList(taskMgrQueryDto,taskType);
     }
     /**
      * 保存当前任务的标准物质信息

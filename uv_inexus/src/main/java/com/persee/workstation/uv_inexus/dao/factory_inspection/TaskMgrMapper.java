@@ -18,5 +18,5 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface TaskMgrMapper extends BaseMapper<TaskManagement> {
 
-    IPage<TaskManagement> getMyPage(IPage<TaskManagement> page, @Param("query") String query, @Param("updateBy") String updateBy);
+    IPage<TaskManagement> getMyPage(IPage<TaskManagement> page, @Param("query") String query, @Param("updateBy") String updateBy,@Param("taskType") String taskType);
 }

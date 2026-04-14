@@ -56,6 +56,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
@@ -974,6 +975,18 @@ public class SpectrumServiceImpl implements SpectrumService {
                 if (specimen != null) {
                     specimen.setDeleteType(deleteType);
 
+                    TMeasureSample oldSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                    if (oldSample != null) {
+                        String name = oldSample.getSampleName();
+                        String no = oldSample.getSampleNumber();
+                        LogManualUtil.saveDeleteLog(
+                                "实验测试-向导模式-光谱扫描-设置样品",
+                                "删除样品：编号["+no+"]，名称["+name+"]",
+                                oldSample,
+                                dto
+                        );
+                    }
+
                     // 根据重复模式执行不同的删除逻辑
                     if (repeatMode != null && repeatMode == 1) {
                         // 重复模式：删除所有相关的测量数据和分析数据
@@ -1044,7 +1057,16 @@ public class SpectrumServiceImpl implements SpectrumService {
 
                 if (StringUtils.hasText(newSample.getId())) {
                     // 更新现有样品
+                    TMeasureSample oldSample = tMeasureSampleService.getById(newSample.getId());
                     tMeasureSampleService.updateById(newSample);
+                    if (!oldSample.equals(newSample)) {
+                        LogManualUtil.saveUpdateLog(
+                                "实验测试-向导模式-光谱扫描-设置样品",
+                                oldSample,
+                                newSample,
+                                dto
+                        );
+                    }
                     TaskSpecimen specimen = oldMap.get(newSample.getId());
                     if (specimen != null) {
                         specimen.setSampleType(newSample.getSampleType());
@@ -1061,6 +1083,14 @@ public class SpectrumServiceImpl implements SpectrumService {
                     specimen.setSpecimenKey(newSample.getId());
                     oldMap.put(newSample.getId(), specimen);
                     taskSpecimen.add(specimen);
+
+                    String sampleName = StringUtils.hasText(newSample.getSampleName()) ? newSample.getSampleName() : "未命名样品";
+                    String sampleNo = StringUtils.hasText(newSample.getSampleNumber()) ? newSample.getSampleNumber() : "无编号";
+                    LogManualUtil.saveAddLog(
+                            "实验测试-向导模式-光谱扫描-设置样品",
+                            String.format("新增样品：编号[%s]，名称[%s]", sampleNo, sampleName),
+                            dto
+                    );
                 }
             }
         }

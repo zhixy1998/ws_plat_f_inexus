@@ -47,4 +47,8 @@ public @interface OperateLog {
      * 功能类型：1-收费功能，2-非收费功能（默认2）
      */
     int logType() default 2;
+
+    boolean compare() default false;
+
+    boolean ignore() default false; // 关闭基本日志，走详情日志
 }

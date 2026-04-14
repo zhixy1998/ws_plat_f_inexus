@@ -75,7 +75,7 @@ mybatis:
 device:
   default:
     sendPort: 5000
-    receivePort: 6000
+    receivePort: 6500
     machineIP: 169.254.110.67
     T600xmlPath: "file/T600.1.xml"
     T800xmlPath: "file/T800新.1.xml"
@@ -93,7 +93,7 @@ python-code:
 #  baseUrl: http://192.168.61.82:8002/
 #  baseUrl: http://192.168.61.48:8000/
 #  baseUrl: http://localhost:10029/
-  baseUrl: http://192.168.61.82:42082/
+  baseUrl: http://localhost:42082/
 
 staircase-elimination:
   data-count: 10

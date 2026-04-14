@@ -13,6 +13,9 @@ import java.util.List;
 
 import javax.validation.Valid;
 
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogContext;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -61,16 +64,44 @@ public class GroupController {
         return sysGroupService.getGroupById(id);
     }
 
+    @ButtonPermission("catEditUserAddGroup")
+    @OperateLog(module = "用户管理-用户权限管理", description = "执行用户管理-用户权限管理-新增小组操作", recordParams = true)
     @PostMapping("/addGroup")
     @ApiOperation("新增小组")
     public Result<String> addGroup(@RequestBody @Valid GroupSaveDTO saveDTO) {
         return sysGroupService.addGroup(saveDTO);
     }
 
+//    @ButtonPermission("catEditUserEditGroupNameInfo")
+//    @OperateLog(module = "用户管理-用户权限管理", description = "执行用户管理-用户权限管理-修改小组信息操作", recordParams = true)
+//    @PutMapping("/updateGroup")
+//    @ApiOperation("修改小组")
+//    public Result<String> updateGroup(@RequestBody @Valid GroupSaveDTO saveDTO) {
+//        return sysGroupService.updateGroup(saveDTO);
+//    }
+
+    @ButtonPermission("catEditUserEditGroupNameInfo")
+    @OperateLog(
+            module = "用户管理-用户权限管理",
+            description = "执行用户管理-用户权限管理-修改小组信息操作",
+            recordParams = true,
+            compare = true  // 开启对比
+    )
     @PutMapping("/updateGroup")
     @ApiOperation("修改小组")
     public Result<String> updateGroup(@RequestBody @Valid GroupSaveDTO saveDTO) {
-        return sysGroupService.updateGroup(saveDTO);
+
+        // 1. 查询【修改前】数据
+        SysGroupPO oldGroup = sysGroupService.getById(saveDTO.getId());
+
+        // 2. 执行修改
+        Result<String> result = sysGroupService.updateGroup(saveDTO);
+
+        // 3. 放入日志上下文
+        LogContext.setOldData(oldGroup);
+        LogContext.setNewData(saveDTO);
+
+        return result;
     }
 
     @PostMapping("/deleteBatch")
@@ -79,6 +110,8 @@ public class GroupController {
         return sysGroupService.deleteBatch(ids);
     }
 
+    @ButtonPermission("catEditUserDeleteGroup")
+    @OperateLog(module = "用户管理-用户权限管理", description = "执行用户管理-用户权限管理-修改小组信息操作", recordParams = true)
     @DeleteMapping("/{id}")
     @ApiOperation("根据ID删除单个小组")
     public Result<String> deleteById(@PathVariable String id) {

@@ -10,11 +10,10 @@
 package com.persee.workstation.uv_inexus.service.guide.instrumentService;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.persee.workstation.uv_inexus.dto.messageDto.MessageDeleteDTO;
 import com.persee.workstation.uv_inexus.dto.messageDto.MessageInfoQueryDTO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.MessageInfoPO;
 import com.persee.workstation.uv_inexus.vo.messageVo.MessageInfoVO;
-
-import java.util.List;
 
 public interface MessageInfoService {
 
@@ -36,7 +35,7 @@ public interface MessageInfoService {
     /**
      * 批量删除消息
      */
-    Boolean deleteMessageInfoBatch(List<String> messageIds);
+    Boolean deleteMessageInfoBatch(MessageDeleteDTO dto);
 
     /**
      * 保存信息

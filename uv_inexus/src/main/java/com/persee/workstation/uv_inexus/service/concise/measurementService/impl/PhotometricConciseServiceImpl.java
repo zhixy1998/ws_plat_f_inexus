@@ -49,6 +49,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCountDataInfo;
@@ -1181,20 +1182,31 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
-        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        List<FTaskSpecimen> taskSpecimen = new ArrayList<>();
         if (StringUtils.hasText(task.getSampleKey())) {
             taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-
-        }
-        if (taskSpecimen == null) {
-            taskSpecimen = new ArrayList<>();
         }
 
         Map<String, FTaskSpecimen> oldMap = new HashMap<>();
-
         for (FTaskSpecimen specimen : taskSpecimen) {
             if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
                 specimen.setDeleteType(deleteType);
+
+                // ==========================================
+                //  删除样品 → 记录删除日志
+                // ==========================================
+                FMeasureSample oldSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (oldSample != null) {
+                    String name = oldSample.getSampleName();
+                    String no = oldSample.getSampleNumber();
+                    LogManualUtil.saveDeleteLog(
+                            "实验测试-经典模式-光度测量-设置样品",
+                            "删除样品：编号["+no+"]，名称["+name+"]",
+                            oldSample,
+                            dto
+                    );
+                }
+
                 LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(FMeasureData::getSampleKey, specimen.getSpecimenKey())
                         .eq(FMeasureData::getTaskId, task.getId())
@@ -1262,18 +1274,41 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 newSample.setNewColData(JSON.toJSONString(newColData));
             }
 
+            // ==========================================
+            // 修改样品 → 记录修改日志
+            // ==========================================
             if (StringUtils.hasText(newSample.getId())) {
+                FMeasureSample oldSample = fMeasureSampleService.getById(newSample.getId());
                 fMeasureSampleService.updateById(newSample);
-                FTaskSpecimen specimen = oldMap.get(newSample.getId());
-                specimen.setSampleType(newSample.getSampleType());
-                oldMap.put(newSample.getId(), specimen);
-            } else {
+
+                if (!oldSample.equals(newSample)) { // 重写FMeasureSample的equals方法，按业务字段对比
+                    LogManualUtil.saveUpdateLog(
+                            "实验测试-经典模式-光度测量-设置样品",
+                            oldSample,
+                            newSample,
+                            dto
+                    );
+                }
+            }
+            // ==========================================
+            // 新增样品 → 记录新增日志（修复版）
+            // ==========================================
+            else {
                 FTaskSpecimen specimen = new FTaskSpecimen();
                 specimen.setDeleteType(createType);
                 specimen.setIsTested(noTested);
                 specimen.setSampleType(newSample.getSampleType());
                 log.info("新增的样品：{}", newSample);
                 fMeasureSampleService.save(newSample);
+
+                String sampleName = StringUtils.hasText(newSample.getSampleName()) ? newSample.getSampleName() : "未命名样品";
+                String sampleNo = StringUtils.hasText(newSample.getSampleNumber()) ? newSample.getSampleNumber() : "无编号";
+                LogManualUtil.saveAddLog(
+                        "实验测试-经典模式-光度测量-设置样品",
+                        String.format("新增样品：编号[%s]，名称[%s]", sampleNo, sampleName),
+                        dto
+                );
+
                 specimen.setSpecimenKey(newSample.getId());
                 oldMap.put(newSample.getId(), specimen);
                 taskSpecimen.add(specimen);

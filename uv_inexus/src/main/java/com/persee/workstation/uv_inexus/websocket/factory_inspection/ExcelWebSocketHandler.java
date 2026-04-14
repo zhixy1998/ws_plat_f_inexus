@@ -325,7 +325,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
     private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
-        log.info("我被调用了" + payload.toString());
+//        log.info("我被调用了" + payload.toString());
         try {
             if (originalSession != null && !isSessionValid(originalSession)) {
                 // 【修改】克隆 payload 对象，避免修改传入的对象导致线程安全问题
@@ -717,6 +717,25 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             statusMessage.put("isMeasuring", isTaskMeasuring(taskId));
             sendToActiveSession(session, taskId, statusMessage);
 
+            // 发送当前检测项信息
+            String currentMeasureItem = getCurrentMeasureItem(taskId);
+            if (StringUtils.isNotBlank(currentMeasureItem)) {
+                ExcelDataAsset asset = dataAssetService.getById(currentMeasureItem);
+                if (asset != null) {
+                    Map<String, Object> dataMap = asset.getDataMap();
+                    Integer repeatCount = MapUtils.getInteger(dataMap, REPEAT_COUNT.getDescription());
+
+                    JSONObject currentItemMessage = new JSONObject();
+                    JSONObject currentItemData = new JSONObject();
+                    currentItemData.put("itemId", currentMeasureItem);
+                    currentItemData.put("checkCount", repeatCount != null ? repeatCount : 1);
+                    currentItemMessage.put("currentItem", currentItemData);
+
+                    sendToActiveSession(session, taskId, currentItemMessage);
+                    log.info("已发送当前检测项信息，任务ID: {}, 检测项ID: {}", taskId, currentMeasureItem);
+                }
+            }
+
             //如果是选择过标准物的任务，则需要修改工作簿的特征值和标准值
             LambdaQueryWrapper<TaskExecutionDetail> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(TaskExecutionDetail::getTaskId, taskId);
@@ -781,6 +800,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 String s1 = deviceInfoService.queryDeviceTypeBySerialNumber(taskManagement.getOperationInstrument());
                 taskAndVersionMap.put(taskId, s1);
             }
+            TaskManagement management = new TaskManagement();
+            management.setId(taskId);
+            management.setUpdated(LocalDateTime.now());
+            boolean b = taskService.updateById(management);
             super.afterConnectionEstablished(session);
         } catch (Exception e) {
             log.error("WebSocket连接建立失败", e);
@@ -1078,9 +1101,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(management1.getOperationInstrument());
 
-            if (vo.getSamplePoolNum() == 1) {
+            if (vo.getSamplePoolNum() <1) {
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", "单样品池不支持自动测量！！！");
+                jsonObject.put("error", "自动测量仅支持多联样品池！！！");
                 sendToActiveSession(null, taskId, jsonObject);
                 return;
             }
@@ -3128,6 +3151,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
         }
         try {
+            if (halt.get(taskId)) {
+                map.put("line", list);
+                return R.fail(map);
+            }
             res = analysisProcess(xList, yList, bigDecimalList, methodType);
         } catch (Exception e) {
             log.error("任务执行失败：", e);
@@ -3533,7 +3560,26 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            // 使用 Future 实现可中断的异步调用
+            java.util.concurrent.Future<ResponseEntity<Map>> future = taskExecutor.submit(() ->
+                    restTemplate.postForEntity(url, request, Map.class)
+            );
+
+            // 设置超时时间（例如 30 秒）
+            ResponseEntity<Map> response;
+            try {
+                response = future.get(30, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (java.util.concurrent.TimeoutException e) {
+                future.cancel(true);
+                throw new BusinessException("算法服务调用超时");
+            } catch (java.util.concurrent.ExecutionException e) {
+                throw new BusinessException("算法服务调用失败: " + e.getCause().getMessage());
+            } catch (InterruptedException e) {
+                future.cancel(true);
+                Thread.currentThread().interrupt();
+                throw new BusinessException("算法服务调用被中断");
+            }
+
             Map<String, Object> responseBody = response.getBody();
 
             // 检查响应体是否为空
@@ -3550,12 +3596,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
             return responseBody;
 
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("算法服务异常", e);
-            // 兜底异常（包括上面 throw 的 RuntimeException）
             throw new BusinessException("算法服务异常,请重启服务");
         }
     }
+
 
 
     // 发送缓存的波形图数据

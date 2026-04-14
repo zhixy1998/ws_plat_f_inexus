@@ -10,12 +10,14 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
 import com.alibaba.fastjson2.JSON;
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.SpectrumService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodChangeCheckVO;
 import io.swagger.annotations.ApiModel;
@@ -67,6 +69,8 @@ public class SpectrumController {
         return spectrumService.queryProjectAllMethods(projectId, measureForm, updateBy);
     }
 
+    @ButtonPermission("wizardModeSpectralScanApplyMethod")
+    @OperateLog(module = "实验测试-向导模式-光谱测量-修改方法参数", description = "执行实验测试-向导模式-光谱测量-修改方法参数操作", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
     public Result<MethodChangeCheckVO> checkParam(@RequestBody SpectrumMethodParamsDto methodParam) {
@@ -79,6 +83,8 @@ public class SpectrumController {
         return spectrumService.queryMethodParameter(methodId);
     }
 
+    @ButtonPermission("wizardModeSpectralScanModifyMethodParams")
+    @OperateLog(module = "实验测试-向导模式-定量测量-应用方法", description = "执行实验测试-向导模式-定量测量-应用方法操作", recordParams = true)
     @PostMapping("saveMethodParameter")
     @ApiOperation("方法参数修改接口")
     public Result saveMethodParameter(@RequestBody SpectralMethodParameterDto methodDto) {
@@ -150,6 +156,17 @@ public class SpectrumController {
         return spectrumService.querySampleList(taskId);
     }
 
+//    @ButtonPermission(
+//            description = "实验测试-向导模式-光谱扫描-设置样品", // 操作描述
+//            permissionMapping = "add=spectralScanSetSample,edit=spectralScanModifySampleInformation,delete=spectralScanDeleteSample" // 自定义操作类型→驼峰权限标识
+//    )
+//    @OperateLog(
+//            module = "实验测试-向导模式-光谱扫描-设置样品",
+//            description = "执行实验测试-经典模式-光谱扫描-{operateType}样品操作",
+//            recordParams = true
+//    )
+    @ButtonPermission("spectralScanSetSample")
+    @OperateLog(module = "实验测试-向导模式-光谱扫描-设置样品", description = "执行实验测试-向导模式-光谱扫描-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSamplePort(@RequestBody AddOrDeleteSampleDTO paramDto) {

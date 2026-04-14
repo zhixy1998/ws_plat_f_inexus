@@ -21,7 +21,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -425,12 +428,25 @@ public class MessageOnTimeDeal {
                                         sp.setEsResult(esResult);
                                         sp.setErResult(erResult);
 
-                                        log.info("[光谱计算] wl={}, Abs={}, T%={}, Es={}, Er={}",
+                                        log.info("[光谱计算] wl={}, Abs={}, T%={}, Es={}, Er={} , Ms{}",
                                                 sp.getWavelength(),
                                                 absResult != null ? absResult.getAbs() : "-",
                                                 tResult != null ? tResult.getTPercent() : "-",
                                                 esResult != null ? esResult.getEs() : "-",
-                                                erResult != null ? erResult.getEr() : "-");
+                                                erResult != null ? erResult.getEr() : "-",
+                                                System.currentTimeMillis());
+
+                                        if (Constants.firstDataTime != null && Constants.secondDataTime != null){
+                                            Constants.pushInterval = (Constants.secondDataTime - Constants.firstDataTime) / 1000.0;
+                                            log.info("计算得到推送间隔: {} 秒", Constants.pushInterval);
+                                        }
+
+                                        if (Constants.firstDataTime != null && Constants.secondDataTime == null){
+                                            Constants.secondDataTime=System.currentTimeMillis();
+                                        }
+                                        if (Constants.firstDataTime == null){
+                                            Constants.firstDataTime=System.currentTimeMillis();
+                                        }
                                     } else {
                                         sp.setBaselineRsd(fittedParam);
                                         deviceManager.addZeroResult(deviceId,String.valueOf(sp.getWavelength()),fittedParam);
@@ -481,6 +497,18 @@ public class MessageOnTimeDeal {
                                         tResult != null ? tResult.getTPercent() : "-",
                                         esResult != null ? esResult.getEs() : "-",
                                         erResult != null ? erResult.getEr() : "-");
+
+                                if (Constants.firstDataTime != null && Constants.secondDataTime != null){
+                                    Constants.pushInterval = (Constants.secondDataTime - Constants.firstDataTime) / 1000.0;
+                                    log.info("计算得到推送间隔: {} 秒", Constants.pushInterval);
+                                }
+
+                                if (Constants.firstDataTime != null && Constants.secondDataTime == null){
+                                    Constants.secondDataTime=System.currentTimeMillis();
+                                }
+                                if (Constants.firstDataTime == null){
+                                    Constants.firstDataTime=System.currentTimeMillis();
+                                }
 
                             } else {
                                 sp.setBaselineRsd(temp);

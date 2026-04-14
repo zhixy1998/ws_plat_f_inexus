@@ -1,0 +1,1 @@
+ALTER TABLE t_sys_operate_log MODIFY COLUMN result text COMMENT '返回结果（JSON格式，仅recordResult=true时记录）';

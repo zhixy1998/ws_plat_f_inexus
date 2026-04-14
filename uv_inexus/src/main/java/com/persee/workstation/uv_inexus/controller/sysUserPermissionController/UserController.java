@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
 import com.alibaba.fastjson2.JSONArray;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PasswordUpdateDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserQueryDTO;
@@ -56,13 +57,16 @@ public class UserController {
         return sysUserService.getUserById(id);
     }
 
+    @ButtonPermission("catEditUserAddUser")
+    @OperateLog(module = "用户管理-用户权限管理-新增用户", description = "执行用户管理-用户权限管理-新增用户操作", recordParams = true)
     @PostMapping("/addUser")
     @ApiOperation("新增用户")
-    @OperateLog(module = "用户管理", description = "新增用户", recordParams = true)
     public Result<String> addUser(@RequestBody @Valid UserSaveDTO saveDTO) {
         return sysUserService.addUser(saveDTO);
     }
 
+    @ButtonPermission("catEditUserDeleteGroup")
+    @OperateLog(module = "用户管理-用户权限管理-新增角色", description = "执行用户管理-用户权限管理-新增角色操作", recordParams = true)
     @PutMapping("/updateUser")
     @ApiOperation("修改用户")
     public Result<String> updateUser(@RequestBody @Valid UserSaveDTO saveDTO) {
@@ -72,6 +76,8 @@ public class UserController {
     /**
      * 根据ID删除单个用户
      */
+    @ButtonPermission("catEditUserDeleteOrDisableUser")
+    @OperateLog(module = "用户管理-用户权限管理-删除用户", description = "执行用户管理-用户权限管理-删除用户操作", recordParams = true)
     @DeleteMapping("/{id}")  // 使用HTTP DELETE方法，符合RESTful风格
     @ApiOperation("根据ID删除单个用户")
     public Result<String> deleteById(@PathVariable String id) {

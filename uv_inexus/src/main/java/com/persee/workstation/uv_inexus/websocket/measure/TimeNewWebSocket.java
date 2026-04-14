@@ -301,6 +301,33 @@ public class TimeNewWebSocket {
                 }
             }
 
+            // 根据序列号查询对应的附件配置表信息
+            QueryWrapper<SamplePoolConfigPO> wrapper1 = new QueryWrapper<>();
+            wrapper1.eq("device_serial_number", context.deviceSerialNumber);
+            SamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper1);
+            if (configPO == null) {
+                sendError(context.deviceSerialNumber,  "没有找到对应的附件配置信息");
+                return;
+            }
+            if (configPO.getIsAutoChangePool()) {
+                SetParam setParam = new SetParam();
+                setParam.setCellPos(Integer.parseInt(Constants.PARAM_ONE));
+                boolean status = timeSweepService.setInstrumentParameters(context.deviceSerialNumber, setParam);
+                if (!status) {
+                    sendError(context.deviceSerialNumber,  "设置出错");
+                    return;
+                }
+                Boolean b = fSamplePoolConfigService.updateCurrentPoolNum(context.deviceSerialNumber, Integer.parseInt(Constants.PARAM_ONE), updateBy);
+                if (b) {
+                    log.info("自动切换样品池恢复样品池到1号池");
+                    JSONObject object = new JSONObject();
+                    object.put("currentPoolNum", Constants.PARAM_ONE);
+                    sendMessage(deviceSerialNumber, object);
+                }else{
+                    log.info("自动切换样品池恢复样品池到1号池失败");
+                }
+            }
+
             // 只有在正常完成（没有被停止）的情况下才发送"扫描成功"
             if (Constants.measureStopStatus.get(session.getDeviceSerialNumber())) {
                 JSONObject object = new JSONObject();
@@ -343,16 +370,6 @@ public class TimeNewWebSocket {
                                           TimeSweepParamter param, TaskSpecimen sample, String updateBy) {
         context.clearData();
         context.currentSampleId = sample.getSpecimenKey();
-
-        // 获取当前样品的下一个序列号
-        TMeasureData lastData = tMeasureDataService.getOne(
-                new QueryWrapper<TMeasureData>()
-                        .eq("task_id", context.task.getId())
-                        .eq("sample_key", sample.getSpecimenKey())
-                        .orderByDesc("serial_number")
-                        .last("LIMIT 1")
-        );
-        context.currentSerialNumber = lastData != null ? lastData.getSerialNumber() + 1 : 1;
 
         // 检查是否需要设置样品池位置
         setupSamplePoolIfNeeded(session, context, sample, updateBy);

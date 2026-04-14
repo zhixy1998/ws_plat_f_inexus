@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
@@ -18,6 +19,7 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.RationService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import io.swagger.annotations.Api;
@@ -61,12 +63,16 @@ public class RationController {
         return rationService.queryMethodParam(methodId);
     }
 
+    @ButtonPermission("wizardModeQuantityModifyMethodParams")
+    @OperateLog(module = "实验测试-向导模式-定量测量-修改方法参数", description = "执行实验测试-向导模式-定量测量-修改方法参数操作", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
     public Result<MethodChangeCheckVO> checkParam(@RequestBody MethodParamsDto methodParam) {
         return rationService.checkMethodParam(methodParam);
     }
 
+    @ButtonPermission("wizardModeQuantityApplyMethod")
+    @OperateLog(module = "实验测试-向导模式-定量测量-应用方法", description = "执行实验测试-向导模式-定量测量-应用方法操作", recordParams = true)
     @PostMapping("updateMethodParam")
     @ApiOperation("保存方法参数接口")
     public Result<MeasurementCurrentInfoVO> applyMethod(@RequestBody MethodParamsDto methodParam) {
@@ -85,7 +91,17 @@ public class RationController {
                                 @RequestParam String sampleKind) {
         return rationService.querySampleList(taskId, sampleKind);
     }
-
+//    @ButtonPermission(
+//            description = "实验测试-向导模式-定量测量-设置样品", // 操作描述
+//            permissionMapping = "add=wizardModeLumneSetSample,edit=wizardModeLumneModifySampleInformation,delete=quantityDeleteSample" // 自定义操作类型→驼峰权限标识
+//    )
+//    @OperateLog(
+//            module = "实验测试-向导模式-定量测量-设置样品",
+//            description = "执行实验测试-经典模式-定量测量-{operateType}样品操作",
+//            recordParams = true
+//    )
+    @ButtonPermission("wizardModeQuantitySetSample")
+    @OperateLog(module = "实验测试-向导模式-定量测量-设置样品", description = "执行实验测试-向导模式-定量测量-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSample")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSample(@RequestBody RationAddOrDeleteSampleDTO dto) {
@@ -167,6 +183,8 @@ public class RationController {
         return rationService.queryCurveInfo(taskId, methodId);
     }
 
+    @ButtonPermission("wizardModeLumneZero")
+    @OperateLog(module = "实验测试-向导模式-定量测量-校零", description = "执行实验测试-向导模式-定量测量-校零记录", recordParams = true)
     @GetMapping("zero")
     @ApiOperation("校零接口")
     public Result photoZero(@RequestParam String deviceSerialNumber,
@@ -239,6 +257,8 @@ public class RationController {
         }
     }
 
+    @ButtonPermission("wizardModeLumneExportData")
+    @OperateLog(module = "实验测试-向导模式-定量测量-导出数据", description = "执行实验测试-向导模式-定量测量-导出数据记录", recordParams = true)
     @GetMapping("downloadDoc")
     @ApiOperation("多格式文件下载接口（支持word/excel/txt）")
     public ResponseEntity<?> downloadDoc(

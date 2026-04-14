@@ -13,6 +13,8 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+
+import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 /**
@@ -66,6 +68,7 @@ public class FMeasureSample{
 
     // 标准浓度
     @TableField("normal_concentration")
+    @ApiModelProperty("标准浓度")
     private String normalConcentration;
 
     // 样品位置

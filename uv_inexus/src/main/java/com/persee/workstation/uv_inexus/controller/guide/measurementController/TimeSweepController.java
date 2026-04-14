@@ -9,11 +9,13 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.experimentTest.TimeSweepMethodParamsDto;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TimeSweepService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodChangeCheckVO;
 import io.swagger.annotations.ApiModel;
@@ -62,6 +64,8 @@ public class TimeSweepController {
         return timeSweepService.queryProjectAllMethods(projectId,measureForm,updateBy);
     }
 
+    @ButtonPermission("wizardModeTimeScanModifyMethodParams")
+    @OperateLog(module = "实验测试-向导模式-光谱扫描-修改方法参数", description = "执行实验测试-向导模式-光谱扫描-修改方法参数操作", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
     public Result<MethodChangeCheckVO> checkParam(@RequestBody TimeSweepMethodParamsDto methodParam) {
@@ -74,6 +78,8 @@ public class TimeSweepController {
         return timeSweepService.queryMethodParameter(methodId);
     }
 
+    @ButtonPermission("wizardModeTimeScanApplyMethod")
+    @OperateLog(module = "实验测试-向导模式-时间扫描-应用方法", description = "执行实验测试-向导模式-时间扫描-应用方法操作", recordParams = true)
     @PostMapping("updateMethodParameter")
     @ApiOperation("修改方法参数接口")
     public Result updateMethodParameter( @RequestBody TimeSweepMethodParameterDto params) {
@@ -147,6 +153,17 @@ public class TimeSweepController {
         return timeSweepService.querySampleHeads(taskId);
     }
 
+//    @ButtonPermission(
+//            description = "实验测试-向导模式-时间扫描-设置样品", // 操作描述
+//            permissionMapping = "add=timeScanSetSample,edit=timeScanModifySampleInformation,delete=timeScanDeleteSample" // 自定义操作类型→驼峰权限标识
+//    )
+//    @OperateLog(
+//            module = "实验测试-向导模式-时间扫描-设置样品",
+//            description = "执行实验测试-经典模式-时间扫描-{operateType}样品操作",
+//            recordParams = true
+//    )
+    @ButtonPermission("timeScanSetSample")
+    @OperateLog(module = "实验测试-向导模式-时间扫描-设置样品", description = "执行实验测试-向导模式-时间扫描-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSamplePort(@RequestBody AddOrDeleteSampleDTO paramDto){
