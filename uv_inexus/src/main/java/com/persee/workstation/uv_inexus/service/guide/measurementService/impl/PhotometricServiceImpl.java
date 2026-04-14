@@ -735,14 +735,14 @@ public class PhotometricServiceImpl implements PhotometricService {
                 vo.setTaskId(task.getId());
                 vo.setTaskName(task.getTaskName());
                 vo.setTaskStatus(task.getTaskStatus());
-            }
 
-            TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
-            if (project != null) {
-                vo.setProjectId(project.getId());
-                vo.setProjectName(project.getProjectName());
+                TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+                if (project != null) {
+                    vo.setProjectId(project.getId());
+                    vo.setProjectName(project.getProjectName());
+                }
+                return Result.ok(vo);
             }
-            return Result.ok(vo);
         }
         wrapper.clear();
         wrapper.eq(TMeasureTask::getTaskName, Constants.DEFAULT_TASK)
