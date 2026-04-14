@@ -249,12 +249,18 @@ public class OperateLogAspect {
 
             try {
                 Field targetField = null;
+                // 先找本类
                 try {
                     targetField = arg.getClass().getDeclaredField(fieldName);
                 } catch (NoSuchFieldException e) {
-                    Class<?> superClass = arg.getClass().getSuperclass();
-                    if (superClass != null) {
-                        targetField = superClass.getDeclaredField(fieldName);
+                    // 找不到就找父类，找不到也不抛错
+                    try {
+                        Class<?> superClass = arg.getClass().getSuperclass();
+                        if (superClass != null) {
+                            targetField = superClass.getDeclaredField(fieldName);
+                        }
+                    } catch (NoSuchFieldException ignored) {
+                        // 父类也找不到 → 直接跳过，不抛异常
                     }
                 }
 
@@ -264,7 +270,8 @@ public class OperateLogAspect {
                     return fieldObj != null ? fieldObj.toString().trim() : "";
                 }
             } catch (Exception e) {
-                log.warn("读取字段{}异常，跳过该参数", fieldName, e);
+                // 只在真正异常时打warn，找不到字段不打
+                log.debug("读取字段{}异常，跳过该参数", fieldName);
                 continue;
             }
         }
