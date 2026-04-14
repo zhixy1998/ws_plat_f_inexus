@@ -3,13 +3,15 @@ package com.persee.workstation.uv_inexus.utils.OperateLog;
 import java.lang.reflect.Field;
 import java.util.Objects;
 
+import io.swagger.annotations.ApiModelProperty;
+
 public class LogCompareUtil {
 
     public static String generateCompareContent(Object oldObj, Object newObj) {
         if (oldObj == null || newObj == null) return "";
 
         StringBuilder sb = new StringBuilder();
-        // 🔥 用 新对象的字段 遍历（DTO），不要用旧对象（PO）
+        // 用 新对象的字段 遍历（DTO），不要用旧对象（PO）
         Field[] fields = newObj.getClass().getDeclaredFields();
 
         for (Field field : fields) {
@@ -19,7 +21,8 @@ public class LogCompareUtil {
                 Object newVal = field.get(newObj);
 
                 if (!Objects.equals(oldVal, newVal)) {
-                    String cnName = getFieldChineseName(field.getName());
+                    // 优先从字段的@ApiModelProperty注解获取中文名称
+                    String cnName = getFieldChineseName(field, newObj.getClass(), oldObj.getClass());
                     sb.append(cnName)
                             .append("：从「").append(oldVal).append("」改为「").append(newVal).append("」<br/>");
                 }
@@ -35,8 +38,53 @@ public class LogCompareUtil {
         return field.get(obj);
     }
 
-    // ============================ 全局字段中文名映射 ============================
-    private static String getFieldChineseName(String field) {
+    /**
+     * 获取字段的中文名称
+     * 优先从字段的@ApiModelProperty注解获取，其次从类的字段查找，最后使用全局映射
+     * @param field 当前遍历的字段（来自newObj）
+     * @param newObjClass newObj的类（通常是DTO）
+     * @param oldObjClass oldObj的类（通常是PO）
+     * @return 字段的中文名称
+     */
+    private static String getFieldChineseName(Field field, Class<?> newObjClass, Class<?> oldObjClass) {
+        String fieldName = field.getName();
+        
+        // 1. 首先尝试从当前字段（DTO字段）的@ApiModelProperty注解获取
+        ApiModelProperty apiModelProperty = field.getAnnotation(ApiModelProperty.class);
+        if (apiModelProperty != null && !apiModelProperty.value().isEmpty()) {
+            return apiModelProperty.value();
+        }
+        
+        // 2. 尝试从DTO类中查找对应字段的@ApiModelProperty注解
+        try {
+            Field dtoField = newObjClass.getDeclaredField(fieldName);
+            ApiModelProperty dtoAnnotation = dtoField.getAnnotation(ApiModelProperty.class);
+            if (dtoAnnotation != null && !dtoAnnotation.value().isEmpty()) {
+                return dtoAnnotation.value();
+            }
+        } catch (NoSuchFieldException e) {
+            // 忽略，继续下一步
+        }
+        
+        // 3. 尝试从PO类（oldObj）中查找对应字段的@ApiModelProperty注解
+        if (oldObjClass != null) {
+            try {
+                Field poField = oldObjClass.getDeclaredField(fieldName);
+                ApiModelProperty poAnnotation = poField.getAnnotation(ApiModelProperty.class);
+                if (poAnnotation != null && !poAnnotation.value().isEmpty()) {
+                    return poAnnotation.value();
+                }
+            } catch (NoSuchFieldException e) {
+                // 忽略，继续下一步
+            }
+        }
+        
+        // 4. 最后使用全局映射作为兜底
+        return getGlobalFieldChineseName(fieldName);
+    }
+
+    // ============================ 全局字段中文名映射（兜底使用） ============================
+    private static String getGlobalFieldChineseName(String field) {
         switch (field) {
             // 通用
             case "id": return "ID";
@@ -47,6 +95,7 @@ public class LogCompareUtil {
             case "status": return "状态";
             case "description": return "描述";
             case "remark": return "备注";
+            case "remarks": return "备注";
 
             // 小组表
             case "groupName": return "小组名称";
