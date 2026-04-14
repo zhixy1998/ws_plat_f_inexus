@@ -59,8 +59,8 @@ public class MessageInfoController {
 
     @ApiOperation("批量删除消息")
     @PostMapping("/deleteBatch")
-    public Result<Boolean> deleteMessageInfoBatch(@RequestBody List<String> messageIds) {
-        boolean success = messageInfoService.deleteMessageInfoBatch(messageIds);
+    public Result<Boolean> deleteMessageInfoBatch(@RequestBody List<String> params) {
+        boolean success = messageInfoService.deleteMessageInfoBatch(params);
         if (success) {
             return Result.ok(true);
         } else {
