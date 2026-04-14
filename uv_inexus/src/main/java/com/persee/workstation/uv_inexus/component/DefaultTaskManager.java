@@ -55,9 +55,9 @@ public class DefaultTaskManager {
     private volatile String defaultTaskId;
 
     // 获取默认任务ID
-    public String getDefaultTaskId(String updateBy) {
+    public String getDefaultTaskId(String updateBy, String taskType) {
         synchronized (this) {
-            ensureDefaultTaskExists(updateBy);
+            ensureDefaultTaskExists(updateBy,taskType);
         }
         return defaultTaskId;
     }
@@ -105,7 +105,7 @@ public class DefaultTaskManager {
     }
     // 确保存在未开始的默认任务
     @Transactional(rollbackFor = Exception.class)
-    public void ensureDefaultTaskExists(String updateBy) {
+    public void ensureDefaultTaskExists(String updateBy, String taskType) {
 //        QueryWrapper<TaskManagement> wrapper = new QueryWrapper<>();
 //        wrapper.eq("completion_status", TASK_NOT_STARTED.getCode())
 //                .eq("content_category", TEMPLATE_BUILT_IN_TASK.getCode()); // 假设用名称标识默认任务
@@ -117,7 +117,7 @@ public class DefaultTaskManager {
         //看一下有没有updateBy创建的任务
         LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(TaskManagement::getCreateBy, updateBy)
-                .eq(TaskManagement::getTaskType, "1");
+                .eq(TaskManagement::getTaskType, taskType);
         long count = taskManagementService.count(wrapper);
 //        long count = taskManagementService.count();
         if (count == 0) {
@@ -134,7 +134,7 @@ public class DefaultTaskManager {
             TaskManagement task1 = taskManagementService.getOne(
                     new LambdaQueryWrapper<TaskManagement>()
                             .eq(TaskManagement::getCreateBy, updateBy)
-                            .eq(TaskManagement::getTaskType, "1")
+                            .eq(TaskManagement::getTaskType, taskType)
                             .orderByDesc(TaskManagement::getUpdated)  // 按创建时间降序
                             .last("LIMIT 1")  // 只取最新的一条
             );
