@@ -486,7 +486,7 @@ public class DeviceController {
 //    @OperateLog(module = "仪器管理-仪器校正-波长校正", description = "执行仪器管理-仪器校正-波长校正记录", recordParams = true)
     @ButtonPermission(
             description = "实验测试-经典模式-删除历史文件数据", // 操作描述
-            permissionMapping = "instrumentCalibrationWavelengthCorrection=instrumentCalibrationWavelengthCorrection,instrumentCalibrationWavelengthCorrection=instrumentCalibrationWavelengthCorrection" // 自定义操作类型→驼峰权限标识
+            permissionMapping = "instrumentCalibrationWavelengthCorrection=instrumentCalibrationWavelengthCorrection,instrumentCalibrationDarkCurrentCorrection=instrumentCalibrationDarkCurrentCorrection" // 自定义操作类型→驼峰权限标识
     )
     @OperateLog(
             module = "实验测试-仪器管理",
