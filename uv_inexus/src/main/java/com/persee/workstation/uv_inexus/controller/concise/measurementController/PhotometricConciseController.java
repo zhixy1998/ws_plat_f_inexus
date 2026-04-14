@@ -149,7 +149,7 @@ public class PhotometricConciseController {
         return fPhotometricService.addOrDeleteSample(dto);
     }
 
-    @ButtonPermission("lumnDelSample")
+//    @ButtonPermission("lumnDelSample")
     @OperateLog(module = "实验测试-经典模式-光度测量-删除样品", description = "执行实验测试-经典模式-光度测量-删除样品操作", recordParams = true)
     @GetMapping("deleteOneSample")
     @ApiOperation("删除单个样本接口")
