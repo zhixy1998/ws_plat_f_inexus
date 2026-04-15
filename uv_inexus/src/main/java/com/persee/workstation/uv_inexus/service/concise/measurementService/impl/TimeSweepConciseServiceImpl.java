@@ -2146,6 +2146,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                         .eq("sample_key", taskSpeciman.getSpecimenKey())
                         .orderByDesc("analysis_number")
                         .last("limit 1"));
+                if (one == null) {
+                    continue;
+                }
                 FMeasureSample byId = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
                 if (byId == null) {
                     return Result.ok(new ArrayList<>());

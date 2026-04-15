@@ -377,11 +377,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     return R.fail("尖刺数组中存在重复的尖刺点，请检查");
                 }
 
-                // 校验尖刺点数量限制
-                if (spikeArray.size() > 10) { // 假设最多10个尖刺点
-                    return R.fail("尖刺点数量不能超过10个，当前：" + spikeArray.size());
-                }
-
             } catch (NumberFormatException e) {
                 return R.fail("尖刺数组格式错误，必须为数字，当前值：" + spikeArray);
             }
@@ -688,6 +683,20 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         FSpectrumParameter param = new FSpectrumParameter();
         BeanUtils.copyProperties(paramDto.getParameter(), param);
+        if(param.getSpikeRemoval()){
+            List<String> newSpikeArray = new ArrayList<>();
+            List<String> spikeArray = param.getSpikeArray();
+            Double startWaveLength = Double.valueOf(param.getStartWaveLength());
+            Double endWaveLength = Double.valueOf(param.getEndWaveLength());
+            for (String s : spikeArray) {
+                Double spike = Double.valueOf(s);
+                if (spike <= startWaveLength && spike >= endWaveLength) {
+                    newSpikeArray.add(s);
+                }
+            }
+            paramDto.getParameter().setSpikeArray(newSpikeArray);
+            param.setSpikeArray(newSpikeArray);
+        }
         R<Boolean> r = checkParam(param, paramDto.getDeviceSerialNumber());
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
@@ -876,7 +885,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             // 根据任务id查询测量数据表的测量数据
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
             wrapper.eq("task_id", taskId);
-            wrapper.in("is_save", list);
+            if (list.size()!=0){
+                wrapper.in("sample_key", list);
+            }
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
             if (measureDataList.isEmpty()) {
                 return Result.ok();
@@ -889,11 +900,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 wrapper1.eq("measure_data_id", measureData.getId());
                 wrapper1.last("limit 1");
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper1);
-                analysisData.setIsSave("0");
-                boolean update = fMeasureAnalysisDataService.updateById(analysisData);
-                if (!update) {
-                    //数据保存失败
-                    return Result.fail(YamlMessageSource.getMessageStatic("00000034"));
+                if (analysisData != null) {
+                    analysisData.setIsSave("0");
+                    boolean update = fMeasureAnalysisDataService.updateById(analysisData);
+                    if (!update) {
+                        //数据保存失败
+                        return Result.fail(YamlMessageSource.getMessageStatic("00000034"));
+                    }
                 }
             }
             boolean update = fMeasureDataService.updateBatchById(measureDataList);
