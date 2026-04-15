@@ -84,7 +84,7 @@ public class SpectrumController {
     }
 
     @ButtonPermission("wizardModeSpectralScanModifyMethodParams")
-    @OperateLog(module = "实验测试-向导模式-定量测量-应用方法", description = "执行实验测试-向导模式-定量测量-应用方法操作", recordParams = true)
+    @OperateLog(module = "实验测试-向导模式-光谱扫描-应用方法", description = "执行实验测试-向导模式-光谱扫描-应用方法操作", recordParams = true)
     @PostMapping("saveMethodParameter")
     @ApiOperation("方法参数修改接口")
     public Result saveMethodParameter(@RequestBody SpectralMethodParameterDto methodDto) {

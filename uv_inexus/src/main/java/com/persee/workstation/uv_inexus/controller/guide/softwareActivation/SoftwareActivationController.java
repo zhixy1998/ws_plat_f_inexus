@@ -67,7 +67,7 @@ public class SoftwareActivationController {
     /**
      * 软件激活接口：通过ID查询设备，验证激活码并更新状态
      */
-    @ButtonPermission("softwareActivationsoftwareActivationDevice")
+//    @ButtonPermission("softwareActivationsoftwareActivationDevice")
     @OperateLog(module = "激活仪器", description = "执行激活仪器", recordParams = true)
     @PostMapping("/activate")
     @ApiOperation("软件激活接口（通过ID查询设备，解密激活文件并更新状态）")

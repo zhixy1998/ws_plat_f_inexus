@@ -1104,7 +1104,7 @@ public class DevMessageUtil {
     }
 
     /**
-     * 定量测量(微分)：
+     * 定量测定(微分)：
      */
     public R<List<ChangeParam>> quantitativeDifferentialScan(List<Command> list, String deviceIp) {
         R<DatagramSocket> re = messageUtil.getSocket();
@@ -1211,7 +1211,7 @@ public class DevMessageUtil {
     }
 
     /**
-     * 定量测量(微分): 获取测量数据
+     * 定量测定(微分): 获取测量数据
      */
     public List<ChangeParam> getQuantitativeDifferentialMeasureData(Command command, String deviceIp) {
         R<DatagramSocket> re = messageUtil.getSocket();

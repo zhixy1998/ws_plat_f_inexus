@@ -282,7 +282,8 @@ public class ConciseSpectrumNewWebSocket {
     }
 
     /**
-     * 匀速推送调度器 - 支持外部指定间隔（秒，小数）
+     * 匀速推送调度器 - 比例调速版
+     * 根据队列长度，在原始间隔基础上按比例调整
      */
     private static class SmoothPushScheduler {
         private final String sessionId;
@@ -292,11 +293,20 @@ public class ConciseSpectrumNewWebSocket {
         private final String luminosity;
         private final AtomicBoolean isRunning = new AtomicBoolean(false);
         private final AtomicBoolean isFinished = new AtomicBoolean(false);
-        // 待推送队列（按顺序存储）
         private final Queue<SmoothPushTask> pendingQueue = new ConcurrentLinkedQueue<>();
         private ScheduledExecutorService scheduler;
-        private long intervalMs = 0;          // 匀速推送间隔（毫秒）
+        private long currentIntervalMs = 0;          // 当前推送间隔（毫秒）
+        private long baseIntervalMs = 0;              // 基础推送间隔（毫秒）
         private boolean intervalCalculated = false;
+
+        // 动态调速阈值
+        private static final int ACCELERATE_THRESHOLD = 100;   // 积压阈值：超过100个点加速
+        private static final int NORMAL_LOWER_THRESHOLD = 50;  // 正常范围下限：50个点
+        private static final int SLOW_UPPER_THRESHOLD = 10;    // 减速阈值：低于10个点减速
+
+        // 调速系数（在原始间隔基础上乘以此系数）
+        private static final double ACCELERATE_RATIO = 0.1;    // 加速时：原始间隔 * 0.1（比如 82ms -> 8.2ms）
+        private static final double SLOW_RATIO = 2.0;          // 减速时：原始间隔 * 2（比如 82ms -> 164ms）
 
         private final ConciseSpectrumNewWebSocket parent;
         private final java.util.function.Supplier<String> currentSampleCellSupplier;
@@ -318,40 +328,99 @@ public class ConciseSpectrumNewWebSocket {
         }
 
         public synchronized void receiveBatch(List<Double> xBatch, List<Double> yBatch) {
-            long currentTime = System.currentTimeMillis();
-
+            // 将本批次所有点加入队列
             for (int i = 0; i < xBatch.size(); i++) {
                 pendingQueue.add(new SmoothPushTask(xBatch.get(i), yBatch.get(i)));
             }
 
-            parent.log.info("接收批次数据: session={}, 点数={}, 队列总点数={}", sessionId, xBatch.size(), pendingQueue.size());
+            int queueSize = pendingQueue.size();
+            log.info("接收批次数据: session={}, 点数={}, 队列总点数={}",
+                    sessionId, xBatch.size(), queueSize);
 
-            // 如果外部指定了推送间隔且有效，直接使用
-            if (Constants.pushInterval != null && Constants.pushInterval > 0 && Constants.pushInterval < 10) {
-                intervalMs = (long) (Constants.pushInterval * 1000);
-                if (intervalMs < 1) intervalMs = 1;
-                parent.log.info("使用外部指定推送间隔: {} 秒 = {} ms", Constants.pushInterval, intervalMs);
+            // 如果还没有计算出间隔，先计算基础间隔
+            if (!intervalCalculated) {
+                if (Constants.pushInterval != null && Constants.pushInterval > 0) {
+                    baseIntervalMs = (long) (Constants.pushInterval * 1000);
+                    if (baseIntervalMs < 1) baseIntervalMs = 1;
+                    log.info("使用外部指定推送间隔: {} 秒 = {} ms", Constants.pushInterval, baseIntervalMs);
+                } else {
+                    baseIntervalMs = 10;
+                    log.info("未指定推送间隔，使用默认值: {} ms", baseIntervalMs);
+                }
+                currentIntervalMs = baseIntervalMs;
                 intervalCalculated = true;
-                startScheduling();
-                return;
-            } else if (Constants.pushInterval != null) {
-                parent.log.warn("推送间隔 {} 秒 不合理，使用默认 10ms", Constants.pushInterval);
-                intervalMs = 10;
-                intervalCalculated = true;
+
+                // 启动调度器
                 startScheduling();
                 return;
             }
+
+            // 间隔已计算，检查是否需要动态调速
+            checkAndAdjustSpeed();
+        }
+
+        /**
+         * 根据队列积压情况动态调整推送速度（基于原始间隔的比例）
+         */
+        private void checkAndAdjustSpeed() {
+            int queueSize = pendingQueue.size();
+            long newInterval = currentIntervalMs;
+
+            if (queueSize > ACCELERATE_THRESHOLD) {
+                // 队列积压超过100个点，加速推送（原始间隔 * 0.1）
+                newInterval = Math.max(1, (long) (baseIntervalMs * ACCELERATE_RATIO));
+                if (currentIntervalMs != newInterval) {
+                    log.info("队列积压({}点)超过阈值{}，加速推送: {}ms -> {}ms (基础间隔{}ms * {})",
+                            queueSize, ACCELERATE_THRESHOLD, currentIntervalMs, newInterval, baseIntervalMs, ACCELERATE_RATIO);
+                    currentIntervalMs = newInterval;
+                    restartScheduler();
+                }
+            } else if (queueSize <= SLOW_UPPER_THRESHOLD) {
+                // 队列低于10个点，略微降低推送速度（原始间隔 * 2）
+                newInterval = (long) (baseIntervalMs * SLOW_RATIO);
+                if (currentIntervalMs != newInterval) {
+                    log.info("队列({}点)低于阈值{}，略微降速: {}ms -> {}ms (基础间隔{}ms * {})",
+                            queueSize, SLOW_UPPER_THRESHOLD, currentIntervalMs, newInterval, baseIntervalMs, SLOW_RATIO);
+                    currentIntervalMs = newInterval;
+                    restartScheduler();
+                }
+            } else if (queueSize <= NORMAL_LOWER_THRESHOLD && currentIntervalMs != baseIntervalMs) {
+                // 队列在10-50之间，恢复原始速度
+                log.info("队列({}点)恢复正常范围，恢复原始速度: {}ms -> {}ms",
+                        queueSize, currentIntervalMs, baseIntervalMs);
+                currentIntervalMs = baseIntervalMs;
+                restartScheduler();
+            }
+            // 队列在50-100之间，保持当前速度不变
+        }
+
+        /**
+         * 重启调度器（应用新的推送间隔）
+         */
+        private void restartScheduler() {
+            if (scheduler != null && !scheduler.isShutdown()) {
+                scheduler.shutdown();
+                try {
+                    if (!scheduler.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+                        scheduler.shutdownNow();
+                    }
+                } catch (InterruptedException e) {
+                    scheduler.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
+            }
+            isRunning.set(false);
+            startScheduling();
         }
 
         private void startScheduling() {
             if (isRunning.compareAndSet(false, true)) {
-                parent.log.info("启动匀速推送调度: session={}, 待推送点数={}, 推送间隔={}ms",
-                        sessionId, pendingQueue.size(), intervalMs);
+                log.info("启动匀速推送调度: session={}, 待推送点数={}, 推送间隔={}ms",
+                        sessionId, pendingQueue.size(), currentIntervalMs);
                 scheduler = Executors.newSingleThreadScheduledExecutor();
-                // 立即开始，每 intervalMs 推送一个点
                 scheduler.scheduleAtFixedRate(() -> {
                     pushOnePoint();
-                }, 0, intervalMs, TimeUnit.MILLISECONDS);
+                }, 0, currentIntervalMs, TimeUnit.MILLISECONDS);
             }
         }
 
@@ -360,8 +429,13 @@ public class ConciseSpectrumNewWebSocket {
 
             SmoothPushTask task = pendingQueue.poll();
             if (task == null) {
-                // 队列为空，但测量可能尚未结束，调度器继续等待新数据（不停止）
                 return;
+            }
+
+            // 每20个点检查一次队列长度，动态调整速度
+            int remainingSize = pendingQueue.size();
+            if (remainingSize % 20 == 0) {
+                checkAndAdjustSpeed();
             }
 
             SessionState state = sessionStates.get(sessionId);
@@ -395,10 +469,9 @@ public class ConciseSpectrumNewWebSocket {
                 payload.put("smoothPush", true);
 
                 parent.sendMessage(sessionId, payload);
-//                parent.log.debug("匀速推送一个点: x={}, y={}, 剩余点数={}", task.x, task.y, pendingQueue.size());
-                log.info("匀速推送一个点: x={}, y={}, 剩余点数={}", task.x, task.y, pendingQueue.size());
+                log.info("匀速推送一个点: x={}, y={}, 剩余点数={}", task.x, task.y, remainingSize);
             } catch (Exception e) {
-                parent.log.error("匀速推送单点失败", e);
+                log.error("匀速推送单点失败", e);
             }
         }
 
@@ -415,7 +488,7 @@ public class ConciseSpectrumNewWebSocket {
                         Thread.currentThread().interrupt();
                     }
                 }
-                parent.log.info("匀速推送调度停止: session={}", sessionId);
+                log.info("匀速推送调度停止: session={}", sessionId);
             }
         }
 
@@ -423,18 +496,16 @@ public class ConciseSpectrumNewWebSocket {
          * 测量结束时调用：立即停止调度器并推送所有剩余点
          */
         public synchronized void flush() {
-            // 停止定时器
             stopScheduling();
-            // 推送所有剩余点
             if (pendingQueue.isEmpty()) return;
-            parent.log.info("测量结束，立即推送所有剩余点: session={}, 点数={}", sessionId, pendingQueue.size());
+            log.info("测量结束，立即推送所有剩余点: session={}, 点数={}", sessionId, pendingQueue.size());
             SmoothPushTask task;
             while ((task = pendingQueue.poll()) != null) {
-                pushSinglePointSmoothDirect(task.x, task.y);
+                pushSinglePointDirect(task.x, task.y);
             }
         }
 
-        private void pushSinglePointSmoothDirect(Double x, Double y) {
+        private void pushSinglePointDirect(Double x, Double y) {
             if (x == null || y == null) return;
             SessionState state = sessionStates.get(sessionId);
             if (state == null || state.sessionClosing.get()) return;
@@ -462,7 +533,7 @@ public class ConciseSpectrumNewWebSocket {
                 payload.put("smoothPush", true);
                 parent.sendMessage(sessionId, payload);
             } catch (Exception e) {
-                parent.log.error("直接推送单点失败", e);
+                log.error("直接推送单点失败", e);
             }
         }
 

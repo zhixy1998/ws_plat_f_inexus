@@ -117,9 +117,12 @@ public enum CalibrationTypeEnum {
 
     //重复次数
     REPEAT_COUNT("repeatCount", "重复次数"),
-    //默认任务
+    //默认任务，检定任务
     DEFAULT_TASK("default", "默认任务"),
-
+    //校准任务
+    CALIBRATION_TASK("calibration", "校准任务"),
+    //期间核查任务
+    PERIODIC_INSPECTION("periodic_inspection", "期间核查"),
     //开箱检验任务
     OPEN_BOX_INSPECTION("installation_acceptance", "开箱检验"),
 

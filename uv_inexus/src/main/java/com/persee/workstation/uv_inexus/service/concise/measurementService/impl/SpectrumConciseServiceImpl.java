@@ -665,33 +665,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
-        switch (paramDto.getMeasureType()) {
-            case "光度测量":
-//                dbParam = JSON.parseObject(dbParamJson, AbsorbanceParam.class);
-//                newParam = paramDto.getParameter().toJavaObject(AbsorbanceParam.class);
-//                break;
-            case "定量测量":
-//                dbParam = JSON.parseObject(dbParamJson, TransmittanceParam.class);
-//                newParam = paramDto.getParameter().toJavaObject(TransmittanceParam.class);
-//                break;
-            case "光谱扫描": {
-                FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
-                FSpectrumParameter newParameter = JSON.parseObject(String.valueOf(paramDto.getParameter()), FSpectrumParameter.class);
-                // 1. 比较参数
-                boolean sameParam = compareParam(parameter, newParameter);
-                return Result.ok(sameParam);
-            }
-            case "时间扫描":
-//            {
-//                FTimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
-//                FTimeSweepParamter newParameter =  JSON.parseObject(String.valueOf(paramDto.getParameter()), FTimeSweepParamter.class);
-//                // 1. 比较参数
-//                boolean sameParam = compareParam(parameter, newParameter);
-//                return Result.ok(sameParam);
-//            }
-            default:
-                return Result.fail(YamlMessageSource.getMessageStatic("0000000D"));//未知的测量类型
-        }
+        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+        FSpectrumParameter newParameter = JSON.parseObject(String.valueOf(paramDto.getParameter()), FSpectrumParameter.class);
+        // 1. 比较参数
+        boolean sameParam = compareParam(parameter, newParameter);
+        return Result.ok(sameParam);
 
     }
 

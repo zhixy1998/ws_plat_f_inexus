@@ -1626,10 +1626,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             measureType = task.getMeasureType();
         }
 
-        // 3. 判断是否是定量测量
+        // 3. 判断是否是定量测定
         boolean isQuantitative = QUANTITATIVE_MEASUREMENT.equals(measureType);
 
-        // 4. 如果是定量测量标准样品，校验浓度
+        // 4. 如果是定量测定标准样品，校验浓度
         if (isQuantitative && SampleTypeEnum.kind_stand.getIdentity().equals(sampleKind)) {
             if (!StringUtils.hasText(normalConcentration)) {
                 return Result.fail(YamlMessageSource.getMessageStatic("00102024"));
@@ -1819,15 +1819,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail(YamlMessageSource.getMessageStatic("0010100F"));
         }
         return Result.ok(true);
-    }
-
-    @Override
-    public Result delTask(String taskId) {
-        boolean b = fMeasureTaskService.delTask(taskId);
-        if (b) {
-            return Result.ok(true);
-        }
-        return Result.fail();
     }
 
     @Override
@@ -2224,7 +2215,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     }
 
     /**
-     * 处理定量测量样品创建
+     * 处理定量测定样品创建
      */
     private Result handleQuantitativeSample(AddSampleDTO dto, FMeasureTask task,
                                             SampleNumConfig numberConfig, SampleNameConfig nameConfig) {
@@ -2518,7 +2509,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     }
 
     /**
-     * 创建首个定量测量样品
+     * 创建首个定量测定样品
      */
     private Result createFirstQuantitativeSample(FMeasureTask task, List<FTaskSpecimen> taskSpecimen,
                                                  String sampleKind, String normalConcentration,
@@ -2572,7 +2563,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     }
 
     /**
-     * 创建后续定量测量样品（支持批量创建）
+     * 创建后续定量测定样品（支持批量创建）
      */
     private Result createSubsequentQuantitativeSamples(AddSampleDTO dto, FMeasureTask task,
                                                        List<FTaskSpecimen> taskSpecimen, String sampleKind,

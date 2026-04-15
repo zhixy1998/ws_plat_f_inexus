@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.instrumentController;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.persee.workstation.uv_inexus.dto.messageDto.MessageDeleteDTO;
 import com.persee.workstation.uv_inexus.dto.messageDto.MessageInfoQueryDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.MessageInfoService;
@@ -18,8 +19,6 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @Api(tags = "消息管理")
 @RestController
@@ -59,7 +58,7 @@ public class MessageInfoController {
 
     @ApiOperation("批量删除消息")
     @PostMapping("/deleteBatch")
-    public Result<Boolean> deleteMessageInfoBatch(@RequestBody List<String> params) {
+    public Result<Boolean> deleteMessageInfoBatch(@RequestBody MessageDeleteDTO params) {
         boolean success = messageInfoService.deleteMessageInfoBatch(params);
         if (success) {
             return Result.ok(true);

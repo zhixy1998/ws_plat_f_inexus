@@ -23,6 +23,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.MessageInfoDAO;
+import com.persee.workstation.uv_inexus.dto.messageDto.MessageDeleteDTO;
 import com.persee.workstation.uv_inexus.dto.messageDto.MessageInfoQueryDTO;
 import com.persee.workstation.uv_inexus.enums.messageEnums.MessageStatusEnum;
 import com.persee.workstation.uv_inexus.enums.messageEnums.MessageTypeEnum;
@@ -129,12 +130,15 @@ public class MessageInfoServiceImpl implements MessageInfoService {
     }
 
     @Override
-    public Boolean deleteMessageInfoBatch(List<String> messageIds) {
-        if (messageIds == null || messageIds.isEmpty()) {
+    public Boolean deleteMessageInfoBatch(MessageDeleteDTO dto) {
+
+        List<String> params = dto.getParams();
+
+        if (params == null || params.isEmpty()) {
             return true;
         }
 
-        int i = dao.deleteBatchIds(messageIds);
+        int i = dao.deleteBatchIds(params);
         return i > 0;
     }
 
