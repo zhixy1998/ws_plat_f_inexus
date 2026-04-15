@@ -72,7 +72,7 @@ public class PhotometricConciseController {
     }
 
     @ButtonPermission("lumneModifyMethodParams")
-    @OperateLog(module = "实验测试-经典模式-定量测量-修改方法参数", description = "执行实验测试-经典模式-定量测量-修改方法参数", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-定量测定-修改方法参数", description = "执行实验测试-经典模式-定量测定-修改方法参数", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
     public Result<FMethodChangeCheckVO> checkParam(@RequestBody NewPhotometricMethodParamCheckDTO methodParam) {

@@ -260,14 +260,10 @@ public class SpectrumServiceImpl implements SpectrumService {
                 vo.setTaskId(measureTask.getId());
                 vo.setTaskName(measureTask.getTaskName());
                 vo.setTaskStatus(measureTask.getTaskStatus());
-            } else {
-                vo.setTaskId(null);
-                vo.setTaskName(null);
-                vo.setTaskStatus(null);
+                vo.setProjectId(project.getId());
+                vo.setProjectName(project.getProjectName());
+                return Result.ok(vo);
             }
-            vo.setProjectId(project.getId());
-            vo.setProjectName(project.getProjectName());
-            return Result.ok(vo);
         }
         // 根据默认任务名称查询默认任务
         TMeasureTask defaultTask = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("task_name", Constants.DEFAULT_TASK)
@@ -3458,6 +3454,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             task.setMethodKey(newMethod.getId());
             task.setCreateTime(LocalDateTime.now());
             task.setTaskName(paramDto.getTaskName());
+            task.setSampleKey("[]");
             boolean update = tMeasureTaskService.updateById(task);
             return update ? Result.ok() : Result.fail(YamlMessageSource.getMessageStatic("00000048"));
         } else {
@@ -4530,6 +4527,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             newTask.setTaskName(paramDto.getTaskName());
         }
         newTask.setCreateTime(LocalDateTime.now());
+        newTask.setStartTime(LocalDateTime.now());
         newTask.setMethodKey(methodId);
         List<TaskSpecimen> specimens = new ArrayList<>();
         newTask.setSampleKey(specimens.toString());

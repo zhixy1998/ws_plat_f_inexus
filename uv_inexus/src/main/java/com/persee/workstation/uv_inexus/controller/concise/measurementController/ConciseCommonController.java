@@ -27,9 +27,7 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveD
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -113,12 +111,6 @@ public class ConciseCommonController {
             description = "执行实验测试-经典模式-{operateType}-删除历史方法数据操作",
             recordParams = true
     )
-    @GetMapping("delMethod")
-    @ApiOperation("删除方法")
-    public Result delMethod(PermLogOccupyDTO requestDTO) {
-        // 调用服务层，传递需要的参数
-        return conciseCommonService.delTask(requestDTO.getMethodId());
-    }
 
     @PostMapping("queryHistoryTask")
     @ApiOperation("历史草稿")
@@ -138,21 +130,6 @@ public class ConciseCommonController {
     @ApiOperation("修改任务名称")
     public Result updateTask(@RequestBody UpdateTaskDto updateTaskDto) {
         return conciseCommonService.updateTask(updateTaskDto);
-    }
-    @ButtonPermission(
-            description = "实验测试-经典模式-删除历史文件数据", // 操作描述
-            permissionMapping = "lumne=lumneDeleteData,quantity=quantityDeleteData,spectralScan=spectralScanDeleteData,timeScan=timeScanDeleteData" // 自定义操作类型→驼峰权限标识
-    )
-    @OperateLog(
-            module = "实验测试-经典模式",
-            description = "执行实验测试-经典模式-{operateType}-删除历史文件数据操作",
-            recordParams = true
-    )
-    @GetMapping("delTask")
-    @ApiOperation("删除历史文件")
-    public Result delTask(PermLogOccupyDTO requestDTO) {
-        // 调用服务层，传递需要的参数
-        return conciseCommonService.delTask(requestDTO.getTaskId());
     }
 
     @ButtonPermission(

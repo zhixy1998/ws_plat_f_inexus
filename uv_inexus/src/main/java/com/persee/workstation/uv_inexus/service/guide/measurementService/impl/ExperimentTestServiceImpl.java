@@ -785,10 +785,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             measureType = task.getMeasureType();
         }
 
-        // 3. 判断是否是定量测量
+        // 3. 判断是否是定量测定
         boolean isQuantitative = "定量测定".equals(measureType);
 
-        // 4. 如果是定量测量标准样品，校验浓度
+        // 4. 如果是定量测定标准样品，校验浓度
         if (isQuantitative && SampleTypeEnum.kind_stand.getIdentity().equals(sampleKind)) {
             if (!StringUtils.hasText(normalConcentration)) {
                 return Result.fail(YamlMessageSource.getMessageStatic("00102024"));
@@ -869,7 +869,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
 
     /**
-     * 处理定量测量样品创建
+     * 处理定量测定样品创建
      */
     private Result handleQuantitativeSample(AddSampleDTO dto, TMeasureTask task,
                                             SampleNumConfig numberConfig, SampleNameConfig nameConfig) {
@@ -1222,7 +1222,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     /**
-     * 创建首个定量测量样品
+     * 创建首个定量测定样品
      */
     private Result createFirstQuantitativeSample(TMeasureTask task, List<TaskSpecimen> taskSpecimen,
                                                  String sampleKind, String normalConcentration,
@@ -1277,7 +1277,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     /**
-     * 创建后续定量测量样品（支持批量创建）
+     * 创建后续定量测定样品（支持批量创建）
      */
     private Result createSubsequentQuantitativeSamples(AddSampleDTO dto, TMeasureTask task,
                                                        List<TaskSpecimen> taskSpecimen, String sampleKind,
@@ -1650,7 +1650,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 break;
             case QUANTITATIVE_MEASUREMENT:
                 if (!measureType.equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
-                    //请选择定量测量
+                    //请选择定量测定
                     return Result.fail(YamlMessageSource.getMessageStatic("00301008"));
                 }
                 break;
@@ -1807,7 +1807,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             }
 
             return Result.fail(reportCount.getMessage());
-        } else if (reportName.equals("定量测量表格")) {
+        } else if (reportName.equals("定量测定表格")) {
             RationReportDataVO vo = new RationReportDataVO();
             rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), false, task.getDeviceSerialNumber());
 

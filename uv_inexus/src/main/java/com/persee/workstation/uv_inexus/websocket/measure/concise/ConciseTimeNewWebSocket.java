@@ -31,6 +31,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
@@ -100,6 +101,8 @@ public class ConciseTimeNewWebSocket {
     String currentSampleCell;
     @Autowired
     DeviceInfoService infoService;
+
+    Integer pushCount = 0;
 
     /**
      * 时间扫描上下文
@@ -363,6 +366,8 @@ public class ConciseTimeNewWebSocket {
         context.clearData();
         context.currentSampleId = sample.getSpecimenKey();
 
+        pushCount = 0;
+
 
         // 检查是否需要设置样品池位置
         setupSamplePoolIfNeeded(session, context, sample, updateBy);
@@ -407,7 +412,13 @@ public class ConciseTimeNewWebSocket {
         int currentIndex = 0;
         while (Constants.isRunning) {
             try {
+                int queueSize1 = unknowCountMessageQueue.getQueueSize(deviceSerialNumber, SetParamEnum.Measure.getComId());
                 Object result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.Measure.getComId());
+                int queueSize = unknowCountMessageQueue.getQueueSize(deviceSerialNumber, SetParamEnum.Measure.getComId());
+                log.info("==========================(取值前)当前队列长度为:{}",queueSize);
+                log.info("==========================(取值后)当前队列长度为:{}",queueSize1);
+                log.info("==========================当前当前时间戳为:{}",System.currentTimeMillis());
+                log.info("==========================接收队列数据:{}",result);
                 // 如果队列为空（可选：根据你的 pollMessage 实现决定是否需要）
                 if (result == null) {
                     // 可选：短暂休眠避免 CPU 空转
@@ -658,6 +669,9 @@ public class ConciseTimeNewWebSocket {
         log.info("推送数据点: {}", payload);
 
         sendMessage(deviceSerialNumber, payload);
+
+        log.info("=================推送第{}秒的数据,数据为x={},y={}, 当前时间戳为:{}",++pushCount,xValue,yValue,System.currentTimeMillis());
+
     }
 
     /**
@@ -1020,6 +1034,7 @@ public class ConciseTimeNewWebSocket {
     private void clearGlobalData() {
         Constants.startTime = null;
         Constants.endTime = null;
+        pushCount = 0;
         Constants.measureStopStatus.clear();
     }
 
