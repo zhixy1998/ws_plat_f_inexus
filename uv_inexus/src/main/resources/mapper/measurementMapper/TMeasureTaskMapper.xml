@@ -37,7 +37,7 @@
     <select id="selectHistoryTaskPage" resultType="com.persee.workstation.uv_inexus.vo.instrumentVo.HistoryTaskVO">
         SELECT
         t.task_name AS taskName,
-        u.real_name AS userName,
+        u.username AS updateBy,
         p.project_name AS projectName,
         m.method_name AS methodName,
         t.device_serial_number AS deviceNumber,
