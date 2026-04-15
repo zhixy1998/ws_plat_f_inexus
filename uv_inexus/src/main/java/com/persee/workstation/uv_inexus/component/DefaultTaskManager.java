@@ -122,7 +122,7 @@ public class DefaultTaskManager {
 //        long count = taskManagementService.count();
         if (count == 0) {
             // 创建新默认任务
-            TaskManagement newTask = createDefaultTask(updateBy);
+            TaskManagement newTask = createDefaultTask(updateBy,taskType);
             ExcelTemplate excelTemplate = templateService.getById(newTask.getUseTemplate());
             initializeTaskExecutionDetails(newTask.getId(), excelTemplate.getTemplateCode());
 
@@ -130,7 +130,7 @@ public class DefaultTaskManager {
             this.defaultTaskId = newTask.getId();
 
         } else {
-            //使用最新的任务，不管有没有使用过
+            //使用最新的任务，不ai管有没有使用过
             TaskManagement task1 = taskManagementService.getOne(
                     new LambdaQueryWrapper<TaskManagement>()
                             .eq(TaskManagement::getCreateBy, updateBy)
@@ -142,11 +142,11 @@ public class DefaultTaskManager {
         }
     }
     public TaskManagement createFactoryInspectionTask(String updateBy) {
-        TaskManagement task = createDefaultTask(updateBy);
+        TaskManagement task = createDefaultTask(updateBy,FACTORY_INSPECTION_TASK.getCode());
         taskManagementService.save(task);
         return task;
     }
-    private TaskManagement createDefaultTask(String updateBy) {
+    private TaskManagement createDefaultTask(String updateBy, String taskType) {
         TaskManagement task = new TaskManagement();
         task.setId(IdGeneratorUtil.generateIdWithPrefix("task"));
         task.setDetectName("默认任务" + IdGeneratorUtil.generateShortId() + System.currentTimeMillis());
@@ -158,6 +158,9 @@ public class DefaultTaskManager {
         task.setCreated(LocalDateTime.now());
         task.setCreateBy(updateBy);
         task.setTemplateName(template.getTemplateName());
+        if (StringUtils.isNotBlank(taskType)){
+            task.setTaskType(taskType);
+        }
         R<String> device = deviceManageService.getConnectDevice(updateBy);
         if (device != null && StringUtils.isNotBlank(device.getData())) {
             task.setOperationInstrument(device.getData());
