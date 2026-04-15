@@ -894,7 +894,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
                         } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.End.getType())) {
                             paramVO.setLastValue(typeInfoPO.getMinWavelength());
-                        }else {
+                        } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.ScanSpeed.getType())) {
+                            Object speed = MappingParamEnum.SCAN_SPEED.getDefaultValue();
+                            String jsonString = JSONObject.toJSONString(speed);
+                            List<DeviceConfParam> options = JSON.parseArray(jsonString, DeviceConfParam.class);
+                            DeviceConfParam deviceConfParam = options.get(0);
+
+                            paramVO.setLastValue(deviceConfParam.getParamValue());
+                        }
+
+                        else {
                             DataNameValue value = defaultValue.get(0);
                             if (StringUtils.hasText(value.getDataValue())) {
                                 paramVO.setLastValue(value.getDataValue());
