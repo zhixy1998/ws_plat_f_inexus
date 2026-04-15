@@ -111,7 +111,6 @@ public class ConciseCommonController {
             description = "执行实验测试-经典模式-{operateType}-删除历史方法数据操作",
             recordParams = true
     )
-
     @PostMapping("queryHistoryTask")
     @ApiOperation("历史草稿")
     public Result<Page<FMeasureTaskDTO>> queryHistoryTask(@RequestBody SelectTaskDto selectTaskDto) {
