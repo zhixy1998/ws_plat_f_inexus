@@ -16,7 +16,10 @@
         SELECT a.id, a.detect_name, a.operation_instrument, a.use_template, a.content_category, a.start_time, a.completion_status,
         a.completion_time, a.create_user, a.update_user, a.create_time, a.update_time, a.result_template, b.template_code, b.template_name
         FROM task_management a left join excel_template b on a.use_template = b.id
-        where a.create_user like #{updateBy} and a.task_type = #{taskType}
+        where a.create_user like #{updateBy}
+        <if test="taskType != null">
+            and a.task_type = #{taskType}
+        </if>
         <if test="query != null and query != ''">
             and a.detect_name like concat('%',#{query},'%')
             or a.operation_instrument like concat('%',#{query},'%')

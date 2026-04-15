@@ -14,7 +14,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemLogSwitchDAO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceHistoryTaskDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceQueryDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceUsageCountDTO;
@@ -25,13 +24,14 @@ import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
-import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemLogSwitchPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMonitorService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureProjectService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemLogSwitchService;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemLogSwitchVO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,7 +61,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
     private TMeasureProjectService tMeasureProjectService;
 
     @Autowired
-    SystemLogSwitchDAO dao;
+    SystemLogSwitchService logSwitchService;
 
     @Value("${sys-manage-default.defaultId}")
     String defaultId;
@@ -127,9 +127,11 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
                 log.warn("获取类型统计失败: 用户 '{}' 不存在", updateBy);
                 return Result.fail(YamlMessageSource.getMessageStatic("00205003"));
             }
-            SystemLogSwitchPO po = dao.selectById(userId);
 
-            if (po != null && Boolean.TRUE.equals(po.getStatTypeEnabled())) {
+            SystemLogSwitchVO switchVO = logSwitchService.querySystemLogSwitch();
+
+
+            if (switchVO != null && Boolean.TRUE.equals(switchVO.getStatTypeEnabled())) {
                 LambdaQueryWrapper<TMeasureTask> taskWrapper = new LambdaQueryWrapper<TMeasureTask>()
                         .eq(TMeasureTask::getDeviceSerialNumber, deviceNumber);
 //                        .eq(TMeasureTask::getUserId, user.getId())
@@ -194,10 +196,9 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
                 return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
             }
 
-            SystemLogSwitchPO po = dao.selectById(userId);
+            SystemLogSwitchVO switchVO = logSwitchService.querySystemLogSwitch();
 
-
-            if (po != null && Boolean.TRUE.equals(po.getStatItemEnabled())) {
+            if (switchVO != null && Boolean.TRUE.equals(switchVO.getStatItemEnabled())) {
                 LambdaQueryWrapper<TMeasureTask> taskWrapper = new LambdaQueryWrapper<TMeasureTask>()
                         .eq(TMeasureTask::getDeviceSerialNumber, deviceNumber);
 //                        .eq(TMeasureTask::getUserId, user.getId())
