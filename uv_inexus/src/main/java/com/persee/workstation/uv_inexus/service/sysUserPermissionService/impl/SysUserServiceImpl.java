@@ -9,6 +9,16 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.collections4.MapUtils;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.alibaba.excel.util.StringUtils;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
@@ -34,15 +44,6 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.utils.AESencryption.HmacMD5Util;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
-import org.apache.commons.collections4.MapUtils;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
 
 @Service
 public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUserPO> implements SysUserService {
@@ -262,12 +263,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
             return Result.fail("无删除权限，请联系管理员");
         }
 
-        // 3. 校验被删除用户所在的组是否是管理组（如果是则不允许删除）
-        if (isAdminGroupMember(id)) {
-            return Result.fail("不能删除管理组成员");
-        }
-
-        // 4. 校验不能删除自己
+        // 3. 校验不能删除自己
         if (id.equals(updateById)) {
             return Result.fail("不能删除当前登录用户");
         }
