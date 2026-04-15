@@ -48,4 +48,8 @@ public class SysGroupPO extends BasePO {
     @TableField("status")
     @ApiModelProperty("状态：1-启用，0-禁用")
     private Integer status;
+
+    @TableField("group_type")
+    @ApiModelProperty("组类型：0-普通组，1-管理组")
+    private Integer groupType;
 }
