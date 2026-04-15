@@ -106,7 +106,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 
             if (StringUtils.isBlank(taskType)){
                 //没传的话，默认检定
-                taskType="1";
+                taskType=null;
             }
             IPage<TaskManagement> managementPage = taskMgrMapper.getMyPage(page, queryDto.getQuery(), queryDto.getUpdateBy(),taskType);
 //        managementPage.getRecords().forEach(task -> {
@@ -629,6 +629,12 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
                 management.setTemplateName(excelTemplate.getTemplateName());
                 management.setTemplateCode(excelTemplate.getTemplateCode());
+                R<String> device = deviceManageService.getConnectDevice(updateBy);
+                if (StringUtils.isBlank(management.getOperationInstrument())){
+                    if (StringUtils.isNotBlank(device.getData())) {
+                        management.setOperationInstrument(device.getData());
+                    }
+                }
 
                 return Result.ok(management);
             }
@@ -639,6 +645,12 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
                 management.setTemplateName(excelTemplate.getTemplateName());
                 management.setTemplateCode(excelTemplate.getTemplateCode());
+                R<String> device = deviceManageService.getConnectDevice(updateBy);
+                if (StringUtils.isBlank(management.getOperationInstrument())){
+                    if (StringUtils.isNotBlank(device.getData())) {
+                        management.setOperationInstrument(device.getData());
+                    }
+                }
 
                 return Result.ok(management);
             }
@@ -649,6 +661,12 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
                 management.setTemplateName(excelTemplate.getTemplateName());
                 management.setTemplateCode(excelTemplate.getTemplateCode());
+                R<String> device = deviceManageService.getConnectDevice(updateBy);
+                if (StringUtils.isBlank(management.getOperationInstrument())){
+                    if (StringUtils.isNotBlank(device.getData())) {
+                        management.setOperationInstrument(device.getData());
+                    }
+                }
 
                 return Result.ok(management);
             }
