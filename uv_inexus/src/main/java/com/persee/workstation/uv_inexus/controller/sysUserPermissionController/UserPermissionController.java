@@ -68,7 +68,9 @@ public class UserPermissionController {
             @ApiParam(value = "组ID", required = true)
             @RequestParam String groupId,
             @ApiParam(value = "快捷配置类型：0-普通用户，1-GMP，null表示所有类型")
-            @RequestParam(required = false) Integer quickConfigType) {
+            @RequestParam(required = false) Integer quickConfigType,
+            @ApiParam(value = "是否隐藏：1-隐藏，0-不隐藏，默认1")
+            @RequestParam(required = false, defaultValue = "1") Integer hidden) {
         // 将字符串转换为Integer列表
         List<Integer> permTypeList = null;
         if (permType != null && !permType.isEmpty()) {
@@ -76,7 +78,7 @@ public class UserPermissionController {
                     .map(Integer::parseInt)
                     .collect(Collectors.toList());
         }
-        return userPermissionService.getPermissionTreeByTypeAndUser(permTypeList, groupId, quickConfigType);
+        return userPermissionService.getPermissionTreeByTypeAndUser(permTypeList, groupId, quickConfigType, hidden);
     }
 
     @PostMapping("/update-group-perm")
