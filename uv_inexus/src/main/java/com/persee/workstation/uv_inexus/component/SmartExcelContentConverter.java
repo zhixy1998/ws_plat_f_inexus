@@ -99,15 +99,15 @@ public class SmartExcelContentConverter {
                                     value1 = formatNumericValue(positions1.get(0).getValue());
                                 }
                                 if (i == 0) {
-                                    qualifiedLine = "波长示值误差" + ":" + value + ":" + "波长重复性" + ":" + value1;
+                                    qualifiedLine = "波长示值误差" + "±" + value +"nm；" + "波长重复性" + "≤" + value1+"nm；";
                                 } else if (i == 1) {
-                                    qualifiedLine = "透射比示值误差" + ":" + value + ":" + "透射比重复性" + ":" + value1;
+                                    qualifiedLine = "透射比示值误差" + "±" + value + "nm；" + "透射比重复性" + "≤" + value1+"nm；";
                                 } else if (i == 2) {
-                                    qualifiedLine = "指标要求" + ":" + value;
+                                    qualifiedLine = "指标要求" + "：" + value+"nm；";
                                 } else if (i == 3) {
-                                    qualifiedLine = "误差范围（%）" + ":" + value;
+                                    qualifiedLine = "误差范围（%）" + "±" + value+"nm；";
                                 } else {
-                                    qualifiedLine = "垂直距离范围（mm）" + ":" + value;
+                                    qualifiedLine = "垂直距离范围（mm）" + "±" + value+"nm；";
                                 }
                                 // 构建嵌套结构
                                 Map<String, Object> itemData = new HashMap<>();
@@ -190,15 +190,15 @@ public class SmartExcelContentConverter {
                                 value1 = formatNumericValue(positions1.get(0).getValue());
                             }
                             if (i == 0) {
-                                qualifiedLine = "波长示值误差" + "<=" + value + ";" + "波长重复性" + "<=" + value1;
+                                qualifiedLine = "波长示值误差" + "±" + value + "nm；" + "波长重复性" + "≤" + value1+"nm；";
                             } else if (i == 1) {
-                                qualifiedLine = "透射比示值误差" + "<=" + value + ";" + "透射比重复性" + "<=" + value1;
+                                qualifiedLine = "透射比示值误差" + "±" + value + "nm；" + "透射比重复性" + "≤" + value1+"nm；";
                             } else if (i == 2) {
-                                qualifiedLine = "指标要求" + "<=" + value;
+                                qualifiedLine = "指标要求" + "≤" + value+"nm；";
                             } else if (i == 3) {
-                                qualifiedLine = "误差范围（%）" + "<=" + value;
+                                qualifiedLine = "误差范围（%）" + "≤" + value+"nm；";
                             } else {
-                                qualifiedLine = "垂直距离范围（mm）" + "<=" + value;
+                                qualifiedLine = "垂直距离范围（mm）" + "≤" + value+"nm；";
                             }
                             // 构建嵌套结构
                             Map<String, Object> itemData = new HashMap<>();
@@ -285,15 +285,15 @@ public class SmartExcelContentConverter {
                             value1 = formatNumericValue(positions1.get(0).getValue());
                         }
                         if (i == 0) {
-                            qualifiedLine = "波长示值误差" + ":" + value + ":" + "波长重复性" + ":" + value1;
+                            qualifiedLine = "波长示值误差" + "±" + value + "nm；" + "波长重复性" + "≤" + value1+"nm；";
                         } else if (i == 1) {
-                            qualifiedLine = "透射比示值误差" + ":" + value + ":" + "透射比重复性" + ":" + value1;
+                            qualifiedLine = "透射比示值误差" + "±" + value + "nm；" + "透射比重复性" + "≤" + value1+"nm；";
                         } else if (i == 2) {
-                            qualifiedLine = "指标要求" + ":" + value;
+                            qualifiedLine = "指标要求" + "≤" + value+"nm；";
                         } else if (i == 3) {
-                            qualifiedLine = "误差范围（%）" + ":" + value;
+                            qualifiedLine = "误差范围（%）" + "≤" + value+"nm；";
                         } else {
-                            qualifiedLine = "垂直距离范围（mm）" + ":" + value;
+                            qualifiedLine = "垂直距离范围（mm）" + "≤" + value+"nm；";
                         }
                         // 构建嵌套结构
                         Map<String, Object> itemData = new HashMap<>();
