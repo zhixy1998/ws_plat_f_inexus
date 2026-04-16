@@ -122,7 +122,7 @@ public class RationConciseController {
                                                   @RequestParam String sampleKind) {
         return rationService.querySampleHeads(taskId, sampleKind);
     }
-//    @ButtonPermission("quantityDeleteSample")
+    @ButtonPermission("quantityDeleteSample")
     @OperateLog(module = "实验测试-经典模式-定量测定-删除样品", description = "执行实验测试-经典模式-定量测定-删除样品记录", recordParams = true)
     @GetMapping("deleteOneSample")
     @ApiOperation("删除单个样本接口")

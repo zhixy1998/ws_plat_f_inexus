@@ -23,6 +23,7 @@ import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import org.apache.ibatis.annotations.Param;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -80,9 +81,11 @@ public class UserController {
     @OperateLog(module = "用户管理-用户权限管理-删除用户", description = "执行用户管理-用户权限管理-删除用户操作", recordParams = true)
     @DeleteMapping("/{id}")  // 使用HTTP DELETE方法，符合RESTful风格
     @ApiOperation("根据ID删除单个用户")
-    public Result<String> deleteById(@PathVariable String id) {
+    public Result<String> deleteById(@PathVariable String id, 
+                                     @ApiParam(value = "操作人ID", required = true)
+                                     @RequestParam String updateById) {
         // 调用Service的删除方法（需在Service中新增实现）
-        return sysUserService.deleteById(id);
+        return sysUserService.deleteById(id, updateById);
     }
 
     @PostMapping("/deleteBatch")

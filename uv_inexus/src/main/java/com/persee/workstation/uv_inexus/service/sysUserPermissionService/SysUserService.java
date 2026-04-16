@@ -52,8 +52,10 @@ public interface SysUserService extends IService<SysUserPO> {
 
     /**
      * 根据ID删除单个用户
+     * @param id 要删除的用户ID
+     * @param updateById 操作人ID
      */
-    Result<String> deleteById(String id);
+    Result<String> deleteById(String id, String updateById);
 
     /**
      * 修改密码
