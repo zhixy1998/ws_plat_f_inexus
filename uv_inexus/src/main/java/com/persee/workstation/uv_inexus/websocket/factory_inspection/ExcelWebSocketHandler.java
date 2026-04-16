@@ -586,7 +586,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     public void setTaskMeasuring(String taskId, boolean isMeasuring) throws BusinessException {
         if (!isMeasuring) {
             TaskManagement management = taskService.getById(taskId);
-            deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
+            if (management != null && management.getOperationInstrument() != null) {
+                deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
+            }
         }
 //        if (!isMeasuring) {
 //            log.info("修改测量状态: taskId={}, isMeasuring={}", taskId, isMeasuring);
@@ -1623,7 +1625,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             TaskManagement taskManagement = taskService.getById(taskId);
                             //获取序列号
                             String string = taskManagement.getOperationInstrument();
-
+                            if (StringUtils.isBlank(string)) {
+                                throw new BusinessException("请检查是否连接仪器！！！");
+                            }
 //                            R<String> device = deviceManageService.getConnectDevice(updateBy);
                             DeviceInfoPO info = deviceInfoService.getInfo(string);
 
