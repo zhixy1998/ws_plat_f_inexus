@@ -228,18 +228,14 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
             vo.setMethodId(method.getId());
             vo.setMethodName(method.getMethodName());
-            if (measureTask!=null){
+            if (measureTask!=null) {
                 vo.setTaskId(measureTask.getId());
                 vo.setTaskName(measureTask.getTaskName());
                 vo.setTaskStatus(measureTask.getTaskStatus());
-            }else{
-                vo.setTaskId(null);
-                vo.setTaskName(null);
-                vo.setTaskStatus(null);
+                vo.setProjectId(project.getId());
+                vo.setProjectName(project.getProjectName());
+                return Result.ok(vo);
             }
-            vo.setProjectId(project.getId());
-            vo.setProjectName(project.getProjectName());
-            return Result.ok(vo);
         }
         // 根据默认任务名称查询默认任务
         TMeasureTask defaultTask = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("task_name", Constants.DEFAULT_TASK)
@@ -3871,6 +3867,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             newTask.setTaskName(paramDto.getTaskName());
         }
         newTask.setCreateTime(LocalDateTime.now());
+        newTask.setStartTime(LocalDateTime.now());
         newTask.setMethodKey(methodId);
         List<TaskSpecimen> specimens = new ArrayList<>();
         newTask.setSampleKey(specimens.toString());

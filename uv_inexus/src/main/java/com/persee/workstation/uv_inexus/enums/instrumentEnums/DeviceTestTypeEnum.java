@@ -17,7 +17,7 @@ import java.util.Map;
 @Getter
 public enum DeviceTestTypeEnum {
     PHOTOMETRIC_MEASUREMENT("1","光度测量"),
-    QUANTITATIVE_MEASUREMENT("2", "定量测量"),
+    QUANTITATIVE_MEASUREMENT("2", "定量测定"),
     TIME_SCAN("3","时间扫描"),
     SPECTRAL_SCANNING("4","光谱扫描"),
     TWO_COMPONENT_PAINT("5","双组分");

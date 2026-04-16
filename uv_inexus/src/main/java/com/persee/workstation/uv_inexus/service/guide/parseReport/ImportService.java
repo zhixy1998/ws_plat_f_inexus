@@ -92,10 +92,10 @@ public class ImportService {
             try {
                 standardCurveList = EasyExcel.read(file.getInputStream())
                         .head(StandardDetectionUVVISCurveExcelModel.class)
-                        .sheet("UV-VIS-定量测量-检测参数表")
+                        .sheet("UV-VIS-定量测定-检测参数表")
                         .doReadSync();
             } catch (Exception e) {
-                errorMessages.add("标准信息表：未找到UV-VIS-定量测量-检测参数表，忽略该部分数据");
+                errorMessages.add("标准信息表：未找到UV-VIS-定量测定-检测参数表，忽略该部分数据");
             }
 
             List<StandardDetectionUVVISPhotometryExcelModel> photometryList = null;

@@ -287,7 +287,7 @@ public class SystemManageController {
         }
     }
 
-    @ApiOperation(value = "定量测量页面--标准曲线相关信息")
+    @ApiOperation(value = "定量测定页面--标准曲线相关信息")
     @GetMapping("/queryStandCurveConf")
     public Result<SystemStandCurveConfVO> queryStandCurveConf() {
         R<SystemStandCurveConfVO> r = systemBusinessParamService.queryStandCurveConf();

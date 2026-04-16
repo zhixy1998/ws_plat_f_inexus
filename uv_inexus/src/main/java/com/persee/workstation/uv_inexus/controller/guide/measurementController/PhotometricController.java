@@ -52,7 +52,7 @@ public class PhotometricController {
     }
 
     @ButtonPermission("wizardModeLumneModifyMethodParams")
-    @OperateLog(module = "实验测试-向导模式-定量测量-修改方法参数", description = "执行实验测试-向导模式-定量测量-修改方法参数", recordParams = true)
+    @OperateLog(module = "实验测试-向导模式-定量测定-修改方法参数", description = "执行实验测试-向导模式-定量测定-修改方法参数", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
     public Result<MethodChangeCheckVO> checkParam(@RequestBody PhotometricMethodParameterDto methodParam) {
@@ -60,7 +60,7 @@ public class PhotometricController {
     }
 
     @ButtonPermission("wizardModeLumneApplyMethod")
-    @OperateLog(module = "实验测试-向导模式-定量测量-应用方法", description = "执行实验测试-向导模式-定量测量-应用方法操作", recordParams = true)
+    @OperateLog(module = "实验测试-向导模式-定量测定-应用方法", description = "执行实验测试-向导模式-定量测定-应用方法操作", recordParams = true)
     @PostMapping("updateMethodParam")
     @ApiOperation("保存方法参数接口")
     public Result<MeasurementCurrentInfoVO> applyMethod(@RequestBody PhotometricMethodParameterDto methodParam) {

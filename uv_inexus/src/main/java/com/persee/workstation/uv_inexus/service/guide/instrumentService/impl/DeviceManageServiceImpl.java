@@ -42,7 +42,10 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMa
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceUsageLogService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
-import com.persee.workstation.uv_inexus.util.changeUtil.*;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FindDevEnum;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
@@ -894,7 +897,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
                         } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.End.getType())) {
                             paramVO.setLastValue(typeInfoPO.getMinWavelength());
-                        }else {
+                        } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.ScanSpeed.getType())) {
+                            Object speed = MappingParamEnum.SCAN_SPEED.getDefaultValue();
+                            String jsonString = JSONObject.toJSONString(speed);
+                            List<DeviceConfParam> options = JSON.parseArray(jsonString, DeviceConfParam.class);
+                            DeviceConfParam deviceConfParam = options.get(0);
+
+                            paramVO.setLastValue(deviceConfParam.getParamValue());
+                        }
+
+                        else {
                             DataNameValue value = defaultValue.get(0);
                             if (StringUtils.hasText(value.getDataValue())) {
                                 paramVO.setLastValue(value.getDataValue());
@@ -2210,6 +2222,16 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
 
         //这里初始化之后还要创建新的任务，根据当前选定的模板创建任务，其实就是检定校准的任务
         if (deviceInfoPO.getIsInited() == 1) {
+            LambdaQueryWrapper<TaskManagement> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+            lambdaQueryWrapper.eq(TaskManagement::getOperationInstrument, deviceSerialNumber)
+                            .eq(TaskManagement::getTaskType, FACTORY_INSPECTION_TASK.getCode());
+            long count = taskManagementService.count(lambdaQueryWrapper);
+            if (count > 0) {
+                log.info("该设备已存在任务，请勿重复创建！");
+                break;
+            }
+
+
             //先根据仪器序列号找出这个仪器的型号
             List<String> list1 = deviceTypeInfoDAO.queryDeviceTypeBySerialNumber(deviceSerialNumber);
             LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();

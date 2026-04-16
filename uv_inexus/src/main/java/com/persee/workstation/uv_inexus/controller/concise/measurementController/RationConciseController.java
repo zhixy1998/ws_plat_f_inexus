@@ -45,7 +45,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/quantitativeMeasurement/concise")
-@Api("简洁模式--定量测量")
+@Api("简洁模式--定量测定")
 public class RationConciseController {
     @Autowired
     private RationConciseService rationService;
@@ -57,7 +57,7 @@ public class RationConciseController {
         return rationService.getCurrentInfo(updateBy, measureType);
     }
     @ButtonPermission("quantityCreateTask")
-    @OperateLog(module = "实验测试-经典模式-定量测量-新建任务", description = "执行实验测试-经典模式-定量测量-新建任务记录", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-定量测定-新建任务", description = "执行实验测试-经典模式-定量测定-新建任务记录", recordParams = true)
     @PostMapping("newDraft")
     @ApiOperation("新建草稿")
     public Result<FMeasurementCurrentInfoVO> newDraft(@RequestBody SaveDataDto dto) {
@@ -73,7 +73,7 @@ public class RationConciseController {
     }
 
     @ButtonPermission("lumneApplyMethod")
-    @OperateLog(module = "实验测试-经典模式-定量测量-应用方法", description = "执行实验测试-经典模式-定量测量-应用方法记录", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-定量测定-应用方法", description = "执行实验测试-经典模式-定量测定-应用方法记录", recordParams = true)
     @PostMapping("applyMethod")
     @ApiOperation("应用方法接口")
     public Result<FMeasurementCurrentInfoVO> applyMethod(@RequestBody NewRationMethodParamCheckDTO methodParam) {
@@ -100,16 +100,16 @@ public class RationConciseController {
         return rationService.querySampleList(taskId, sampleKind);
     }
 //    @ButtonPermission(
-//            description = "实验测试-经典模式-定量测量-设置样品", // 操作描述
+//            description = "实验测试-经典模式-定量测定-设置样品", // 操作描述
 //            permissionMapping = "add=quantitySetSample,edit=quantityModifySampleInformation,delete=quantityDeleteSample" // 自定义操作类型→驼峰权限标识
 //    )
 //    @OperateLog(
-//            module = "实验测试-经典模式-定量测量-设置样品",
-//            description = "执行实验测试-经典模式-定量测量-{operateType}样品操作",
+//            module = "实验测试-经典模式-定量测定-设置样品",
+//            description = "执行实验测试-经典模式-定量测定-{operateType}样品操作",
 //            recordParams = true
 //    )
     @ButtonPermission("quantitySetSample")
-    @OperateLog(module = "实验测试-经典模式-定量测量-设置样品", description = "执行实验测试-经典模式-定量测量-设置样品操作", recordParams = true, ignore = true)
+    @OperateLog(module = "实验测试-经典模式-定量测定-设置样品", description = "执行实验测试-经典模式-定量测定-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSample")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSample(@RequestBody FRationAddOrDeleteSampleDTO dto) {
@@ -123,7 +123,7 @@ public class RationConciseController {
         return rationService.querySampleHeads(taskId, sampleKind);
     }
     @ButtonPermission("quantityDeleteSample")
-    @OperateLog(module = "实验测试-经典模式-定量测量-删除样品", description = "执行实验测试-经典模式-定量测量-删除样品记录", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-定量测定-删除样品", description = "执行实验测试-经典模式-定量测定-删除样品记录", recordParams = true)
     @GetMapping("deleteOneSample")
     @ApiOperation("删除单个样本接口")
     public Result deleteOneSample(String taskId, String sampleId) {
@@ -211,7 +211,7 @@ public class RationConciseController {
         }
     }
     @ButtonPermission("quantityZeroCalibration")
-    @OperateLog(module = "实验测试-经典模式-定量测量-校零", description = "执行实验测试-经典模式-定量测量-校零记录", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-定量测定-校零", description = "执行实验测试-经典模式-定量测定-校零记录", recordParams = true)
     @GetMapping("zero")
     @ApiOperation("校零接口")
     public Result photoZero(@RequestParam String deviceSerialNumber,
@@ -307,7 +307,7 @@ public class RationConciseController {
     }
     */
     @ButtonPermission("quantityExportData")
-    @OperateLog(module = "实验测试-经典模式-定量测量-导出数据", description = "执行实验测试-经典模式-定量测量-导出数据记录", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-定量测定-导出数据", description = "执行实验测试-经典模式-定量测定-导出数据记录", recordParams = true)
     @GetMapping("downloadDoc")
     @ApiOperation("多格式文件下载接口（支持word/excel/txt）- 集成children和option数据")
     public ResponseEntity<?> downloadDoc(
