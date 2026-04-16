@@ -3404,7 +3404,9 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         double start = Double.parseDouble(paramDto.getStartWaveLength());
         double end = Double.parseDouble(paramDto.getEndWaveLength());
-
+        if (paramDto.getSpikeRemoval()==null){
+            paramDto.setSpikeRemoval(false);
+        }
         // 校验方法参数中起始波长不能小于终止波长,小于则友好提示
         if (start <= end) {
             //起始波长不能小于等于停止波长
