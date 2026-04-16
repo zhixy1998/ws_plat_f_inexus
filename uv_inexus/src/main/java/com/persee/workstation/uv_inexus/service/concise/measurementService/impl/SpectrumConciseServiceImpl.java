@@ -681,8 +681,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (validateResult.getCode() != 200) {
             return validateResult;
         }
+        if (paramDto.getParameter().getSpikeRemoval()==null) {
+            paramDto.getParameter().setSpikeRemoval(false);
+        }
         FSpectrumParameter param = new FSpectrumParameter();
         BeanUtils.copyProperties(paramDto.getParameter(), param);
+
         if(param.getSpikeRemoval()){
             List<String> newSpikeArray = new ArrayList<>();
             List<String> spikeArray = param.getSpikeArray();
