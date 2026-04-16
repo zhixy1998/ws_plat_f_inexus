@@ -576,7 +576,7 @@ public class MessageUtil {
     }
 
     /**
-     * 定量测量微分调用
+     * 定量测定微分调用
      *
      * @param scanSocket 获取socket
      * @param sendIp     机器ip
@@ -1032,7 +1032,7 @@ public class MessageUtil {
     }
 
     /**
-     * 定量测量:(微分测量)扫描接受并处理
+     * 定量测定:(微分测量)扫描接受并处理
      */
 
     private static List<ChangeParam> parseScanFast(DatagramSocket scanSocket) {

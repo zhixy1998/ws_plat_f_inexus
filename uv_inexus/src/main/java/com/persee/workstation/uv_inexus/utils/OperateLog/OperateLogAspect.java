@@ -112,17 +112,17 @@ public class OperateLogAspect {
                         operateDescMap.put("edit", "修改");
                         operateDescMap.put("delete", "删除");
                         operateDescMap.put("lumne", "光度测量-测量");
-                        operateDescMap.put("quantity", "定量测量-测量");
+                        operateDescMap.put("quantity", "定量测定-测量");
                         operateDescMap.put("spectralScan", "光谱扫描-扫描");
                         operateDescMap.put("timeScan", "时间扫描-扫描");
                         operateDescMap.put("spectralScanBaseline", "光谱扫描-基线");
                         operateDescMap.put("timeScanBaseline", "时间扫描-基线");
                         operateDescMap.put("lumnePreviewReport", "光度测量-预览报告");
-                        operateDescMap.put("quantityPreviewReport", "定量测量-预览报告");
+                        operateDescMap.put("quantityPreviewReport", "定量测定-预览报告");
                         operateDescMap.put("spectralPreviewReport", "光谱扫描-预览报告");
                         operateDescMap.put("timeScanPreviewReport", "时间扫描-预览报告");
                         operateDescMap.put("wmlumneGenerationReport", "光度测量-生成报告");
-                        operateDescMap.put("wmquantityGenerationReport", "定量测量-生成报告");
+                        operateDescMap.put("wmquantityGenerationReport", "定量测定-生成报告");
                         operateDescMap.put("wmspectralGenerationReport", "光谱扫描-生成报告");
                         operateDescMap.put("wmtimeScanGenerationReport", "时间扫描-生成报告");
                         operateDescMap.put("instrumentCalibrationWavelengthCorrection", "波长校正");
@@ -249,12 +249,18 @@ public class OperateLogAspect {
 
             try {
                 Field targetField = null;
+                // 先找本类
                 try {
                     targetField = arg.getClass().getDeclaredField(fieldName);
                 } catch (NoSuchFieldException e) {
-                    Class<?> superClass = arg.getClass().getSuperclass();
-                    if (superClass != null) {
-                        targetField = superClass.getDeclaredField(fieldName);
+                    // 找不到就找父类，找不到也不抛错
+                    try {
+                        Class<?> superClass = arg.getClass().getSuperclass();
+                        if (superClass != null) {
+                            targetField = superClass.getDeclaredField(fieldName);
+                        }
+                    } catch (NoSuchFieldException ignored) {
+                        // 父类也找不到 → 直接跳过，不抛异常
                     }
                 }
 
@@ -264,7 +270,8 @@ public class OperateLogAspect {
                     return fieldObj != null ? fieldObj.toString().trim() : "";
                 }
             } catch (Exception e) {
-                log.warn("读取字段{}异常，跳过该参数", fieldName, e);
+                // 只在真正异常时打warn，找不到字段不打
+                log.debug("读取字段{}异常，跳过该参数", fieldName);
                 continue;
             }
         }

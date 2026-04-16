@@ -16,7 +16,7 @@ import lombok.EqualsAndHashCode;
 import java.util.List;
 
 /**
- * 定量测量参数
+ * 定量测定参数
  */
 @EqualsAndHashCode(callSuper = true)
 @Data

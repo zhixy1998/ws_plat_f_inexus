@@ -55,9 +55,9 @@ public class DefaultTaskManager {
     private volatile String defaultTaskId;
 
     // 获取默认任务ID
-    public String getDefaultTaskId(String updateBy) {
+    public String getDefaultTaskId(String updateBy, String taskType) {
         synchronized (this) {
-            ensureDefaultTaskExists(updateBy);
+            ensureDefaultTaskExists(updateBy,taskType);
         }
         return defaultTaskId;
     }
@@ -105,7 +105,7 @@ public class DefaultTaskManager {
     }
     // 确保存在未开始的默认任务
     @Transactional(rollbackFor = Exception.class)
-    public void ensureDefaultTaskExists(String updateBy) {
+    public void ensureDefaultTaskExists(String updateBy, String taskType) {
 //        QueryWrapper<TaskManagement> wrapper = new QueryWrapper<>();
 //        wrapper.eq("completion_status", TASK_NOT_STARTED.getCode())
 //                .eq("content_category", TEMPLATE_BUILT_IN_TASK.getCode()); // 假设用名称标识默认任务
@@ -117,12 +117,12 @@ public class DefaultTaskManager {
         //看一下有没有updateBy创建的任务
         LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(TaskManagement::getCreateBy, updateBy)
-                .eq(TaskManagement::getTaskType, "1");
+                .eq(TaskManagement::getTaskType, taskType);
         long count = taskManagementService.count(wrapper);
 //        long count = taskManagementService.count();
         if (count == 0) {
             // 创建新默认任务
-            TaskManagement newTask = createDefaultTask(updateBy);
+            TaskManagement newTask = createDefaultTask(updateBy,taskType);
             ExcelTemplate excelTemplate = templateService.getById(newTask.getUseTemplate());
             initializeTaskExecutionDetails(newTask.getId(), excelTemplate.getTemplateCode());
 
@@ -130,11 +130,11 @@ public class DefaultTaskManager {
             this.defaultTaskId = newTask.getId();
 
         } else {
-            //使用最新的任务，不管有没有使用过
+            //使用最新的任务，不ai管有没有使用过
             TaskManagement task1 = taskManagementService.getOne(
                     new LambdaQueryWrapper<TaskManagement>()
                             .eq(TaskManagement::getCreateBy, updateBy)
-                            .eq(TaskManagement::getTaskType, "1")
+                            .eq(TaskManagement::getTaskType, taskType)
                             .orderByDesc(TaskManagement::getUpdated)  // 按创建时间降序
                             .last("LIMIT 1")  // 只取最新的一条
             );
@@ -142,11 +142,11 @@ public class DefaultTaskManager {
         }
     }
     public TaskManagement createFactoryInspectionTask(String updateBy) {
-        TaskManagement task = createDefaultTask(updateBy);
+        TaskManagement task = createDefaultTask(updateBy,FACTORY_INSPECTION_TASK.getCode());
         taskManagementService.save(task);
         return task;
     }
-    private TaskManagement createDefaultTask(String updateBy) {
+    private TaskManagement createDefaultTask(String updateBy, String taskType) {
         TaskManagement task = new TaskManagement();
         task.setId(IdGeneratorUtil.generateIdWithPrefix("task"));
         task.setDetectName("默认任务" + IdGeneratorUtil.generateShortId() + System.currentTimeMillis());
@@ -158,6 +158,9 @@ public class DefaultTaskManager {
         task.setCreated(LocalDateTime.now());
         task.setCreateBy(updateBy);
         task.setTemplateName(template.getTemplateName());
+        if (StringUtils.isNotBlank(taskType)){
+            task.setTaskType(taskType);
+        }
         R<String> device = deviceManageService.getConnectDevice(updateBy);
         if (device != null && StringUtils.isNotBlank(device.getData())) {
             task.setOperationInstrument(device.getData());

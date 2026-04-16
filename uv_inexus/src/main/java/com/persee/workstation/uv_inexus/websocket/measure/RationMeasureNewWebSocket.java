@@ -215,7 +215,7 @@ public class RationMeasureNewWebSocket{
 //                    return;
 //                }
                 LogManualUtil.saveReMeasureLog(
-                        "实验测试-向导模式-定量测量-重新测量",
+                        "实验测试-向导模式-定量测定-重新测量",
                         String.format("重测样品：编号[%s]，名称[%s]", dealSample.getSampleNumber(), dealSample.getSampleName()),
                         param.getUpdateBy(),   // 传入用户名
                         null,

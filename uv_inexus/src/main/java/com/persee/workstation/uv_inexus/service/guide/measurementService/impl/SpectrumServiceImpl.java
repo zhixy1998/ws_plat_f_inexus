@@ -260,14 +260,10 @@ public class SpectrumServiceImpl implements SpectrumService {
                 vo.setTaskId(measureTask.getId());
                 vo.setTaskName(measureTask.getTaskName());
                 vo.setTaskStatus(measureTask.getTaskStatus());
-            } else {
-                vo.setTaskId(null);
-                vo.setTaskName(null);
-                vo.setTaskStatus(null);
+                vo.setProjectId(project.getId());
+                vo.setProjectName(project.getProjectName());
+                return Result.ok(vo);
             }
-            vo.setProjectId(project.getId());
-            vo.setProjectName(project.getProjectName());
-            return Result.ok(vo);
         }
         // 根据默认任务名称查询默认任务
         TMeasureTask defaultTask = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("task_name", Constants.DEFAULT_TASK)
@@ -494,6 +490,19 @@ public class SpectrumServiceImpl implements SpectrumService {
             if (!rdata.getSuccess()) {
                 return Result.checkFail(rdata.getData());
             }
+        }
+        if (spectrumParameter.getSpikeRemoval()){
+            List<String> newSpikeArray = new ArrayList<>();
+            List<String> spikeArray = spectrumParameter.getSpikeArray();
+            Double startWaveLength = Double.valueOf(spectrumParameter.getStartWaveLength());
+            Double endWaveLength = Double.valueOf(spectrumParameter.getEndWaveLength());
+            for (String s : spikeArray) {
+                Double spike = Double.valueOf(s);
+                if (spike <= startWaveLength && spike >= endWaveLength) {
+                    newSpikeArray.add(s);
+                }
+            }
+            spectrumParameter.setSpikeArray(newSpikeArray);
         }
         // 创建测量方法表
         TMeasureMethod tMeasureMethod = new TMeasureMethod();
@@ -2039,9 +2048,11 @@ public class SpectrumServiceImpl implements SpectrumService {
         } else {
             for (TaskSpecimen taskSpeciman : taskSpecimen) {
                 if (taskSpeciman.getIsTested().equals("1") && taskSpeciman.getDeleteType().equals("0")) {
+                    // 修复：增加 is_delete = "0" 过滤条件，避免返回已删除的数据
                     List<TMeasureAnalysisData> measureDataList = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>()
                             .eq("task_id", taskId)
                             .eq("sample_key", taskSpeciman.getSpecimenKey())
+                            .eq("is_delete", "0")  // 新增过滤条件
                             .orderByAsc("analysis_number"));
                     TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
                     for (TMeasureAnalysisData tMeasureData : measureDataList) {
@@ -3393,6 +3404,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         double start = Double.parseDouble(paramDto.getStartWaveLength());
         double end = Double.parseDouble(paramDto.getEndWaveLength());
+
         // 校验方法参数中起始波长不能小于终止波长,小于则友好提示
         if (start <= end) {
             //起始波长不能小于等于停止波长
@@ -3436,6 +3448,20 @@ public class SpectrumServiceImpl implements SpectrumService {
         SpectrumParameter newParam = new SpectrumParameter();
         BeanUtils.copyProperties(paramDto, newParam);
 
+        if (paramDto.getSpikeRemoval()){
+            List<String> spikeArray = paramDto.getSpikeArray();
+            List<String> newSpikeArray = new ArrayList<>();
+            for (String s : spikeArray) {
+                Double spike = Double.valueOf(s);
+                if (spike <= start && spike >= end) {
+                    newSpikeArray.add(s);
+                }
+            }
+
+            paramDto.setSpikeArray(newSpikeArray);
+            newParam.setSpikeArray(newSpikeArray);
+        }
+
         // 3. 比较参数
         if (compareParam(oldParam, newParam)) {
             return Result.ok();
@@ -3458,6 +3484,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             task.setMethodKey(newMethod.getId());
             task.setCreateTime(LocalDateTime.now());
             task.setTaskName(paramDto.getTaskName());
+            task.setSampleKey("[]");
             boolean update = tMeasureTaskService.updateById(task);
             return update ? Result.ok() : Result.fail(YamlMessageSource.getMessageStatic("00000048"));
         } else {
@@ -4530,6 +4557,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             newTask.setTaskName(paramDto.getTaskName());
         }
         newTask.setCreateTime(LocalDateTime.now());
+        newTask.setStartTime(LocalDateTime.now());
         newTask.setMethodKey(methodId);
         List<TaskSpecimen> specimens = new ArrayList<>();
         newTask.setSampleKey(specimens.toString());
@@ -4919,12 +4947,6 @@ public class SpectrumServiceImpl implements SpectrumService {
                 if (uniqueSpikes.size() < spikeArray.size()) {
                     return R.fail("尖刺数组中存在重复的尖刺点，请检查");
                 }
-
-                // 校验尖刺点数量限制
-                if (spikeArray.size() > 10) { // 假设最多10个尖刺点
-                    return R.fail("尖刺点数量不能超过10个，当前：" + spikeArray.size());
-                }
-
             } catch (NumberFormatException e) {
                 return R.fail("尖刺数组格式错误，必须为数字，当前值：" + spikeArray);
             }

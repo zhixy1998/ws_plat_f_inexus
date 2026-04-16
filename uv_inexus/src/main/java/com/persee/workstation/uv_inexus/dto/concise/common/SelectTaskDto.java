@@ -25,6 +25,8 @@ public class SelectTaskDto {
     private Integer pageSize;
     @ApiModelProperty("方法类型")
     private String methodType;
+    @ApiModelProperty("操作类型")
+    private String operateType;
 
     @ApiModelProperty("用户名")
     private String updateBy;

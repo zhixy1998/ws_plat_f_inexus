@@ -25,6 +25,7 @@ import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConfig;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNumConfig;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.MappingParamEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
@@ -54,6 +55,7 @@ import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUser
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.SaveStateVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
@@ -783,10 +785,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             measureType = task.getMeasureType();
         }
 
-        // 3. 判断是否是定量测量
+        // 3. 判断是否是定量测定
         boolean isQuantitative = "定量测定".equals(measureType);
 
-        // 4. 如果是定量测量标准样品，校验浓度
+        // 4. 如果是定量测定标准样品，校验浓度
         if (isQuantitative && SampleTypeEnum.kind_stand.getIdentity().equals(sampleKind)) {
             if (!StringUtils.hasText(normalConcentration)) {
                 return Result.fail(YamlMessageSource.getMessageStatic("00102024"));
@@ -867,7 +869,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
 
     /**
-     * 处理定量测量样品创建
+     * 处理定量测定样品创建
      */
     private Result handleQuantitativeSample(AddSampleDTO dto, TMeasureTask task,
                                             SampleNumConfig numberConfig, SampleNameConfig nameConfig) {
@@ -1220,7 +1222,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     /**
-     * 创建首个定量测量样品
+     * 创建首个定量测定样品
      */
     private Result createFirstQuantitativeSample(TMeasureTask task, List<TaskSpecimen> taskSpecimen,
                                                  String sampleKind, String normalConcentration,
@@ -1275,7 +1277,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     /**
-     * 创建后续定量测量样品（支持批量创建）
+     * 创建后续定量测定样品（支持批量创建）
      */
     private Result createSubsequentQuantitativeSamples(AddSampleDTO dto, TMeasureTask task,
                                                        List<TaskSpecimen> taskSpecimen, String sampleKind,
@@ -1648,7 +1650,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 break;
             case QUANTITATIVE_MEASUREMENT:
                 if (!measureType.equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
-                    //请选择定量测量
+                    //请选择定量测定
                     return Result.fail(YamlMessageSource.getMessageStatic("00301008"));
                 }
                 break;
@@ -1805,7 +1807,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             }
 
             return Result.fail(reportCount.getMessage());
-        } else if (reportName.equals("定量测量表格")) {
+        } else if (reportName.equals("定量测定表格")) {
             RationReportDataVO vo = new RationReportDataVO();
             rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), false, task.getDeviceSerialNumber());
 
@@ -3528,8 +3530,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
             vo.setStartWaveLength(param.getStartWaveLength() + "nm");
             vo.setEndWaveLength(param.getEndWaveLength() + "nm");
-            // (0.慢速 1.中速 2.快速 3.极快)
-            vo.setScanSpeed(param.getScanSpeed().equals("0") ? "慢速" : param.getScanSpeed().equals("1") ? "中速" : param.getScanSpeed().equals("2") ? "快速" : "极快");
+            DeviceConfParam scanSpeedByValue = MappingParamEnum.SCAN_SPEED.getScanSpeedByValue(param.getScanSpeed());
+            if (scanSpeedByValue != null) {
+                vo.setScanSpeed(scanSpeedByValue.getParamName());
+            }
+
             if (param.getRepetitionPattern().equals("单池重复")) {
                 vo.setTimeInterval(param.getTimeInterval());
                 vo.setIsRepeat(true);

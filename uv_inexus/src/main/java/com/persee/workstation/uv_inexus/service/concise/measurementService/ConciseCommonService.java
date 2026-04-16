@@ -74,8 +74,6 @@ public interface ConciseCommonService {
 
     //删除方法
     Result<String> delMethod(String methodId);
-
-    Result delTask(String taskId);
     //另存为方法
     Result<String> copy(CopyParam copyParam);
 

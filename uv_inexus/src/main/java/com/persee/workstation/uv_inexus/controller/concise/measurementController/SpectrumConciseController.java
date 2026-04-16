@@ -139,7 +139,7 @@ public class SpectrumConciseController {
     }
 
     @ButtonPermission("quantityCreateTask")
-    @OperateLog(module = "实验测试-经典模式-定量测量-新建任务", description = "执行实验测试-经典模式-定量测量-新建任务记录", recordParams = true)
+    @OperateLog(module = "实验测试-经典模式-定量测定-新建任务", description = "执行实验测试-经典模式-定量测定-新建任务记录", recordParams = true)
     @PostMapping("saveDraftButton")
     @ApiOperation("保存草稿按钮接口")
     public Result saveDraftButton(@RequestParam String taskId,

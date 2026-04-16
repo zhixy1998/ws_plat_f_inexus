@@ -65,7 +65,7 @@ public class TimeSweepController {
     }
 
     @ButtonPermission("wizardModeTimeScanModifyMethodParams")
-    @OperateLog(module = "实验测试-向导模式-光谱扫描-修改方法参数", description = "执行实验测试-向导模式-光谱扫描-修改方法参数操作", recordParams = true)
+    @OperateLog(module = "实验测试-向导模式-时间扫描-修改方法参数", description = "执行实验测试-向导模式-时间扫描-修改方法参数操作", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
     public Result<MethodChangeCheckVO> checkParam(@RequestBody TimeSweepMethodParamsDto methodParam) {

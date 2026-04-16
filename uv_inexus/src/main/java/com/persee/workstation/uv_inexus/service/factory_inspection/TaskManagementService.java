@@ -18,7 +18,7 @@ import java.util.Map;
  *
  */
 public interface TaskManagementService extends IService<TaskManagement> {
-    Result getList(TaskMgrQueryDto queryDto);
+    Result getList(TaskMgrQueryDto queryDto,String taskType);
 
     Result<TaskCheckItemDto> showTemplate(String id);
 

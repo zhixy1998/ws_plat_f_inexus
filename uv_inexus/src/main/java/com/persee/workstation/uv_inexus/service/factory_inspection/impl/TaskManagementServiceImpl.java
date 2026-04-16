@@ -90,7 +90,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Autowired
     private DeviceTypeInfoDAO deviceTypeInfoDAO;
     @Override
-    public Result getList(TaskMgrQueryDto queryDto) {
+    public Result getList(TaskMgrQueryDto queryDto,String taskType) {
         try {
 
 
@@ -104,7 +104,11 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 //                .or().like(TaskManagement::getOperationInstrument, queryDto.getQuery())
 //                .or().like(TaskManagement::getUseTemplate, queryDto.getQuery());
 
-            IPage<TaskManagement> managementPage = taskMgrMapper.getMyPage(page, queryDto.getQuery(), queryDto.getUpdateBy());
+            if (StringUtils.isBlank(taskType)){
+                //没传的话，默认检定
+                taskType=null;
+            }
+            IPage<TaskManagement> managementPage = taskMgrMapper.getMyPage(page, queryDto.getQuery(), queryDto.getUpdateBy(),taskType);
 //        managementPage.getRecords().forEach(task -> {
 //            ExcelTemplate excelTemplate = templateService.getById(task.getUseTemplate());
 //            if (excelTemplate != null) {
@@ -337,6 +341,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             task.setOperationInstrument(taskCreateDto.getSerialNumber());
             task.setContentCategory(TEMPLATE_USER_DEFINED_TASK.getCode());
             task.setCreateBy(taskCreateDto.getUpdateBy());
+            task.setTaskType(management.getTaskType());
             int i = taskMgrMapper.insert(task);
             //获取之前的关联关系
             LambdaQueryWrapper<TaskExecutionDetail> wrapper = new LambdaQueryWrapper<>();
@@ -618,11 +623,50 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     public Result<TaskManagement> getTaskDetail(String taskId, String updateBy) {
         try {
             if (DEFAULT_TASK.getCode().equals(taskId)) {
-                String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy);
+                //这是检定任务
+                String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,CALIBRATION_INSPECTION.getCode());
                 TaskManagement management = this.getById(defaultTaskId);
                 ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
                 management.setTemplateName(excelTemplate.getTemplateName());
                 management.setTemplateCode(excelTemplate.getTemplateCode());
+                R<String> device = deviceManageService.getConnectDevice(updateBy);
+                if (StringUtils.isBlank(management.getOperationInstrument())){
+                    if (StringUtils.isNotBlank(device.getData())) {
+                        management.setOperationInstrument(device.getData());
+                    }
+                }
+
+                return Result.ok(management);
+            }
+            if (CALIBRATION_TASK.getCode().equals(taskId)) {
+                //这是校准任务
+                String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,CALIBRATION.getCode());
+                TaskManagement management = this.getById(defaultTaskId);
+                ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
+                management.setTemplateName(excelTemplate.getTemplateName());
+                management.setTemplateCode(excelTemplate.getTemplateCode());
+                R<String> device = deviceManageService.getConnectDevice(updateBy);
+                if (StringUtils.isBlank(management.getOperationInstrument())){
+                    if (StringUtils.isNotBlank(device.getData())) {
+                        management.setOperationInstrument(device.getData());
+                    }
+                }
+
+                return Result.ok(management);
+            }
+            if (PERIODIC_INSPECTION.getCode().equals(taskId)) {
+                //这是期间核查任务
+                String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,PERIODIC_INSPECTION_TASK.getCode());
+                TaskManagement management = this.getById(defaultTaskId);
+                ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
+                management.setTemplateName(excelTemplate.getTemplateName());
+                management.setTemplateCode(excelTemplate.getTemplateCode());
+                R<String> device = deviceManageService.getConnectDevice(updateBy);
+                if (StringUtils.isBlank(management.getOperationInstrument())){
+                    if (StringUtils.isNotBlank(device.getData())) {
+                        management.setOperationInstrument(device.getData());
+                    }
+                }
 
                 return Result.ok(management);
             }
@@ -632,19 +676,19 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 String data = device.getData();
                 LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
                 //查找的是开箱验证任务
-                wrapper.eq(TaskManagement::getTaskType, "2")
+                wrapper.eq(TaskManagement::getTaskType, INSTALLATION_ACCEPTANCE.getCode())
                         .eq(TaskManagement::getOperationInstrument, data);
                 List<TaskManagement> list = this.list(wrapper);
                 if (CollectionUtils.isEmpty(list)) {
                     LambdaQueryWrapper<TaskManagement> wrapper1 = new LambdaQueryWrapper<>();
                     //查找的是开箱验证任务
-                    wrapper1.eq(TaskManagement::getTaskType, "2")
+                    wrapper1.eq(TaskManagement::getTaskType, INSTALLATION_ACCEPTANCE.getCode())
                             .isNull(TaskManagement::getOperationInstrument);
                     list = this.list(wrapper1);
                     if (CollectionUtils.isEmpty(list)){
                         LambdaQueryWrapper<TaskManagement> wrapper2 = new LambdaQueryWrapper<>();
                         //查找的是开箱验证任务
-                        wrapper2.eq(TaskManagement::getTaskType, "2");
+                        wrapper2.eq(TaskManagement::getTaskType, INSTALLATION_ACCEPTANCE.getCode());
                         list = this.list(wrapper2);
                     }
                 }
@@ -709,9 +753,10 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                     TaskManagement task = this.getById(taskId1);
                     return Result.ok(task);
                 }
-                return Result.fail(null);
+                return Result.ok(null);
             }
             TaskManagement management = this.getById(taskId);
+
             ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
             management.setTemplateName(excelTemplate.getTemplateName());
             return Result.ok(management);

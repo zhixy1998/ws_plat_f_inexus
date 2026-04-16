@@ -29,7 +29,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * 测量任务表(FMeasureTask)表服务实现类
@@ -65,12 +64,6 @@ public class FMeasureTaskServiceImpl extends ServiceImpl<FMeasureTaskMapper, FMe
         fMeasureTaskAttachmentService.save(taskAttachment);
 
         return true;
-    }
-
-    @Override
-    public boolean delTask(String taskId) {
-        int i=fMeasureTaskMapper.delTask(taskId);
-        return i!=0;
     }
 
 

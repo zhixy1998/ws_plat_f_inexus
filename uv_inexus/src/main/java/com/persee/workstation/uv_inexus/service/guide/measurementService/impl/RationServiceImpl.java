@@ -397,14 +397,16 @@ public class RationServiceImpl implements RationService {
                 vo.setTaskId(task.getId());
                 vo.setTaskName(task.getTaskName());
                 vo.setTaskStatus(task.getTaskStatus());
+
+                TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+                if (project != null) {
+                    vo.setProjectId(project.getId());
+                    vo.setProjectName(project.getProjectName());
+                }
+                return Result.ok(vo);
             }
 
-            TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
-            if (project != null) {
-                vo.setProjectId(project.getId());
-                vo.setProjectName(project.getProjectName());
-            }
-            return Result.ok(vo);
+
         }
         wrapper.clear();
         wrapper.eq(TMeasureTask::getTaskName, Constants.DEFAULT_TASK)
@@ -971,7 +973,7 @@ public class RationServiceImpl implements RationService {
     private R<Boolean> checkParam(RationParameter parameter) {
         // 1. 根对象非空校验
         if (parameter == null) {
-            //定量测量参数对象不能为空
+            //定量测定参数对象不能为空
             return R.fail(YamlMessageSource.getMessageStatic("00102003"));
         }
 
@@ -1566,7 +1568,7 @@ public class RationServiceImpl implements RationService {
                     String name = oldSample.getSampleName();
                     String no = oldSample.getSampleNumber();
                     LogManualUtil.saveDeleteLog(
-                            "实验测试-向导模式-定量测量-设置样品",
+                            "实验测试-向导模式-定量测定-设置样品",
                             "删除样品：编号["+no+"]，名称["+name+"]",
                             oldSample,
                             dto
@@ -1643,7 +1645,7 @@ public class RationServiceImpl implements RationService {
                     tMeasureSampleService.updateById(newSample);
                     if (!oldSample.equals(newSample)) {
                         LogManualUtil.saveUpdateLog(
-                                "实验测试-向导模式-定量测量-设置样品",
+                                "实验测试-向导模式-定量测定-设置样品",
                                 oldSample,
                                 newSample,
                                 dto
@@ -1668,7 +1670,7 @@ public class RationServiceImpl implements RationService {
                     String sampleName = StringUtils.hasText(newSample.getSampleName()) ? newSample.getSampleName() : "未命名样品";
                     String sampleNo = StringUtils.hasText(newSample.getSampleNumber()) ? newSample.getSampleNumber() : "无编号";
                     LogManualUtil.saveAddLog(
-                            "实验测试-向导模式-定量测量-设置样品",
+                            "实验测试-向导模式-定量测定-设置样品",
                             String.format("新增标准样品：编号[%s]，名称[%s]", sampleNo, sampleName),
                             dto
                     );
@@ -1708,7 +1710,7 @@ public class RationServiceImpl implements RationService {
                 tMeasureSampleService.updateById(newSample);
                 if (!oldSample.equals(newSample)) {
                     LogManualUtil.saveUpdateLog(
-                            "实验测试-向导模式-定量测量-设置样品",
+                            "实验测试-向导模式-定量测定-设置样品",
                             oldSample,
                             newSample,
                             dto
@@ -1733,7 +1735,7 @@ public class RationServiceImpl implements RationService {
                 String sampleName = StringUtils.hasText(newSample.getSampleName()) ? newSample.getSampleName() : "未命名样品";
                 String sampleNo = StringUtils.hasText(newSample.getSampleNumber()) ? newSample.getSampleNumber() : "无编号";
                 LogManualUtil.saveAddLog(
-                        "实验测试-向导模式-定量测量-设置样品",
+                        "实验测试-向导模式-定量测定-设置样品",
                         String.format("新增未知样品：编号[%s]，名称[%s]", sampleNo, sampleName),
                         dto
                 );
@@ -2809,25 +2811,24 @@ public class RationServiceImpl implements RationService {
         } else {
             attachment = r.getData();
 
+            if (attachment == null){
+                attachment = new TMeasureTaskAttachment();
+            }
+
             if (!StringUtils.hasText(attachment.getDataParam())) {
-                attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                taskAttachmentService.saveOrUpdate(attachment);
                 recount = true;
             } else {
                 QueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
                 if (dataDTO.getDigit() == null || !dataDTO.getDigit().equals(digit)) {
                     recount = true;
-
-                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                    taskAttachmentService.saveOrUpdate(attachment);
                 } else if (dataDTO.getOtherDigit() == null || !dataDTO.getOtherDigit().equals(otherDigit)) {
                     recount = true;
-
-                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                    taskAttachmentService.saveOrUpdate(attachment);
                 }
             }
         }
+        attachment.setTaskId(taskId);
+        attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+        taskAttachmentService.saveOrUpdate(attachment);
 
         if (recount) {
             changeStandSampleDataDigit(taskId, digit);

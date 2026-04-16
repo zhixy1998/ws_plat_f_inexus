@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.controller.factory_inspection.multiDevice;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.component.EhcacheUtil;
 import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.BatchConnectDto;
@@ -9,6 +10,8 @@ import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
+import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
+import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
@@ -46,6 +49,8 @@ public class MultiDeviceInspectionController {
     TemplateService templateService;
     @Autowired
     EhcacheUtil ehcacheUtil;
+    @Autowired
+    private TaskManagementService taskManagementService;
 
     /*
      * 查找设备
@@ -221,11 +226,28 @@ public class MultiDeviceInspectionController {
     public Result<List<DeviceTaskDto>> listConnectedDevice() {
         Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
 
+
         List<DeviceTaskDto> dtoList;
         if (cachedObject instanceof List) {
             @SuppressWarnings("unchecked")
             List<DeviceTaskDto> checkedList = (List<DeviceTaskDto>) cachedObject;
             dtoList = checkedList;
+
+            if (CollectionUtils.isNotEmpty(dtoList)){
+                for (DeviceTaskDto dto : dtoList) {
+                    if (dto != null) {
+                        LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+                        wrapper.eq(TaskManagement::getOperationInstrument, dto.getDeviceSerialNumber())
+                                        .eq(TaskManagement::getTaskType, "3");
+                        List<TaskManagement> list = taskManagementService.list(wrapper);
+                        if (CollectionUtils.isNotEmpty(list)) {
+                            dto.setTaskId(list.get(0).getId());
+                            dto.setTemplateCode(list.get(0).getTemplateCode());
+                        }
+                    }
+                }
+            }
+
         } else {
             dtoList = new ArrayList<DeviceTaskDto>();
         }
