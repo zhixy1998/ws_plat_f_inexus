@@ -335,8 +335,22 @@ public class ConnectUtil {
             if (displayName.contains("ethernet") ||
                     displayName.contains("以太网") ||
                     displayName.contains("adapter") ||
-                    (displayName.contains("realtek") &&
-                            !displayName.contains("wireless") &&
+                    displayName.contains("realtek") ||
+                            displayName.contains("gigabit")||
+                            displayName.contains("network connection")||
+                            displayName.contains("family controller")||
+                            displayName.contains("pcie")||
+                            displayName.contains("pci")||
+                            displayName.contains("fast ethernet")||
+                            displayName.contains("usb ethernet")||
+                            displayName.contains("intel")||
+                            displayName.contains("broadcom")||
+                            displayName.contains("marvell")||
+                            displayName.contains("atheros")||
+                            displayName.contains("killer")||
+                            displayName.contains("asix")||
+                            displayName.contains("本地连接") &&
+                             (!displayName.contains("wireless") &&
                             !displayName.contains("wlan") &&
                             !displayName.contains("wi-fi") &&
                             !displayName.contains("virtual") &&
