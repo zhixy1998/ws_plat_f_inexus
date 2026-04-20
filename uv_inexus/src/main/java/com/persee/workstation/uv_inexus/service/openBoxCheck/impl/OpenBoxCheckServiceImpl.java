@@ -130,7 +130,7 @@ public class OpenBoxCheckServiceImpl implements OpenBoxCheckService {
 
                 if ("噪声检验".equals(sheetName)) {
                     Sheet sheet = taskWorkbook.getSheet(sheetName);
-                    List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "测量值", "500nm 100%噪声");
+                    List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "测量值", "500nm100%噪声");
                     List<String> values = positions != null ?
                             positions.stream().map(ExcelCellLocator.CellPosition::getValue).collect(Collectors.toList()) :
                             Collections.emptyList();
@@ -139,7 +139,7 @@ public class OpenBoxCheckServiceImpl implements OpenBoxCheckService {
 
                 if ("透射比示值误差与重复性校验".equals(sheetName)) {
                     Sheet sheet = taskWorkbook.getSheet(sheetName);
-                    List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "误差值", "紫外分光光度计标准物质 GBW(E)130066");
+                    List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, "误差值", "紫外分光光度计标准物质GBW(E)130066");
                     if (CollectionUtils.isNotEmpty(positions)) {
                         ArrayList<String> strings = new ArrayList<>();
                         for (ExcelCellLocator.CellPosition position : positions) {
@@ -192,7 +192,7 @@ public class OpenBoxCheckServiceImpl implements OpenBoxCheckService {
             e.printStackTrace();
             return Result.fail("获取任务数据失败");
         }
-
+        log.info("开箱报告的内容是"+result.toString());
         return Result.ok(result);
     }
 
