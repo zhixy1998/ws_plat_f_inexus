@@ -988,18 +988,31 @@ public class DataManagementServiceImpl implements DataManagementService {
         return Result.ok(resultMap);
     }
 
-    private TaskDataNumDto getCompletedTaskCount(LocalDateTime oneWeekAgo, LocalDateTime now, String id,String daily) {
+    private TaskDataNumDto getCompletedTaskCount(LocalDateTime oneWeekAgo, LocalDateTime now, String id, String daily) {
         TaskDataNumDto taskDataNumDto = new TaskDataNumDto();
-        QueryWrapper<TMeasureTask> wrapper = new QueryWrapper<>();
-        wrapper.eq("user_id", id);
+
+        // 第一个查询：task_status != Constants.PARAM_TWO
+        QueryWrapper<TMeasureTask> wrapper1 = new QueryWrapper<>();
+        wrapper1.eq("user_id", id);
         if (oneWeekAgo != null && now != null) {
-            wrapper.ge("create_time", now) // 假设有创建时间字段，可根据完成时间字段修改
-                    .le("create_time", oneWeekAgo);
+            wrapper1.ge("create_time", oneWeekAgo)
+                    .le("create_time", now);
         }
-        wrapper.eq("is_delete", "0");
-        Long count = taskManagementMapper.selectCount(wrapper);
-        wrapper.eq("task_status", Constants.PARAM_TWO);
-        Long completeCount = taskManagementMapper.selectCount(wrapper);
+        wrapper1.eq("is_delete", "0");
+        wrapper1.ne("task_status", Constants.PARAM_TWO);  // 使用 ne 表示不等于
+        Long count = taskManagementMapper.selectCount(wrapper1);
+
+        // 第二个查询：task_status == Constants.PARAM_TWO
+        QueryWrapper<TMeasureTask> wrapper2 = new QueryWrapper<>();
+        wrapper2.eq("user_id", id);
+        if (oneWeekAgo != null && now != null) {
+            wrapper2.ge("create_time", oneWeekAgo)
+                    .le("create_time", now);
+        }
+        wrapper2.eq("is_delete", "0");
+        wrapper2.eq("task_status", Constants.PARAM_TWO);  // 等于 PARAM_TWO
+        Long completeCount = taskManagementMapper.selectCount(wrapper2);
+
         taskDataNumDto.setDaily(daily);
         taskDataNumDto.setTaskNum(count);
         taskDataNumDto.setCompleteNum(completeCount);
