@@ -115,7 +115,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
                 .filter(dto -> {
                     // 过滤掉hidden=1的权限（注意处理null的情况，避免空指针）
                     Integer hidden = dto.getHidden();
-                    return hidden == null || hidden != 1;
+                    return hidden == null || hidden != 0;
                 })
                 .sorted((d1, d2) -> {
                     int sort1 = (d1.getSort() == null) ? 0 : d1.getSort();
@@ -290,7 +290,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
      * 核心方法：按小组→角色→权限逻辑查询树形权限结构，标记小组是否拥有该权限
      */
     @Override
-    public Result<List<PermissionTreeDTO>> getPermissionTreeByTypeAndUser(List<Integer> permTypeList, String groupId, Integer quickConfigType) {
+    public Result<List<PermissionTreeDTO>> getPermissionTreeByTypeAndUser(List<Integer> permTypeList, String groupId, Integer quickConfigType, Integer hidden) {
         try {
             // 1. 校验小组ID有效性
             if (!StringUtils.hasText(groupId)) {
@@ -339,8 +339,8 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             // 4. 查询该小组已拥有的权限ID
             Set<String> groupPermIds = getPermIdsByGroupId(groupId);
             
-            // 5. 查询角色拥有的所有权限详情（按权限类型和快捷配置类型筛选）
-            List<SysPermissionPO> rolePermissions = queryPermissionsByTypeAndIds(permTypeList, rolePermIds, quickConfigType);
+            // 5. 查询角色拥有的所有权限详情（按权限类型、快捷配置类型和隐藏状态筛选）
+            List<SysPermissionPO> rolePermissions = queryPermissionsByTypeAndIds(permTypeList, rolePermIds, quickConfigType, hidden);
             if (CollectionUtils.isEmpty(rolePermissions)) {
                 return Result.ok(new ArrayList<>());
             }
@@ -380,7 +380,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
     /**
      * 根据权限类型和权限ID列表查询权限详情
      */
-    private List<SysPermissionPO> queryPermissionsByTypeAndIds(List<Integer> permTypeList, List<String> permIds, Integer quickConfigType) {
+    private List<SysPermissionPO> queryPermissionsByTypeAndIds(List<Integer> permTypeList, List<String> permIds, Integer quickConfigType, Integer hidden) {
         QueryWrapper<SysPermissionPO> queryWrapper = new QueryWrapper<>();
         queryWrapper.in("id", permIds)
                     .eq("status", 1)
@@ -395,6 +395,11 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         // 按快捷配置类型筛选（如无类型限制则查询所有）
         if (quickConfigType != null) {
             queryWrapper.eq("quick_config_type", quickConfigType);
+        }
+        
+        // 按隐藏状态筛选（如无限制则查询所有）
+        if (hidden != null) {
+            queryWrapper.eq("hidden", hidden);
         }
         
         return sysPermissionMapper.selectList(queryWrapper);

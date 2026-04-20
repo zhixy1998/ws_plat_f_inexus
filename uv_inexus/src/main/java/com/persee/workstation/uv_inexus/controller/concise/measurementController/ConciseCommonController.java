@@ -102,15 +102,6 @@ public class ConciseCommonController {
     public Result<String> updateMethod(@RequestBody UpdateMethodDto updateMethodDto) {
         return conciseCommonService.updateMethod(updateMethodDto);
     }
-    @ButtonPermission(
-            description = "实验测试-经典模式-删除历史方法数据", // 操作描述
-            permissionMapping = "lumne=lumneDeleteMethod,quantity=quantityDeleteMethod,spectralScan=spectralScanDeleteMethod,timeScan=timeScanDeleteMethod" // 自定义操作类型→驼峰权限标识
-    )
-    @OperateLog(
-            module = "实验测试-经典模式",
-            description = "执行实验测试-经典模式-{operateType}-删除历史方法数据操作",
-            recordParams = true
-    )
     @PostMapping("queryHistoryTask")
     @ApiOperation("历史草稿")
     public Result<Page<FMeasureTaskDTO>> queryHistoryTask(@RequestBody SelectTaskDto selectTaskDto) {

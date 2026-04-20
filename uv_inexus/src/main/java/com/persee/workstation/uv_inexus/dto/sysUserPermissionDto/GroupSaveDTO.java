@@ -40,4 +40,7 @@ public class GroupSaveDTO {
 
     @ApiModelProperty(value = "状态（1-启用，0-禁用）", required = true)
     private Integer status;
+
+    @ApiModelProperty(value = "组类型：0-普通组，1-管理组")
+    private Integer groupType;
 }
