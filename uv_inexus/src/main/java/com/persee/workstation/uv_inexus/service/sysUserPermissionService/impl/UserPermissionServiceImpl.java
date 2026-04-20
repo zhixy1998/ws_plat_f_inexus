@@ -115,7 +115,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
                 .filter(dto -> {
                     // 过滤掉hidden=1的权限（注意处理null的情况，避免空指针）
                     Integer hidden = dto.getHidden();
-                    return hidden == null || hidden != 1;
+                    return hidden == null || hidden != 0;
                 })
                 .sorted((d1, d2) -> {
                     int sort1 = (d1.getSort() == null) ? 0 : d1.getSort();
