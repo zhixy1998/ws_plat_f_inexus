@@ -90,4 +90,8 @@ public class SysPermissionPO extends BasePO {
     @TableField("quick_config_type")
     @ApiModelProperty("状态：0-普通用户，1-GMP")
     private Integer quickConfigType;
+
+    @TableField("router")
+    @ApiModelProperty("router")
+    private String router;
 }

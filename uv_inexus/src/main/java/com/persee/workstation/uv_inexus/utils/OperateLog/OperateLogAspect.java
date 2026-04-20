@@ -116,7 +116,7 @@ public class OperateLogAspect {
                         operateDescMap.put("spectralScan", "光谱扫描-扫描");
                         operateDescMap.put("timeScan", "时间扫描-扫描");
                         operateDescMap.put("spectralScanBaseline", "光谱扫描-基线");
-                        operateDescMap.put("timeScanBaseline", "时间扫描-基线");
+                        operateDescMap.put("timeScanBaseline", "时间扫描-校零");
                         operateDescMap.put("lumnePreviewReport", "光度测量-预览报告");
                         operateDescMap.put("quantityPreviewReport", "定量测定-预览报告");
                         operateDescMap.put("spectralPreviewReport", "光谱扫描-预览报告");

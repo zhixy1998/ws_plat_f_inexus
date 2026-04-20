@@ -58,4 +58,7 @@ public class PermissionSaveDTO {
 
     @ApiModelProperty("是否无需权限：1-是，0-否")
     private Integer noAuth;
+
+    @ApiModelProperty("快捷配置类型：0-普通用户，1-GMP")
+    private Integer quickConfigType;
 }
