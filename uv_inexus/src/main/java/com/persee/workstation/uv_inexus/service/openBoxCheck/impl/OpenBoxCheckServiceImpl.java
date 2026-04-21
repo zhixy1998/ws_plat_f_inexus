@@ -202,17 +202,21 @@ public class OpenBoxCheckServiceImpl implements OpenBoxCheckService {
         item.setStandardValue(standardValue);
 
         if (measuredValues == null || measuredValues.isEmpty()) {
-//            item.setMeasuredValue("0.001");
             item.setMeasuredValue("");
-        } else if (measuredValues.size() == 1) {
-            item.setMeasuredValue(measuredValues.get(0));
         } else {
-            item.setMeasuredValue(measuredValues);
+            List<String> filteredValues = measuredValues.stream()
+                    .filter(v -> v != null && !v.trim().isEmpty())
+                    .collect(Collectors.toList());
+
+            if (filteredValues.isEmpty()) {
+                item.setMeasuredValue("");
+            } else if (filteredValues.size() == 1) {
+                item.setMeasuredValue(filteredValues.get(0));
+            } else {
+                item.setMeasuredValue(filteredValues);
+            }
         }
 
-//        if (inspectionItem.equals("稳定性")){
-//            item.setMeasuredValue("0.002");
-//        }
         return item;
     }
 
