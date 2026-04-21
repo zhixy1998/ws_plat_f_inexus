@@ -4917,23 +4917,18 @@ public class RationServiceConciseImpl implements RationConciseService {
     }
 
     @Override
-    public R<List<FRationCountDataInfo>> formula(String analysisDataId, List<FRationWavelengthDataInfo> vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Integer digit) {
+    public R<List<FRationCountDataInfo>> formula(List<FRationCountDataInfo> countData, List<FRationWavelengthDataInfo> wavelengthData, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Double minuend, Integer digit) {
         if (!StringUtils.hasText(task.getTableInfo())) {
             //缺少分析参数，无法计算分析
             return R.fail(YamlMessageSource.getMessageStatic("00300003"));
         }
+        FRationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), FRationTaskHeadSnapShot.class);
 
-        FRationTaskHeadSnapShot rationTaskHeadSnapShot = JSON.parseObject(task.getTableInfo(), FRationTaskHeadSnapShot.class);
-        if (rationTaskHeadSnapShot == null || rationTaskHeadSnapShot.getUnknownHead() == null) {
-            //缺少分析参数，无法计算分析
-            return R.fail(YamlMessageSource.getMessageStatic("00300003"));
-        }
-        FTaskHeadSnapshot snapshot = rationTaskHeadSnapShot.getUnknownHead();
-
-        if (snapshot.getMapRelation() == null || snapshot.getMapRelation().isEmpty()) {
-            //缺少映射关系，无法计算分析
+        if (shot == null || shot.getUnknownHead() == null || shot.getUnknownHead().getMapRelation() == null || shot.getUnknownHead().getMapRelation().isEmpty()) {
             return R.fail(YamlMessageSource.getMessageStatic("00300004"));
         }
+        FTaskHeadSnapshot snapshot = shot.getUnknownHead();
+
         String jsonString = JSON.toJSONString(sample);
         JSONObject allData = JSON.parseObject(jsonString);
         if (StringUtils.hasText(sample.getNewColData())) {
@@ -4941,66 +4936,122 @@ public class RationServiceConciseImpl implements RationConciseService {
             allData.putAll(object);
         }
 
-        FMeasureAnalysisData one = fMeasureAnalysisDataService.getById(analysisDataId);
+        if (minuend != null) {
+
+            allData.put(RationCurveParamEnums.blank_abs.getIdentity(), minuend);
+        }
+
+        for (FRationCountDataInfo dataInfo : countData) {
+
+            if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity()) && minuend == null) {
+
+                allData.put(RationCurveParamEnums.abs.getIdentity(), dataInfo.getColValue());
+            } else if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity()) && minuend != null) {
+                allData.put(RationCurveParamEnums.abs_blank_difference.getIdentity(), dataInfo.getColValue());
+            } else if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                allData.put(RationCurveParamEnums.fit_concentration.getIdentity(), dataInfo.getColValue());
+            }
+        }
+
+        if (StringUtils.hasText(task.getFittingParam())) {
+            FittingReceiveInfo fittingReceiveInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+
+            if (fittingReceiveInfo != null) {
+                if (fittingReceiveInfo.getRoundCoefficient() != null) {
+                    if(fittingReceiveInfo.getRoundCoefficient().size() == 2) {
+                        allData.put(RationCurveParamEnums.coefficient_one.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(1));
+                        allData.put(RationCurveParamEnums.intercept.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(0));
+                    } else if(fittingReceiveInfo.getRoundCoefficient().size() == 3) {
+
+                        allData.put(RationCurveParamEnums.coefficient_two.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(2));
+                        allData.put(RationCurveParamEnums.coefficient_one.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(1));
+                        allData.put(RationCurveParamEnums.intercept.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(0));
+                    } else if(fittingReceiveInfo.getRoundCoefficient().size() == 4) {
+
+                        allData.put(RationCurveParamEnums.coefficient_three.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(3));
+                        allData.put(RationCurveParamEnums.coefficient_two.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(2));
+                        allData.put(RationCurveParamEnums.coefficient_one.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(1));
+                        allData.put(RationCurveParamEnums.intercept.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(0));
+                    } else if(fittingReceiveInfo.getRoundCoefficient().size() == 5) {
+
+                        allData.put(RationCurveParamEnums.coefficient_four.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(4));
+                        allData.put(RationCurveParamEnums.coefficient_three.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(3));
+                        allData.put(RationCurveParamEnums.coefficient_two.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(2));
+                        allData.put(RationCurveParamEnums.coefficient_one.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(1));
+                        allData.put(RationCurveParamEnums.intercept.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(0));
+                    }
+
+                }
+            }
+        }
+
+        for (FRationWavelengthDataInfo data : wavelengthData) {
+            if (data.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
+                allData.put(data.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), data.getAbsValue());
+            }
+        }
+
+        LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
+                .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
+                .orderByDesc(FMeasureAnalysisData::getDataVersion)
+                .last("limit 1");
+        FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(queryWrapper);
         if (one != null && StringUtils.hasText(one.getAnalysisParam())) {
             String analysisParam = one.getAnalysisParam();
             JSONObject object = JSON.parseObject(analysisParam);
             allData.putAll(object);
         }
 
-        if (one != null && StringUtils.hasText(one.getAnalysisResult())) {
-            JSONObject object = JSON.parseObject(one.getAnalysisResult());
-            allData.putAll(object);
-        }
-
-        for (FRationWavelengthDataInfo dataInfo : vo) {
-            if (dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
-                allData.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), dataInfo.getAbsValue()==null? null :dataInfo.getAbsValue());
-                allData.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), dataInfo.getTPercentValue()==null? null :dataInfo.getTPercentValue());
-            }
-        }
 
         StringBuilder values = new StringBuilder();
 
         StringBuilder identity = new StringBuilder();
 
-        for (FInputParam inputParam : parameter.getSampleInputParams()) {
-            boolean b = snapshot.getMapRelation().stream().anyMatch(
-                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity()));
+        Object data = allData.get(RationCurveParamEnums.fit_concentration.getIdentity());
+        if (data != null) {
+            identity.append(RationCurveParamEnums.fit_concentration.getIdentity()).append(",");
+            values.append(data).append(",");
+        }
 
-            Optional<FInputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
-                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
-            if (!mapTableHead.isPresent()) {
-                log.info("参数{}未添加映射，跳过", inputParam.getParamName());
-                continue;
-            }
+        List<FInputParamMapTableHead> mapRelation = snapshot.getMapRelation();
+        for (FInputParamMapTableHead relation : mapRelation) {
 
-            String s = allData.getString(mapTableHead.get().getHeadIdentity());
+            String s = allData.getString(relation.getHeadIdentity());
             if (!StringUtils.hasText(s)) {
-                log.info("变量{}缺少数据！跳过", inputParam.getParamName());
-                continue;
+                //缺少数据！
+                return R.fail(YamlMessageSource.getMessageStatic("00300006"));
             }
-            identity.append(mapTableHead.get().getParamIdentity()).append(",");
+            identity.append(relation.getParamIdentity()).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
         }
-        identity.deleteCharAt(identity.length()-1);
-        values.deleteCharAt(values.length()-1);
+        identity.deleteCharAt(identity.length() - 1);
+        values.deleteCharAt(values.length() - 1);
 
         List<FRationCountDataInfo> countList = new ArrayList<>();
         for (FPreCountResultParam param : parameter.getResultParams()) {
             String[] split = param.getFormulaText().split("=");
             String text = split[split.length - 1];
+
+            text = text.replace("Con", RationCurveParamEnums.fit_concentration.getIdentity());
+
             String result = restUtil.sum(text, identity.toString(), values.toString());
             FRationCountDataInfo countDataInfo = new FRationCountDataInfo();
-            BeanUtils.copyProperties(param, countDataInfo);
+
+            countDataInfo.setIdentity(param.getResultIdentity() + "-" + param.getFormulaText());
+            countDataInfo.setHeadName(param.getResultName());
+
             JSONObject resultJson = JSONObject.parseObject(result);
 
-            if (!"0".equals(resultJson.get("code")) && !resultJson.get("code").equals(0)) {
-               // "公式计算出错！" + resultJson.get("message")
+            if (!resultJson.get("code").equals("200") && !resultJson.get("code").equals(200)) {
+                //"公式计算出错！" + resultJson.get("message")
                 return R.fail(YamlMessageSource.getMessageStatic("00300007", resultJson.get("message")));
             }
-            countDataInfo.setColValue(String.valueOf(resultJson.get("result")));
+            String object = resultJson.get("result").toString();
+            String s = DataCountUtil.formatValueWithBigDecimal(digit, object);
+            countDataInfo.setColValue(DataCountUtil.addZero(Double.parseDouble(s), digit));
+            countDataInfo.setOriginalValue(object);
             countList.add(countDataInfo);
         }
 
@@ -5038,6 +5089,11 @@ public class RationServiceConciseImpl implements RationConciseService {
             task.setFittingParam(JSON.toJSONString(fittingInfo));
             fMeasureTaskService.updateById(task);
             return R.ok();
+        }
+        else {
+            FittingReceiveInfo fittingInfo = new FittingReceiveInfo();
+            task.setFittingParam(JSON.toJSONString(fittingInfo));
+            fMeasureTaskService.updateById(task);
         }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
@@ -5437,7 +5493,18 @@ public class RationServiceConciseImpl implements RationConciseService {
                     }
                 }
 
+                Double emptyValue = null;
+                if (empty) {
+                    emptyValue = minuend;
+                }
+
                 //TODO 公式计算，待做
+
+                R<List<FRationCountDataInfo>> formula = formula(currentList, list, sample, task, parameter, emptyValue, digit);
+                if (formula.getData() != null) {
+                    currentList.addAll(formula.getData());
+                }
+
                 dealData.setCountData(currentList);
                 saveAnalyzeData(dealData);
                 lastIsEmpty = false;

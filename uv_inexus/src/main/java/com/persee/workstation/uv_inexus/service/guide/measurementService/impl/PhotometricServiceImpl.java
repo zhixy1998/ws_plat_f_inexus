@@ -875,6 +875,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         newTask.setProjectItemKey(newMethod.getProjectItemKey());
         newTask.setTaskStatus(TaskStatusEnum.UNTESTED.getCode());
         newTask.setMeasureType(newMethod.getMeasurementType());
+        task.setStartTime(LocalDateTime.now());
         newTask.setTableInfo(StringUtils.hasText(task.getTableInfo())?task.getTableInfo() : null);
         tMeasureTaskService.save(newTask);
 

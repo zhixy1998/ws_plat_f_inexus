@@ -202,6 +202,15 @@ public class RationMeasureNewWebSocket{
                                     specimen.getDeleteType().equals("0")
                     );
             if (StringUtils.hasText(oneSampleId)) {
+
+                TaskSpecimen sp = taskSpecimen.stream().filter(s -> s.getSpecimenKey().equals(oneSampleId)).findFirst().orElse(null);
+
+                if (sp == null || sp.getDeleteType().equals(right)) {
+                    log.info("删除的样品,不需要测量");
+                    sendError(deviceSerialNumber, "删除的样品,不需要测量");
+                    return;
+                }
+
                 TMeasureSample dealSample = tMeasureSampleService.getById(oneSampleId);
                 if (dealSample == null) {
                     sendError(deviceSerialNumber, "样品不存在");
