@@ -258,51 +258,20 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
             return Result.fail(YamlMessageSource.getMessageStatic("00601007"));
         }
 
-        // 2. 校验操作人是否有权限（操作人所在的组是否是管理组）
-        if (!isAdminGroupMember(updateById)) {
-            return Result.fail("无删除权限，请联系管理员");
-        }
-
-        // 3. 校验不能删除自己
+        // 2. 校验不能删除自己
         if (id.equals(updateById)) {
             return Result.fail("不能删除当前登录用户");
         }
 
-        // 5. 先删除该用户的小组关联
+        // 3. 先删除该用户的小组关联
         QueryWrapper<SysUserGroupPO> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("user_id", id);
         sysUserGroupMapper.delete(queryWrapper);
 
-        // 6. 再删除用户
+        // 4. 再删除用户
         baseMapper.deleteById(id);
         //用户删除成功
         return Result.ok(YamlMessageSource.getMessageStatic("00601006"));
-    }
-
-    /**
-     * 判断用户是否是管理组成员
-     * @param userId 用户ID
-     * @return true-是管理组成员，false-不是管理组成员或用户不存在
-     */
-    private boolean isAdminGroupMember(String userId) {
-        // 查询用户所在的组
-        QueryWrapper<SysUserGroupPO> userGroupQuery = new QueryWrapper<>();
-        userGroupQuery.eq("user_id", userId);
-        List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(userGroupQuery);
-        
-        if (userGroupList.isEmpty()) {
-            return false;
-        }
-        
-        // 查询这些组的信息，判断是否有管理组
-        for (SysUserGroupPO userGroup : userGroupList) {
-            SysGroupPO groupPO = sysGroupMapper.selectById(userGroup.getGroupId());
-            if (groupPO != null && groupPO.getGroupType() != null && groupPO.getGroupType() == 1) {
-                return true;
-            }
-        }
-        
-        return false;
     }
 
     @Override
