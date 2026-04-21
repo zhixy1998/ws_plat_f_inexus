@@ -1,21 +1,30 @@
 ALTER TABLE t_report_calculation_formulas
-ADD COLUMN input_param1_slope VARCHAR(255) DEFAULT NULL COMMENT '参数1-斜率',
-ADD COLUMN input_param1_intercept VARCHAR(255) DEFAULT NULL COMMENT '参数1-截距',
-ADD COLUMN input_param2_slope VARCHAR(255) DEFAULT NULL COMMENT '参数2-斜率',
-ADD COLUMN input_param2_intercept VARCHAR(255) DEFAULT NULL COMMENT '参数2-截距',
-ADD COLUMN input_param3_slope VARCHAR(255) DEFAULT NULL COMMENT '参数3-斜率',
-ADD COLUMN input_param3_intercept VARCHAR(255) DEFAULT NULL COMMENT '参数3-截距',
-ADD COLUMN input_param4_slope VARCHAR(255) DEFAULT NULL COMMENT '参数4-斜率',
-ADD COLUMN input_param4_intercept VARCHAR(255) DEFAULT NULL COMMENT '参数4-截距',
-ADD COLUMN input_param5_slope VARCHAR(255) DEFAULT NULL COMMENT '参数5-斜率',
-ADD COLUMN input_param5_intercept VARCHAR(255) DEFAULT NULL COMMENT '参数5-截距',
-ADD COLUMN input_param6_slope VARCHAR(255) DEFAULT NULL COMMENT '参数6-斜率',
-ADD COLUMN input_param6_intercept VARCHAR(255) DEFAULT NULL COMMENT '参数6-截距',
-ADD COLUMN input_param7_slope VARCHAR(255) DEFAULT NULL COMMENT '参数7-斜率',
-ADD COLUMN input_param7_intercept VARCHAR(255) DEFAULT NULL COMMENT '参数7-截距',
-ADD COLUMN input_param8_slope VARCHAR(255) DEFAULT NULL COMMENT '参数8-斜率',
-ADD COLUMN input_param8_intercept VARCHAR(255) DEFAULT NULL COMMENT '参数8-截距',
-ADD COLUMN input_param9_slope VARCHAR(255) DEFAULT NULL COMMENT '参数9-斜率',
-ADD COLUMN input_param9_intercept VARCHAR(255) DEFAULT NULL COMMENT '参数9-截距',
-ADD COLUMN input_param10_slope VARCHAR(255) DEFAULT NULL COMMENT '参数10-斜率',
-ADD COLUMN input_param10_intercept VARCHAR(255) DEFAULT NULL COMMENT '参数10-截距';
+ADD COLUMN is_sample_attribute1 VARCHAR(10) DEFAULT NULL COMMENT '参数1-是否样品属性',
+ADD COLUMN curve_identifier1 VARCHAR(64) DEFAULT NULL COMMENT '参数1-曲线标识',
+
+ADD COLUMN is_sample_attribute2 VARCHAR(10) DEFAULT NULL COMMENT '参数2-是否样品属性',
+ADD COLUMN curve_identifier2 VARCHAR(64) DEFAULT NULL COMMENT '参数2-曲线标识',
+
+ADD COLUMN is_sample_attribute3 VARCHAR(10) DEFAULT NULL COMMENT '参数3-是否样品属性',
+ADD COLUMN curve_identifier3 VARCHAR(64) DEFAULT NULL COMMENT '参数3-曲线标识',
+
+ADD COLUMN is_sample_attribute4 VARCHAR(10) DEFAULT NULL COMMENT '参数4-是否样品属性',
+ADD COLUMN curve_identifier4 VARCHAR(64) DEFAULT NULL COMMENT '参数4-曲线标识',
+
+ADD COLUMN is_sample_attribute5 VARCHAR(10) DEFAULT NULL COMMENT '参数5-是否样品属性',
+ADD COLUMN curve_identifier5 VARCHAR(64) DEFAULT NULL COMMENT '参数5-曲线标识',
+
+ADD COLUMN is_sample_attribute6 VARCHAR(10) DEFAULT NULL COMMENT '参数6-是否样品属性',
+ADD COLUMN curve_identifier6 VARCHAR(64) DEFAULT NULL COMMENT '参数6-曲线标识',
+
+ADD COLUMN is_sample_attribute7 VARCHAR(10) DEFAULT NULL COMMENT '参数7-是否样品属性',
+ADD COLUMN curve_identifier7 VARCHAR(64) DEFAULT NULL COMMENT '参数7-曲线标识',
+
+ADD COLUMN is_sample_attribute8 VARCHAR(10) DEFAULT NULL COMMENT '参数8-是否样品属性',
+ADD COLUMN curve_identifier8 VARCHAR(64) DEFAULT NULL COMMENT '参数8-曲线标识',
+
+ADD COLUMN is_sample_attribute9 VARCHAR(10) DEFAULT NULL COMMENT '参数9-是否样品属性',
+ADD COLUMN curve_identifier9 VARCHAR(64) DEFAULT NULL COMMENT '参数9-曲线标识',
+
+ADD COLUMN is_sample_attribute10 VARCHAR(10) DEFAULT NULL COMMENT '参数10-是否样品属性',
+ADD COLUMN curve_identifier10 VARCHAR(64) DEFAULT NULL COMMENT '参数10-曲线标识';
