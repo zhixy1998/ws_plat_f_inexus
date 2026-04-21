@@ -231,8 +231,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     @Autowired
     //任务 id 和仪器型号关联关系 - 使用自定义缓存包装类
-    private  TaskDeviceTypeCache taskAndVersionMap;
-
+    private TaskDeviceTypeCache taskAndVersionMap;
 
 
 // ... existing code ...
@@ -1103,7 +1102,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(management1.getOperationInstrument());
 
-            if (vo.getSamplePoolNum() <1) {
+            if (vo.getSamplePoolNum() < 1) {
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("error", "自动测量仅支持多联样品池！！！");
                 sendToActiveSession(null, taskId, jsonObject);
@@ -1538,9 +1537,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         //检测项名称
         String projectName = MapUtils.getString(dataMap, PROJECT_NAME.getDescription());
 
-        
-
-
 
         //获取工作簿
         Workbook taskWorkbook = workbookCacheManager.getTaskWorkbook(taskId);
@@ -1654,7 +1650,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                            Integer samplePoolNum = 1;
                             if (samplePoolNum <= 0) {
                                 log.info("样品池未识别,默认单池");
-                                samplePoolNum=1;
+                                samplePoolNum = 1;
 //                                throw new BusinessException("样品池未识别");
                             }
                             if (samplePoolNum != 1) {
@@ -1796,8 +1792,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                         log.info("发送{},sheet页数据", category);
                                         sendSheetUpdate(session, workbook.getSheet(category), taskId);
                                         futureResult = true;
-                                        saveAndSendJudgeResult(taskId, itemId, projectName, sheet, MEASUREMENT_STATUS_SUCCESS.getCode());
-//                                return futureResult;
+
+                                        if ((repeatCount == 1 && d == 0) || (repeatCount == 3 && d == 2)) {
+                                            saveAndSendJudgeResult(taskId, itemId, projectName, sheet, MEASUREMENT_STATUS_SUCCESS.getCode());
+                                        }
+                                        //
+//                                }return futureResult;
                                         //结束测量
 //                        setTaskMeasuring(taskId, false);
                                     } catch (Exception e) {
@@ -2723,7 +2723,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             Map<String, Object> devType = new HashMap<>();
             devType.put("dev_type", s);
             List<DeviceTypeInfoPO> pos = deviceTypeInfoDAO.selectByMap(devType);
-            if (CollectionUtils.isNotEmpty(pos)){
+            if (CollectionUtils.isNotEmpty(pos)) {
                 DeviceTypeInfoPO deviceTypeInfoPO = pos.get(0);
                 com.alibaba.fastjson.JSONObject speedJson = deviceTypeInfoPO.getScanSpeed();
                 if (speedJson != null && !speedJson.isEmpty()) {
@@ -3213,8 +3213,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * 公式：总点数 = |终止波长 - 起始波长| / 扫描间隔 + 1
      *
      * @param startWavelength 起始波长
-     * @param endWavelength 终止波长
-     * @param scanInterval 扫描间隔
+     * @param endWavelength   终止波长
+     * @param scanInterval    扫描间隔
      * @return 总点数
      */
     private int calculateSpectrumPoints(Double startWavelength, Double endWavelength, Double scanInterval) {
@@ -3234,6 +3234,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         return totalPoints;
     }
+
     /**
      * 提示用户放入物质并等待确认
      */
@@ -3609,7 +3610,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
 
-
     // 发送缓存的波形图数据
     private void sendCachedWaveformData(WebSocketSession session, String taskId) {
         List<JSONObject> cachedDataPoints = waveformCache.get(taskId);
@@ -3639,7 +3639,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             if (YES.getDescription().equals(res)) {
                 log.info("光谱扫描>>>>>>>");
 
-                
+
                 map = spectrumScan(taskId, dataMap, deviceSerialNumber, list, b, itemId, d);
             } else if (scanCount != null) {
                 log.info("时间扫描>>>>>");
@@ -3779,11 +3779,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     operationDark3.setSuccess(true);
                     if (halt.get(taskId)) {
                         map.put("line", line);
+                        realTimeEcho(taskId, "已停止");
                         return R.fail(map);
                     }
                     promptUserToPlaceMaterial(taskId, "黑挡块");
                     if (halt.get(taskId)) {
                         map.put("line", line);
+                        realTimeEcho(taskId, "已停止");
                         return R.fail(map);
                     }
                 }
@@ -3856,6 +3858,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 darkParam.setOperationType(OperationTypeEnums.Calibration.getType());
 //        darkParam.setUpdateBy();
                 if (halt.get(taskId)) {
+                    realTimeEcho(taskId, "已停止");
                     return R.fail(map);
                 }
                 R<OperationResultEntity> operationDark =
@@ -3914,6 +3917,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     if (halt.get(taskId)) {
                         log.warn("任务被取消！");
                         setTaskMeasuring(taskId, false);
+                        realTimeEcho(taskId, "已停止");
                         return R.fail(map);
                     }
 
@@ -3965,11 +3969,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     }
                     if (halt.get(taskId)) {
                         map.put("line", line);
+                        realTimeEcho(taskId, "已停止");
                         return R.fail(map);
                     }
                     promptUserToPlaceMaterial(taskId, standardName);
                     if (halt.get(taskId)) {
                         map.put("line", line);
+                        realTimeEcho(taskId, "已停止");
                         return R.fail(map);
                     }
                 } else {
@@ -3994,6 +4000,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
             inputParam.setOperationType(OperationTypeEnums.Zero.getType());
             if (halt.get(taskId)) {
+                realTimeEcho(taskId, "已停止");
                 return R.fail(map);
             }
             R<OperationResultEntity> zero = devOperationUtilService.operation(inputParam);
@@ -4045,6 +4052,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 sampleParam1.setCellPos(position1);
                 operationInputParam1.setParam(sampleParam1);
                 if (halt.get(taskId)) {
+                    realTimeEcho(taskId, "已停止");
                     return R.fail(map);
                 }
                 operation5 = devOperationUtilService.operation(operationInputParam1);
@@ -4074,11 +4082,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     }
                 }
                 if (halt.get(taskId)) {
+                    realTimeEcho(taskId, "已停止");
                     map.put("line", line);
                     return R.fail(map);
                 }
                 promptUserToPlaceMaterial(taskId, standardName);
                 if (halt.get(taskId)) {
+                    realTimeEcho(taskId, "已停止");
                     map.put("line", line);
                     return R.fail(map);
                 }
@@ -4112,6 +4122,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         param1.setIntervalSeconds(timeInterval);
         param1.setTotalTime(totalTime);
         if (halt.get(taskId)) {
+            realTimeEcho(taskId, "已停止");
             return R.fail(map);
         }
 
@@ -4197,6 +4208,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
         }
         if (halt.get(taskId)) {
+            realTimeEcho(taskId, "已停止");
             map.put("line", line);
             return R.fail(map);
         }
@@ -4235,7 +4247,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * 计算时间扫描的总点数
      * 公式：总点数 = 总时间 / 时间间隔
      *
-     * @param totalTime 总时间（秒）
+     * @param totalTime    总时间（秒）
      * @param timeInterval 时间间隔（秒）
      * @return 总点数
      */
@@ -4368,9 +4380,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         log.error("未找到有效的波长值");
                     }
                 }
-
-
-
 
 
                 log.info("开始暗电流矫正>>>>>>>>>>>>>>>>>>>>");
@@ -4743,7 +4752,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
 
-
     private static final int DEFAULT_DECIMAL_PLACES = 4;
 
 
@@ -4804,9 +4812,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private String formatValue(double value) {
         return String.format("%." + DEFAULT_DECIMAL_PLACES + "f", value);
     }
-
-
-
 
 
     private boolean shouldCalculateAtLevel(Cell cell, int level) {
@@ -4932,7 +4937,7 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
     }
 
 
-//    private SheetDto extractSheetData(Sheet sheet, Workbook workbook) {
+    //    private SheetDto extractSheetData(Sheet sheet, Workbook workbook) {
 //        SheetDto sheetDto = new SheetDto();
 //        sheetDto.setSheetName(sheet.getSheetName());
 //        sheetDto.setFirstRowNum(sheet.getFirstRowNum());
@@ -4985,64 +4990,64 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
 //
 //        return sheetDto;
 //    }
-private SheetDto extractSheetData(Sheet sheet, Workbook workbook) {
-    SheetDto sheetDto = new SheetDto();
-    sheetDto.setSheetName(sheet.getSheetName());
-    sheetDto.setFirstRowNum(sheet.getFirstRowNum());
-    sheetDto.setLastRowNum(sheet.getLastRowNum());
+    private SheetDto extractSheetData(Sheet sheet, Workbook workbook) {
+        SheetDto sheetDto = new SheetDto();
+        sheetDto.setSheetName(sheet.getSheetName());
+        sheetDto.setFirstRowNum(sheet.getFirstRowNum());
+        sheetDto.setLastRowNum(sheet.getLastRowNum());
 
-    // 为每次提取数据创建新的公式评估器
-    FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
-    evaluator.clearAllCachedResultValues();
+        // 为每次提取数据创建新的公式评估器
+        FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+        evaluator.clearAllCachedResultValues();
 
-    // 提取合并区域
-    List<MergedRegionDto> mergedRegions = new ArrayList<>();
+        // 提取合并区域
+        List<MergedRegionDto> mergedRegions = new ArrayList<>();
 
-    for (CellRangeAddress region : sheet.getMergedRegions()) {
-        MergedRegionDto merged = new MergedRegionDto();
-        merged.setFirstRow(region.getFirstRow());
-        merged.setLastRow(region.getLastRow());
-        merged.setFirstCol(region.getFirstColumn());
-        merged.setLastCol(region.getLastColumn());
+        for (CellRangeAddress region : sheet.getMergedRegions()) {
+            MergedRegionDto merged = new MergedRegionDto();
+            merged.setFirstRow(region.getFirstRow());
+            merged.setLastRow(region.getLastRow());
+            merged.setFirstCol(region.getFirstColumn());
+            merged.setLastCol(region.getLastColumn());
 
-        // 获取左上角单元格的值
-        Row row = sheet.getRow(region.getFirstRow());
-        if (row != null) {
-            Cell cell = row.getCell(region.getFirstColumn());
-            if (cell != null) {
-                merged.setValue(String.valueOf(getCellValue(cell, evaluator)));
-            }
-        }
-        mergedRegions.add(merged);
-    }
-    sheetDto.setMergedRegions(mergedRegions);
-
-    // 提取普通单元格数据
-    Map<String, Map<String, Object>> rowData = new HashMap<>();
-    for (int rowNum = sheet.getFirstRowNum(); rowNum <= sheet.getLastRowNum(); rowNum++) {
-        Row row = sheet.getRow(rowNum);
-        if (row != null) {
-            Map<String, Object> cellData = new HashMap<>();
-            boolean hasValidContent = false;
-            for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
-                Cell cell = row.getCell(cellNum);
+            // 获取左上角单元格的值
+            Row row = sheet.getRow(region.getFirstRow());
+            if (row != null) {
+                Cell cell = row.getCell(region.getFirstColumn());
                 if (cell != null) {
-                    Object value = getCellValue(cell, evaluator);
-                    if (value != null && !"".equals(value)) {
-                        cellData.put(String.valueOf(cellNum), value);
-                        hasValidContent = true;
-                    }
+                    merged.setValue(String.valueOf(getCellValue(cell, evaluator)));
                 }
             }
-            if (hasValidContent && !cellData.isEmpty()) {
-                rowData.put(String.valueOf(rowNum), cellData);
+            mergedRegions.add(merged);
+        }
+        sheetDto.setMergedRegions(mergedRegions);
+
+        // 提取普通单元格数据
+        Map<String, Map<String, Object>> rowData = new HashMap<>();
+        for (int rowNum = sheet.getFirstRowNum(); rowNum <= sheet.getLastRowNum(); rowNum++) {
+            Row row = sheet.getRow(rowNum);
+            if (row != null) {
+                Map<String, Object> cellData = new HashMap<>();
+                boolean hasValidContent = false;
+                for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
+                    Cell cell = row.getCell(cellNum);
+                    if (cell != null) {
+                        Object value = getCellValue(cell, evaluator);
+                        if (value != null && !"".equals(value)) {
+                            cellData.put(String.valueOf(cellNum), value);
+                            hasValidContent = true;
+                        }
+                    }
+                }
+                if (hasValidContent && !cellData.isEmpty()) {
+                    rowData.put(String.valueOf(rowNum), cellData);
+                }
             }
         }
-    }
-    sheetDto.setRows(rowData);
+        sheetDto.setRows(rowData);
 
-    return sheetDto;
-}
+        return sheetDto;
+    }
 
 
 //    /**

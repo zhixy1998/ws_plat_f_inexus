@@ -499,6 +499,8 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setParamName(formula.getInputParam1Name());
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam1Identity());
+                dto.setIsSampleAttribute(formula.getIsSampleAttribute1());
+                dto.setCurveIdentifier(formula.getCurveIdentifier1());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam2Name() != null && !formula.getInputParam2Name().isEmpty()) {
@@ -506,6 +508,8 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setParamName(formula.getInputParam2Name());
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam2Identity());
+                dto.setIsSampleAttribute(formula.getIsSampleAttribute2());
+                dto.setCurveIdentifier(formula.getCurveIdentifier2());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam3Name() != null && !formula.getInputParam3Name().isEmpty()) {
@@ -513,6 +517,8 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setParamName(formula.getInputParam3Name());
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam3Identity());
+                dto.setIsSampleAttribute(formula.getIsSampleAttribute3());
+                dto.setCurveIdentifier(formula.getCurveIdentifier3());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam4Name() != null && !formula.getInputParam4Name().isEmpty()) {
@@ -520,6 +526,8 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setParamName(formula.getInputParam4Name());
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam4Identity());
+                dto.setIsSampleAttribute(formula.getIsSampleAttribute4());
+                dto.setCurveIdentifier(formula.getCurveIdentifier4());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam5Name() != null && !formula.getInputParam5Name().isEmpty()) {
@@ -527,6 +535,8 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setParamName(formula.getInputParam5Name());
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam5Identity());
+                dto.setIsSampleAttribute(formula.getIsSampleAttribute5());
+                dto.setCurveIdentifier(formula.getCurveIdentifier5());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam6Name() != null && !formula.getInputParam6Name().isEmpty()) {
@@ -534,6 +544,8 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setParamName(formula.getInputParam6Name());
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam6Identity());
+                dto.setIsSampleAttribute(formula.getIsSampleAttribute6());
+                dto.setCurveIdentifier(formula.getCurveIdentifier6());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam7Name() != null && !formula.getInputParam7Name().isEmpty()) {
@@ -541,6 +553,8 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setParamName(formula.getInputParam7Name());
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam7Identity());
+                dto.setIsSampleAttribute(formula.getIsSampleAttribute7());
+                dto.setCurveIdentifier(formula.getCurveIdentifier7());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam8Name() != null && !formula.getInputParam8Name().isEmpty()) {
@@ -548,6 +562,8 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setParamName(formula.getInputParam8Name());
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam8Identity());
+                dto.setIsSampleAttribute(formula.getIsSampleAttribute8());
+                dto.setCurveIdentifier(formula.getCurveIdentifier8());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam9Name() != null && !formula.getInputParam9Name().isEmpty()) {
@@ -555,6 +571,8 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setParamName(formula.getInputParam9Name());
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam9Identity());
+                dto.setIsSampleAttribute(formula.getIsSampleAttribute9());
+                dto.setCurveIdentifier(formula.getCurveIdentifier9());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam10Name() != null && !formula.getInputParam10Name().isEmpty()) {
@@ -562,6 +580,8 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setParamName(formula.getInputParam10Name());
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam10Identity());
+                dto.setIsSampleAttribute(formula.getIsSampleAttribute10());
+                dto.setCurveIdentifier(formula.getCurveIdentifier10());
                 inputParamsSet.add(dto);
             }
         }

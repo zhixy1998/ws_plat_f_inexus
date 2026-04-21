@@ -161,7 +161,7 @@ public interface RationConciseService {
     String fitDataRounding(String fitConcentration, FRationParameter parameter);
 
 
-    R<List<FRationCountDataInfo>> formula(String analysisDataId, List<FRationWavelengthDataInfo> vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Integer digit);
+    R<List<FRationCountDataInfo>> formula(List<FRationCountDataInfo> countData, List<FRationWavelengthDataInfo> wavelengthData, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Double minuend, Integer digit);
 
     R<Boolean> changeStandSampleDataDigit(String taskId, Integer digit);
     R<Boolean> changeUnknowSampleDigit(String taskId, Integer digit);

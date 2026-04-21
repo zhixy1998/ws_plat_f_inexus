@@ -577,6 +577,7 @@ public class RationServiceImpl implements RationService {
         newTask.setTaskName(taskName);
         newTask.setProjectItemKey(newMethod.getProjectItemKey());
         newTask.setTaskStatus(TaskStatusEnum.UNTESTED.getCode());
+        task.setStartTime(LocalDateTime.now());
         newTask.setMeasureType(newMethod.getMeasurementType());
         newTask.setTableInfo(StringUtils.hasText(task.getTableInfo()) ? task.getTableInfo() : null);
         tMeasureTaskService.save(newTask);
@@ -4577,6 +4578,9 @@ public class RationServiceImpl implements RationService {
                 allData.put(RationCurveParamEnums.abs.getIdentity(), dataInfo.getColValue());
             } else if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity()) && minuend != null) {
                 allData.put(RationCurveParamEnums.abs_blank_difference.getIdentity(), dataInfo.getColValue());
+            } else if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                allData.put(RationCurveParamEnums.fit_concentration.getIdentity(), dataInfo.getColValue());
+
             }
         }
 
@@ -4635,6 +4639,14 @@ public class RationServiceImpl implements RationService {
 
         StringBuilder identity = new StringBuilder();
 
+        Object data = allData.get(RationCurveParamEnums.fit_concentration.getIdentity());
+        if (data != null) {
+            identity.append(RationCurveParamEnums.fit_concentration.getIdentity()).append(",");
+            values.append(data).append(",");
+        }
+
+
+
         List<InputParamMapTableHead> mapRelation = snapshot.getMapRelation();
         for (InputParamMapTableHead relation : mapRelation) {
 
@@ -4654,8 +4666,9 @@ public class RationServiceImpl implements RationService {
         for (PreCountResultParam param : parameter.getResultParams()) {
             String[] split = param.getFormulaText().split("=");
             String text = split[split.length - 1];
+            text = text.replace("Con", RationCurveParamEnums.fit_concentration.getIdentity());
+//            text = text.toUpperCase();
 
-            text = text.toUpperCase();
 
             String result = restUtil.sum(text, identity.toString(), values.toString());
             RationCountDataInfo countDataInfo = new RationCountDataInfo();
@@ -4710,6 +4723,11 @@ public class RationServiceImpl implements RationService {
             task.setFittingParam(JSON.toJSONString(fittingInfo));
             tMeasureTaskService.updateById(task);
             return R.ok();
+        }else {
+            FittingReceiveInfo fittingInfo = new FittingReceiveInfo();
+            task.setFittingParam(JSON.toJSONString(fittingInfo));
+            tMeasureTaskService.updateById(task);
+            task = tMeasureTaskService.getById(taskId);
         }
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
