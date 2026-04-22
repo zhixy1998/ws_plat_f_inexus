@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.persee.workstation.uv_inexus.dto.parseReport.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +34,14 @@ import com.persee.workstation.uv_inexus.dao.guide.parseReport.DetectionDao;
 import com.persee.workstation.uv_inexus.dao.guide.parseReport.QualityControlDao;
 import com.persee.workstation.uv_inexus.dao.guide.parseReport.RoundingRulesDao;
 import com.persee.workstation.uv_inexus.dao.guide.parseReport.StandardPretreatmentDao;
+import com.persee.workstation.uv_inexus.dto.parseReport.CalculationResultDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionParametersDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.InputParamDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.MultiTableDataDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.PretreatmentDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.QualityControlDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingParamVO;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
@@ -380,6 +387,7 @@ public class DetectionServiceImpl implements DetectionService {
         // 2. 格式化主表测量参数
         List<String> detectionParameters = new ArrayList<>(); // 波长1、2、3列表
         List<String> wavelengthParamList = new ArrayList<>(); // 波长参数1、2列表
+        Map<String, String> curveParameter = new HashMap<>(); // 曲线参数（推荐单位、推荐标样浓度、拟合公式）
         try {
             JsonNode jsonNode = objectMapper.readTree(jsonStr);
 
@@ -392,11 +400,17 @@ public class DetectionServiceImpl implements DetectionService {
             if (jsonNode.has("系数1")) wavelengthParamList.add(jsonNode.get("系数1").asText());
             if (jsonNode.has("系数2")) wavelengthParamList.add(jsonNode.get("系数2").asText());
             if (jsonNode.has("系数3")) wavelengthParamList.add(jsonNode.get("系数3").asText());
+
+            // 提取曲线参数：推荐单位、推荐标样浓度、拟合公式
+            if (jsonNode.has("推荐单位")) curveParameter.put("recommended_unit", jsonNode.get("推荐单位").asText());
+            if (jsonNode.has("推荐标样浓度")) curveParameter.put("recommended_standard_concentration", jsonNode.get("推荐标样浓度").asText());
+            if (jsonNode.has("拟合公式")) curveParameter.put("fitting_formula", jsonNode.get("拟合公式").asText());
         } catch (Exception e) {
             log.error("解析波长JSON失败: {}", e.getMessage());
             // 解析失败时返回空列表（避免null）
             detectionParameters = new ArrayList<>();
             wavelengthParamList = new ArrayList<>();
+            curveParameter = new HashMap<>();
         }
 
         // 3. 查询计算公式表数据（待计算结果）
@@ -610,6 +624,7 @@ public class DetectionServiceImpl implements DetectionService {
         MultiTableDataDTO result = new MultiTableDataDTO();
         result.setDetectionParameters(detectionParameters); // 波长列表
         result.setWavelengthParamList(wavelengthParamList); // 波长参数列表
+        result.setCurveParameter(curveParameter); // 曲线参数（推荐单位、推荐标样浓度、拟合公式）
         result.setCalculationResults(calculationResults); // 待计算结果
         result.setRoundingSettings(roundingSettings); // 修约设置
         result.setInputParams(inputParams); // 输入参数

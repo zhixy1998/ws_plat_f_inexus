@@ -9,12 +9,14 @@
 
 package com.persee.workstation.uv_inexus.dto.parseReport;
 
+import java.util.List;
+import java.util.Map;
+
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
+
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
-
-import java.util.List;
 
 /**
  * 多子表多条数据查询DTO
@@ -28,6 +30,9 @@ public class MultiTableDataDTO {
 
     @ApiModelProperty("波长参数列表（波长参数1、波长参数2的值）")
     private List<String> wavelengthParamList; // 新增字段
+
+    @ApiModelProperty("曲线参数（推荐单位、推荐标样浓度、拟合公式）")
+    private Map<String, String> curveParameter; // 新增字段
 
     @ApiModelProperty("待计算结果列表（计算公式表）")
     private List<CalculationResultDTO> calculationResults;
