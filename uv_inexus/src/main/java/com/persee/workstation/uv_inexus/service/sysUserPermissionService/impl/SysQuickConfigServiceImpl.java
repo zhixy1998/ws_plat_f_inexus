@@ -1,6 +1,14 @@
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -16,7 +24,6 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupPermissionMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupQuickConfigMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
@@ -24,14 +31,13 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysQuickConfigM
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigGrantPermDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigSaveDTO;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPermissionPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupQuickConfigPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysPermissionPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysQuickConfigPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysQuickConfigService;
-import com.persee.workstation.uv_inexus.service.sysUserPermissionService.UserPermissionService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 import lombok.extern.slf4j.Slf4j;
@@ -64,6 +70,62 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
         }
         IPage<SysQuickConfigPO> iPage = baseMapper.selectPage(page, queryWrapper);
         return Result.ok(new PageView<>(iPage));
+    }
+
+    @Override
+    public Result<List<QuickConfigTreeDTO>> getQuickConfigList(QuickConfigQueryDTO queryDTO) {
+        QueryWrapper<SysQuickConfigPO> queryWrapper = new QueryWrapper<>();
+        
+        // 构建查询条件
+        if (queryDTO != null) {
+            if (queryDTO.getName() != null && !queryDTO.getName().isEmpty()) {
+                queryWrapper.like("name", queryDTO.getName());
+            }
+            if (queryDTO.getPermIds() != null && !queryDTO.getPermIds().isEmpty()) {
+                queryWrapper.like("perm_ids", queryDTO.getPermIds());
+            }
+            if (queryDTO.getParentId() != null) {
+                queryWrapper.eq("parent_id", queryDTO.getParentId());
+            }
+            if (queryDTO.getQuickConfigType() != null) {
+                queryWrapper.eq("quick_config_type", queryDTO.getQuickConfigType());
+            }
+        }
+        
+        // 查询所有快捷配置
+        List<SysQuickConfigPO> configs = baseMapper.selectList(queryWrapper);
+        List<QuickConfigTreeDTO> tree = buildQuickConfigTree(configs);
+        return Result.ok(tree);
+    }
+
+    /**
+     * 构建快捷配置树形结构
+     */
+    private List<QuickConfigTreeDTO> buildQuickConfigTree(List<SysQuickConfigPO> configs) {
+        List<QuickConfigTreeDTO> dtoList = configs.stream().map(po -> {
+            QuickConfigTreeDTO dto = new QuickConfigTreeDTO();
+            BeanUtils.copyProperties(po, dto);
+            dto.setChildren(new ArrayList<>());
+            return dto;
+        }).collect(Collectors.toList());
+        
+        // 构建树形结构
+        List<QuickConfigTreeDTO> rootList = new ArrayList<>();
+        for (QuickConfigTreeDTO dto : dtoList) {
+            Long parentId = dto.getParentId();
+            if (parentId == null || parentId == 0) {
+                rootList.add(dto);
+            } else {
+                for (QuickConfigTreeDTO parent : dtoList) {
+                    if (parentId.equals(Long.parseLong(parent.getId()))) {
+                        parent.getChildren().add(dto);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        return rootList;
     }
 
     @Override

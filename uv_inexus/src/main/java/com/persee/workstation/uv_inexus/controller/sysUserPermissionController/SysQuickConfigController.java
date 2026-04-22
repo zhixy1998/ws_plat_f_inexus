@@ -25,15 +25,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigGrantPermDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigSaveDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysQuickConfigPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysQuickConfigService;
 import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
-import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -50,14 +49,10 @@ public class SysQuickConfigController {
     @Autowired
     private SysQuickConfigService sysQuickConfigService;
 
-    @GetMapping("/")
-    @ApiOperation("分页查询快捷配置")
-    public Result<PageView<SysQuickConfigPO>> getQuickConfigPage(
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize,
-            QuickConfigQueryDTO queryDTO) {
-        Page<SysQuickConfigPO> page = new Page<>(pageNum, pageSize);
-        return sysQuickConfigService.getQuickConfigPage(page, queryDTO);
+    @PostMapping("/list")
+    @ApiOperation("查询快捷配置列表（支持条件筛选，返回树形结构）")
+    public Result<List<QuickConfigTreeDTO>> getQuickConfigList(@RequestBody(required = false) QuickConfigQueryDTO queryDTO) {
+        return sysQuickConfigService.getQuickConfigList(queryDTO);
     }
 
     @GetMapping("/{id}")
