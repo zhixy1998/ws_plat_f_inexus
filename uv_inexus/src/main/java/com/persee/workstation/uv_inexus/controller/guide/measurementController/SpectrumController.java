@@ -69,7 +69,7 @@ public class SpectrumController {
         return spectrumService.queryProjectAllMethods(projectId, measureForm, updateBy);
     }
 
-    @ButtonPermission("wizardModeSpectralScanApplyMethod")
+//    @ButtonPermission("wizardModeSpectralScanApplyMethod")
     @OperateLog(module = "实验测试-向导模式-光谱测量-修改方法参数", description = "执行实验测试-向导模式-光谱测量-修改方法参数操作", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")

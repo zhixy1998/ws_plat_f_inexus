@@ -63,7 +63,7 @@ public class RationController {
         return rationService.queryMethodParam(methodId);
     }
 
-    @ButtonPermission("wizardModeQuantityModifyMethodParams")
+//    @ButtonPermission("wizardModeQuantityModifyMethodParams")
     @OperateLog(module = "实验测试-向导模式-定量测定-修改方法参数", description = "执行实验测试-向导模式-定量测定-修改方法参数操作", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")

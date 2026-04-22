@@ -128,7 +128,7 @@ public class ConciseCommonController {
     )
     @OperateLog(
             module = "实验测试-经典模式",
-            description = "执行实验测试-经典模式-{operateType}-修改方法参数操作",
+            description = "执行实验测试-经典模式-{operateType}-设置样品操作",
             recordParams = true
     )
     @PostMapping("changeSampleAttachmentInfo")

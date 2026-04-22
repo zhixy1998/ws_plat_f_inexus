@@ -64,7 +64,7 @@ public class RationConciseController {
         return rationService.newDraft(dto);
     }
 
-    @ButtonPermission("quantityModifyMethodParams")
+//    @ButtonPermission("quantityModifyMethodParams")
     @OperateLog(module = "实验测试-经典模式-光度测量-修改方法参数", description = "执行实验测试-经典模式-光度测量-修改方法参数", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
