@@ -14,12 +14,11 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.persee.workstation.uv_inexus.model.BasePO;
+
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
-import java.time.LocalDateTime;
 
 /**
  * 快捷配置PO类
@@ -42,9 +41,7 @@ public class SysQuickConfigPO extends BasePO {
     @ApiModelProperty("绑定权限ids")
     private String permIds;
 
-    @TableField("perm_ids_have")
-    @ApiModelProperty("绑定权限ids拥有的回显")
-    private String permIdsHave;
+
 
     @TableField("parent_id")
     @ApiModelProperty("父级ID（0为一级配置）")
