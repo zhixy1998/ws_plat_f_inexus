@@ -28,3 +28,8 @@ ADD COLUMN curve_identifier9 VARCHAR(64) DEFAULT NULL COMMENT '参数9-曲线标
 
 ADD COLUMN is_sample_attribute10 VARCHAR(10) DEFAULT NULL COMMENT '参数10-是否样品属性',
 ADD COLUMN curve_identifier10 VARCHAR(64) DEFAULT NULL COMMENT '参数10-曲线标识';
+
+
+UPDATE `t800_uv_inexus`.`t_device_type_info`
+SET `scan_interval` = JSON_ARRAY_INSERT(`scan_interval`, '$[0]', '0.04')
+WHERE `id` = 2;
