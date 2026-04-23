@@ -959,6 +959,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                     confirmMsg.put("isMeasuring", false);
                                     sendToActiveSession(session, taskId, confirmMsg);
                                     deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
+//                                    this.realTimeEcho(taskId, "已停止111111");
                                     break;
                                 }
                             }
@@ -4149,9 +4150,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         while (true) {
             try {
                 taskStopFlag.put(taskId, true);
-//                if (halt.get(taskId)) {
-//                    return R.fail(map);
-//                }
+// 在等待消息之前先检查是否已停止
+                if (halt.get(taskId)) {
+                    realTimeEcho(taskId, "已停止");
+                    map.put("line", line);
+                    return R.fail(map);
+                }
                 Object o = queue.pollMessage(deviceSerialNumber, T600ComIdEnums.Measure.getComId());
                 if (o instanceof SpectrumPoint || o == null) {
                     if (o != null) {
@@ -4163,6 +4167,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
                         getPointsByLuminosityMode(luminosityMode, p, xList, yList, taskId, i, cachedDataPoints, line, dataMap);
+                        if (halt.get(taskId)) {
+                            realTimeEcho(taskId, "已停止");
+                            return R.fail(map);
+                        }
+
                         log.info("时间扫描结果：{}", p);
                     }
                 } else {
@@ -4187,11 +4196,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                            sendToActiveSession(null, taskId, jsonObject);
                             map.put("line", line);
                             log.info("时间扫描停止标志");
+                            this.realTimeEcho(taskId, "已停止");
                             return R.fail(map);
                         } else if (marker.getReason() == EndMarker.Reason.UN_NORMAL) {
                             log.info("时间扫描停止标志");
                             setTaskMeasuring(taskId, false);
                             map.put("line", line);
+                            this.realTimeEcho(taskId, "已停止");
                             return R.fail(map);
                         }
                     } else {
