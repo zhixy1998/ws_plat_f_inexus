@@ -9,36 +9,26 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.parseReport;
 
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionParametersDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.MultiTableDataDTO;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.Detection;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.DetectionService;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.impl.DetectionServiceImpl;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
-
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/detection")
