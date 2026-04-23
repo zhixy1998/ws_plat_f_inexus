@@ -1732,38 +1732,78 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                        Collections.sort(list);
                                 if (data.get("res") != null) {
                                     if (CollectionUtils.isNotEmpty(list)) {
-                                        //修改工作簿，需要把第一个测量值的列填满，然后第二个，第三个
-                                        for (int k = 0; k < list.size(); k++) {
-                                            if (halt.get(taskId)) {
-                                                return false;
 
-                                            }
-                                            cellUpdDto.setPosition(d);
-                                            //测量值，后期替换这里的测量值，测量值是经过暗电流矫正，校零，测量得出的
+                                        if (data.get("line")!=null) {
+                                            //修改工作簿，需要把第一个测量值的列填满，然后第二个，第三个
+                                            for (int k = 0; k < list.size(); k++) {
+                                                if (halt.get(taskId)) {
+                                                    return false;
+
+                                                }
+                                                cellUpdDto.setPosition(d);
+                                                //测量值，后期替换这里的测量值，测量值是经过暗电流矫正，校零，测量得出的
 //                                int result = random.nextInt(301) + 300; // 生成300-600的随机整数
-                                            List<JSONObject> jsonObjects = data.get("res");
+                                                List<JSONObject> jsonObjects = data.get("res");
 
-                                            if (CollectionUtils.isNotEmpty(jsonObjects)) {
-                                                log.info("得到的测量结果为:{}", jsonObjects);
-                                                ArrayList<String> strings = new ArrayList<>();
-                                                jsonObjects.forEach(jsonObject -> {
-                                                    strings.add(jsonObject.getString("peak"));
-                                                });
-                                                String s = findClosestNumber(strings, list.get(k));
-                                                cellUpdDto.setCellValue(s);
+                                                if (CollectionUtils.isNotEmpty(jsonObjects)) {
+                                                    log.info("得到的测量结果为:{}", jsonObjects);
+                                                    ArrayList<String> strings = new ArrayList<>();
+                                                    jsonObjects.forEach(jsonObject -> {
+                                                        strings.add(jsonObject.getString("peak"));
+                                                    });
+                                                    String s = findClosestNumber(strings, list.get(k));
+                                                    cellUpdDto.setCellValue(s);
+                                                }
+                                                cellUpdDto.setSheetName(category);
+                                                cellUpdDto.setValueType(MEASUREMENT_VALUE.getDescription());
+                                                cellUpdDto.setProjectName(projectName);
+                                                //设置他的特征值
+                                                cellUpdDto.setFeatureValue(list.get(k));
+                                                if (CollectionUtils.isNotEmpty(list)) {
+                                                    cellUpdDto.setIsMultiple(list.size() > 1);
+                                                }
+                                                log.info("修改工作簿");
+                                                //修改工作簿
+                                                updateWorkbookCell(workbook, cellUpdDto);
+                                                log.info("修改完成");
                                             }
-                                            cellUpdDto.setSheetName(category);
-                                            cellUpdDto.setValueType(MEASUREMENT_VALUE.getDescription());
-                                            cellUpdDto.setProjectName(projectName);
-                                            //设置他的特征值
-                                            cellUpdDto.setFeatureValue(list.get(k));
-                                            if (CollectionUtils.isNotEmpty(list)) {
-                                                cellUpdDto.setIsMultiple(list.size() > 1);
+                                        }else {
+                                            List<JSONObject> jsonObjects = data.get("res");
+                                            //修改工作簿，需要把第一个测量值的列填满，然后第二个，第三个
+                                            for (int k = 0; k < jsonObjects.size(); k++) {
+                                                if (halt.get(taskId)) {
+                                                    return false;
+
+                                                }
+                                                cellUpdDto.setPosition(d);
+                                                //测量值，后期替换这里的测量值，测量值是经过暗电流矫正，校零，测量得出的
+//                                int result = random.nextInt(301) + 300; // 生成300-600的随机整数
+                                                cellUpdDto.setFeatureValue(jsonObjects.get(k).getString("wl"));
+                                                cellUpdDto.setCellValue(jsonObjects.get(k).getString("peak"));
+
+//                                            if (CollectionUtils.isNotEmpty(jsonObjects)) {
+//                                                log.info("得到的测量结果为:{}", jsonObjects);
+//                                                ArrayList<String> strings = new ArrayList<>();
+//                                                jsonObjects.forEach(jsonObject -> {
+//                                                    strings.add(jsonObject.getString("peak"));
+//                                                });
+//                                                String s = findClosestNumber(strings, list.get(k));
+//                                                cellUpdDto.setCellValue(s);
+//                                            }
+                                                cellUpdDto.setSheetName(category);
+                                                cellUpdDto.setValueType(MEASUREMENT_VALUE.getDescription());
+                                                cellUpdDto.setProjectName(projectName);
+                                                //设置他的特征值
+
+                                                if (CollectionUtils.isNotEmpty(list)) {
+                                                    cellUpdDto.setIsMultiple(list.size() > 1);
+                                                }
+                                                log.info("修改工作簿");
+                                                //修改工作簿
+                                                updateWorkbookCell(workbook, cellUpdDto);
+                                                log.info("修改完成");
                                             }
-                                            log.info("修改工作簿");
-                                            //修改工作簿
-                                            updateWorkbookCell(workbook, cellUpdDto);
-                                            log.info("修改完成");
+
                                         }
                                     } else {
                                         cellUpdDto.setPosition(d);
@@ -4665,12 +4705,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                         //abs1 保留五位小数
                                         abs1 = new BigDecimal(abs1).setScale(5, RoundingMode.HALF_UP).toString();
 
+                                        object.put("wl", wavelength);
                                         object.put("peak", abs1);
                                         res.add(object);
                                         break;
                                     case tPercent:
                                         String tPercent1 = result.getTPercent();
                                         tPercent1 = new BigDecimal(tPercent1).setScale(5, RoundingMode.HALF_UP).toString();
+                                        object.put("wl", wavelength);
 
                                         object.put("peak", tPercent1);
                                         res.add(object);
@@ -4678,6 +4720,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                     case es:
                                         String es = result.getEs();
                                         es = new BigDecimal(es).setScale(5, RoundingMode.HALF_UP).toString();
+                                        object.put("wl", wavelength);
 
                                         object.put("peak", es);
                                         res.add(object);
@@ -4685,6 +4728,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                     case er:
                                         String er = result.getEr();
                                         er = new BigDecimal(er).setScale(5, RoundingMode.HALF_UP).toString();
+                                        object.put("wl", wavelength);
 
                                         object.put("peak", er);
                                         res.add(object);
