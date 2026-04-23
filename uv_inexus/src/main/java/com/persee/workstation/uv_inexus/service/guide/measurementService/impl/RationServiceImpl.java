@@ -492,6 +492,7 @@ public class RationServiceImpl implements RationService {
             vo.setTaskId(task.getId());
             vo.setTaskName(task.getTaskName());
             vo.setTaskStatus(task.getTaskStatus());
+            generateTableInfo(task.getId(), task.getMethodKey(), true);
             return Result.ok(vo);
         }
 
@@ -691,7 +692,10 @@ public class RationServiceImpl implements RationService {
             if (snapShot == null) {
                 snapShot = new RationTaskHeadSnapShot();
                 taskHeadSnapshot = new TaskHeadSnapshot();
+            } else {
+                taskHeadSnapshot = snapShot.getUnknownHead();
             }
+
         }
         List<HeadVO> heads = taskHeadSnapshot.getSampleHeads();
         if (heads == null || heads.isEmpty()) {
@@ -715,6 +719,8 @@ public class RationServiceImpl implements RationService {
         List<String> waveLength = parameter.getWaveLength();
 
         for (InputParam param : inputParams) {
+
+
             String resultIdentity = param.getResultIdentity();
             if (StringUtils.hasText(map.get(resultIdentity))) {
                 log.info("当前输入参数{}已存在", resultIdentity);
@@ -724,52 +730,67 @@ public class RationServiceImpl implements RationService {
                 }
             }
 
-            if (resultIdentity.matches("[A-Z]")) {
-                log.info("大写字母，只绑定，不添加");
-                int letterIndex = resultIdentity.charAt(0) - 'A' + 1;
-
-                if (letterIndex <= waveLength.size()) {
-                    InputParamMapTableHead relation = new InputParamMapTableHead();
-                    relation.setHeadName(param.getParamName());
-                    relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
-                    relation.setParamName(param.getParamName());
-                    relation.setParamIdentity(resultIdentity);
-                    mapRelation.add(relation);
-                    continue;
-                }
+            if (param.getIsSampleAttribute() == null) {
+                log.info("当前输入参数{}未设置属性", resultIdentity);
+                continue;
             }
 
-            String newHeadIdentity = randomString(8);
-            while (allHeadIdentity.contains(newHeadIdentity)) {
-                newHeadIdentity = randomString(8);
-            }
-
-            //创建表头
-            HeadVO newHead = new HeadVO();
-            newHead.setName(param.getParamName());
-            newHead.setPrintTitle(param.getParamName());
-            newHead.setIdentity(newHeadIdentity);
-            newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
-
-            heads.add(newHead);
             InputParamMapTableHead relation = new InputParamMapTableHead();
             relation.setHeadName(param.getParamName());
-            relation.setHeadIdentity(newHeadIdentity);
             relation.setParamName(param.getParamName());
             relation.setParamIdentity(resultIdentity);
+
+            if ("0".equals(param.getIsSampleAttribute())) {
+
+                String identifier = param.getCurveIdentifier();
+                if (identifier == null) {
+                    log.info("当前输入参数{}未设置绑定标识", resultIdentity);
+                    continue;
+                }
+                if (RationCurveParamEnums.getName(identifier) != null) {
+                    log.info("定量特有参数处理");
+                    relation.setHeadIdentity(identifier);
+                } else {
+                    String[] split = identifier.split("-");
+                    if (split.length == 2) {
+                        relation.setHeadIdentity(split[0] + "-" + luminosity);
+                    }
+                }
+            } else if ("1".equals(param.getIsSampleAttribute())) {
+                String newHeadIdentity = randomString(8);
+                while (allHeadIdentity.contains(newHeadIdentity)) {
+                    newHeadIdentity = randomString(8);
+                }
+
+                //创建表头
+                HeadVO newHead = new HeadVO();
+                newHead.setName(param.getParamName());
+                newHead.setPrintTitle(param.getParamName());
+                newHead.setIdentity(newHeadIdentity);
+                newHead.setUnit(param.getUnit());
+                newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
+
+                heads.add(newHead);
+                relation.setHeadIdentity(newHeadIdentity);
+                allHeadIdentity.add(newHeadIdentity);
+
+            }
             mapRelation.add(relation);
-            allHeadIdentity.add(newHeadIdentity);
         }
         taskHeadSnapshot.setSampleHeads(heads);
         taskHeadSnapshot.setMapRelation(mapRelation);
 
-        List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
-        TaskHeadSnapshot standHead = new TaskHeadSnapshot();
-        standHead.setSampleHeads(preHead);
-        standHead.setMapRelation(new ArrayList<>());
+        if (snapShot.getStandHead() == null || snapShot.getStandHead().getSampleHeads() == null || snapShot.getStandHead().getSampleHeads().isEmpty()) {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
+            TaskHeadSnapshot standHead = new TaskHeadSnapshot();
+            standHead.setSampleHeads(preHead);
+            standHead.setMapRelation(new ArrayList<>());
 
-        snapShot.setStandHead(standHead);
+            snapShot.setStandHead(standHead);
+        }
+
         snapShot.setUnknownHead(taskHeadSnapshot);
+        task.setTableInfo(JSON.toJSONString(snapShot));
 
         boolean update = tMeasureTaskService.updateById(task);
 
@@ -3740,12 +3761,12 @@ public class RationServiceImpl implements RationService {
         FittingReceiveInfo info = JSON.parseObject(s, FittingReceiveInfo.class);
         if (info == null) {
             log.info("数据拟合失败");
-            return R.fail();
+            return R.fail("曲线拟合失败！");
         }
 
         if (!ResultCodeEnum.SUCCESS.getCode().equals(info.getCode())) {
-            log.info("数据拟合失败");
-            return R.fail(info.getMessage());
+            log.info("算法拟合失败：{}", info.getMessage());
+            return R.fail("曲线拟合失败");
         }
 
         SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();

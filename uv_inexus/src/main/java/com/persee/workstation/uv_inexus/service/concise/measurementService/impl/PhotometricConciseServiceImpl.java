@@ -78,6 +78,7 @@ import java.io.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -723,11 +724,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             method.setMethodUseTime(LocalDateTime.now());
             fMeasureMethodService.updateById(method);
             R<Boolean> r = setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
-            if (!r.getSuccess()) {
-                return Result.ok(ans);
-            } else {
-                return Result.ok(ans);
-            }
+            return Result.ok(ans);
 
         } else {
             task = fMeasureTaskService.getById(methodDTO.getCurrentTaskId());
@@ -1029,6 +1026,157 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         return R.ok(true);
     }
 
+    private R<Boolean> generateTableInfo(String taskId, String methodId, Boolean clearOld) {
+
+        FMeasureMethod method = fMeasureMethodService.getById(methodId);
+        if (method == null || !StringUtils.hasText(method.getMeasurementParamInfo())) {
+            //方法不存在
+            return R.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            //任务不存在
+            return R.fail(YamlMessageSource.getMessageStatic("00000008"));
+        }
+        FPhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
+        if (parameter == null || parameter.getSampleInputParams() == null || parameter.getSampleInputParams().size() <= parameter.getWaveLength().size()) {
+            log.info("参数信息不存在");
+            return R.ok();
+        }
+        List<FInputParam> inputParams = parameter.getSampleInputParams();
+
+
+        FTaskHeadSnapshot taskHeadSnapshot = new FTaskHeadSnapshot();
+        if (StringUtils.hasText(task.getTableInfo()) && !clearOld) {
+            taskHeadSnapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
+            if (taskHeadSnapshot == null) {
+                taskHeadSnapshot = new FTaskHeadSnapshot();
+            }
+
+        }
+        List<FHeadVO> heads = taskHeadSnapshot.getSampleHeads();
+        if (heads == null|| heads.isEmpty()) {
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
+            heads = new ArrayList<>(preHead);
+        }
+
+        Set<String> allHeadIdentity = new HashSet<>();
+
+        for (FHeadVO head : heads) {
+            allHeadIdentity.add(head.getIdentity());
+        }
+
+        List<FInputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
+        Map<String, String> map = new HashMap<>();
+        for (FInputParamMapTableHead relation : mapRelation) {
+            map.put(relation.getParamIdentity(), relation.getHeadIdentity());
+        }
+
+        for (FInputParam param : inputParams) {
+
+
+
+            String resultIdentity = param.getResultIdentity();
+            if (StringUtils.hasText(map.get(resultIdentity))) {
+                log.info("当前输入参数{}已存在", resultIdentity);
+                if (allHeadIdentity.contains(map.get(resultIdentity))) {
+                    log.info("当前输入参数{}绑定的表头{}存在", resultIdentity, map.get(resultIdentity));
+                    continue;
+                }
+            }
+
+            if (param.getIsSampleAttribute() == null) {
+                log.info("当前输入参数{}未设置属性", resultIdentity);
+                continue;
+            }
+
+            if ("0".equals(param.getIsSampleAttribute())) {
+
+                String identifier = param.getCurveIdentifier();
+                if (identifier == null) {
+                    log.info("当前输入参数{}未设置绑定标识", resultIdentity);
+                    continue;
+                }
+
+                if (RationCurveParamEnums.getName(identifier) != null) {
+                    log.info("当前参数不适配光度测量");
+                    continue;
+                }
+
+                String[] split = identifier.split("-");
+                if (split.length == 2) {
+                    log.info("当前输入参数{}未设置绑定标识", resultIdentity);
+                    String s = split[1];
+                    String code = WaveLengthEnum.getCode(s);
+
+                    FInputParamMapTableHead relation = new FInputParamMapTableHead();
+                    relation.setHeadName(param.getParamName());
+                    relation.setHeadIdentity(split[0] + "-" + code);
+                    relation.setParamName(param.getParamName());
+                    relation.setParamIdentity(resultIdentity);
+                    mapRelation.add(relation);
+                }
+
+//                if (resultIdentity.matches("[A-Z]")) {
+//                    log.info("大写字母，只绑定，不添加");
+//                    int letterIndex = resultIdentity.charAt(0) - 'A' + 1;
+//
+//                    if (letterIndex <= waveLength.size()) {
+//                        InputParamMapTableHead relation = new InputParamMapTableHead();
+//                        relation.setHeadName(param.getParamName());
+//                        relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
+//                        relation.setParamName(param.getParamName());
+//                        relation.setParamIdentity(resultIdentity);
+//                        mapRelation.add(relation);
+//                    }
+//                }
+            } else if ("1".equals(param.getIsSampleAttribute())) {
+                String newHeadIdentity = randomString(8);
+                while (allHeadIdentity.contains(newHeadIdentity)) {
+                    newHeadIdentity = randomString(8);
+                }
+
+                //创建表头
+                FHeadVO newHead = new FHeadVO();
+                newHead.setName(param.getParamName());
+                newHead.setPrintTitle(param.getParamName());
+                newHead.setIdentity(newHeadIdentity);
+                newHead.setUnit(param.getUnit());
+                newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
+
+                heads.add(newHead);
+                FInputParamMapTableHead relation = new FInputParamMapTableHead();
+                relation.setHeadName(param.getParamName());
+                relation.setHeadIdentity(newHeadIdentity);
+                relation.setParamName(param.getParamName());
+                relation.setParamIdentity(resultIdentity);
+                mapRelation.add(relation);
+                allHeadIdentity.add(newHeadIdentity);
+            }
+        }
+        taskHeadSnapshot.setSampleHeads(heads);
+        taskHeadSnapshot.setMapRelation(mapRelation);
+        task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
+        boolean update = fMeasureTaskService.updateById(task);
+
+        return update ? R.ok(true) : R.fail(YamlMessageSource.getMessageStatic("00000010"));
+
+
+    }
+
+    private String randomString(int length) {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder(length);
+
+        for (int i = 0; i < length; i++) {
+            int index = random.nextInt(chars.length());
+            sb.append(chars.charAt(index));
+        }
+
+        return sb.toString();
+    }
+
 
     @Override
     public Result<FMeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType) {
@@ -1230,6 +1378,41 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (dto.getHeads() != null && !dto.getHeads().isEmpty()) {
             taskHeadSnapshot.setSampleHeads(dto.getHeads());
         }
+
+        List<FInputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
+        List<String> allHeadIdentity = new ArrayList<>();
+
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
+        FPhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
+        String luminosity = parameter.getLuminosity();
+        if (luminosity.equals(WaveLengthEnum.abs.getCode()) || luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
+            for (String s : parameter.getWaveLength()) {
+                allHeadIdentity.add(s + "-" + WaveLengthEnum.tPercent.getCode());
+                allHeadIdentity.add(s + "-" + WaveLengthEnum.abs.getCode());
+            }
+        } else {
+            for (String s : parameter.getWaveLength()) {
+                allHeadIdentity.add(s + "-" + luminosity);
+            }
+        }
+
+
+        if (mapRelation != null && !mapRelation.isEmpty()) {
+            taskHeadSnapshot.getSampleHeads().forEach(head -> {
+                allHeadIdentity.add(head.getIdentity());
+            });
+            taskHeadSnapshot.getTaskHeads().forEach(head -> {
+                allHeadIdentity.add(head.getIdentity());
+            });
+            List<FInputParamMapTableHead> newMapRelation = new ArrayList<>();
+            mapRelation.forEach(map -> { if (allHeadIdentity.contains(map.getHeadIdentity())) {
+                newMapRelation.add(map);
+            }});
+
+            taskHeadSnapshot.setMapRelation(newMapRelation);
+
+        }
+
         taskHeadSnapshot.setTaskId(task.getId());
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 
