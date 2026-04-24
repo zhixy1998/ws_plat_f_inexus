@@ -34,11 +34,15 @@ public enum MappingParamEnum {
             new DeviceConfParam("极快", "fastest")
     )),
 
-    MIN_WAVELENGTH("minWavelength", "最小波长", "190"),
+    MIN_WAVELENGTH("minWavelength", "最小波长", "185"),
 
     MAX_WAVELENGTH("maxWavelength", "最大波长", "1100"),
 
-    SCAN_INTERVAL("scanInterval", "扫描间隔", Arrays.asList("0.1", "0.2", "0.5", "1.0", "2.0", "5.0")),
+    MIN_LAMP_WAVELENGTH("minLampWavelength", "最小灯波长", "330"),
+
+    MAX_LAMP_WAVELENGTH("maxLampWavelength", "最大灯波长", "390"),
+
+    SCAN_INTERVAL("scanInterval", "扫描间隔", Arrays.asList("0.04","0.1", "0.2", "0.5", "1.0", "2.0", "5.0")),
 
     BAND_WIDTH("bandWidth", "带宽", generateBandWidthList(0.1, 5.0, 0.1));
 

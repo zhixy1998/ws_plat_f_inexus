@@ -3404,7 +3404,9 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         double start = Double.parseDouble(paramDto.getStartWaveLength());
         double end = Double.parseDouble(paramDto.getEndWaveLength());
-
+        if (paramDto.getSpikeRemoval()==null){
+            paramDto.setSpikeRemoval(false);
+        }
         // 校验方法参数中起始波长不能小于终止波长,小于则友好提示
         if (start <= end) {
             //起始波长不能小于等于停止波长
@@ -4786,10 +4788,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             return R.fail("光度模式不能为空");
         }
 
-        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
-        if (!deviceMeasureVOR.getSuccess()) {
-            return R.fail(deviceMeasureVOR.getMessage());
-        }
+
 
         List<DeviceConfParam> defaultValue = (List<DeviceConfParam>) MappingParamEnum.LUMINOSITY.getDefaultValue();
         // 使用steam流将defaultValue的value值取出来作为一个List<String>
@@ -4815,9 +4814,26 @@ public class SpectrumServiceImpl implements SpectrumService {
             return R.fail("波长间隔不能为空");
         }
 
-        // 波长默认范围 190-1100
-        double minWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMinWavelength());
-        double maxWaveLength = Double.parseDouble(deviceMeasureVOR.getData().getMaxWavelength());
+        // 波长默认范围 185-1100
+        double minWaveLength = Double.parseDouble(MappingParamEnum.MIN_WAVELENGTH.getDefaultValue().toString());
+        double maxWaveLength = Double.parseDouble(MappingParamEnum.MAX_WAVELENGTH.getDefaultValue().toString());
+        double minLampWaveLength = Double.parseDouble(MappingParamEnum.MIN_LAMP_WAVELENGTH.getDefaultValue().toString());
+        double maxLampWaveLength = Double.parseDouble(MappingParamEnum.MAX_LAMP_WAVELENGTH.getDefaultValue().toString());
+
+        if (StringUtils.hasText(deviceSerialNumber)) {
+            R<DeviceMeasureVO> typeInfo = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+            if (typeInfo.getSuccess()) {
+                DeviceMeasureVO vo = typeInfo.getData();
+                if (vo != null) {
+                    minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                    maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                    minLampWaveLength = StringUtils.hasText(vo.getMinLampWavelength()) ? Double.parseDouble(vo.getMinLampWavelength()) : minLampWaveLength;
+                    maxLampWaveLength = StringUtils.hasText(vo.getMaxLampWavelength()) ? Double.parseDouble(vo.getMaxLampWavelength()) : maxLampWaveLength;
+                }
+
+            }
+        }
+
 
         double startWave = 0;
         double endWave = 0;
@@ -4872,6 +4888,20 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (!validPatterns.contains(repetitionPattern)) {
             return R.fail("重复模式不合法（可选值：不重复、单池重复），当前值：" + repetitionPattern);
         }
+
+        String changeLampWave = parameter.getChangeLampWaveLength();
+        if (!StringUtils.hasText(changeLampWave)) {
+            return R.fail(YamlMessageSource.getMessageStatic("00105003"));
+        }
+        try {
+            double waveVal = Double.parseDouble(changeLampWave);
+            if (waveVal < minLampWaveLength || waveVal > maxLampWaveLength) {
+                return R.fail(YamlMessageSource.getMessageStatic("0010202A", waveVal));
+            }
+        } catch (NumberFormatException e) {
+            return R.fail("换灯波长格式错误");
+        }
+
 
         // 单池重复模式的详细校验
         if ("1".equals(repetitionPattern)) {
@@ -4968,20 +4998,6 @@ public class SpectrumServiceImpl implements SpectrumService {
 
         // 8.2 响应时间校验（如果有业务规则）
         // 目前没有明确规则，如果有需要可补充
-
-        // 8.3 换灯波长校验
-        String changeLampWave = parameter.getChangeLampWaveLength();
-        if (!StringUtils.hasText(changeLampWave)) {
-            return R.fail(YamlMessageSource.getMessageStatic("00105003"));
-        }
-        try {
-            double waveVal = Double.parseDouble(changeLampWave);
-            if (waveVal < 330 || waveVal > 390) {
-                return R.fail(YamlMessageSource.getMessageStatic("0010202A", waveVal));
-            }
-        } catch (NumberFormatException e) {
-            return R.fail("换灯波长格式错误");
-        }
 
         // 8.4 能量灯校验
         String energyLamp = parameter.getEnergyLamp();

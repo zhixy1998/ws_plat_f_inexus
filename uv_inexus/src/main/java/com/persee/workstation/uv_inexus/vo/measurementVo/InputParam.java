@@ -23,4 +23,10 @@ public class InputParam {
 
     @ApiModelProperty("单位")
     private String unit;
+
+    @ApiModelProperty("是否样品属性")
+    private String isSampleAttribute;
+
+    @ApiModelProperty("曲线标识")
+    private String curveIdentifier;
 }

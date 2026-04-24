@@ -18,7 +18,7 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
@@ -178,7 +178,7 @@ public class ConciseRationMeasureNewWebSocket {
 //        }
 //        task = tMeasureTaskService.getById(task.getId());
 
-        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
 
         FMeasureMethod byId = tMeasureMethodService.getById(task.getMethodKey());
         FRationParameter parameter = JSON.parseObject(byId.getMeasurementParamInfo(), FRationParameter.class);
@@ -218,6 +218,15 @@ public class ConciseRationMeasureNewWebSocket {
                     );
 
             if (StringUtils.hasText(oneSampleId)) {
+
+                FTaskSpecimen sp = taskSpecimen.stream().filter(s -> s.getSpecimenKey().equals(oneSampleId)).findFirst().orElse(null);
+
+                if (sp == null || sp.getDeleteType().equals(right)) {
+                    log.info("删除的样品,不需要测量");
+                    sendError(deviceSerialNumber, "删除的样品,不需要测量");
+                    return;
+                }
+
                 FMeasureSample dealSample = tMeasureSampleService.getById(oneSampleId);
                 LogManualUtil.saveReMeasureLog(
                         "实验测试-经典模式-定量测定-重新测量",
@@ -264,7 +273,7 @@ public class ConciseRationMeasureNewWebSocket {
                     return;
                 }
 
-                for (TaskSpecimen speciman : taskSpecimen) {
+                for (FTaskSpecimen speciman : taskSpecimen) {
 
                     if (speciman.getSpecimenKey().equals(oneSampleId)) {
                         speciman.setIsTested(right);
@@ -367,9 +376,9 @@ public class ConciseRationMeasureNewWebSocket {
                 //参与曲线拟合的参数
                 List<String> fitCurveParams = new ArrayList<>();
                 //测过的未知样，曲线拟合之后要重新计算
-                List<TaskSpecimen> testUnknowSample = new ArrayList<>();
+                List<FTaskSpecimen> testUnknowSample = new ArrayList<>();
 
-                for (TaskSpecimen specimen : taskSpecimen) {
+                for (FTaskSpecimen specimen : taskSpecimen) {
 
                     if (!isAutoChangePool && measureCount == 1) {
                         log.info("不自动切换样品池，只测一个就结束");
@@ -686,7 +695,7 @@ public class ConciseRationMeasureNewWebSocket {
                  * 删除的过滤
                  * 测过的，要处理
                  */
-                for (TaskSpecimen specimen : taskSpecimen) {
+                for (FTaskSpecimen specimen : taskSpecimen) {
 
                     if (!isAutoChangePool && measureCount == 1) {
                         log.info("不自动切换样品池，只测一个就结束");
@@ -882,24 +891,26 @@ public class ConciseRationMeasureNewWebSocket {
                             }
 
                         }
+
+                        //定量的公式计算----待定
+                        if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
+                            Double emptyValue = null;
+                            if (empty) {
+                                emptyValue = minuend;
+                            }
+                            R<FRationDataVO> formulaCount = formulaCont(deviceSerialNumber, data, sample, task, parameter, emptyValue);
+                            if (!formulaCount.getSuccess()) {
+
+                                sendError(deviceSerialNumber, "公式计算出错，请检查公式配置！");
+                                return;
+                            }
+                            data = formulaCount.getData();
+
+                            measureAbsDataList.addAll(data.getCountData());
+                        }
+
                         saveDataInfo.setCountData(measureAbsDataList);
                         rationService.saveAnalyzeData(saveDataInfo);
-                        //定量的公式计算----待定
-//                    rationService.formula()
-//                        R<List<FRationCountDataInfo>> formula = rationService.formula(saveDataInfo.getAnalyzeDataId(), data.getWavelengthData(), sample, task, parameter, digit);
-//
-//                        if (!formula.getSuccess()) {
-//                            log.info("公式计算异常");
-//                             
-//                            sendAndClose(session, formula.getMessage());
-//                            return;
-//                        }
-//                        List<FRationCountDataInfo> formulaData = formula.getData();
-//
-//                        formulaData = rationService.dataRounding(formulaData, parameter);
-//
-//                        saveDataInfo.getCountData().addAll(formulaData);
-//                        rationService.saveAnalyzeData(saveDataInfo);
                     }
                     specimen.setIsTested(right);
                 }
@@ -953,11 +964,35 @@ public class ConciseRationMeasureNewWebSocket {
 
     }
 
-    public void reCountUnknowSampleData(String deviceSerialNumber, List<TaskSpecimen> dealSampleList, String taskId, FittingReceiveInfo curveData, FRationParameter parameter) throws IOException {
+
+    private R<FRationDataVO> formulaCont(String deviceSerialNumber, FRationDataVO vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Double minuend) {
+        R<List<FRationCountDataInfo>> countedData = rationService.formula(vo.getCountData(), vo.getWavelengthData(), sample, task, parameter, minuend, digit);
+
+        if (!countedData.getSuccess()) {
+            log.info(countedData.getMessage());
+            sendError(deviceSerialNumber, "请检查公式配置");
+            return R.fail(countedData.getMessage());
+        }
+
+        List<FRationCountDataInfo> countDataInfos = countedData.getData();
+        countDataInfos = rationService.dataRounding(countDataInfos, parameter);
+
+        for (FRationCountDataInfo countDataInfo : countDataInfos){
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("sampleId", sample.getId());
+            jsonObject.put("key", countDataInfo.getIdentity());
+            jsonObject.put("value", countDataInfo.getColValue());
+            sendMessage(deviceSerialNumber, jsonObject);
+        }
+        vo.setCountData(countDataInfos);
+        return R.ok(vo);
+    }
+
+    public void reCountUnknowSampleData(String deviceSerialNumber, List<FTaskSpecimen> dealSampleList, String taskId, FittingReceiveInfo curveData, FRationParameter parameter) throws IOException {
 
         boolean empty = dealSampleList.stream().anyMatch(specimen -> specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity()));
 
-        for (TaskSpecimen specimen : dealSampleList) {
+        for (FTaskSpecimen specimen : dealSampleList) {
 
             List<FRationCountDataInfo> newData = new ArrayList<>();
 

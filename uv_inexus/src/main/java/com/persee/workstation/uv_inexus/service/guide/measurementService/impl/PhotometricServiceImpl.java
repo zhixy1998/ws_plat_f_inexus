@@ -875,6 +875,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         newTask.setProjectItemKey(newMethod.getProjectItemKey());
         newTask.setTaskStatus(TaskStatusEnum.UNTESTED.getCode());
         newTask.setMeasureType(newMethod.getMeasurementType());
+        task.setStartTime(LocalDateTime.now());
         newTask.setTableInfo(StringUtils.hasText(task.getTableInfo())?task.getTableInfo() : null);
         tMeasureTaskService.save(newTask);
 
@@ -1000,6 +1001,9 @@ public class PhotometricServiceImpl implements PhotometricService {
         List<String> waveLength = parameter.getWaveLength();
 
         for (InputParam param : inputParams) {
+
+
+
             String resultIdentity = param.getResultIdentity();
             if (StringUtils.hasText(map.get(resultIdentity))) {
                 log.info("当前输入参数{}已存在", resultIdentity);
@@ -1009,42 +1013,76 @@ public class PhotometricServiceImpl implements PhotometricService {
                 }
             }
 
-            if (resultIdentity.matches("[A-Z]")) {
-                log.info("大写字母，只绑定，不添加");
-                int letterIndex = resultIdentity.charAt(0) - 'A' + 1;
+            if (param.getIsSampleAttribute() == null) {
+                log.info("当前输入参数{}未设置属性", resultIdentity);
+                continue;
+            }
 
-                if (letterIndex <= waveLength.size()) {
+            if ("0".equals(param.getIsSampleAttribute())) {
+
+                String identifier = param.getCurveIdentifier();
+                if (identifier == null) {
+                    log.info("当前输入参数{}未设置绑定标识", resultIdentity);
+                    continue;
+                }
+
+                if (RationCurveParamEnums.getName(identifier) != null) {
+                    log.info("当前参数不适配光度测量");
+                    continue;
+                }
+
+                String[] split = identifier.split("-");
+                if (split.length == 2) {
+                    log.info("当前输入参数{}未设置绑定标识", resultIdentity);
+                    String s = split[1];
+                    String code = WaveLengthEnum.getCode(s);
+
                     InputParamMapTableHead relation = new InputParamMapTableHead();
                     relation.setHeadName(param.getParamName());
-                    relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
+                    relation.setHeadIdentity(split[0] + "-" + code);
                     relation.setParamName(param.getParamName());
                     relation.setParamIdentity(resultIdentity);
                     mapRelation.add(relation);
+
                     continue;
                 }
+
+//                if (resultIdentity.matches("[A-Z]")) {
+//                    log.info("大写字母，只绑定，不添加");
+//                    int letterIndex = resultIdentity.charAt(0) - 'A' + 1;
+//
+//                    if (letterIndex <= waveLength.size()) {
+//                        InputParamMapTableHead relation = new InputParamMapTableHead();
+//                        relation.setHeadName(param.getParamName());
+//                        relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
+//                        relation.setParamName(param.getParamName());
+//                        relation.setParamIdentity(resultIdentity);
+//                        mapRelation.add(relation);
+//                    }
+//                }
+            } else if ("1".equals(param.getIsSampleAttribute())) {
+                String newHeadIdentity = randomString(8);
+                while (allHeadIdentity.contains(newHeadIdentity)) {
+                    newHeadIdentity = randomString(8);
+                }
+
+                //创建表头
+                HeadVO newHead = new HeadVO();
+                newHead.setName(param.getParamName());
+                newHead.setPrintTitle(param.getParamName());
+                newHead.setIdentity(newHeadIdentity);
+                newHead.setUnit(param.getUnit());
+                newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
+
+                heads.add(newHead);
+                InputParamMapTableHead relation = new InputParamMapTableHead();
+                relation.setHeadName(param.getParamName());
+                relation.setHeadIdentity(newHeadIdentity);
+                relation.setParamName(param.getParamName());
+                relation.setParamIdentity(resultIdentity);
+                mapRelation.add(relation);
+                allHeadIdentity.add(newHeadIdentity);
             }
-
-            String newHeadIdentity = randomString(8);
-            while (allHeadIdentity.contains(newHeadIdentity)) {
-                newHeadIdentity = randomString(8);
-            }
-
-            //创建表头
-            HeadVO newHead = new HeadVO();
-            newHead.setName(param.getParamName());
-            newHead.setPrintTitle(param.getParamName());
-            newHead.setIdentity(newHeadIdentity);
-            newHead.setUnit(param.getUnit());
-            newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
-
-            heads.add(newHead);
-            InputParamMapTableHead relation = new InputParamMapTableHead();
-            relation.setHeadName(param.getParamName());
-            relation.setHeadIdentity(newHeadIdentity);
-            relation.setParamName(param.getParamName());
-            relation.setParamIdentity(resultIdentity);
-            mapRelation.add(relation);
-            allHeadIdentity.add(newHeadIdentity);
         }
         taskHeadSnapshot.setSampleHeads(heads);
         taskHeadSnapshot.setMapRelation(mapRelation);
@@ -1182,6 +1220,21 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         List<InputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
         List<String> allHeadIdentity = new ArrayList<>();
+
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+        String luminosity = parameter.getLuminosity();
+        if (luminosity.equals(WaveLengthEnum.abs.getCode()) || luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
+            for (String s : parameter.getWaveLength()) {
+                allHeadIdentity.add(s + "-" + WaveLengthEnum.tPercent.getCode());
+                allHeadIdentity.add(s + "-" + WaveLengthEnum.abs.getCode());
+            }
+        } else {
+            for (String s : parameter.getWaveLength()) {
+                allHeadIdentity.add(s + "-" + luminosity);
+            }
+        }
+
 
         if (mapRelation != null && !mapRelation.isEmpty()) {
             taskHeadSnapshot.getSampleHeads().forEach(head -> {

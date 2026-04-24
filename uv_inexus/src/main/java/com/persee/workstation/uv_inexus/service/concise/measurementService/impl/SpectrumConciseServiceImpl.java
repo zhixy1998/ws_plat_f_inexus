@@ -29,6 +29,7 @@ import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidatio
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.MappingParamEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
@@ -229,11 +230,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return R.fail("波长间隔不能为空");
         }
 
-        // 波长默认范围 190-1100
-        double minWaveLength = 190.0;
-        double maxWaveLength = 1100.0;
-        double minLampWaveLength = 330;
-        double maxLampWaveLength = 390;
+        // 波长默认范围 185-1100
+        double minWaveLength = Double.parseDouble(MappingParamEnum.MIN_WAVELENGTH.getDefaultValue().toString());
+        double maxWaveLength = Double.parseDouble(MappingParamEnum.MAX_WAVELENGTH.getDefaultValue().toString());
+        double minLampWaveLength = Double.parseDouble(MappingParamEnum.MIN_LAMP_WAVELENGTH.getDefaultValue().toString());
+        double maxLampWaveLength = Double.parseDouble(MappingParamEnum.MAX_LAMP_WAVELENGTH.getDefaultValue().toString());
         if (StringUtils.hasText(deviceSerialNumber)) {
             R<DeviceMeasureVO> typeInfo = infoService.queryDeviceTypeInfo(deviceSerialNumber);
             if (typeInfo.getSuccess()) {
@@ -681,8 +682,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (validateResult.getCode() != 200) {
             return validateResult;
         }
+        if (paramDto.getParameter().getSpikeRemoval()==null) {
+            paramDto.getParameter().setSpikeRemoval(false);
+        }
         FSpectrumParameter param = new FSpectrumParameter();
         BeanUtils.copyProperties(paramDto.getParameter(), param);
+
         if(param.getSpikeRemoval()){
             List<String> newSpikeArray = new ArrayList<>();
             List<String> spikeArray = param.getSpikeArray();

@@ -130,6 +130,8 @@ public class SpectrumNewWebSocket {
         // 当前测量完成标志
         private final AtomicBoolean currentMeasurementCompleted = new AtomicBoolean(true);
 
+        private final AtomicBoolean finalMessageSent = new AtomicBoolean(false);
+
         // 批次数据缓冲区
         private final List<Double> batchXBuffer = Collections.synchronizedList(new ArrayList<>());
         private final List<Double> batchYBuffer = Collections.synchronizedList(new ArrayList<>());
@@ -141,6 +143,9 @@ public class SpectrumNewWebSocket {
         private String ip;
         private Integer digit;
         private Integer batchSize; // 批次大小
+
+        private final AtomicInteger batchSeqGenerator = new AtomicInteger(0);
+        public int nextBatchSeq() { return batchSeqGenerator.getAndIncrement(); }
 
         // 匀速推送调度器映射：sampleId_count -> SmoothPushScheduler
         private final Map<String, SmoothPushScheduler> smoothPushSchedulers = new ConcurrentHashMap<>();
@@ -227,6 +232,7 @@ public class SpectrumNewWebSocket {
                     return null;
                 }
                 int startIndex = pushedPointsCount.get();
+                int seq = nextBatchSeq();
                 BatchData batchData = new BatchData(
                         new ArrayList<>(batchXBuffer),
                         new ArrayList<>(batchYBuffer),
@@ -236,7 +242,8 @@ public class SpectrumNewWebSocket {
                         sampleId,
                         digit,
                         parameter,
-                        task
+                        task,
+                        seq
                 );
                 batchXBuffer.clear();
                 batchYBuffer.clear();
@@ -274,7 +281,7 @@ public class SpectrumNewWebSocket {
         private final String luminosity;
         private final AtomicBoolean isRunning = new AtomicBoolean(false);
         private final AtomicBoolean isFinished = new AtomicBoolean(false);
-        private final Queue<SmoothPushTask> pendingQueue = new ConcurrentLinkedQueue<>();
+        private final Queue<SmoothPushTask> pendingQueue = new PriorityBlockingQueue<>();
         private ScheduledExecutorService scheduler;
         private long currentIntervalMs = 0;          // 当前推送间隔（毫秒）
         private long baseIntervalMs = 0;              // 基础推送间隔（毫秒）
@@ -308,9 +315,9 @@ public class SpectrumNewWebSocket {
             this.currentSampleCellSupplier = currentSampleCellSupplier;
         }
 
-        public synchronized void receiveBatch(List<Double> xBatch, List<Double> yBatch) {
+        public synchronized void receiveBatch(List<Double> xBatch, List<Double> yBatch, int batchSeq) {
             for (int i = 0; i < xBatch.size(); i++) {
-                pendingQueue.add(new SmoothPushTask(xBatch.get(i), yBatch.get(i)));
+                pendingQueue.add(new SmoothPushTask(xBatch.get(i), yBatch.get(i), batchSeq, i));
             }
 
             int queueSize = pendingQueue.size();
@@ -507,12 +514,24 @@ public class SpectrumNewWebSocket {
             pendingQueue.clear();
         }
 
-        private static class SmoothPushTask {
+        private static class SmoothPushTask implements Comparable<SmoothPushTask> {
             final Double x;
             final Double y;
-            SmoothPushTask(Double x, Double y) {
+            final int batchSeq;
+            final int pointIndex;
+
+            SmoothPushTask(Double x, Double y, int batchSeq, int pointIndex) {
                 this.x = x;
                 this.y = y;
+                this.batchSeq = batchSeq;
+                this.pointIndex = pointIndex;
+            }
+
+            @Override
+            public int compareTo(SmoothPushTask o) {
+                int cmp = Integer.compare(this.batchSeq, o.batchSeq);
+                if (cmp != 0) return cmp;
+                return Integer.compare(this.pointIndex, o.pointIndex);
             }
         }
     }
@@ -530,10 +549,11 @@ public class SpectrumNewWebSocket {
         Integer digit;
         SpectrumParameter parameter;
         TMeasureTask task;
+        int batchSeq;
 
         public BatchData(List<Double> xBatch, List<Double> yBatch, int startIndex,
                          Integer count,String sessionId, String sampleId, Integer digit,
-                         SpectrumParameter parameter, TMeasureTask task) {
+                         SpectrumParameter parameter, TMeasureTask task, int batchSeq) {
             this.xBatch = new ArrayList<>(xBatch);
             this.yBatch = new ArrayList<>(yBatch);
             this.startIndex = startIndex;
@@ -543,6 +563,7 @@ public class SpectrumNewWebSocket {
             this.digit = digit;
             this.parameter = parameter;
             this.task = task;
+            this.batchSeq = batchSeq;
         }
     }
 
@@ -1058,6 +1079,13 @@ public class SpectrumNewWebSocket {
      * 发送消息并关闭连接2
      */
     private void sendClose(String sessionId, JSONObject msg) {
+
+        SessionState state = sessionStates.get(sessionId);
+        if (state != null && state.finalMessageSent.getAndSet(true)) {
+            log.warn("最终消息已发送过，忽略重复调用: sessionId={}", sessionId);
+            return;
+        }
+
         log.info("【发送关闭】发送消息并关闭连接, session: {}, message: {}", sessionId, msg);
         try {
             sendMessage(sessionId, msg);
@@ -1415,7 +1443,7 @@ public class SpectrumNewWebSocket {
                             spectrumParameter.getLuminosity(),
                             cellSupplier);
                     // 剩余批次数据也需要通过调度器推送（注意：这里传入的是原始 yBatch，因为台阶消除已在 processBatchDataAsync 中处理过）
-                    scheduler.receiveBatch(batchData.xBatch, batchData.yBatch);
+                    scheduler.receiveBatch(batchData.xBatch, batchData.yBatch, batchData.batchSeq);
 
                     // 更新已推送点数
                     state.incrementPushedPoints(batchData.xBatch.size());
@@ -1557,7 +1585,7 @@ public class SpectrumNewWebSocket {
                         batchData.digit,
                         batchData.parameter.getLuminosity(),
                         cellSupplier);
-                scheduler.receiveBatch(batchData.xBatch, processedY);
+                scheduler.receiveBatch(batchData.xBatch, processedY, batchData.batchSeq);
 
                 // 更新已推送点数
                 if (state != null) {
@@ -2686,6 +2714,15 @@ public class SpectrumNewWebSocket {
     }
 
     private void sendError(String deviceSerialNumber, String message) {
+
+        SessionState state = sessionStates.get(deviceSerialNumber);
+        if (state != null && state.finalMessageSent.getAndSet(true)) {
+            log.warn("最终消息已发送过，忽略重复错误发送: sessionId={}", deviceSerialNumber);
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+            cleanupResources(deviceSerialNumber);
+            return;
+        }
+
         infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.Spectrum.getOperation(), message);
         cleanupResources(deviceSerialNumber);

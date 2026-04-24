@@ -30,6 +30,11 @@ public class InputParamDTO {
     @ApiModelProperty("标记")
     private String resultIdentity;
 
+    @ApiModelProperty("是否样品属性")
+    private String isSampleAttribute;
+
+    @ApiModelProperty("曲线标识")
+    private String curveIdentifier;
     // 重写equals和hashCode用于去重
     @Override
     public boolean equals(Object o) {
