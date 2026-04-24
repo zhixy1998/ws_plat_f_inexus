@@ -1585,14 +1585,16 @@ public class ConciseSpectrumOneNewWebSocket {
             QueryWrapper<FMeasureData> dataQuery = new QueryWrapper<>();
             dataQuery.eq("task_id", taskId)
                     .eq("sample_key", sampleId)
-                    .eq("serial_number", count);
+                    .eq("serial_number", count)
+                    .last("limit 1");
             FMeasureData existingMeasureData = tMeasureDataService.getOne(dataQuery);
 
             QueryWrapper<FMeasureAnalysisData> analysisQuery = new QueryWrapper<>();
             analysisQuery.eq("task_id", taskId)
                     .eq("sample_key", sampleId)
                     .eq("analysis_number", count)
-                    .eq("analysis_type", "5");
+                    .eq("analysis_type", "5")
+                    .last("limit 1");
             FMeasureAnalysisData existingAnalysisData = tMeasureAnalysisDataService.getOne(analysisQuery);
 
             // 判断是否是重新测量：已存在已保存的记录（isSave = "1"）且是第一次批次

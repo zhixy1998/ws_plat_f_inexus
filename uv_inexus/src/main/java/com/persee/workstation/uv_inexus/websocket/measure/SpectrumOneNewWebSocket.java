@@ -1513,14 +1513,16 @@ public class SpectrumOneNewWebSocket {
             QueryWrapper<TMeasureData> dataQuery = new QueryWrapper<>();
             dataQuery.eq("task_id", taskId)
                     .eq("sample_key", sampleId)
-                    .eq("serial_number", count);
+                    .eq("serial_number", count)
+                    .last("limit 1");
             TMeasureData existingMeasureData = tMeasureDataService.getOne(dataQuery);
 
             QueryWrapper<TMeasureAnalysisData> analysisQuery = new QueryWrapper<>();
             analysisQuery.eq("task_id", taskId)
                     .eq("sample_key", sampleId)
                     .eq("analysis_number", count)
-                    .eq("analysis_type", "5");
+                    .eq("analysis_type", "5")
+                    .last("limit 1");
             TMeasureAnalysisData existingAnalysisData = tMeasureAnalysisDataService.getOne(analysisQuery);
 
             // ========== 重新测量模式：清空原有数据，重新开始 ==========

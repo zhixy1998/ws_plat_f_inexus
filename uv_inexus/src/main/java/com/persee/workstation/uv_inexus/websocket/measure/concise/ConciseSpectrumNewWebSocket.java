@@ -1774,7 +1774,8 @@ public class ConciseSpectrumNewWebSocket {
                 QueryWrapper<FMeasureData> dataQuery = new QueryWrapper<>();
                 dataQuery.eq("task_id", taskId)
                         .eq("sample_key", sampleId)
-                        .eq("serial_number", count);
+                        .eq("serial_number", count)
+                        .last("limit 1");
                 FMeasureData existingMeasureData = tMeasureDataService.getOne(dataQuery);
 
                 if (existingMeasureData != null) {
@@ -1818,7 +1819,8 @@ public class ConciseSpectrumNewWebSocket {
                 analysisQuery.eq("task_id", taskId)
                         .eq("sample_key", sampleId)
                         .eq("analysis_number", count)
-                        .eq("analysis_type", "5");
+                        .eq("analysis_type", "5")
+                        .last("limit 1");
                 FMeasureAnalysisData existingAnalysisData = tMeasureAnalysisDataService.getOne(analysisQuery);
 
                 if (existingAnalysisData != null) {

@@ -1710,7 +1710,8 @@ public class SpectrumNewWebSocket {
                 QueryWrapper<TMeasureData> dataQuery = new QueryWrapper<>();
                 dataQuery.eq("task_id", taskId)
                         .eq("sample_key", sampleId)
-                        .eq("serial_number", count);
+                        .eq("serial_number", count)
+                        .last("limit 1");
                 TMeasureData existingMeasureData = tMeasureDataService.getOne(dataQuery);
 
                 if (existingMeasureData != null) {
@@ -1754,7 +1755,8 @@ public class SpectrumNewWebSocket {
                 analysisQuery.eq("task_id", taskId)
                         .eq("sample_key", sampleId)
                         .eq("analysis_number", count)
-                        .eq("analysis_type", "5");
+                        .eq("analysis_type", "5")
+                        .last("limit 1");
                 TMeasureAnalysisData existingAnalysisData = tMeasureAnalysisDataService.getOne(analysisQuery);
 
                 if (existingAnalysisData != null) {
