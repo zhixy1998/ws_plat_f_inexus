@@ -772,6 +772,20 @@ public class SpectrumOneNewWebSocket {
                         log.info("自动切换样品池恢复样品池到1号池失败");
                     }
                 }
+
+                DevOperationInputParam setInputParam = new DevOperationInputParam();
+                setInputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+                setInputParam.setDeviceSerialNumber(deviceSerialNumber);
+                SetParam setParam = new SetParam();
+                setParam.setSetWl(Double.valueOf(spectrumParameter.getStartWaveLength()));
+                setInputParam.setParam(setParam);
+                // 重新设置波长返回起始波长命令
+                R<OperationResultEntity> r = devOperationUtilService.operation(setInputParam);
+                if (!r.getSuccess()) {
+                    sendError(deviceSerialNumber,r.getMessage());
+                }
+                log.info("==========仪器返回起始波长");
+
                 JSONObject payload = new JSONObject();
                 if (Constants.measureStopStatus.get(deviceSerialNumber)) {
                     payload.put("success", "扫描成功");
