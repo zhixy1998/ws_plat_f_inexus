@@ -36,7 +36,8 @@ public enum CalibrationTypeEnum {
     SET_STANDARD("2", "设置标准物"),
     HISTORY_WAVEFORM("3", "历史波形图"),
     RESUME("4", "用户动作，标准物放置后点击"),
-
+    //设置测量及格线
+    SET_MEASUREMENT_QUALITY_LINE("5", "设置测量及格线"),
     //任务的执行状态
     NOT_STARTED("0", "未开始"),
     IN_PROGRESS("1", "未完成"),
