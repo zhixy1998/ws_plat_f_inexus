@@ -869,6 +869,19 @@ public class SpectrumNewWebSocket {
                     }
                 }
 
+                DevOperationInputParam setInputParam = new DevOperationInputParam();
+                setInputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+                setInputParam.setDeviceSerialNumber(deviceSerialNumber);
+                SetParam setParam = new SetParam();
+                setParam.setSetWl(Double.valueOf(spectrumParameter.getStartWaveLength()));
+                setInputParam.setParam(setParam);
+                // 重新设置波长返回起始波长命令
+                R<OperationResultEntity> r = devOperationUtilService.operation(setInputParam);
+                if (!r.getSuccess()) {
+                    sendError(deviceSerialNumber,r.getMessage());
+                }
+                log.info("==========仪器返回起始波长");
+
                 JSONObject payload = new JSONObject();
                 if (Constants.measureStopStatus.get(deviceSerialNumber)){
                     payload.put("success", "扫描成功");
@@ -1710,7 +1723,8 @@ public class SpectrumNewWebSocket {
                 QueryWrapper<TMeasureData> dataQuery = new QueryWrapper<>();
                 dataQuery.eq("task_id", taskId)
                         .eq("sample_key", sampleId)
-                        .eq("serial_number", count);
+                        .eq("serial_number", count)
+                        .last("limit 1");
                 TMeasureData existingMeasureData = tMeasureDataService.getOne(dataQuery);
 
                 if (existingMeasureData != null) {
@@ -1754,7 +1768,8 @@ public class SpectrumNewWebSocket {
                 analysisQuery.eq("task_id", taskId)
                         .eq("sample_key", sampleId)
                         .eq("analysis_number", count)
-                        .eq("analysis_type", "5");
+                        .eq("analysis_type", "5")
+                        .last("limit 1");
                 TMeasureAnalysisData existingAnalysisData = tMeasureAnalysisDataService.getOne(analysisQuery);
 
                 if (existingAnalysisData != null) {

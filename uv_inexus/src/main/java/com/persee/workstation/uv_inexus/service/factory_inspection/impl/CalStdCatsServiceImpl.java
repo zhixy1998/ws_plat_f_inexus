@@ -113,15 +113,15 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
                 .eq(CalStdCats::getIsDelete, NOT_DELETED.getCode())
                 .eq(CalStdCats::getMaterialType, BASE_FIXED_SUBSTANCE.getCode());
         if (0 != calArtifactsMapper.selectCount(queryWrapper)) {
-            return Result.fail("请先删除该标准物下的所有标准实体物!!!");
+            return Result.fail("请先删除该标准物下的所有标准实体物!");
         } else if (count(wrapper) > 0) {
-            return Result.fail("该标准物质类型为内置，不可删除!!!");
+            return Result.fail("该标准物质类型为内置，不可删除!");
         } else {
             LambdaQueryWrapper<TaskExecutionDetail> queryWrapper5 = new LambdaQueryWrapper<>();
             queryWrapper5.eq(TaskExecutionDetail::getStandardId, id);
             long count1 = taskExecutionDetailService.count(queryWrapper5);
             if (count1 > 0){
-                return Result.fail("有任务正在使用该标准物类型!!!");
+                return Result.fail("有任务正在使用该标准物，无法删除!");
             }
 
             LambdaUpdateWrapper<CalStdCats> wrapper2 = new LambdaUpdateWrapper<>();

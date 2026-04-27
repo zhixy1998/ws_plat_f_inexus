@@ -140,6 +140,8 @@ public class TaskCheckItemDto {
          */
         @ApiModelProperty("执行时间（ISO 8601格式）")
         private Date executionTime;
+        @ApiModelProperty("排序号（对应Excel导入顺序）")
+        private String sortOrder;
     }
 
     /**
