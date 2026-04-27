@@ -68,7 +68,7 @@ public class TimeSweepConciseController {
     }
 
 
-    @ButtonPermission("timeScanApplyMethod")
+//    @ButtonPermission("timeScanApplyMethod")
     @OperateLog(module = "实验测试-经典模式-时间扫描-应用方法", description = "执行实验测试-经典模式-时间扫描-应用方法记录", recordParams = true)
     @PostMapping("applyMethod")
     @ApiOperation("应用接口")
@@ -111,7 +111,7 @@ public class TimeSweepConciseController {
 //            description = "执行实验测试-经典模式-时间扫描-{operateType}样品操作",
 //            recordParams = true
 //    )
-    @ButtonPermission("timeScanSetSample")
+//    @ButtonPermission("timeScanSetSample")
     @OperateLog(module = "实验测试-经典模式-时间扫描-设置样品", description = "执行实验测试-经典模式-时间扫描-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")

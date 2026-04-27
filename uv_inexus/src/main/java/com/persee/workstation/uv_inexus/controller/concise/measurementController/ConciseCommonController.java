@@ -88,10 +88,10 @@ public class ConciseCommonController {
     public Result queryMethodParameter(@RequestParam String methodId) {
         return conciseCommonService.queryMethodParameter(methodId);
     }
-    @ButtonPermission(
-            description = "实验测试-经典模式-重命名方法名称", // 操作描述
-            permissionMapping = "lumne=lumneRenameMethodName,quantity=quantityRenameMethodName,spectralScan=spectralScanRenameMethodName,timeScan=timeScanRenameMethodName" // 自定义操作类型→驼峰权限标识
-    )
+//    @ButtonPermission(
+//            description = "实验测试-经典模式-重命名方法名称", // 操作描述
+//            permissionMapping = "lumne=lumneRenameMethodName,quantity=quantityRenameMethodName,spectralScan=spectralScanRenameMethodName,timeScan=timeScanRenameMethodName" // 自定义操作类型→驼峰权限标识
+//    )
     @OperateLog(
             module = "实验测试-经典模式",
             description = "执行实验测试-经典模式-{operateType}-重命名方法名称操作",
@@ -107,10 +107,10 @@ public class ConciseCommonController {
     public Result<Page<FMeasureTaskDTO>> queryHistoryTask(@RequestBody SelectTaskDto selectTaskDto) {
         return conciseCommonService.queryHistoryTask(selectTaskDto);
     }
-    @ButtonPermission(
-            description = "实验测试-经典模式-重命名历史文件名称", // 操作描述
-            permissionMapping = "lumne=lumneRenameMethodName,quantity=quantityRenameDataName,spectralScan=spectralScanRenameDataName,timeScan=timeScanRenameDataName" // 自定义操作类型→驼峰权限标识
-    )
+//    @ButtonPermission(
+//            description = "实验测试-经典模式-重命名历史文件名称", // 操作描述
+//            permissionMapping = "lumne=lumneRenameMethodName,quantity=quantityRenameDataName,spectralScan=spectralScanRenameDataName,timeScan=timeScanRenameDataName" // 自定义操作类型→驼峰权限标识
+//    )
     @OperateLog(
             module = "实验测试-经典模式",
             description = "执行实验测试-经典模式-{operateType}-重命名历史文件名称操作",
@@ -122,10 +122,10 @@ public class ConciseCommonController {
         return conciseCommonService.updateTask(updateTaskDto);
     }
 
-    @ButtonPermission(
-            description = "实验测试-经典模式-光度测量-设置样品", // 操作描述
-            permissionMapping = "lumne=lumneModifyAttachmentParams,quantity=quantityModifyMethodParams,spectralScan=spectralScanModifyMethodParams,timeScan=timeScanModifyAttachmentParams" // 自定义操作类型→驼峰权限标识
-    )
+//    @ButtonPermission(
+//            description = "实验测试-经典模式-光度测量-设置样品", // 操作描述
+//            permissionMapping = "lumne=lumneModifyAttachmentParams,quantity=quantityModifyMethodParams,spectralScan=spectralScanModifyMethodParams,timeScan=timeScanModifyAttachmentParams" // 自定义操作类型→驼峰权限标识
+//    )
     @OperateLog(
             module = "实验测试-经典模式",
             description = "执行实验测试-经典模式-{operateType}-修改方法参数操作",

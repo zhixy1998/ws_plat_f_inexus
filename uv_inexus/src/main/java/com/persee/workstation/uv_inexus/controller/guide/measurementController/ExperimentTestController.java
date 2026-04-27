@@ -91,10 +91,10 @@ public class ExperimentTestController {
     public Result createMethodPort(@RequestBody MethodParamRequestDto methodDto) {
             return experimentTestService.createMethodPort(methodDto);
     }
-    @ButtonPermission(
-            description = "实验测试-向导模式-基本信息创建任务", // 操作描述
-            permissionMapping = "lumne=lumneDeleteMethod,quantity=quantityDeleteMethod,spectralScan=spectralScanDeleteMethod,timeScan=timeScanDeleteMethod" // 自定义操作类型→驼峰权限标识
-    )
+//    @ButtonPermission(
+//            description = "实验测试-向导模式-基本信息创建任务", // 操作描述
+//            permissionMapping = "lumne=lumneDeleteMethod,quantity=quantityDeleteMethod,spectralScan=spectralScanDeleteMethod,timeScan=timeScanDeleteMethod" // 自定义操作类型→驼峰权限标识
+//    )
     @OperateLog(
             module = "实验测试-经典模式",
             description = "执行实验测试-向导模式-{operateType}-基本信息创建任务",
@@ -106,10 +106,10 @@ public class ExperimentTestController {
         return experimentTestService.createTask(paramDto);
     }
 
-    @ButtonPermission(
-            description = "实验测试-向导模式-修改附件参数", // 操作描述
-            permissionMapping = "lumne=wizardModeLumneModifyAttachmentParams,quantity=wizardModeQuantityModifyAttachmentParams,spectralScan=wizardModeSpectralScanModifyAttachmentParams,timeScan=wizardModeTimeScanModifyAttachmentParams" // 自定义操作类型→驼峰权限标识
-    )
+//    @ButtonPermission(
+//            description = "实验测试-向导模式-修改附件参数", // 操作描述
+//            permissionMapping = "lumne=wizardModeLumneModifyAttachmentParams,quantity=wizardModeQuantityModifyAttachmentParams,spectralScan=wizardModeSpectralScanModifyAttachmentParams,timeScan=wizardModeTimeScanModifyAttachmentParams" // 自定义操作类型→驼峰权限标识
+//    )
     @OperateLog(
             module = "实验测试-经典模式",
             description = "执行实验测试-向导模式-{operateType}-修改附件参数任务",
@@ -434,10 +434,10 @@ public class ExperimentTestController {
     }
 
 
-    @ButtonPermission(
-            description = "实验测试-向导模式-测量", // 操作描述
-            permissionMapping = "lumne=wizardModeLumneMeasurement,quantity=wizardModeQuantityMeasurement,spectralScan=wizardModeSpectralScanScan,timeScan=wizardModeTimeScanScan" // 自定义操作类型→驼峰权限标识
-    )
+//    @ButtonPermission(
+//            description = "实验测试-向导模式-测量", // 操作描述
+//            permissionMapping = "lumne=wizardModeLumneMeasurement,quantity=wizardModeQuantityMeasurement,spectralScan=wizardModeSpectralScanScan,timeScan=wizardModeTimeScanScan" // 自定义操作类型→驼峰权限标识
+//    )
     @OperateLog(
             module = "实验测试-向导模式",
             description = "执行实验测试-向导模式-{operateType}-测量操作",

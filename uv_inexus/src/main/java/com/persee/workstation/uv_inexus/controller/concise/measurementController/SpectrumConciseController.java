@@ -80,7 +80,7 @@ public class SpectrumConciseController {
         return spectrumConciseService.parameterValidation(paramDto);
     }
 
-    @ButtonPermission("spectralScanApplyMethod")
+//    @ButtonPermission("spectralScanApplyMethod")
     @OperateLog(module = "实验测试-经典模式-光谱扫描-应用方法", description = "执行实验测试-经典模式-光谱扫描-应用方法记录", recordParams = true)
     @PostMapping(value = "applyMethod")
     @ApiOperation("应用接口")
@@ -124,7 +124,7 @@ public class SpectrumConciseController {
 //            description = "执行实验测试-经典模式-光谱扫描-{operateType}样品操作",
 //            recordParams = true
 //    )
-    @ButtonPermission("spectralScanSetSample")
+//    @ButtonPermission("spectralScanSetSample")
     @OperateLog(module = "实验测试-经典模式-光谱扫描-设置样品", description = "执行实验测试-经典模式-光谱扫描-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")
@@ -138,7 +138,7 @@ public class SpectrumConciseController {
         return spectrumConciseService.detectionTaskStatus(taskId);
     }
 
-    @ButtonPermission("quantityCreateTask")
+//    @ButtonPermission("quantityCreateTask")
     @OperateLog(module = "实验测试-经典模式-定量测定-新建任务", description = "执行实验测试-经典模式-定量测定-新建任务记录", recordParams = true)
     @PostMapping("saveDraftButton")
     @ApiOperation("保存草稿按钮接口")
@@ -299,7 +299,7 @@ public class SpectrumConciseController {
     public Result luminanceModeConversionPort(@RequestBody FLuminosityConversionDto paramDto){
         return spectrumConciseService.luminanceModeConversionPort(paramDto);
     }
-    @ButtonPermission("spectralScanExportData")
+//    @ButtonPermission("spectralScanExportData")
     @OperateLog(module = "实验测试-经典模式-光谱扫描-导出数据", description = "执行实验测试-经典模式-光谱扫描-导出数据记录", recordParams = true)
     @GetMapping("downloadDoc")
     @ApiOperation("多格式文件下载接口（支持word/excel/txt）")
