@@ -22,7 +22,7 @@ public enum MappingParamEnum {
             new DeviceConfParam("氘灯", "1")
     )),
 
-    GAIN("gain", "增益", Arrays.asList(1, 2, 3, 4)),
+    GAIN("gain", "增益", Arrays.asList(1, 2, 3, 4, 5, 6 ,7)),
 
     RESPONSE_TIME("responseTime", "响应时间", Arrays.asList("0.5", "1", "2")),
 

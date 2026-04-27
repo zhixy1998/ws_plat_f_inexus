@@ -482,8 +482,8 @@ public class MessageOnTimeDeal {
                                             sp.getScanRsdD());
                                     SpectrumCalcResult absResult = calculator.calculate(5, sp, RANGE, deviceSerialNumber);
                                     SpectrumCalcResult tResult = calculator.calculate(6, sp, RANGE, deviceSerialNumber);
-                                    SpectrumCalcResult esResult = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
-                                    SpectrumCalcResult erResult = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
+                                    SpectrumCalcResult esResult = calculator.calculate(7, sp, RANGE, deviceSerialNumber);
+                                    SpectrumCalcResult erResult = calculator.calculate(8, sp, RANGE, deviceSerialNumber);
 
                                     sp.setAbsResult(absResult);
                                     sp.setTResult(tResult);

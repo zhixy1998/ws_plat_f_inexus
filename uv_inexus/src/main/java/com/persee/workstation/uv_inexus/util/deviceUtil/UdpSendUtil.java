@@ -565,7 +565,6 @@ public class UdpSendUtil {
             }
             List<byte[]> responses = r.getData();
 
-//            Object parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
             OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
             if (!parse.getIsSuccess()){
                 return R.fail(parse.getErrorMsg());
@@ -1000,10 +999,14 @@ public class UdpSendUtil {
 
         int abs = 1;
         int tpercent = 2;
-        if (xmlKey != null && xmlKey.equals(DevXmlEnums.T800.getDevType())) {
+        int es = 3;
+        int er = 4;
 
+        if (xmlKey != null && xmlKey.equals(DevXmlEnums.T800.getDevType())) {
             abs = 5;
             tpercent = 6;
+            es = 7;
+            er = 8;
         }
 
 
@@ -1014,10 +1017,10 @@ public class UdpSendUtil {
                 calculator.calculate(tpercent, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
 
         SpectrumCalcResult esResult =
-                calculator.calculate(3, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
+                calculator.calculate(es, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
 
         SpectrumCalcResult erResult =
-                calculator.calculate(4, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
+                calculator.calculate(er, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
 
         point.setAbsResult(absResult);
         point.setTResult(tResult);
