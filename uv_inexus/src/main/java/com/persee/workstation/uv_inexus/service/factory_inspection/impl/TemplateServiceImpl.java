@@ -762,14 +762,43 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 
     @Override
     public Result<String> batchDeleteTemplate(List<String> list) {
+        List<String> inUseTemplates = new ArrayList<>();
+        List<String> builtInTemplates = new ArrayList<>();
+
+        for (String templateCode : list) {
+            ExcelTemplate template = this.getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getTemplateCode, templateCode));
+            if (template == null) {
+                continue;
+            }
+
+            TaskManagement one = taskManagementService.getOne(new LambdaQueryWrapper<TaskManagement>().eq(TaskManagement::getUseTemplate, template.getId()));
+            if (one != null) {
+                inUseTemplates.add(templateCode);
+            }
+
+            if (template.getCategory() != null && template.getCategory().equals("0")) {
+                builtInTemplates.add(templateCode);
+            }
+        }
+
+        if (!inUseTemplates.isEmpty() || !builtInTemplates.isEmpty()) {
+            StringBuilder errorMsg = new StringBuilder("以下模板无法删除：");
+            if (!inUseTemplates.isEmpty()) {
+                errorMsg.append("\n正在使用中：").append(String.join(", ", inUseTemplates));
+            }
+            if (!builtInTemplates.isEmpty()) {
+                errorMsg.append("\n内置模板：").append(String.join(", ", builtInTemplates));
+            }
+            return Result.fail(errorMsg.toString());
+        }
+
         LambdaQueryWrapper<ExcelTemplate> wrapper = new LambdaQueryWrapper<>();
         wrapper.in(ExcelTemplate::getTemplateCode, list);
 
-        //批量删除模板，list是模板的templatecode
-
         boolean b = this.remove(wrapper);
-        return b ? Result.ok() : Result.fail("内置模板，不可删除");
+        return b ? Result.ok("删除成功") : Result.fail("删除失败");
     }
+
 
     @Override
     public Result<List<Map<String, String>>> getMaterialOptions(String id) {

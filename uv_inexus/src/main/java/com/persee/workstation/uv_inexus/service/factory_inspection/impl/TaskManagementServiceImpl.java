@@ -108,6 +108,15 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 //没传的话，默认检定
                 taskType=null;
             }
+            // 限制最大返回数量为 1000
+            long maxSize = 1000;
+            if (page.getSize() * page.getCurrent() > maxSize) {
+                // 调整当前页，确保不超过 1000 条
+                long maxCurrent = maxSize / page.getSize();
+                if (page.getCurrent() > maxCurrent) {
+                    page.setCurrent(maxCurrent);
+                }
+            }
             IPage<TaskManagement> managementPage = taskMgrMapper.getMyPage(page, queryDto.getQuery(), queryDto.getUpdateBy(),taskType);
 //        managementPage.getRecords().forEach(task -> {
 //            ExcelTemplate excelTemplate = templateService.getById(task.getUseTemplate());
@@ -910,6 +919,51 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         return Result.ok(true);
     }
 
+//    @Override
+//    @Transactional(rollbackFor = Exception.class)
+//    public Result<Boolean> setTaskReminder(TaskReminderDto dto) {
+//        try {
+//            log.info("设置任务定时提醒属性，taskId: {}", dto.getTaskId());
+//
+//            if (StringUtils.isBlank(dto.getTaskId())) {
+//                return Result.fail("任务ID不能为空");
+//            }
+//
+//            TaskManagement task = new TaskManagement();
+//            if (task == null) {
+//                return Result.fail("任务不存在");
+//            }
+//
+//
+//            if (dto.getReminderEnabled() != null) {
+//                task.setReminderEnabled(dto.getReminderEnabled());
+//            }
+//            if (dto.getTaskId() != null) {
+//                task.setId(dto.getTaskId());
+//            }
+//
+//            if (dto.getReminderIntervalDays() != null) {
+//                task.setReminderIntervalDays(dto.getReminderIntervalDays());
+//            }
+//
+//            if (dto.getFirstReminderDate() != null) {
+//                task.setFirstReminderDate(dto.getFirstReminderDate());
+//            }
+//
+//            boolean updated = this.updateById(task);
+//            if (updated) {
+//                log.info("任务定时提醒属性设置成功，taskId: {}", dto.getTaskId());
+//                return Result.ok(true);
+//            } else {
+//                log.error("任务定时提醒属性设置失败，taskId: {}", dto.getTaskId());
+//                return Result.fail("设置任务定时提醒属性失败");
+//            }
+//        } catch (Exception e) {
+//            log.error("设置任务定时提醒属性异常", e);
+//            return Result.fail("设置任务定时提醒属性异常：" + e.getMessage());
+//        }
+//    }
+
 
     /**
      * 导出指定名称的 Sheet 页到文件，保留所有格式并计算公式
@@ -1172,15 +1226,11 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
      */
     private List<TaskCheckItemDto.CheckItem> buildCheckItems(List<TaskExecutionDetail> details, ExcelTemplate template,String taskId) {
         ArrayList<TaskCheckItemDto.CheckItem> checkItems = new ArrayList<>();
-        // 获取所有检测项
         List<ExcelDataAsset> assets = getExcelDataAssets(template);
         if (CollectionUtils.isEmpty(assets)) {
             return checkItems;
         }
-        // 查询任务的所有检测项状态
-//        LambdaQueryWrapper<TaskItemStatus> statusWrapper = new LambdaQueryWrapper<>();
-        // 需要从details中获取taskId
-//        String taskId = CollectionUtils.isNotEmpty(details) ? details.get(0).getTaskId() : null;
+
         Map<String, TaskItemStatus> statusMap = new HashMap<>();
         if (taskId != null) {
             LambdaQueryWrapper<TaskItemStatus> statusWrapper = new LambdaQueryWrapper<>();
@@ -1196,33 +1246,37 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             }
         }
 
-        // 处理每个检测项
         for (ExcelDataAsset asset : assets) {
             TaskCheckItemDto.CheckItem item = createBasicCheckItem(asset);
-            // 设置已选择的标准物质
             if (CollectionUtils.isNotEmpty(details)) {
                 setPreviouslySelectedStandards(item, details);
             }
-            // 设置可选择的标准物质列表
             setAvailableStandards(item);
 
-            // 从任务检测项状态表中获取测量状态和检测结果
             TaskItemStatus status = statusMap.get(asset.getId());
             if (status != null) {
                 item.setMeasured(status.getMeasured() != null ? status.getMeasured() : "0");
                 item.setCheckResult(status.getCheckResult() != null ? status.getCheckResult() : "0");
             } else {
-                // 如果没有对应的状态记录，设置为默认值
                 item.setMeasured("0");
                 item.setCheckResult("0");
             }
+
+            item.setSortOrder(asset.getBatchNo());
             checkItems.add(item);
         }
 
-        //先按照group排序，再按照itemName排序
-        checkItems.sort(Comparator.comparing(TaskCheckItemDto.CheckItem::getGroupName).thenComparing(TaskCheckItemDto.CheckItem::getItemName));
+        checkItems.sort(Comparator.comparing(TaskCheckItemDto.CheckItem::getSortOrder,
+                Comparator.nullsLast(Comparator.comparingInt(s -> {
+                    try {
+                        return Integer.parseInt(s);
+                    } catch (NumberFormatException e) {
+                        return Integer.MAX_VALUE;
+                    }
+                }))));
         return checkItems;
     }
+
 
     /**
      * 根据模板获取所有Excel数据资产
@@ -1337,7 +1391,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         }
 
         LambdaQueryWrapper<CalArtifacts> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CalArtifacts::getCategoryId, detail.getStandardId());
+        wrapper.eq(CalArtifacts::getCategoryId, detail.getStandardId())
+                .eq(CalArtifacts::getIsDelete, "0");
 //这边是把默认的标准物种类放进去，方便前端取
         CalStdCats cats = catsService.getById(detail.getStandardId());
         ArrayList<TaskCheckItemDto.Standard> standards = new ArrayList<>();

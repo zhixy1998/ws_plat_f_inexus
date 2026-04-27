@@ -1366,7 +1366,17 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         }
 
         halt.put(taskId, false);
-        //得到所有的检测项
+
+        LambdaQueryWrapper<TaskItemStatus> statusWrapper = new LambdaQueryWrapper<>();
+        statusWrapper.eq(TaskItemStatus::getTaskId, taskId);
+        List<TaskItemStatus> statusList = taskItemStatusService.list(statusWrapper);
+        Map<String, String> itemStatusMap = new HashMap<>();
+        if (CollectionUtils.isNotEmpty(statusList)) {
+            for (TaskItemStatus status : statusList) {
+                itemStatusMap.put(status.getItemId(), status.getMeasured());
+            }
+        }
+
         if (CollectionUtils.isNotEmpty(list)) {
             CompletableFuture.runAsync(() -> {
                 for (ExcelDataAsset asset : list) {
@@ -1376,23 +1386,29 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             break;
                         } catch (BusinessException e) {
                             log.error("设置任务测量状态失败，任务ID: {}", taskId, e);
-                            // 可选：向前端发送错误信息
                             JSONObject errorMsg = new JSONObject();
                             errorMsg.put("error", "设置任务测量状态失败: " + e.getMessage());
                             sendToActiveSession(session, taskId, errorMsg);
                         }
                         log.info("任务 {} 已被暂停，停止自动检测流程", taskId);
                     }
+
+                    String itemStatus = itemStatusMap.get(asset.getId());
+                    if (!"0".equals(itemStatus)) {
+                        Map<String, Object> dataMap = asset.getDataMap();
+                        String projectName = MapUtils.getString(dataMap, PROJECT_NAME.getDescription());
+                        String statusDesc = "1".equals(itemStatus) ? "已完成" : "已失败";
+                        log.info("检测项 [{}] 状态：{}，跳过", projectName, statusDesc);
+                        continue;
+                    }
+
                     Map<String, Object> dataMap = asset.getDataMap();
                     if (!CollectionUtils.isEmpty(dataMap)) {
-                        //检测类别，也就是sheet页的名称
                         String category = MapUtils.getString(dataMap, TEST_CATEGORY.getDescription());
-                        //检测项名称
                         String projectName = MapUtils.getString(dataMap, PROJECT_NAME.getDescription());
                         log.info("自动检测，开始检测项>>>>>>>>>>>>> 检测类别：{} , 检测项名称：{}", category, projectName);
 
                     }
-
 
                     request.setItemId(asset.getId());
                     try {
@@ -3080,10 +3096,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("error", "光谱扫描失败" + operation.getMessage());
                     sendToActiveSession(null, taskId, jsonObject);
-//                    throw new BusinessException("光谱扫描失败-光谱");
                     return R.fail(map);
                 }
                 int i = 0;
+                if (d > 0 && waveformCache.containsKey(taskId)) {
+                    i = waveformCache.get(taskId).size();
+                    log.info("增量扫描，索引从 {} 开始", i);
+                }
                 JSONObject countJsonObject = getJsonObject(startWavelength, endWavelength, scanInterval);
                 sendToActiveSession(null, taskId, countJsonObject);
                 while (true) {
@@ -4756,7 +4775,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 // }
 
 
-        setTaskMeasuring(taskId, false);
+//        setTaskMeasuring(taskId, false);
         map.put("res", res);
         return R.ok(map);
     }
