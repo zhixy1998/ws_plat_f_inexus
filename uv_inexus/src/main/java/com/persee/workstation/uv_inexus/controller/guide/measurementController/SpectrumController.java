@@ -69,7 +69,7 @@ public class SpectrumController {
         return spectrumService.queryProjectAllMethods(projectId, measureForm, updateBy);
     }
 
-    @ButtonPermission("wizardModeSpectralScanApplyMethod")
+//    @ButtonPermission("wizardModeSpectralScanApplyMethod")
     @OperateLog(module = "实验测试-向导模式-光谱测量-修改方法参数", description = "执行实验测试-向导模式-光谱测量-修改方法参数操作", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
@@ -83,7 +83,7 @@ public class SpectrumController {
         return spectrumService.queryMethodParameter(methodId);
     }
 
-    @ButtonPermission("wizardModeSpectralScanModifyMethodParams")
+//    @ButtonPermission("wizardModeSpectralScanModifyMethodParams")
     @OperateLog(module = "实验测试-向导模式-光谱扫描-应用方法", description = "执行实验测试-向导模式-光谱扫描-应用方法操作", recordParams = true)
     @PostMapping("saveMethodParameter")
     @ApiOperation("方法参数修改接口")
@@ -165,7 +165,7 @@ public class SpectrumController {
 //            description = "执行实验测试-经典模式-光谱扫描-{operateType}样品操作",
 //            recordParams = true
 //    )
-    @ButtonPermission("spectralScanSetSample")
+//    @ButtonPermission("spectralScanSetSample")
     @OperateLog(module = "实验测试-向导模式-光谱扫描-设置样品", description = "执行实验测试-向导模式-光谱扫描-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")

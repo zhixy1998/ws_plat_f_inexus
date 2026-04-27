@@ -62,7 +62,7 @@ public class PhotometricConciseController {
     }
 
 
-    @ButtonPermission("lumnCreateTask")
+//    @ButtonPermission("lumnCreateTask")
     @OperateLog(module = "实验测试-经典模式-光度测量-新建任务", description = "执行实验测试-经典模式-光度测量-新建任务操作", recordParams = true)
     @PostMapping("newDraft")
     @ApiOperation("新建草稿")
@@ -71,7 +71,7 @@ public class PhotometricConciseController {
         return fPhotometricService.newDraft(dto);
     }
 
-    @ButtonPermission("lumneModifyMethodParams")
+//    @ButtonPermission("lumneModifyMethodParams")
     @OperateLog(module = "实验测试-经典模式-定量测定-修改方法参数", description = "执行实验测试-经典模式-定量测定-修改方法参数", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
@@ -79,7 +79,7 @@ public class PhotometricConciseController {
         return fPhotometricService.checkMethodParam(methodParam);
     }
 
-    @ButtonPermission("lumneApplyMethod")
+//    @ButtonPermission("lumneApplyMethod")
     @OperateLog(module = "实验测试-经典模式-光度测量-应用方法", description = "执行实验测试-经典模式-光度测量-应用方法操作", recordParams = true)
     @PostMapping("applyMethod")
     @ApiOperation("应用方法接口")
@@ -141,7 +141,7 @@ public class PhotometricConciseController {
 //            description = "执行实验测试-经典模式-光度测量-{operateType}样品操作",
 //            recordParams = true
 //    )
-    @ButtonPermission("lumnsetSample")
+//    @ButtonPermission("lumnsetSample")
     @OperateLog(module = "实验测试-经典模式-光度测量-设置样品", description = "执行实验测试-经典模式-光度测量-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSample")
     @ApiOperation("添加或删除样本接口")
@@ -197,7 +197,7 @@ public class PhotometricConciseController {
         return fPhotometricService.saveDataInfo(vo);
     }
 
-    @ButtonPermission("lumneZero")
+//    @ButtonPermission("lumneZero")
     @OperateLog(module = "实验测试-经典模式-光度测量-校零", description = "执行实验测试-经典模式-光度测量-校零操作", recordParams = true)
     @GetMapping("zero")
     @ApiOperation("校零接口")
@@ -260,7 +260,7 @@ public class PhotometricConciseController {
         return ResponseEntity.badRequest().body("导出失败：" + result.getMessage());
     }
     */
-    @ButtonPermission("lumneExportData")
+//    @ButtonPermission("lumneExportData")
     @OperateLog(module = "实验测试-经典模式-光度测量-导出数据", description = "执行实验测试-经典模式-光度测量-导出数据操作", recordParams = true)
     @GetMapping("downloadDoc")
     @ApiOperation("多格式文件下载接口（支持word/excel/txt）- 集成children和option数据")

@@ -63,7 +63,7 @@ public class RationController {
         return rationService.queryMethodParam(methodId);
     }
 
-    @ButtonPermission("wizardModeQuantityModifyMethodParams")
+//    @ButtonPermission("wizardModeQuantityModifyMethodParams")
     @OperateLog(module = "实验测试-向导模式-定量测定-修改方法参数", description = "执行实验测试-向导模式-定量测定-修改方法参数操作", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
@@ -71,7 +71,7 @@ public class RationController {
         return rationService.checkMethodParam(methodParam);
     }
 
-    @ButtonPermission("wizardModeQuantityApplyMethod")
+//    @ButtonPermission("wizardModeQuantityApplyMethod")
     @OperateLog(module = "实验测试-向导模式-定量测定-应用方法", description = "执行实验测试-向导模式-定量测定-应用方法操作", recordParams = true)
     @PostMapping("updateMethodParam")
     @ApiOperation("保存方法参数接口")
@@ -100,7 +100,7 @@ public class RationController {
 //            description = "执行实验测试-经典模式-定量测定-{operateType}样品操作",
 //            recordParams = true
 //    )
-    @ButtonPermission("wizardModeQuantitySetSample")
+//    @ButtonPermission("wizardModeQuantitySetSample")
     @OperateLog(module = "实验测试-向导模式-定量测定-设置样品", description = "执行实验测试-向导模式-定量测定-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSample")
     @ApiOperation("添加或删除样本接口")
@@ -183,7 +183,7 @@ public class RationController {
         return rationService.queryCurveInfo(taskId, methodId);
     }
 
-    @ButtonPermission("wizardModeLumneZero")
+//    @ButtonPermission("wizardModeLumneZero")
     @OperateLog(module = "实验测试-向导模式-定量测定-校零", description = "执行实验测试-向导模式-定量测定-校零记录", recordParams = true)
     @GetMapping("zero")
     @ApiOperation("校零接口")
@@ -257,7 +257,7 @@ public class RationController {
         }
     }
 
-    @ButtonPermission("wizardModeLumneExportData")
+//    @ButtonPermission("wizardModeLumneExportData")
     @OperateLog(module = "实验测试-向导模式-定量测定-导出数据", description = "执行实验测试-向导模式-定量测定-导出数据记录", recordParams = true)
     @GetMapping("downloadDoc")
     @ApiOperation("多格式文件下载接口（支持word/excel/txt）")

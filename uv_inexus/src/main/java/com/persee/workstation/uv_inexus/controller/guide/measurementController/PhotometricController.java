@@ -51,7 +51,7 @@ public class PhotometricController {
         return photometricService.updateMethodParameter(methodDto);
     }
 
-    @ButtonPermission("wizardModeLumneModifyMethodParams")
+//    @ButtonPermission("wizardModeLumneModifyMethodParams")
     @OperateLog(module = "实验测试-向导模式-定量测定-修改方法参数", description = "执行实验测试-向导模式-定量测定-修改方法参数", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
@@ -59,7 +59,7 @@ public class PhotometricController {
         return photometricService.checkMethodParam(methodParam);
     }
 
-    @ButtonPermission("wizardModeLumneApplyMethod")
+//    @ButtonPermission("wizardModeLumneApplyMethod")
     @OperateLog(module = "实验测试-向导模式-定量测定-应用方法", description = "执行实验测试-向导模式-定量测定-应用方法操作", recordParams = true)
     @PostMapping("updateMethodParam")
     @ApiOperation("保存方法参数接口")
@@ -128,7 +128,7 @@ public class PhotometricController {
 //            description = "执行实验测试-经典模式-光度测量-{operateType}样品操作",
 //            recordParams = true
 //    )
-    @ButtonPermission("wizardModeLumneSetSample")
+//    @ButtonPermission("wizardModeLumneSetSample")
     @OperateLog(module = "实验测试-向导模式-光度测量-设置样品", description = "执行实验测试-经典模式-光度测量-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSample")
     @ApiOperation("添加或删除样本接口")

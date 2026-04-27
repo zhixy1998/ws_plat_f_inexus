@@ -64,7 +64,7 @@ public class GroupController {
         return sysGroupService.getGroupById(id);
     }
 
-    @ButtonPermission("catEditUserAddGroup")
+//    @ButtonPermission("catEditUserAddGroup")
     @OperateLog(module = "用户管理-用户权限管理", description = "执行用户管理-用户权限管理-新增小组操作", recordParams = true)
     @PostMapping("/addGroup")
     @ApiOperation("新增小组")
@@ -80,7 +80,7 @@ public class GroupController {
 //        return sysGroupService.updateGroup(saveDTO);
 //    }
 
-    @ButtonPermission("catEditUserEditGroupNameInfo")
+//    @ButtonPermission("catEditUserEditGroupNameInfo")
     @OperateLog(
             module = "用户管理-用户权限管理",
             description = "执行用户管理-用户权限管理-修改小组信息操作",
@@ -110,7 +110,7 @@ public class GroupController {
         return sysGroupService.deleteBatch(ids);
     }
 
-    @ButtonPermission("catEditUserDeleteGroup")
+//    @ButtonPermission("catEditUserDeleteGroup")
     @OperateLog(module = "用户管理-用户权限管理", description = "执行用户管理-用户权限管理-修改小组信息操作", recordParams = true)
     @DeleteMapping("/{id}")
     @ApiOperation("根据ID删除单个小组")

@@ -64,7 +64,7 @@ public class TimeSweepController {
         return timeSweepService.queryProjectAllMethods(projectId,measureForm,updateBy);
     }
 
-    @ButtonPermission("wizardModeTimeScanModifyMethodParams")
+//    @ButtonPermission("wizardModeTimeScanModifyMethodParams")
     @OperateLog(module = "实验测试-向导模式-时间扫描-修改方法参数", description = "执行实验测试-向导模式-时间扫描-修改方法参数操作", recordParams = true)
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
@@ -78,7 +78,7 @@ public class TimeSweepController {
         return timeSweepService.queryMethodParameter(methodId);
     }
 
-    @ButtonPermission("wizardModeTimeScanApplyMethod")
+//    @ButtonPermission("wizardModeTimeScanApplyMethod")
     @OperateLog(module = "实验测试-向导模式-时间扫描-应用方法", description = "执行实验测试-向导模式-时间扫描-应用方法操作", recordParams = true)
     @PostMapping("updateMethodParameter")
     @ApiOperation("修改方法参数接口")
@@ -162,7 +162,7 @@ public class TimeSweepController {
 //            description = "执行实验测试-经典模式-时间扫描-{operateType}样品操作",
 //            recordParams = true
 //    )
-    @ButtonPermission("timeScanSetSample")
+//    @ButtonPermission("timeScanSetSample")
     @OperateLog(module = "实验测试-向导模式-时间扫描-设置样品", description = "执行实验测试-向导模式-时间扫描-设置样品操作", recordParams = true, ignore = true)
     @PostMapping("addOrDeleteSamplePort")
     @ApiOperation("添加或删除样本接口")

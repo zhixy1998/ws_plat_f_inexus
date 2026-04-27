@@ -242,7 +242,7 @@ public class SoftwareActivationController {
      * 根据ID删除
      */
     @DeleteMapping("/{id}")
-    @ButtonPermission("softwareActivationDeleteInstrument")
+//    @ButtonPermission("softwareActivationDeleteInstrument")
     @OperateLog(module = "删除仪器", description = "执行删除仪器操作", recordParams = true)
     @ApiOperation("根据ID删除软件激活记录")
     public Result<Void> deleteById(@PathVariable Integer id) {
@@ -253,7 +253,7 @@ public class SoftwareActivationController {
     /**
      * 批量删除
      */
-    @ButtonPermission("softwareActivationBatchInstrument")
+//    @ButtonPermission("softwareActivationBatchInstrument")
     @OperateLog(module = "批量删除", description = "批量删除软件激活记录", recordParams = true)
     @DeleteMapping("/batch")
 //    @ButtonPermission(value = "revokeActivation",description = "批量删除")
