@@ -158,6 +158,7 @@ public class DeviceController {
 
     }
 
+    @OperateLog(module = "仪器管理-搜索仪器", description = "执行仪器管理-搜索仪器操作", recordParams = true, recordResult = true, compare = true)
     @GetMapping("/searchDevice")
     @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
     @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true, recordResult = true)
@@ -195,6 +196,7 @@ public class DeviceController {
         }
     }
 
+    @OperateLog(module = "仪器管理-仪器配置-断开连接", description = "执行仪器管理-仪器配置-断开连接记录", recordParams = true, recordResult = true, compare = true)
     @GetMapping("/disconnectDevice")
     @ApiOperation("新驱动-断开连接")
     public Result<Boolean> disconnectDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
@@ -206,6 +208,7 @@ public class DeviceController {
         }
     }
 
+    @OperateLog(module = "仪器管理-仪器初始化", description = "执行仪器管理-仪器初始化操作", recordParams = true, recordResult = true, compare = true)
     @GetMapping("/initOneDevice")
     @ApiOperation("新驱动-初始化")
     public Result<Boolean> initOneDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
@@ -236,6 +239,7 @@ public class DeviceController {
 
     @GetMapping("/continueInit")
     @ApiOperation("新驱动-继续初始化")
+    @OperateLog(module = "仪器管理-仪器配置-继续初始化", description = "执行仪器管理-仪器配置-继续初始化记录", recordParams = true, recordResult = true, compare = true)
     public Result<Boolean> continueInit(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
         R<Boolean> r = deviceManageService.continueInitDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
@@ -276,6 +280,7 @@ public class DeviceController {
 
     @GetMapping("/stopInit")
     @ApiOperation("停止初始化")
+    @OperateLog(module = "仪器管理-仪器配置-停止初始化", description = "执行仪器管理-仪器配置-停止初始化记录", recordParams = true, recordResult = true, compare = true)
     public Result<Boolean> stopInit(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
         R<Boolean> r = deviceManageService.newStopInit(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
@@ -286,6 +291,7 @@ public class DeviceController {
     }
 
     @GetMapping("/changeDeviceName")
+    @OperateLog(module = "仪器管理-仪器配置-仪器命名", description = "执行仪器管理-仪器配置-仪器命名记录", recordParams = true, recordResult = true, compare = true)
     @ApiOperation("更改仪器名称")
     public Result<Boolean> updateDeviceName(@RequestParam String deviceSerialNumber,
                                             @RequestParam String updateBy,
@@ -420,6 +426,11 @@ public class DeviceController {
 
 
     @ApiOperation("设置进样器参数配置")
+//    @OperateLog(
+//            module = "仪器管理-自动进样器配置-基本配置",
+//            description = "执行仪器管理-自动进样器配置-基本配置-{operateType}样品操作",
+//            recordParams = true
+//    )
     @PostMapping("/setInjectorConf")
     public Result<Boolean> setInjectorConf(@RequestBody DeviceAutoInjectorPO injectorPO) {
         R<Boolean> r = injectorService.setInjectorConf(injectorPO);
