@@ -986,6 +986,45 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             // 注意：这里不调用 session.close()
         }
 
+        if (SET_MEASUREMENT_QUALITY_LINE.getCode().equals(type)){
+            log.info("收到设置测量质量线指令");
+            taskStopFlag.put(taskId, false);
+            String x = root.get("x").asText();
+            String y = root.get("y").asText();
+            String sheetName = root.get("sheetName").asText();
+            String passingLineValue = root.get("passingLineValue").asText();
+
+            Workbook taskWorkbook = workbookCacheManager.getTaskWorkbook(taskId);
+            if (taskWorkbook == null) {
+                JSONObject errorMsg = new JSONObject();
+                errorMsg.put("error", "任务工作簿不存在");
+                sendToActiveSession(session, taskId, errorMsg);
+                return;
+            }
+
+            CellUpdDto cellUpdDto = new CellUpdDto();
+            cellUpdDto.setPosition(0);
+            cellUpdDto.setCellValue(passingLineValue);
+            cellUpdDto.setSheetName(sheetName);
+            cellUpdDto.setValueType(y);
+            cellUpdDto.setProjectName(x);
+            cellUpdDto.setIsMultiple(false);
+
+            try {
+                updateWorkbookCell(taskWorkbook, cellUpdDto);
+                workbookCacheManager.updateTaskWorkbook(taskId, taskWorkbook, updateBy);
+
+                JSONObject successMsg = new JSONObject();
+                successMsg.put("success", "设置测量质量线成功");
+                sendToActiveSession(session, taskId, successMsg);
+                log.info("设置测量质量线成功 - sheetName: {}, x: {}, y: {}", sheetName, x, y);
+            } catch (Exception e) {
+                log.error("设置测量质量线失败", e);
+                JSONObject errorMsg = new JSONObject();
+                errorMsg.put("error", "设置测量质量线失败: " + e.getMessage());
+                sendToActiveSession(session, taskId, errorMsg);
+            }
+        }
 
         if (SINGLE_ITEM.getCode().equals(type)) {
             log.info("收到单项测试指令");
@@ -2380,7 +2419,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     if (CollectionUtils.isNotEmpty(calcResult)) {
                         for (BigDecimal aBigDecimal : calcResult) {
                             JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("peak", aBigDecimal);
+                            jsonObject.put("peak", aBigDecimal.abs());
                             log.info("最大偏移量结果111：{}", jsonObject);
                             res.add(jsonObject);
                         }

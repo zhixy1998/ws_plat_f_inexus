@@ -1698,6 +1698,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, abs));
             } else if (luminosity.equals(WaveLengthEnum.es.getCode()) || luminosity.equals(WaveLengthEnum.er.getCode())) {
                 String s = DataCountUtil.countErOrEs(measureParam, luminosity);
+
+                if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    s = DataCountUtil.count1960ErOrEs(measureParam, luminosity);
+                }
+
                 resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
             } else if (luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
                 ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
@@ -2023,6 +2028,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
 
                         String value = DataCountUtil.countErOrEs(measureResult, mode);
+
+                        if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                            value = DataCountUtil.count1960ErOrEs(measureResult, mode);
+                        }
+
                         measureResult.setValue(value);
 
                     } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())){
@@ -2131,6 +2141,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
 
                     String value = DataCountUtil.countErOrEs(measureResult, mode);
+                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        value = DataCountUtil.count1960ErOrEs(measureResult, mode);
+                    }
+
                     measureResult.setValue(value);
 
                 } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())){

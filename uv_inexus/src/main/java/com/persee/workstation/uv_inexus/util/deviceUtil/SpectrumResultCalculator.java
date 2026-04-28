@@ -84,6 +84,14 @@ public class SpectrumResultCalculator {
                 result.setTPercent(calcTPercent1960(origin, real, point, deviceSerialNumber));
                 break;
 
+            case 7:
+                result.setEs(calcEsT1960(real));
+                break;
+
+            case 8:
+                result.setEr(calcErT1960(real));
+                break;
+
             default:
                 throw new IllegalArgumentException("未知 Luminosity=" + luminosity);
         }
@@ -208,6 +216,18 @@ public class SpectrumResultCalculator {
         return String.valueOf((r / 8388607d) * 100);
     }
 
+    /** EsT1960 */
+    private static String calcEsT1960(ChangeParam scan) {
+        double s = Double.parseDouble(scan.getS());
+        return String.valueOf((s * 64 / 8388607d) * 100);
+    }
+
+    /** ErT1960 */
+    private static String calcErT1960(ChangeParam scan) {
+        double r = Double.parseDouble(scan.getR());
+        return String.valueOf((r * 64 / 8388607d) * 100);
+    }
+
     private Double getZFromDatabase(String deviceSerialNumber, String wl) {
 
         DeviceInfoPO po = deviceInfoService.getInfo(deviceSerialNumber);
@@ -297,6 +317,10 @@ public class SpectrumResultCalculator {
 
             double y1 = Double.parseDouble(darkInfo.get(key1));
             double y2 = Double.parseDouble(darkInfo.get(key2));
+
+            //限制小数位数6位
+//            y1 = Math.round(y1 * 1e6) / 1e6;
+//            y2 = Math.round(y2 * 1e6) / 1e6;
 
             if (Math.abs(y2 - y1) < 1e-7) {
                 return y1;

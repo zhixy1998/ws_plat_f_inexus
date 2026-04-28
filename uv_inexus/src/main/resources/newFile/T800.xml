@@ -376,7 +376,7 @@
 <string>增益:AJ16:4</string>
 </OutputString>
 <SendBytes>
-<string>101:255:6:7:(I16-1)*2:0:0:0:0:0:0:Check</string>
+<string>101:255:6:7:I16:0:0:0:0:0:0:Check</string>
 </SendBytes>
 <ReadBytes>
 <string>255:101:6:7:AJ16-1:0:0:0:0:0:0:Check</string>
@@ -1718,6 +1718,29 @@
         <ReplyNumber>-1</ReplyNumber>
         <HeadReceiveBytes>
             <string>255:101:32:241</string>
+            <string>255:101:0:15</string>
+        </HeadReceiveBytes>
+    </ProtocolItem>
+    <ProtocolItem>
+        <ID>DoIt</ID>
+        <Describe>执行</Describe>
+        <Timeout>180000</Timeout>
+        <ACK>Y</ACK>
+        <InputString>
+            <string/>
+        </InputString>
+        <OutputString>
+            <string>波长(0成功1失败):AJ38:4</string>
+        </OutputString>
+        <SendBytes>
+            <string>101:255:20:14:1:0:0:0:0:0:0:Check</string>
+        </SendBytes>
+        <ReadBytes>
+            <string>255:101:20:14:1:0:0:0:0:0:0:Check</string>
+        </ReadBytes>
+        <ReplyNumber>24</ReplyNumber>
+        <HeadReceiveBytes>
+            <string>255:101:20:14</string>
             <string>255:101:0:15</string>
         </HeadReceiveBytes>
     </ProtocolItem>

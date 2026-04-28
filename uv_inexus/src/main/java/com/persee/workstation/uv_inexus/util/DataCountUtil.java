@@ -229,6 +229,26 @@ public class DataCountUtil {
         return value;
     }
 
+    public static String count1960ErOrEs(ChangeParam real, String identity) {
+
+        String value = null;
+        if (identity.equals(WaveLengthEnum.es.getCode())) {
+            double s = Double.parseDouble(real.getS());
+            value = java.lang.String.valueOf((s * 64 / 8388607) * 100);
+        }
+        if (identity.equals(WaveLengthEnum.er.getCode())) {
+            double r = Double.parseDouble(real.getR());
+            value = java.lang.String.valueOf((r * 64 / 8388607) * 100);
+        }
+        if (StringUtils.hasText(value)) {
+            BigDecimal bd = new BigDecimal(value);
+            bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
+            value = java.lang.String.valueOf(bd);
+        }
+        return value;
+    }
+
+
     /**
      * 有效位数修约
      */
