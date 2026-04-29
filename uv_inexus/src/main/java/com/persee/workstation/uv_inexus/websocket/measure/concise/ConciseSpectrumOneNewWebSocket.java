@@ -772,6 +772,16 @@ public class ConciseSpectrumOneNewWebSocket {
 
                 doOneMeasurementSerial(param,inputParam,spectrumParameter, task, taskId, sample, number,updateBy);
 
+
+                JSONObject payload = new JSONObject();
+                if (Constants.measureStopStatus.get(deviceSerialNumber)){
+                    payload.put("success", "扫描成功");
+                }else{
+                    payload.put("success", "停止成功");
+                }
+                sendClose(deviceSerialNumber, payload);
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+
                 if (configPO.getIsAutoChangePool()) {
                     SetParam setParam = new SetParam();
                     setParam.setCellPos(Integer.parseInt(Constants.PARAM_ONE));
@@ -804,15 +814,6 @@ public class ConciseSpectrumOneNewWebSocket {
                 }
                 log.info("==========仪器返回起始波长");
 
-
-                JSONObject payload = new JSONObject();
-                if (Constants.measureStopStatus.get(deviceSerialNumber)){
-                    payload.put("success", "扫描成功");
-                }else{
-                    payload.put("success", "停止成功");
-                }
-                sendMessage(deviceSerialNumber, payload);
-                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
                 // 全部完成后再告诉前端 finish
                 payload.clear();
                 payload.put("result", "finish");
@@ -1184,7 +1185,7 @@ public class ConciseSpectrumOneNewWebSocket {
         // 等待存储完成，增加超时时间并记录
         try {
             long startWait = System.currentTimeMillis();
-            boolean stored = latch.await(45, TimeUnit.SECONDS); // 等待45秒
+            boolean stored = latch.await(5, TimeUnit.SECONDS); // 等待5秒
             long waitTime = System.currentTimeMillis() - startWait;
 
             if (!stored) {
@@ -1286,7 +1287,11 @@ public class ConciseSpectrumOneNewWebSocket {
 
                     // 处理所有可用的数据点
                     while (whileStatus) {
-
+                        if (Thread.currentThread().isInterrupted()) {
+                            log.info("线程被中断，退出内部循环");
+                            whileStatus = false;   // 终止外层循环
+                            break;                 // 退出内层循环
+                        }
                         Object result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.Scan.getComId());
                         // 如果队列为空（可选：根据你的 pollMessage 实现决定是否需要）
                         if (result == null) {
