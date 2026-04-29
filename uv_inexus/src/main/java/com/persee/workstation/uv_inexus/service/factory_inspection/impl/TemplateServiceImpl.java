@@ -10,6 +10,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.component.ExcelDynamicMerger;
 import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TemplateMapper;
@@ -324,6 +326,8 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
      * @return
      * @throws IOException
      */
+    // ... existing code ...
+    // ... existing code ...
     public Result editExcel(Workbook workbook, ExcelTemplate template, Map<String, Set<String>> sheetRetainRows, List<Map<String, Object>> rowsNotInTemplate) throws IOException {
 //        System.out.println("88888888888888888888888888888888" + resultTemplate);
 ////        File file = new File(resultTemplate);
@@ -335,6 +339,67 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 //        Workbook workbook = WorkbookFactory.create(is);
 
         try {
+            // 【新增】在编辑前先获取原有的黄色高亮列信息
+            // 根据模板是否有任务来决定查询条件（优先级从高到低）：
+            // 1. 优先查询任务级别的WorkbookData（task_id = taskId）
+            // 2. 如果没有任务，再查询模板级别的WorkbookData（task_id = templateCode）
+
+            WorkbookData existingWorkbookData = null;
+
+            // 第一步：先查找该模板关联的任务
+            LambdaQueryWrapper<TaskManagement> taskQueryWrapper = new LambdaQueryWrapper<>();
+            taskQueryWrapper.eq(TaskManagement::getUseTemplate, template.getId())
+                    .orderByDesc(TaskManagement::getCreated)
+                    .last("LIMIT 1");
+
+            TaskManagement task = taskManagementService.getOne(taskQueryWrapper);
+
+            if (task != null) {
+                log.info("找到模板关联的任务: {}", task.getId());
+
+                // 按任务ID查询WorkbookData（任务级别的数据）
+                LambdaQueryWrapper<WorkbookData> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(WorkbookData::getTaskId, task.getId())
+                        .orderByDesc(WorkbookData::getCreateTime)
+                        .last("LIMIT 1");
+
+                existingWorkbookData = workbookDataService.getOne(queryWrapper);
+
+                if (existingWorkbookData != null) {
+                    log.info("找到任务{}的WorkbookData", task.getId());
+                } else {
+                    log.warn("任务{}没有对应的WorkbookData", task.getId());
+                }
+            } else {
+                log.info("模板{}没有关联的任务，尝试查询模板级别的WorkbookData", template.getTemplateCode());
+            }
+
+            // 第二步：如果没有找到任务级别的数据，查询模板级别的数据
+            if (existingWorkbookData == null) {
+                LambdaQueryWrapper<WorkbookData> templateQueryWrapper = new LambdaQueryWrapper<>();
+                templateQueryWrapper.eq(WorkbookData::getTaskId, template.getTemplateCode())
+                        .orderByDesc(WorkbookData::getCreateTime)
+                        .last("LIMIT 1");
+
+                existingWorkbookData = workbookDataService.getOne(templateQueryWrapper);
+
+                if (existingWorkbookData != null) {
+                    log.info("找到模板{}级别的WorkbookData", template.getTemplateCode());
+                } else {
+                    log.warn("模板{}也没有对应的WorkbookData", template.getTemplateCode());
+                }
+            }
+
+            Map<String, List<String>> existingYellowColumns = null;
+            if (existingWorkbookData != null && existingWorkbookData.getYellowHighlightedColumns() != null) {
+                ObjectMapper mapper = new ObjectMapper();
+                existingYellowColumns = mapper.readValue(existingWorkbookData.getYellowHighlightedColumns(),
+                        new TypeReference<Map<String, List<String>>>(){});
+                log.info("获取到原有黄色高亮列信息: {}, taskId: {}", existingYellowColumns, existingWorkbookData.getTaskId());
+            } else {
+                log.warn("未找到模板{}的黄色高亮列信息", template.getTemplateCode());
+            }
+
             // 1. 删除未指定的Sheet
             List<String> existingSheets = IntStream.range(0, workbook.getNumberOfSheets())
                     .mapToObj(workbook::getSheetName)
@@ -343,6 +408,24 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             existingSheets.stream()
                     .filter(sheetName -> !sheetRetainRows.containsKey(sheetName))
                     .forEach(sheetName -> workbook.removeSheetAt(workbook.getSheetIndex(sheetName)));
+
+            // 【新增】过滤掉已被删除的sheet对应的黄色高亮列信息
+            if (existingYellowColumns != null && !existingYellowColumns.isEmpty()) {
+                // 获取当前workbook中保留的sheet名称集合
+                Set<String> retainedSheetNames = workbook.getNumberOfSheets() > 0
+                        ? IntStream.range(0, workbook.getNumberOfSheets())
+                        .mapToObj(workbook::getSheetName)
+                        .collect(Collectors.toSet())
+                        : Collections.emptySet();
+
+                // 只保留仍然存在的sheet的黄色列信息
+                Map<String, List<String>> filteredYellowColumns = existingYellowColumns.entrySet().stream()
+                        .filter(entry -> retainedSheetNames.contains(entry.getKey()))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+                existingYellowColumns = filteredYellowColumns;
+                log.info("过滤后的黄色高亮列信息（已删除不存在的sheet）: {}", existingYellowColumns);
+            }
 
             // 2. 处理保留的Sheet
             for (Map.Entry<String, Set<String>> entry : sheetRetainRows.entrySet()) {
@@ -422,17 +505,17 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             processWorkbookCells(workbook);
 
             // 返回编辑后的文件
-            //生成新模板入库
-            boolean b = workbookDataService.uploadExcel(workbook, template.getTemplateCode());
+            //生成新模板入库，使用过滤后的黄色高亮列信息
+            boolean b = workbookDataService.uploadExcel(workbook, template.getTemplateCode(), existingYellowColumns);
             if (b) {
-                log.info("模板更新成功");
+                log.info("模板更新成功，黄色高亮列信息: {}", existingYellowColumns);
             }
 //            ByteArrayOutputStream out = new ByteArrayOutputStream();
 //            workbook.write(out);
 //            String excelPath = excelSavePath + template.getTemplateCode() + ".xlsx";
 //
 //            File excelFile = new File(excelPath);
-//            excelFile.getParentFile().mkdirs(); // 创建父目录（如果不存在）
+//            File excelFile.getParentFile().mkdirs(); // 创建父目录（如果不存在）
 //
 //            try (FileOutputStream fos = new FileOutputStream(excelPath)) {
 //                out.writeTo(fos);  // 将输出流内容写入文件
@@ -446,6 +529,11 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         }
         return Result.fail("文件处理失败");
     }
+// ... existing code ...
+
+
+
+
 
     private Map<Integer, List<Object>> buildColumnData(Map<String, Object> row, Map<String, List<Integer>> headerColumns) {
         if (MapUtils.isEmpty(headerColumns)) {
@@ -962,55 +1050,140 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                             map -> map.get(TEST_CATEGORY.getDescription()).toString(),
                             Collectors.mapping(map -> map.get(PROJECT_NAME.getDescription()).toString(), Collectors.toSet())
                     ));
+
             LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(ExcelTemplate::getTemplateCode, templateCode);
             ExcelTemplate template = this.getOne(queryWrapper);
-            // 如果是子模板，则获取父模板   Category=1是子模板
-            if (StringUtils.equals(template.getCategory(), "1")) {
-//                ExcelTemplate excelTemplate = getById(template.getParentId());
-                ExcelTemplate excelTemplate = getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getTemplateCode, template.getParentId()));
-                LambdaQueryWrapper<WorkbookData> wrapper1 = new LambdaQueryWrapper<>();
-                wrapper1.eq(WorkbookData::getTemplateCode, excelTemplate.getTemplateCode())
-                        .eq(WorkbookData::getTaskId, excelTemplate.getTemplateCode());
-                List<WorkbookData> list1 = workbookDataService.list(wrapper1);
-                if (CollectionUtils.isNotEmpty(list1)) {
-                    byte[] data = list1.get(0).getWorkbookData();
-                    if (data != null) {
-                        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(data)) {
-                            Workbook workbook = new XSSFWorkbook(inputStream);
-                            //把父模板传过去
-                            this.editExcel(workbook, template, sheetRetainRows, rowsNotInTemplate);
-                            // 现在可以使用workbook对象进行操作
-                        } catch (IOException e) {
-                            log.error("转换字节数组到Workbook失败", e);
-                        }
-                    }
-                }
-            } else {
-                ExcelTemplate excelTemplate = getById(template.getId());
-                LambdaQueryWrapper<WorkbookData> wrapper1 = new LambdaQueryWrapper<>();
-                wrapper1.eq(WorkbookData::getTemplateCode, excelTemplate.getTemplateCode())
-                        .eq(WorkbookData::getTaskId, excelTemplate.getTemplateCode());
-                List<WorkbookData> list1 = workbookDataService.list(wrapper1);
-                if (CollectionUtils.isNotEmpty(list1)) {
-                    byte[] data = list1.get(0).getWorkbookData();
-                    if (data != null) {
-                        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(data)) {
-                            Workbook workbook1 = new XSSFWorkbook(inputStream);
-                            //把父模板传过去
-                            this.editExcel(workbook1, template, sheetRetainRows, rowsNotInTemplate);
-
-                            // 现在可以使用workbook对象进行操作
-                        } catch (IOException e) {
-                            log.error("转换字节数组到Workbook失败", e);
-                        }
-                    }
-                }
+// 如果是子模板，先从父模板复制黄色高亮列信息
+            if (StringUtils.isNotBlank(template.getParentId())) {
+                copyYellowColumnsFromParent(template.getParentId(), templateCode);
             }
-            return Result.ok();
+
+            if (template == null) {
+                log.error("模板不存在，templateCode: {}", templateCode);
+                return Result.fail("模板不存在");
+            }
+
+            // 直接加载当前模板的WorkbookData（每个模板创建时都有完整的初始数据）
+            LambdaQueryWrapper<WorkbookData> workbookQueryWrapper = new LambdaQueryWrapper<>();
+            workbookQueryWrapper.eq(WorkbookData::getTaskId, templateCode)
+                    .orderByDesc(WorkbookData::getCreateTime)
+                    .last("LIMIT 1");
+
+            WorkbookData workbookData = workbookDataService.getOne(workbookQueryWrapper);
+
+            if (workbookData == null || workbookData.getWorkbookData() == null || workbookData.getWorkbookData().length == 0) {
+                log.error("模板{}没有有效的WorkbookData", templateCode);
+                return Result.fail("模板数据不存在");
+            }
+
+            // 从字节数组创建workbook
+            Workbook workbook;
+            try (ByteArrayInputStream inputStream = new ByteArrayInputStream(workbookData.getWorkbookData())) {
+                workbook = new XSSFWorkbook(inputStream);
+                log.info("成功加载模板{}的WorkbookData，大小: {} bytes", templateCode, workbookData.getWorkbookData().length);
+            } catch (IOException e) {
+                log.error("转换字节数组到Workbook失败，templateCode: {}", templateCode, e);
+                return Result.fail("模板数据解析失败");
+            }
+
+            // 调用editExcel进行过滤和编辑
+            return editExcel(workbook, template, sheetRetainRows, rowsNotInTemplate);
+
         } catch (Exception e) {
-            log.error("文件处理失败", e);
-            return Result.fail();
+            log.error("构建结果模板失败", e);
+            return Result.fail("文件处理失败: " + e.getMessage());
+        }
+    }
+
+
+    /**
+     * 从父模板复制黄色高亮列信息到子模板（只保留子模板中存在的sheet页）
+     *
+     * @param parentTemplateCode 父模板编码
+     * @param childTemplateCode 子模板编码
+     */
+    private void copyYellowColumnsFromParent(String parentTemplateCode, String childTemplateCode) {
+        try {
+            // 查询父模板的WorkbookData
+            LambdaQueryWrapper<WorkbookData> parentQueryWrapper = new LambdaQueryWrapper<>();
+            parentQueryWrapper.eq(WorkbookData::getTaskId, parentTemplateCode)
+                    .orderByDesc(WorkbookData::getCreateTime)
+                    .last("LIMIT 1");
+
+            WorkbookData parentWorkbookData = workbookDataService.getOne(parentQueryWrapper);
+
+            if (parentWorkbookData == null || StringUtils.isBlank(parentWorkbookData.getYellowHighlightedColumns())) {
+                log.warn("父模板{}没有黄色高亮列信息", parentTemplateCode);
+                return;
+            }
+
+            // 解析父模板的黄色高亮列信息
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, List<String>> parentYellowColumns = mapper.readValue(
+                    parentWorkbookData.getYellowHighlightedColumns(),
+                    new TypeReference<Map<String, List<String>>>(){});
+
+            if (parentYellowColumns == null || parentYellowColumns.isEmpty()) {
+                log.warn("父模板{}的黄色高亮列信息为空", parentTemplateCode);
+                return;
+            }
+
+            // 加载子模板的workbook，获取实际存在的sheet页
+            LambdaQueryWrapper<WorkbookData> childQueryWrapper = new LambdaQueryWrapper<>();
+            childQueryWrapper.eq(WorkbookData::getTaskId, childTemplateCode)
+                    .orderByDesc(WorkbookData::getCreateTime)
+                    .last("LIMIT 1");
+
+            WorkbookData childWorkbookData = workbookDataService.getOne(childQueryWrapper);
+
+            if (childWorkbookData == null || childWorkbookData.getWorkbookData() == null) {
+                log.warn("子模板{}没有WorkbookData记录", childTemplateCode);
+                return;
+            }
+
+            // 从字节数组创建workbook，获取实际的sheet列表
+            Set<String> childSheetNames;
+            try (ByteArrayInputStream inputStream = new ByteArrayInputStream(childWorkbookData.getWorkbookData())) {
+                Workbook childWorkbook = new XSSFWorkbook(inputStream);
+                childSheetNames = IntStream.range(0, childWorkbook.getNumberOfSheets())
+                        .mapToObj(childWorkbook::getSheetName)
+                        .collect(Collectors.toSet());
+                log.info("子模板{}包含的sheet页: {}", childTemplateCode, childSheetNames);
+            } catch (IOException e) {
+                log.error("加载子模板workbook失败", e);
+                return;
+            }
+
+            // 过滤：只保留子模板中存在的sheet页的黄色列信息
+            Map<String, List<String>> filteredYellowColumns = parentYellowColumns.entrySet().stream()
+                    .filter(entry -> childSheetNames.contains(entry.getKey()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+            if (filteredYellowColumns.isEmpty()) {
+                log.info("父模板的黄色高亮列对应的sheet页在子模板中都不存在，不复制");
+                return;
+            }
+
+            // 将过滤后的黄色列信息转换为JSON
+            String filteredYellowColumnsJson = mapper.writeValueAsString(filteredYellowColumns);
+
+            // 更新子模板的WorkbookData
+            childWorkbookData.setYellowHighlightedColumns(filteredYellowColumnsJson);
+            childWorkbookData.setUpdateTime(LocalDateTime.now());
+
+            boolean updated = workbookDataService.updateById(childWorkbookData);
+
+            if (updated) {
+                log.info("成功从父模板{}复制黄色高亮列信息到子模板{}，过滤前: {}个sheet，过滤后: {}个sheet",
+                        parentTemplateCode, childTemplateCode, parentYellowColumns.size(), filteredYellowColumns.size());
+            } else {
+                log.error("复制黄色高亮列信息失败");
+            }
+
+        } catch (Exception e) {
+            log.error("复制黄色高亮列信息异常，parentTemplateCode: {}, childTemplateCode: {}",
+                    parentTemplateCode, childTemplateCode, e);
         }
     }
 

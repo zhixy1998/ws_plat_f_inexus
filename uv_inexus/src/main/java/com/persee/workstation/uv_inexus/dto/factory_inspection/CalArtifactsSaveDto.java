@@ -52,4 +52,23 @@ public class CalArtifactsSaveDto  {
      */
     @ApiModelProperty(value="标准值")
     private String standardValue;
+
+    /**
+     * 有效期截止日期
+     */
+    @ApiModelProperty(value="有效期截止日期")
+    private java.util.Date expiryDate;
+
+    /**
+     * 是否启用效期提醒：0-否，1-是
+     */
+    @ApiModelProperty(value="是否启用效期提醒：0-否，1-是")
+    private Integer reminderEnabled;
+
+    /**
+     * 提前提醒天数
+     */
+    @ApiModelProperty(value="提前提醒天数")
+    private Integer reminderDays;
+
 }

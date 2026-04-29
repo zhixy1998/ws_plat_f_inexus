@@ -28,7 +28,7 @@ import java.util.Map;
  *  * 任何未经明确许可的复制、使用、修改、分发或公开均被严格禁止。
  *
  */
-@RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/")
+@RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/classicMode/")
 @RestController
 @Api("经典模式 - 数据管理")
 public class ClassicManageDataController {

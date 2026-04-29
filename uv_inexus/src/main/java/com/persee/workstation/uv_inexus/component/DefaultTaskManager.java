@@ -26,7 +26,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.TASK_NOT_STARTED;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.TEMPLATE_BUILT_IN_TASK;
 
 /*
  * *
@@ -55,9 +56,9 @@ public class DefaultTaskManager {
     private volatile String defaultTaskId;
 
     // 获取默认任务ID
-    public String getDefaultTaskId(String updateBy, String taskType) {
+    public String getDefaultTaskId(String updateBy, String taskType, Integer templateStatus) {
         synchronized (this) {
-            ensureDefaultTaskExists(updateBy,taskType);
+            ensureDefaultTaskExists(updateBy,taskType,templateStatus);
         }
         return defaultTaskId;
     }
@@ -105,7 +106,7 @@ public class DefaultTaskManager {
     }
     // 确保存在未开始的默认任务
     @Transactional(rollbackFor = Exception.class)
-    public void ensureDefaultTaskExists(String updateBy, String taskType) {
+    public void ensureDefaultTaskExists(String updateBy, String taskType,Integer templateStatus) {
 //        QueryWrapper<TaskManagement> wrapper = new QueryWrapper<>();
 //        wrapper.eq("completion_status", TASK_NOT_STARTED.getCode())
 //                .eq("content_category", TEMPLATE_BUILT_IN_TASK.getCode()); // 假设用名称标识默认任务
@@ -122,7 +123,7 @@ public class DefaultTaskManager {
 //        long count = taskManagementService.count();
         if (count == 0) {
             // 创建新默认任务
-            TaskManagement newTask = createDefaultTask(updateBy,taskType);
+            TaskManagement newTask = createDefaultTask(updateBy,taskType,templateStatus);
             ExcelTemplate excelTemplate = templateService.getById(newTask.getUseTemplate());
             initializeTaskExecutionDetails(newTask.getId(), excelTemplate.getTemplateCode());
 
@@ -141,17 +142,17 @@ public class DefaultTaskManager {
             this.defaultTaskId = task1.getId();
         }
     }
-    public TaskManagement createFactoryInspectionTask(String updateBy) {
-        TaskManagement task = createDefaultTask(updateBy,FACTORY_INSPECTION_TASK.getCode());
-        taskManagementService.save(task);
-        return task;
-    }
-    private TaskManagement createDefaultTask(String updateBy, String taskType) {
+//    public TaskManagement createFactoryInspectionTask(String updateBy) {
+//        TaskManagement task = createDefaultTask(updateBy,FACTORY_INSPECTION_TASK.getCode());
+//        taskManagementService.save(task);
+//        return task;
+//    }
+    private TaskManagement createDefaultTask(String updateBy, String taskType, Integer templateStatus) {
         TaskManagement task = new TaskManagement();
         task.setId(IdGeneratorUtil.generateIdWithPrefix("task"));
         task.setDetectName("默认任务" + IdGeneratorUtil.generateShortId() + System.currentTimeMillis());
         task.setCompletionStatus(TASK_NOT_STARTED.getCode());
-        ExcelTemplate template = templateService.getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getCategory, TEMPLATE_BUILT_IN.getCode()));
+        ExcelTemplate template = templateService.getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getStatus, templateStatus));
         task.setResultTemplate(template.getTemplateCode());
         task.setUseTemplate(template.getId());
         task.setContentCategory(TEMPLATE_BUILT_IN_TASK.getCode());
