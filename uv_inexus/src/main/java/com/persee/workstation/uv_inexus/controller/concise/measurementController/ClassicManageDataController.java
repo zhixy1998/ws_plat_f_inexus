@@ -140,17 +140,15 @@ public class ClassicManageDataController {
     
     /**
      * 方法名称重复性检查
-     * @param projectId 项目 ID
      * @param methodName 方法名称
      * @param measureType 测量类型
      * @return 是否重复
      */
     @GetMapping("methodDuplicationCheck")
     @ApiOperation("方法：名称重复性检查")
-    public Result methodDuplicationCheck(@RequestParam String projectId, 
-                                        @RequestParam String methodName, 
+    public Result methodDuplicationCheck(@RequestParam String methodName,
                                         @RequestParam String measureType) {
-        return manageDataService.methodDuplicationCheck(projectId, methodName, measureType);
+        return manageDataService.methodDuplicationCheck(methodName, measureType);
     }
     
     /**

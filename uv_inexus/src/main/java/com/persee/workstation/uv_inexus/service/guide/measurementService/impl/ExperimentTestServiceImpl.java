@@ -2488,128 +2488,139 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     /**
      * 获取所有方法或按条件查询方法
      *
-     * @param methodName
-     * @param pageNum
-     * @param pageSize
+     * @param methodName 方法名
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param sort 排序方式（0:倒序/降序, 1:顺序/升序）
+     * @param updateBy 创建人
+     * @param isMethodManage 是否方法管理场景
      * @return
      */
     @Override
-    public Result listOfMethods(String methodName, Integer pageNum, Integer pageSize, String sort, String updateBy,Boolean isMethodManage) {
-        //为不干扰其他使用场景，仅仅方法管理里根据用户进行了查询
-        if (!isMethodManage){
-            updateBy=null;
+    public Result listOfMethods(String methodName, Integer pageNum, Integer pageSize, String sort, String updateBy, Boolean isMethodManage) {
+
+        // 为不干扰其他使用场景，仅仅方法管理里根据用户进行了查询
+        if (!isMethodManage) {
+            updateBy = null;
         }
-        // 1. 获取所有方法或按条件查询方法
-        List<MethodBaseVo> methodVo;
-        if (methodName == null || methodName.isEmpty()) {
-            List<TMeasureMethod> methods = null;
-            if (StringUtil.isNotBlank(updateBy)) {
-                methods = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).eq(TMeasureMethod::getMethodCreator, updateBy));  // 根据方法名查询
-            } else {
-                methods = tMeasureMethodService.list();  // 根据方法名查询
-            }
-//            List<TMeasureMethod> methods = tMeasureMethodService.list();  // 查询所有方法
-            if (methods == null || methods.isEmpty()) {
-                return Result.ok(new ArrayList<>());
-            }
-            methodVo = methods.stream()
-                    .map(method -> {
-                        // 将TMeasureMethod拷贝到MethodBaseVo
-                        MethodBaseVo vo = new MethodBaseVo();
-                        vo.setId(method.getId());
-                        vo.setMethodName(method.getMethodName());
-                        vo.setCreator(method.getMethodCreator());
-                        vo.setMeasurementType(method.getMeasurementType());
-                        vo.setCreateTime(method.getMethodCreateTime().format(formatter));
-                        TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
-                        if (project != null) {
-                            vo.setProject(project.getProjectName());
-                            vo.setProjectId(project.getId());
-                        }
-                        return vo;
-                    })
-                    .collect(Collectors.toList());
+
+        // 1. 构建查询条件
+        LambdaQueryWrapper<TMeasureMethod> queryWrapper = Wrappers.lambdaQuery();
+
+        // 方法名模糊查询
+        if (StringUtil.isNotBlank(methodName)) {
+            queryWrapper.like(TMeasureMethod::getMethodName, methodName);
+        }
+
+        // 创建人精确查询
+        if (StringUtil.isNotBlank(updateBy)) {
+            queryWrapper.eq(TMeasureMethod::getMethodCreator, updateBy);
+        }
+
+        // sort: 0=降序(倒序), 1=升序(顺序)
+        if ("0".equals(sort)) {
+            queryWrapper.orderByDesc(TMeasureMethod::getMethodCreateTime);
+        } else if ("1".equals(sort)) {
+            queryWrapper.orderByAsc(TMeasureMethod::getMethodCreateTime);
         } else {
-            List<TMeasureMethod> methods = null;
-            if (StringUtil.isNotBlank(updateBy)) {
-                methods = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).like(TMeasureMethod::getMethodName, methodName).eq(TMeasureMethod::getMethodCreator, updateBy));  // 根据方法名查询
-            } else {
-                methods = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).like(TMeasureMethod::getMethodName, methodName));  // 根据方法名查询
-            }
-            methodVo = methods.stream()
-                    .map(method -> {
-                        // 将TMeasureMethod拷贝到MethodBaseVo
-                        MethodBaseVo vo = new MethodBaseVo();
-                        vo.setId(method.getId());
-                        vo.setMethodName(method.getMethodName());
-                        vo.setCreator(method.getMethodCreator());
-                        vo.setMeasurementType(method.getMeasurementType());
-                        vo.setCreateTime(method.getMethodCreateTime().format(formatter));
+            // 默认降序
+            queryWrapper.orderByDesc(TMeasureMethod::getMethodCreateTime);
+        }
+
+        // 2. 查询所有符合条件的方法（不分页，因为还要计算每个方法的最近使用时间）
+        List<TMeasureMethod> methods = tMeasureMethodService.list(queryWrapper);
+
+        if (methods == null || methods.isEmpty()) {
+            return Result.ok(new HashMap<String, Object>() {{
+                put("data", new ArrayList<>());
+                put("total", 0);
+                put("pageNum", pageNum);
+                put("pageSize", pageSize);
+                put("totalPages", 0);
+            }});
+        }
+
+        // 3. 转换为Vo并填充项目信息
+        List<MethodBaseVo> methodVoList = methods.stream()
+                .map(method -> {
+                    MethodBaseVo vo = new MethodBaseVo();
+                    vo.setId(method.getId());
+                    vo.setMethodName(method.getMethodName());
+                    vo.setCreator(method.getMethodCreator());
+                    vo.setMeasurementType(method.getMeasurementType());
+                    vo.setCreateTime(method.getMethodCreateTime().format(formatter));
+
+                    // 查询关联项目
+                    if (StringUtil.isNotBlank(method.getProjectItemKey())) {
                         TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
                         if (project != null) {
                             vo.setProject(project.getProjectName());
                             vo.setProjectId(project.getId());
                         }
-                        return vo;
-                    })
-                    .collect(Collectors.toList());
-        }
-        // 2. 获取每个方法的最近任务使用时间
-        for (MethodBaseVo method : methodVo) {
-            // 获取方法的ID
-            String methodId = method.getId();
+                    }
+                    return vo;
+                })
+                .collect(Collectors.toList());
 
-            // 查询该方法的最近任务，按创建时间降序排序
-            TMeasureTask latestTask = tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class)
-                            .eq(TMeasureTask::getMethodKey, methodId)
+        // 4. 批量查询最近使用时间（优化：避免循环中逐个查询数据库）
+        List<String> methodIds = methodVoList.stream()
+                .map(MethodBaseVo::getId)
+                .collect(Collectors.toList());
+
+        if (!methodIds.isEmpty()) {
+            // 批量查询每个方法的最新任务
+            Map<String, LocalDateTime> latestTaskTimeMap = new HashMap<>();
+
+            // 查询所有相关任务
+            List<TMeasureTask> allTasks = tMeasureTaskService.list(
+                    Wrappers.lambdaQuery(TMeasureTask.class)
+                            .in(TMeasureTask::getMethodKey, methodIds)
                             .orderByDesc(TMeasureTask::getCreateTime)
-                            .last("LIMIT 1"))  // 只获取最近的一条任务
-                    .stream()                           // 将查询结果转换为流 (Stream)
-                    .findFirst()                         // 获取流中的第一条数据（如果有的话）
-                    .orElse(null);                       // 如果没有数据，返回 null
+            );
 
-            // 获取最近任务的创建时间，作为使用时间
-            LocalDateTime lastUsedTime = latestTask != null ? latestTask.getCreateTime() : null;
-            if (lastUsedTime == null) {
-                method.setRecentUsageTime("—");
-            } else {
-                method.setRecentUsageTime(lastUsedTime.format(formatter));  // 将使用时间设置到方法对象中
+            // 为每个方法找到最新的任务时间（去重保留第一个）
+            for (TMeasureTask task : allTasks) {
+                String methodId = task.getMethodKey();
+                if (!latestTaskTimeMap.containsKey(methodId)) {
+                    latestTaskTimeMap.put(methodId, task.getCreateTime());
+                }
             }
 
-        }
-        // 3. 根据使用时间进行排序（根据sort参数判断排序方式）
-        if (sort.equals("0")) {  // 倒序
-            methodVo.sort((m1, m2) -> {
-                if (m1.getRecentUsageTime() == null) return 1;
-                if (m2.getRecentUsageTime() == null) return -1;
-                return m2.getRecentUsageTime().compareTo(m1.getRecentUsageTime());
-            });
-        } else if (sort.equals("1")) {  // 顺序
-            methodVo.sort((m1, m2) -> {
-                if (m1.getRecentUsageTime() == null) return 1;
-                if (m2.getRecentUsageTime() == null) return -1;
-                return m1.getRecentUsageTime().compareTo(m2.getRecentUsageTime());
-            });
+            // 设置每个方法的最近使用时间
+            for (MethodBaseVo method : methodVoList) {
+                LocalDateTime lastUsedTime = latestTaskTimeMap.get(method.getId());
+                if (lastUsedTime == null) {
+                    method.setRecentUsageTime("—");
+                } else {
+                    method.setRecentUsageTime(lastUsedTime.format(formatter));
+                }
+            }
         }
 
-        // 4. 分页处理
-        int total = methodVo.size();  // 总条数
+        // 5. 分页处理
+        int total = methodVoList.size();
         int fromIndex = (pageNum - 1) * pageSize;
-        int toIndex = Math.min(fromIndex + pageSize, methodVo.size());
+        int toIndex = Math.min(fromIndex + pageSize, total);
 
-        // 获取当前页的数据
-        List<MethodBaseVo> pagedResult = methodVo.subList(fromIndex, toIndex);
+        // 边界检查
+        if (fromIndex >= total) {
+            fromIndex = 0;
+            toIndex = 0;
+        }
 
-        // 构造分页返回结果
+        List<MethodBaseVo> pagedResult = fromIndex < toIndex ?
+                methodVoList.subList(fromIndex, toIndex) :
+                new ArrayList<>();
+
+        // 6. 构造返回结果
         Map<String, Object> response = new HashMap<>();
-        response.put("data", pagedResult);  // 数据
-        response.put("total", total);       // 总条数
-        response.put("pageNum", pageNum);  // 当前页码
-        response.put("pageSize", pageSize);  // 每页大小
-        response.put("totalPages", (int) Math.ceil((double) total / pageSize)); // 总页数
+        response.put("data", pagedResult);
+        response.put("total", total);
+        response.put("pageNum", pageNum);
+        response.put("pageSize", pageSize);
+        response.put("totalPages", (int) Math.ceil((double) total / pageSize));
 
         return Result.ok(response);
-
     }
 
     /**
