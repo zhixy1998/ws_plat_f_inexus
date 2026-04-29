@@ -1956,6 +1956,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                         if (futureResult) {
                             realTimeEcho(taskId, "测量成功");
+                            if (!isAutoInspection) {
+                                log.info("不是自动测试");
+                                setTaskMeasuring(taskId,false);
+                            }
                         }
                         return futureResult;
                     } catch (Exception e) {

@@ -970,7 +970,8 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 //                ExcelTemplate excelTemplate = getById(template.getParentId());
                 ExcelTemplate excelTemplate = getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getTemplateCode, template.getParentId()));
                 LambdaQueryWrapper<WorkbookData> wrapper1 = new LambdaQueryWrapper<>();
-                wrapper1.eq(WorkbookData::getTemplateCode, excelTemplate.getTemplateCode());
+                wrapper1.eq(WorkbookData::getTemplateCode, excelTemplate.getTemplateCode())
+                        .eq(WorkbookData::getTaskId, excelTemplate.getTemplateCode());
                 List<WorkbookData> list1 = workbookDataService.list(wrapper1);
                 if (CollectionUtils.isNotEmpty(list1)) {
                     byte[] data = list1.get(0).getWorkbookData();
@@ -988,7 +989,8 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             } else {
                 ExcelTemplate excelTemplate = getById(template.getId());
                 LambdaQueryWrapper<WorkbookData> wrapper1 = new LambdaQueryWrapper<>();
-                wrapper1.eq(WorkbookData::getTemplateCode, excelTemplate.getTemplateCode());
+                wrapper1.eq(WorkbookData::getTemplateCode, excelTemplate.getTemplateCode())
+                        .eq(WorkbookData::getTaskId, excelTemplate.getTemplateCode());
                 List<WorkbookData> list1 = workbookDataService.list(wrapper1);
                 if (CollectionUtils.isNotEmpty(list1)) {
                     byte[] data = list1.get(0).getWorkbookData();
