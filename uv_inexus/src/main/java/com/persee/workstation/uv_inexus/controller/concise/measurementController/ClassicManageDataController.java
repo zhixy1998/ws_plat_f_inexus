@@ -65,7 +65,7 @@ public class ClassicManageDataController {
      * @param deleteTaskIdList
      * @return
      */
-    @PostMapping("/deleteTask")
+    @PostMapping("deleteTask")
     @ApiOperation("任务删除")
     public Result<String> deleteTask(@RequestBody Box deleteTaskIdList) {
         return manageDataService.deleteTask(deleteTaskIdList);
