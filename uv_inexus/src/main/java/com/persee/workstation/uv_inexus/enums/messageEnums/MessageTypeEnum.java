@@ -37,6 +37,8 @@ public enum MessageTypeEnum {
     TYPE_INSTRUMENT_MESSAGE(2,"仪器消息"),
     TYPE_REMOTE_MESSAGE(3,"远程消息"),
     TYPE_UNKNOWN(4,"未知"),
+    //提醒消息（智能助手使用）
+    TYPE_REMIND_MESSAGE(5,"提醒消息"),
 
     OTHER(999, "其他,参与使用，仅作枚举类end标志");
 

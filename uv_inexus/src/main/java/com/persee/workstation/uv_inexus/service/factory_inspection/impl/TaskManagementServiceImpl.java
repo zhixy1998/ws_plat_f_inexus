@@ -633,7 +633,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         try {
             if (DEFAULT_TASK.getCode().equals(taskId)) {
                 //这是检定任务
-                String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,CALIBRATION_INSPECTION.getCode());
+                String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,CALIBRATION_INSPECTION.getCode(),1);
                 TaskManagement management = this.getById(defaultTaskId);
                 ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
                 management.setTemplateName(excelTemplate.getTemplateName());
@@ -649,7 +649,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             }
             if (CALIBRATION_TASK.getCode().equals(taskId)) {
                 //这是校准任务
-                String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,CALIBRATION.getCode());
+                String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,CALIBRATION.getCode(),1);
                 TaskManagement management = this.getById(defaultTaskId);
                 ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
                 management.setTemplateName(excelTemplate.getTemplateName());
@@ -665,7 +665,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             }
             if (PERIODIC_INSPECTION.getCode().equals(taskId)) {
                 //这是期间核查任务
-                String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,PERIODIC_INSPECTION_TASK.getCode());
+                String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,PERIODIC_INSPECTION_TASK.getCode(),1);
                 TaskManagement management = this.getById(defaultTaskId);
                 ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
                 management.setTemplateName(excelTemplate.getTemplateName());
@@ -701,8 +701,12 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                         list = this.list(wrapper2);
                     }
                 }
-                management = list.get(0);
-
+                if (CollectionUtils.isEmpty(list)){
+                    String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,PERIODIC_INSPECTION_TASK.getCode(),3);
+                    management = this.getById(defaultTaskId);
+                }else {
+                    management = list.get(0);
+                }
 
                 if (management.getOperationInstrument() == null) {
                     management.setOperationInstrument(data);
@@ -919,50 +923,50 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         return Result.ok(true);
     }
 
-//    @Override
-//    @Transactional(rollbackFor = Exception.class)
-//    public Result<Boolean> setTaskReminder(TaskReminderDto dto) {
-//        try {
-//            log.info("设置任务定时提醒属性，taskId: {}", dto.getTaskId());
-//
-//            if (StringUtils.isBlank(dto.getTaskId())) {
-//                return Result.fail("任务ID不能为空");
-//            }
-//
-//            TaskManagement task = new TaskManagement();
-//            if (task == null) {
-//                return Result.fail("任务不存在");
-//            }
-//
-//
-//            if (dto.getReminderEnabled() != null) {
-//                task.setReminderEnabled(dto.getReminderEnabled());
-//            }
-//            if (dto.getTaskId() != null) {
-//                task.setId(dto.getTaskId());
-//            }
-//
-//            if (dto.getReminderIntervalDays() != null) {
-//                task.setReminderIntervalDays(dto.getReminderIntervalDays());
-//            }
-//
-//            if (dto.getFirstReminderDate() != null) {
-//                task.setFirstReminderDate(dto.getFirstReminderDate());
-//            }
-//
-//            boolean updated = this.updateById(task);
-//            if (updated) {
-//                log.info("任务定时提醒属性设置成功，taskId: {}", dto.getTaskId());
-//                return Result.ok(true);
-//            } else {
-//                log.error("任务定时提醒属性设置失败，taskId: {}", dto.getTaskId());
-//                return Result.fail("设置任务定时提醒属性失败");
-//            }
-//        } catch (Exception e) {
-//            log.error("设置任务定时提醒属性异常", e);
-//            return Result.fail("设置任务定时提醒属性异常：" + e.getMessage());
-//        }
-//    }
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result<Boolean> setTaskReminder(TaskReminderDto dto) {
+        try {
+            log.info("设置任务定时提醒属性，taskId: {}", dto.getTaskId());
+
+            if (StringUtils.isBlank(dto.getTaskId())) {
+                return Result.fail("任务ID不能为空");
+            }
+
+            TaskManagement task = new TaskManagement();
+            if (task == null) {
+                return Result.fail("任务不存在");
+            }
+
+
+            if (dto.getReminderEnabled() != null) {
+                task.setReminderEnabled(dto.getReminderEnabled());
+            }
+            if (dto.getTaskId() != null) {
+                task.setId(dto.getTaskId());
+            }
+
+            if (dto.getReminderIntervalDays() != null) {
+                task.setReminderIntervalDays(dto.getReminderIntervalDays());
+            }
+
+            if (dto.getFirstReminderDate() != null) {
+                task.setFirstReminderDate(dto.getFirstReminderDate());
+            }
+
+            boolean updated = this.updateById(task);
+            if (updated) {
+                log.info("任务定时提醒属性设置成功，taskId: {}", dto.getTaskId());
+                return Result.ok(true);
+            } else {
+                log.error("任务定时提醒属性设置失败，taskId: {}", dto.getTaskId());
+                return Result.fail("设置任务定时提醒属性失败");
+            }
+        } catch (Exception e) {
+            log.error("设置任务定时提醒属性异常", e);
+            return Result.fail("设置任务定时提醒属性异常：" + e.getMessage());
+        }
+    }
 
 
     /**
