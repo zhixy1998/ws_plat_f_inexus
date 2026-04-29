@@ -177,14 +177,7 @@ public class ManageDataServiceImpl implements ManageDataService {
         List<FMeasureTask> records = result.getRecords();
         List<TaskManagementDto> dtoList = new ArrayList<>();
         for (FMeasureTask record : records) {
-            String proName;
             String methodName;
-            if (record.getProjectItemKey()!=null){
-                FMeasureProject project = projectService.getById(record.getProjectItemKey());
-                proName=project.getProjectName();
-            }else{
-                proName="";
-            }
             if (record.getMethodKey()!=null){
                 FMeasureMethod tMeasureMethod = measureMethodService.getById(record.getMethodKey());
                 if (tMeasureMethod!=null){
@@ -200,8 +193,7 @@ public class ManageDataServiceImpl implements ManageDataService {
             TaskManagementDto dto = TaskManagementDto.builder()
                     .id(record.getId())
                     .taskName(record.getTaskName())
-                    .projectName(proName)
-                    .startTime(record.getCreateTime()!=null?record.getCreateTime().toString(): "-")
+                    .startTime(record.getCreateTime())
                     .sampleKey(specimen != null ? specimen.size() : 0)
                     .methodId(record.getMethodKey())
                     .methodName(methodName)
