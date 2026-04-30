@@ -773,15 +773,6 @@ public class ConciseSpectrumOneNewWebSocket {
                 doOneMeasurementSerial(param,inputParam,spectrumParameter, task, taskId, sample, number,updateBy);
 
 
-                JSONObject payload = new JSONObject();
-                if (Constants.measureStopStatus.get(deviceSerialNumber)){
-                    payload.put("success", "扫描成功");
-                }else{
-                    payload.put("success", "停止成功");
-                }
-                sendClose(deviceSerialNumber, payload);
-                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-
                 if (configPO.getIsAutoChangePool()) {
                     SetParam setParam = new SetParam();
                     setParam.setCellPos(Integer.parseInt(Constants.PARAM_ONE));
@@ -800,6 +791,18 @@ public class ConciseSpectrumOneNewWebSocket {
                         log.info("自动切换样品池恢复样品池到1号池失败");
                     }
                 }
+
+
+                JSONObject payload = new JSONObject();
+                if (Constants.measureStopStatus.get(deviceSerialNumber)){
+                    payload.put("success", "扫描成功");
+                }else{
+                    payload.put("success", "停止成功");
+                }
+                sendClose(deviceSerialNumber, payload);
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+
+
 
                 DevOperationInputParam setInputParam = new DevOperationInputParam();
                 setInputParam.setOperationType(OperationTypeEnums.SetParam.getType());
