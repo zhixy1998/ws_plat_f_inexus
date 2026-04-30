@@ -1,6 +1,9 @@
 package com.persee.workstation.uv_inexus.component;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.SerializableWorkbook;
 import com.persee.workstation.uv_inexus.po.factory_inspection.WorkbookData;
 import com.persee.workstation.uv_inexus.service.factory_inspection.WorkbookDataService;
@@ -17,12 +20,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Slf4j
 @Component
@@ -454,6 +456,52 @@ public class WorkbookCacheManager {
                 workbookData.setId(IdGeneratorUtil.generateId());
                 workbookData.setTaskId(taskId);
                 workbookData.setCreateTime(LocalDateTime.now());
+
+                // 【新增】如果是新记录，从模板复制黄色高亮列信息（并过滤不存在的sheet）
+                if (taskFileMap.containsKey(taskId)) {
+                    String templateCode = taskFileMap.get(taskId);
+                    workbookData.setTemplateCode(templateCode);
+
+                    // 查询模板的黄色高亮列信息
+                    LambdaQueryWrapper<WorkbookData> templateQueryWrapper = new LambdaQueryWrapper<>();
+                    templateQueryWrapper.eq(WorkbookData::getTaskId, templateCode)
+                            .orderByDesc(WorkbookData::getCreateTime)
+                            .last("LIMIT 1");
+
+                    WorkbookData templateWorkbookData = workbookDataService.getOne(templateQueryWrapper);
+
+                    if (templateWorkbookData != null && StringUtils.isNotBlank(templateWorkbookData.getYellowHighlightedColumns())) {
+                        // 【关键】如果workbook不为null，需要过滤掉不存在的sheet页
+                        if (workbook != null) {
+                            // 获取当前workbook中实际存在的sheet名称集合
+                            Set<String> existingSheetNames = IntStream.range(0, workbook.getNumberOfSheets())
+                                    .mapToObj(workbook::getSheetName)
+                                    .collect(Collectors.toSet());
+
+                            // 解析模板的黄色高亮列信息
+                            ObjectMapper mapper = new ObjectMapper();
+                            Map<String, List<String>> templateYellowColumns = mapper.readValue(
+                                    templateWorkbookData.getYellowHighlightedColumns(),
+                                    new TypeReference<Map<String, List<String>>>(){});
+
+                            // 过滤：只保留workbook中存在的sheet页的黄色列信息
+                            Map<String, List<String>> filteredYellowColumns = templateYellowColumns.entrySet().stream()
+                                    .filter(entry -> existingSheetNames.contains(entry.getKey()))
+                                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+                            // 将过滤后的结果转换为JSON
+                            String filteredJson = mapper.writeValueAsString(filteredYellowColumns);
+                            workbookData.setYellowHighlightedColumns(filteredJson);
+
+                            log.info("从模板{}复制黄色高亮列信息到任务{}，过滤前: {}个sheet，过滤后: {}个sheet",
+                                    templateCode, taskId, templateYellowColumns.size(), filteredYellowColumns.size());
+                        } else {
+                            // workbook为null时，直接复制（这种情况不应该发生）
+                            workbookData.setYellowHighlightedColumns(templateWorkbookData.getYellowHighlightedColumns());
+                            log.info("从模板{}复制黄色高亮列信息到任务{}", templateCode, taskId);
+                        }
+                    }
+                }
             }
 
             if (workbook != null) {
@@ -466,8 +514,8 @@ public class WorkbookCacheManager {
                 workbookData.setLastAccessTime(LocalDateTime.now());
                 workbookData.setIsActive(true);
 
-                // 如果是新记录，设置模板代码
-                if (taskFileMap.containsKey(taskId)) {
+                // 如果是已有记录但还没有templateCode，设置模板代码
+                if (!taskFileMap.containsKey(taskId) && workbookData.getTemplateCode() == null && taskFileMap.containsKey(taskId)) {
                     workbookData.setTemplateCode(taskFileMap.get(taskId));
                 }
             } else {
@@ -477,11 +525,10 @@ public class WorkbookCacheManager {
             }
 
             workbookDataService.saveOrUpdate(workbookData);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("保存工作簿到数据库失败: {}", taskId, e);
         }
     }
-    // ... existing code ...
 
     /**
      * 处理前端编辑单元格后的更新

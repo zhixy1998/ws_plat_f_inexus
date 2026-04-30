@@ -847,12 +847,15 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         Workbook workbook = workbookCacheManager.getTaskWorkbook(taskId);
         if (workbook == null) {
-            log.error("无法获取任务{}的工作簿缓存，taskId={}", fileName, taskId);
+            log.error("无法获取任务{}的工作簿缓存，fileName={}, taskId={}", fileName, taskId);
             return;
         }
-        // 【新增】获取模板编码和黄色高亮列信息
-        String templateCode = getTemplateCodeByTaskId(taskId);
-        Map<String, List<String>> yellowColumnsMap = getYellowColumnsFromDatabase(templateCode);
+
+        // 【修改】直接传入taskId，让getYellowColumnsFromDatabase内部处理任务/模板的查询逻辑
+        Map<String, List<String>> yellowColumnsMap = getYellowColumnsFromDatabase(taskId);
+
+        log.info("推送工作簿到前端，taskId: {}, fileName: {}, 黄色列信息: {}个sheet",
+                taskId, fileName, yellowColumnsMap.size());
 
         WorkbookDto workbookDto = new WorkbookDto();
         workbookDto.setWorkbookName(fileName);
@@ -866,7 +869,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
     /**
-     * 从数据库获取黄色高亮列信息
+     * 从数据库获取黄色高亮列信息,入参可能是模板的id，也可能是任务的id
      */
     private Map<String, List<String>> getYellowColumnsFromDatabase(String templateCode) {
         if (templateCode == null || templateCode.isEmpty()) {
@@ -876,8 +879,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         try {
             // 查询calibration_workbook_data表获取黄色列信息
             LambdaQueryWrapper<WorkbookData> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(WorkbookData::getTemplateCode, templateCode)
-                    .eq(WorkbookData::getIsActive, true)
+            queryWrapper.eq(WorkbookData::getTaskId, templateCode)
+//                    .eq(WorkbookData::getIsActive, true)
                     .orderByDesc(WorkbookData::getCreateTime)
                     .last("LIMIT 1");
 
