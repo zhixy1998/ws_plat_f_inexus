@@ -850,7 +850,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 if (StringUtils.isNotBlank(management.getOperationInstrument())) {
                     List<String> list = deviceTypeInfoDAO.queryDeviceTypeBySerialNumber(management.getOperationInstrument());
                     if (CollectionUtils.isNotEmpty(list)) {
-                        smartContent.put("operationInstrument", list.get(0));
+                        smartContent.put("operationInstrument", "T1965");
                     }
                 }
             }
