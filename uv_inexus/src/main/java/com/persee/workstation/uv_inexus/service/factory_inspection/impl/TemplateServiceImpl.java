@@ -1026,6 +1026,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         return Result.fail("文件处理失败");
     }
 
+    // ... existing code ...
     @Override
     public Result buildResultTemplate(String templateCode, List<Map<String, Object>> rowsNotInTemplate) {
         try {
@@ -1054,14 +1055,17 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(ExcelTemplate::getTemplateCode, templateCode);
             ExcelTemplate template = this.getOne(queryWrapper);
-// 如果是子模板，先从父模板复制黄色高亮列信息
-            if (StringUtils.isNotBlank(template.getParentId())) {
-                copyYellowColumnsFromParent(template.getParentId(), templateCode);
-            }
 
+            // 【修复】先检查模板是否存在
             if (template == null) {
                 log.error("模板不存在，templateCode: {}", templateCode);
                 return Result.fail("模板不存在");
+            }
+
+            // 【新增】如果是子模板，先从父模板复制黄色高亮列信息
+            if (StringUtils.isNotBlank(template.getParentId())) {
+                log.info("检测到子模板，开始从父模板{}复制黄色高亮列信息", template.getParentId());
+                copyYellowColumnsFromParent(template.getParentId(), templateCode);
             }
 
             // 直接加载当前模板的WorkbookData（每个模板创建时都有完整的初始数据）
@@ -1081,7 +1085,8 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             Workbook workbook;
             try (ByteArrayInputStream inputStream = new ByteArrayInputStream(workbookData.getWorkbookData())) {
                 workbook = new XSSFWorkbook(inputStream);
-                log.info("成功加载模板{}的WorkbookData，大小: {} bytes", templateCode, workbookData.getWorkbookData().length);
+                log.info("成功加载模板{}的WorkbookData，大小: {} bytes，黄色高亮列: {}",
+                        templateCode, workbookData.getWorkbookData().length, workbookData.getYellowHighlightedColumns());
             } catch (IOException e) {
                 log.error("转换字节数组到Workbook失败，templateCode: {}", templateCode, e);
                 return Result.fail("模板数据解析失败");
