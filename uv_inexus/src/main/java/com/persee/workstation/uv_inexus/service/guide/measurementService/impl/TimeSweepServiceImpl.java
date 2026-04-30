@@ -56,10 +56,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
-import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
-import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
-import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
-import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
+import com.persee.workstation.uv_inexus.vo.concise.common.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
@@ -643,81 +640,51 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result changeTheListPort(String taskId,String type, Integer digit) {
+        if (taskId == null) {
+            //方法id不能为空,请创建方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000021"));
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            //该方法下没有草稿,请新建草稿
+            return Result.fail(YamlMessageSource.getMessageStatic("00100010"));
+        }
+
+        // 根据方法id查询方法
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            //没有找到该方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
 
         // 根据任务id去查询分析数据
         QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("task_id", taskId);
+        queryWrapper.eq("task_id", task.getId());
         queryWrapper.ne("analysis_type", "5");
-        if(type==null||type.equals("")){
+        if (type == null || type.isEmpty()) {
             queryWrapper.eq("is_delete", "0");
         }
         List<TMeasureAnalysisData> list = tMeasureAnalysisDataService.list(queryWrapper);
-        List<SampleListVo> listVos = new ArrayList<>();
+        List<FSampleListVo> listVos = new ArrayList<>();
+
         for (TMeasureAnalysisData tMeasureAnalysisData : list) {
-            SampleListVo vo = new SampleListVo();
+            FSampleListVo vo = new FSampleListVo();
             vo.setAnalysisId(tMeasureAnalysisData.getId());
             vo.setTitle(tMeasureAnalysisData.getAnalysisName());
             vo.setColor(tMeasureAnalysisData.getColor());
             vo.setDeleteType(tMeasureAnalysisData.getIsDelete());
-            List<String> results = JSON.parseArray(tMeasureAnalysisData.getAnalysisResult(), String.class);
-            List<PeakValleyMarking> gauges = JSON.parseArray(tMeasureAnalysisData.getGaugePoint(), PeakValleyMarking.class);
-            List<PeakValleyMarking> peaks = JSON.parseArray(tMeasureAnalysisData.getPeak(), PeakValleyMarking.class);
-            List<PeakValleyMarking> grades = JSON.parseArray(tMeasureAnalysisData.getGrain(), PeakValleyMarking.class);
-            List<Map<String, Object>> resultList = new ArrayList<>();
-            for (String s : results){
-                String[] split = s.split(",");
-                Map<String, Object> map = new HashMap<>();
-                if (digit!=null){
-                    BigDecimal value = new BigDecimal(split[1]);
-                    value = value.setScale(digit, RoundingMode.HALF_UP);
-                    map.put("x", split[0]);
-                    map.put("y", value.stripTrailingZeros().toPlainString());
-                }else{
-                    map.put("x", split[0]);
-                    map.put("y", split[1]);
-                }
-                if (gauges != null){
-                    for (PeakValleyMarking gauge : gauges) {
-                        if (split[0].equals(gauge.getX())){
-                            map.put("marked","1");
-                            break;
-                        }else{
-                            map.put("marked","0");
-                        }
-                    }
-                }else{
-                    map.put("marked","0");
-                }
-                if (grades != null){
-                    for (PeakValleyMarking peak : peaks) {
-                        if (split[0].equals(peak.getX())){
-                            map.put("feng","1");
-                            break;
-                        }else{
-                            map.put("feng","0");
-                        }
-                    }
-                }else{
-                    map.put("feng","0");
-                }
-                if (grades != null){
-                    for (PeakValleyMarking grade : grades){
-                        if (split[0].equals(grade.getX())){
-                            map.put("gu","1");
-                            break;
-                        }else{
-                            map.put("gu","0");
-                        }
-                    }
-                }else{
-                    map.put("gu","0");
-                }
-                resultList.add(map);
+            if (tMeasureAnalysisData.getAnalysisResult() == null) {
+                vo.setData(null);
+                vo.setOriginalData(null);
+            } else {
+                vo.setData(getSampleData(tMeasureAnalysisData, digit));
+                vo.setOriginalData(getOriginalSampleData(tMeasureAnalysisData, digit));
             }
-            vo.setOriginalData(resultList);
             vo.setType("1");
             listVos.add(vo);
         }
+
         return Result.ok(listVos);
     }
 
