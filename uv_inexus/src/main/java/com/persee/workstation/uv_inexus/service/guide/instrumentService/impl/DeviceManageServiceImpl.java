@@ -504,8 +504,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
 
         List<Command> list = new ArrayList<>();
-        list.add(new Command(FindDevEnum.FindDevice.getComId(), new Object[]{}));
-        list.add(new Command(FindDevEnum.NewIP.getComId(), new Object[]{}));
+//        list.add(new Command(FindDevEnum.FindDevice.getComId(), new Object[]{}));
+//        list.add(new Command(FindDevEnum.NewIP.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.Connect.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.GetSn.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.GetAccessoryType.getComId(), new Object[]{}));
@@ -1782,7 +1782,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             param.setStartWl(start);
             param.setEndWl(end);
             param.setScanSpeed(deviceScanSpeed);
-            param.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
+            param.setPhotoMode(Integer.valueOf(WaveLengthEnum.tPercent.getCode()));
             inputParam.setDeviceSerialNumber(deviceSerialNumber);
 
             Boolean needSetSit = infoService.isNeedSetSit(deviceSerialNumber);

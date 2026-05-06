@@ -65,14 +65,14 @@
              <string></string>
              </OutputString>
              <SendBytes>
-             <string>101:255:5:11:0:0:0:0:0:0:0:Check</string>
+             <string>101:255:5:8:0:0:0:0:0:0:0:Check</string>
              </SendBytes>
              <ReadBytes>
-             <string>254:101:5:11:0:0:0:0:0:0:0:Check</string>
+             <string>254:101:5:8:0:0:0:0:0:0:0:Check</string>
              </ReadBytes>
                  <ReplyNumber>24</ReplyNumber>
                  <HeadReceiveBytes>
-                     <string>255:101:5:11</string>
+                     <string>255:101:5:8</string>
                  </HeadReceiveBytes>
              </ProtocolItem>
 <ProtocolItem>
