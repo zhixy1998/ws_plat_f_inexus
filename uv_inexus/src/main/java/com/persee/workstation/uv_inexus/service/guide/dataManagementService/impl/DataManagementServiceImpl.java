@@ -1222,7 +1222,7 @@ public class DataManagementServiceImpl implements DataManagementService {
                     .id(record.getId())
                     .taskName(record.getTaskName())
                     .projectName(proName)
-                    .startTime(record.getStartTime()!=null?record.getStartTime().toString(): "-")
+                    .startTime(record.getStartTime())
                     .sampleKey(specimen != null ? specimen.size() : 0)
                     .methodId(record.getMethodKey())
                     .methodName(methodName)

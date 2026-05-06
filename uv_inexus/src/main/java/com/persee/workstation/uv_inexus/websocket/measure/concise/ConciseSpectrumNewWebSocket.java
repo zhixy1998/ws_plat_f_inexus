@@ -615,6 +615,14 @@ public class ConciseSpectrumNewWebSocket {
     public void measureTask(FSpectrumNewWebSocketParam param) {
         log.info("仪器编号: {} 进入扫描 时间: {}", param.getDeviceSerialNumber(), LocalDateTime.now());
 
+        // 检查是否已有测量任务正在运行
+        Thread existingThread = taskThreads.get(param.getDeviceSerialNumber());
+        if (existingThread != null && existingThread.isAlive()) {
+            log.warn("设备 {} 已有测量任务正在执行，忽略新请求", deviceSerialNumber);
+            sendError(deviceSerialNumber, "设备正在测量中，请勿重复操作");
+            return;
+        }
+
         // 初始化会话状态
         SessionState state = new SessionState();
         state.setParent(this);
@@ -868,6 +876,8 @@ public class ConciseSpectrumNewWebSocket {
                         }
                     }
                 }
+
+                // 返回一号样品池
                 if (configPO.getIsAutoChangePool()) {
                     SetParam setParam = new SetParam();
                     setParam.setCellPos(Integer.parseInt(Constants.PARAM_ONE));
@@ -887,6 +897,19 @@ public class ConciseSpectrumNewWebSocket {
                     }
                 }
 
+
+                JSONObject payload = new JSONObject();
+                if (Constants.measureStopStatus.get(deviceSerialNumber)){
+                    payload.put("success", "扫描成功");
+                }else{
+                    payload.put("success", "停止成功");
+                }
+
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+                sendClose(deviceSerialNumber, payload);
+
+
+
                 DevOperationInputParam setInputParam = new DevOperationInputParam();
                 setInputParam.setOperationType(OperationTypeEnums.SetParam.getType());
                 setInputParam.setDeviceSerialNumber(deviceSerialNumber);
@@ -899,15 +922,6 @@ public class ConciseSpectrumNewWebSocket {
                     sendError(deviceSerialNumber,r.getMessage());
                 }
                 log.info("==========仪器返回起始波长");
-                JSONObject payload = new JSONObject();
-                if (Constants.measureStopStatus.get(deviceSerialNumber)){
-                    payload.put("success", "扫描成功");
-                }else{
-                    payload.put("success", "停止成功");
-                }
-                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-                sendClose(deviceSerialNumber, payload);
-
 
             } catch (Exception e) {
                 log.error("扫描任务执行异常", e);
@@ -1291,16 +1305,16 @@ public class ConciseSpectrumNewWebSocket {
         String storageKey = sessionId + "_" + sampleId + "_" + count;
         CountDownLatch latch = new CountDownLatch(1);
         storageLatches.put(storageKey, latch);
-
+        log.info("数据处理结束时间: {}", System.currentTimeMillis());
         // 保存数据
         saveOneMeasurementWithSnapshots(task, taskId, sampleId, deviceSerialNumber,
                 finalResult.x, finalResult.y, count, finalResult.startTime, finalResult.endTime,
                 finalResult.changeParams, latch);
-
+        log.info("保存数据结束时间: {}", System.currentTimeMillis());
         // 等待存储完成，增加超时时间并记录
         try {
             long startWait = System.currentTimeMillis();
-            boolean stored = latch.await(45, TimeUnit.SECONDS); // 等待45秒
+            boolean stored = latch.await(5, TimeUnit.SECONDS); // 等待45秒
             long waitTime = System.currentTimeMillis() - startWait;
 
             if (!stored) {
@@ -1357,6 +1371,7 @@ public class ConciseSpectrumNewWebSocket {
         if (!r.getSuccess()) {
             sendError(deviceSerialNumber,r.getMessage());
         }
+        log.info("发送命令结束时间: {}", System.currentTimeMillis());
         Constants.startTime = LocalDateTime.now();
         lastChangeParam=null;
 
@@ -1405,7 +1420,8 @@ public class ConciseSpectrumNewWebSocket {
                     while (whileStatus) {
                         if (Thread.currentThread().isInterrupted()) {
                             log.info("线程被中断，退出内部循环");
-                            break;
+                            whileStatus = false;   // 终止外层循环
+                            break;                 // 退出内层循环
                         }
 
                         Object result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.Scan.getComId());
@@ -1535,6 +1551,7 @@ public class ConciseSpectrumNewWebSocket {
         }
 
         Constants.endTime = LocalDateTime.now();
+        log.info("扫描结束结束时间: {}", System.currentTimeMillis());
         if (state != null) {
             state.measurementStarted.set(false);
         }
@@ -2458,7 +2475,6 @@ public class ConciseSpectrumNewWebSocket {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             Map<String, Object> body = new HashMap<>();
-
             // 使用原始Y值进行峰谷分析
             String key = deviceSerialNumber + "_" + sampleId + "_" + number;
             List<Double> originalY = originalYValues.get(key);
@@ -2728,7 +2744,6 @@ public class ConciseSpectrumNewWebSocket {
                     tMeasureTaskService.saveOrUpdate(task);
                 }
             }
-
             log.info("数据保存完成: 样品={}, 计数={}", sampleId, number);
         } catch (Exception e) {
             log.error("保存测量数据时发生异常", e);

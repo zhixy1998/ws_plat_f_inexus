@@ -14,6 +14,8 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 public class TaskManagementDto {
@@ -25,7 +27,7 @@ public class TaskManagementDto {
     private String projectName;
     @ApiModelProperty("起始时间")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
-    private String startTime;
+    private LocalDateTime startTime;
     @ApiModelProperty("样品个数")
     private Integer sampleKey;
     @ApiModelProperty("方法id")

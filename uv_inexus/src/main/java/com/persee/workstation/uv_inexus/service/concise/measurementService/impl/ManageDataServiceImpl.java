@@ -62,175 +62,88 @@ public class ManageDataServiceImpl implements ManageDataService {
     
     // 日期格式化器
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    
+
     @Override
     public Result listOfMethods(String methodName, Integer pageNum, Integer pageSize, String sort, String updateBy) {
-        // 1. 获取所有方法或按条件查询方法
-        List<MethodBaseVo> methodVo;
-        if (methodName == null || methodName.isEmpty()) {
-            List<FMeasureMethod> methods = null;
-            if (updateBy != null && !updateBy.isEmpty()) {
-                LambdaQueryWrapper<FMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(FMeasureMethod::getMethodCreator, updateBy);
-                methods = measureMethodService.list(queryWrapper);  // 根据创建人查询
-            } else {
-                methods = measureMethodService.list();  // 查询所有方法
-            }
-            
-            if (methods == null || methods.isEmpty()) {
-                return Result.ok(createEmptyPageResult(pageNum, pageSize));
-            }
-            
-            methodVo = methods.stream()
-                    .map(method -> {
-                        // 将 FMeasureMethod 拷贝到 MethodBaseVo
-                        MethodBaseVo vo = new MethodBaseVo();
-                        vo.setId(method.getId());
-                        vo.setMethodName(method.getMethodName());
-                        vo.setCreator(method.getMethodCreator());
-                        vo.setMeasurementType(method.getMeasurementType());
-                        vo.setCreateTime(method.getMethodCreateTime() != null ? 
-                                method.getMethodCreateTime().format(formatter) : null);
-                        
-                        // 查询所属项目
-                        if (method.getProjectItemKey() != null) {
-                            FMeasureProject project = getProjectById(method.getProjectItemKey());
-                            if (project != null) {
-                                vo.setProject(project.getProjectName());
-                                vo.setProjectId(project.getId());
-                            }
-                        }
-                        return vo;
-                    })
-                    .collect(Collectors.toList());
+        // 1. 构建查询条件
+        LambdaQueryWrapper<FMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
+
+        // 方法名模糊查询
+        if (methodName != null && !methodName.isEmpty()) {
+            queryWrapper.like(FMeasureMethod::getMethodName, methodName);
+        }
+
+        // 创建人精确查询
+        if (updateBy != null && !updateBy.isEmpty()) {
+            queryWrapper.eq(FMeasureMethod::getMethodCreator, updateBy);
+        }
+
+        // 关键修改：直接在数据库层面按创建时间排序
+        if ("1".equals(sort)) {
+            queryWrapper.orderByAsc(FMeasureMethod::getMethodCreateTime);  // 顺序（旧的在前面）
         } else {
-            List<FMeasureMethod> methods = null;
-            if (updateBy != null && !updateBy.isEmpty()) {
-                LambdaQueryWrapper<FMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.like(FMeasureMethod::getMethodName, methodName)
-                           .eq(FMeasureMethod::getMethodCreator, updateBy);
-                methods = measureMethodService.list(queryWrapper);  // 根据方法名和创建人查询
-            } else {
-                LambdaQueryWrapper<FMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.like(FMeasureMethod::getMethodName, methodName);
-                methods = measureMethodService.list(queryWrapper);  // 根据方法名查询
-            }
-            
-            methodVo = methods.stream()
-                    .map(method -> {
-                        // 将 FMeasureMethod 拷贝到 MethodBaseVo
-                        MethodBaseVo vo = new MethodBaseVo();
-                        vo.setId(method.getId());
-                        vo.setMethodName(method.getMethodName());
-                        vo.setCreator(method.getMethodCreator());
-                        vo.setMeasurementType(method.getMeasurementType());
-                        vo.setCreateTime(method.getMethodCreateTime() != null ? 
-                                method.getMethodCreateTime().format(formatter) : null);
-                        
-                        // 查询所属项目
-                        if (method.getProjectItemKey() != null) {
-                            FMeasureProject project = getProjectById(method.getProjectItemKey());
-                            if (project != null) {
-                                vo.setProject(project.getProjectName());
-                                vo.setProjectId(project.getId());
-                            }
+            queryWrapper.orderByDesc(FMeasureMethod::getMethodCreateTime); // 倒序（新的在前面），默认
+        }
+
+        // 查询所有方法
+        List<FMeasureMethod> methods = measureMethodService.list(queryWrapper);
+
+        if (methods == null || methods.isEmpty()) {
+            Map<String, Object> emptyResult = new HashMap<>();
+            emptyResult.put("data", new ArrayList<>());
+            emptyResult.put("total", 0);
+            emptyResult.put("pageNum", pageNum);
+            emptyResult.put("pageSize", pageSize);
+            emptyResult.put("totalPages", 0);
+            return Result.ok(emptyResult);
+        }
+
+        // 2. 转换为Vo
+        List<MethodBaseVo> methodVo = methods.stream()
+                .map(method -> {
+                    MethodBaseVo vo = new MethodBaseVo();
+                    vo.setId(method.getId());
+                    vo.setMethodName(method.getMethodName());
+                    vo.setCreator(method.getMethodCreator());
+                    vo.setMeasurementType(method.getMeasurementType());
+                    vo.setCreateTime(method.getMethodCreateTime() != null ?
+                            method.getMethodCreateTime().format(formatter) : null);
+
+                    if (method.getProjectItemKey() != null) {
+                        FMeasureProject project = getProjectById(method.getProjectItemKey());
+                        if (project != null) {
+                            vo.setProject(project.getProjectName());
+                            vo.setProjectId(project.getId());
                         }
-                        return vo;
-                    })
-                    .collect(Collectors.toList());
-        }
-        
-        // 2. 获取每个方法的最近任务使用时间
-        for (MethodBaseVo method : methodVo) {
-            // 获取方法的 ID
-            String methodId = method.getId();
+                    }
+                    return vo;
+                })
+                .collect(Collectors.toList());
 
-            // 查询该方法的最近任务，按创建时间降序排序
-            LambdaQueryWrapper<FMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(FMeasureTask::getMethodKey, methodId)
-                       .orderByDesc(FMeasureTask::getCreateTime)
-                       .last("LIMIT 1");  // 只获取最近的一条任务
-            
-            FMeasureTask latestTask = taskService.getOne(queryWrapper);
-
-            // 获取最近任务的创建时间，作为使用时间
-            LocalDateTime lastUsedTime = latestTask != null ? latestTask.getCreateTime() : null;
-            if (lastUsedTime == null) {
-                method.setRecentUsageTime("—");
-            } else {
-                method.setRecentUsageTime(lastUsedTime.format(formatter));  // 将使用时间设置到方法对象中
-            }
-        }
-        
-        // 3. 根据使用时间进行排序 (根据 sort 参数判断排序方式)
-        if ("0".equals(sort)) {  // 倒序 - 最近使用的在前
-            methodVo.sort((m1, m2) -> {
-                String time1 = m1.getRecentUsageTime();
-                String time2 = m2.getRecentUsageTime();
-                        
-                boolean isTime1Null = time1 == null || "—".equals(time1);
-                boolean isTime2Null = time2 == null || "—".equals(time2);
-                        
-                // 如果两者都没有使用时间，按创建时间倒序
-                if (isTime1Null && isTime2Null) {
-                    if (m1.getCreateTime() == null && m2.getCreateTime() == null) return 0;
-                    if (m1.getCreateTime() == null) return 1;
-                    if (m2.getCreateTime() == null) return -1;
-                    return m2.getCreateTime().compareTo(m1.getCreateTime());
-                }
-                        
-                // 有使用时间的排在前面
-                if (isTime1Null) return 1;
-                if (isTime2Null) return -1;
-                        
-                // 都有使用时间，按时间倒序
-                return time2.compareTo(time1);
-            });
-        } else if ("1".equals(sort)) {  // 顺序 - 最早使用的在前
-            methodVo.sort((m1, m2) -> {
-                String time1 = m1.getRecentUsageTime();
-                String time2 = m2.getRecentUsageTime();
-                        
-                boolean isTime1Null = time1 == null || "—".equals(time1);
-                boolean isTime2Null = time2 == null || "—".equals(time2);
-                        
-                // 如果两者都没有使用时间，按创建时间顺序
-                if (isTime1Null && isTime2Null) {
-                    if (m1.getCreateTime() == null && m2.getCreateTime() == null) return 0;
-                    if (m1.getCreateTime() == null) return 1;
-                    if (m2.getCreateTime() == null) return -1;
-                    return m1.getCreateTime().compareTo(m2.getCreateTime());
-                }
-                        
-                // 没有使用时间的排在后面
-                if (isTime1Null) return 1;
-                if (isTime2Null) return -1;
-                        
-                // 都有使用时间，按时间顺序
-                return time1.compareTo(time2);
-            });
-        }
-        
-        // 4. 分页处理
-        int total = methodVo.size();  // 总条数
+        // 3. 分页处理
+        int total = methodVo.size();
         int fromIndex = (pageNum - 1) * pageSize;
-        int toIndex = Math.min(fromIndex + pageSize, methodVo.size());
-        
-        // 处理边界情况
+        int toIndex = Math.min(fromIndex + pageSize, total);
+
         if (fromIndex >= total) {
-            return Result.ok(createEmptyPageResult(pageNum, pageSize));
+            Map<String, Object> emptyResult = new HashMap<>();
+            emptyResult.put("data", new ArrayList<>());
+            emptyResult.put("total", total);
+            emptyResult.put("pageNum", pageNum);
+            emptyResult.put("pageSize", pageSize);
+            emptyResult.put("totalPages", (int) Math.ceil((double) total / pageSize));
+            return Result.ok(emptyResult);
         }
 
-        // 获取当前页的数据
         List<MethodBaseVo> pagedResult = methodVo.subList(fromIndex, toIndex);
 
-        // 构造分页返回结果
+        // 4. 返回结果
         Map<String, Object> response = new HashMap<>();
-        response.put("data", pagedResult);  // 数据
-        response.put("total", total);       // 总条数
-        response.put("pageNum", pageNum);  // 当前页码
-        response.put("pageSize", pageSize);  // 每页大小
-        response.put("totalPages", (int) Math.ceil((double) total / pageSize)); // 总页数
+        response.put("data", pagedResult);
+        response.put("total", total);
+        response.put("pageNum", pageNum);
+        response.put("pageSize", pageSize);
+        response.put("totalPages", (int) Math.ceil((double) total / pageSize));
 
         return Result.ok(response);
     }
@@ -264,14 +177,7 @@ public class ManageDataServiceImpl implements ManageDataService {
         List<FMeasureTask> records = result.getRecords();
         List<TaskManagementDto> dtoList = new ArrayList<>();
         for (FMeasureTask record : records) {
-            String proName;
             String methodName;
-            if (record.getProjectItemKey()!=null){
-                FMeasureProject project = projectService.getById(record.getProjectItemKey());
-                proName=project.getProjectName();
-            }else{
-                proName="";
-            }
             if (record.getMethodKey()!=null){
                 FMeasureMethod tMeasureMethod = measureMethodService.getById(record.getMethodKey());
                 if (tMeasureMethod!=null){
@@ -287,8 +193,7 @@ public class ManageDataServiceImpl implements ManageDataService {
             TaskManagementDto dto = TaskManagementDto.builder()
                     .id(record.getId())
                     .taskName(record.getTaskName())
-                    .projectName(proName)
-                    .startTime(record.getCreateTime()!=null?record.getCreateTime().toString(): "-")
+                    .startTime(record.getCreateTime())
                     .sampleKey(specimen != null ? specimen.size() : 0)
                     .methodId(record.getMethodKey())
                     .methodName(methodName)
@@ -677,27 +582,24 @@ public class ManageDataServiceImpl implements ManageDataService {
      * 方法名称重复性检查
      */
     @Override
-    public Result methodDuplicationCheck(String projectId, String methodName, String measureType) {
+    public Result methodDuplicationCheck(String methodName, String measureType) {
         try {
             // 参数校验
-            if (projectId == null || projectId.isEmpty() || 
-                methodName == null || methodName.isEmpty() || 
+            if (methodName == null || methodName.isEmpty() ||
                 measureType == null || measureType.isEmpty()) {
                 return Result.fail("参数不能为空");
             }
             
             // 构建查询条件
             LambdaQueryWrapper<FMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(FMeasureMethod::getProjectItemKey, projectId)
-                       .eq(FMeasureMethod::getMethodName, methodName)
+            queryWrapper.eq(FMeasureMethod::getMethodName, methodName)
                        .eq(FMeasureMethod::getMeasurementType, measureType);
             
             // 查询是否存在
             long count = measureMethodService.count(queryWrapper);
             
             // 打印日志
-            System.out.println(String.format("方法名称查重检查：projectId=%s, methodName=%s, count=%d", 
-                    projectId, methodName, count));
+            System.out.println(String.format("方法名称查重检查：methodName=%s, count=%d", methodName, count));
             
             if (count > 0) {
                 return Result.ok(true);  // 存在重复

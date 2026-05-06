@@ -1228,7 +1228,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     }
                 }
 
-                if (comId.equals(ConnectEnum.SetCellPos.getComId())) {
+                if (comId.equals(ConnectEnum.SetCellPos.getComId()) || comId.equals(ConnectEnum.GetCellPos.getComId())) {
                     if (result.getAttachmentType() == null) {
                         continue;
                     }
@@ -1242,6 +1242,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType()) || kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())) {
                         param = new Object[]{1};
                     } else {
+                        result.setSamplePoolNum(1);
                         continue;
                     }
                 }

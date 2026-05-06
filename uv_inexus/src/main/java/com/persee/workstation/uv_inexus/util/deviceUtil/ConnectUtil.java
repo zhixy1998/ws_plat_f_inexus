@@ -264,11 +264,13 @@ public class ConnectUtil {
 
                 String name = ni.getName().toLowerCase();
                 String displayName = ni.getDisplayName().toLowerCase();
+                System.out.println("name:" + name + "displayName:" + displayName);
 
                 // 判断是否为以太网接口
                 if (isEthernetInterface(name, displayName, os)) {
                     // 获取IPv4地址
                     String ip = getEthernetIPv4();
+                    System.out.println("ip--------------"+ ip);
                     if (ip != null) {
                         return new NetworkInterfaceInfo(name, displayName, ip, ni);
                     }

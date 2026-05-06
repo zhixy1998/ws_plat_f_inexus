@@ -72,12 +72,11 @@ public interface ManageDataService  {
     
     /**
      * 方法名称重复性检查
-     * @param projectId 项目 ID
      * @param methodName 方法名称
      * @param measureType 测量类型
      * @return 是否重复
      */
-    Result methodDuplicationCheck(String projectId, String methodName, String measureType);
+    Result methodDuplicationCheck(String methodName, String measureType);
     
     /**
      * 新建方法
