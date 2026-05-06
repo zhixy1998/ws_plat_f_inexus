@@ -883,8 +883,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 if (startWl != null && endWl != null && interval != null) {
                     // 直接操作 device 对象
-                    cfg.setStartWavelength(startWl);
                     cfg.setEndWavelength(endWl);
+                    cfg.setStartWavelength(startWl);
                     cfg.setInterval(interval);
                     cfg.setDescending(startWl > endWl);
                     device.setScanWavelengthConfig(cfg);
@@ -1865,7 +1865,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (!zero.getSuccess()) {
                     return R.fail("零点失败");
                 }
+                zero = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
 
+                if (!zero.getSuccess()) {
+                    return R.fail("零点失败");
+                }
                 deviceManager.setZeroWavelength(deviceId, s);
                 deviceManager.setCurrentWavelength(deviceId, s);
 
@@ -1934,9 +1938,14 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             if (!zero.getSuccess()) {
                 return R.fail("零点失败");
             }
+            zero = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
 
+            if (!zero.getSuccess()) {
+                return R.fail("零点失败");
+            }
             deviceManager.setZeroWavelength(deviceId, wavelength);
             deviceManager.setCurrentWavelength(deviceId, wavelength);
+
 
             cmdId = T600ComIdEnums.Zero.getComId();
             transition = xml.get(cmdId);
@@ -2003,7 +2012,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (!mesure.getSuccess()) {
                     return R.fail("零点失败");
                 }
+                mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
 
+                if (!mesure.getSuccess()) {
+                    return R.fail("零点失败");
+                }
                 deviceManager.setCurrentWavelength(deviceId, s);
 
                 cmdId = T600ComIdEnums.Measure.getComId();
@@ -2045,7 +2058,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 //                        if (darkInfo != null && StringUtils.hasText(darkInfo.get(s))) {
 //                            z = darkInfo.get(s);
 //                        }
-                        Double zVal = spectrumResultCalculator.getZFromDatabase2(deviceSerialNumber, device.getCurrentWavelength());
+                        Double zVal = spectrumResultCalculator.getZFromDatabase2(deviceSerialNumber, s);
                         if (zVal != null) {
                             z = String.valueOf(zVal);
                         }
@@ -2101,6 +2114,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             log.info("串口零点");
         } else {
 
+
             cmdId = T600ComIdEnums.SetWl.getComId();
             Transition transition = xml.get(cmdId);
             int replyNumber = transition.getReplyNumber();
@@ -2116,8 +2130,13 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             if (!mesure.getSuccess()) {
                 return R.fail("测量失败");
             }
+            mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
 
+            if (!mesure.getSuccess()) {
+                return R.fail("测量失败");
+            }
             deviceManager.setCurrentWavelength(deviceId, wavelength);
+            device = deviceManager.getDevice(deviceId);
 
             cmdId = T600ComIdEnums.Measure.getComId();
             transition = xml.get(cmdId);
