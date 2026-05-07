@@ -36,6 +36,8 @@ public class TaskManagementDto {
     private String methodName;
     @ApiModelProperty("测量模式")
     private String measureType;
+    @ApiModelProperty("任务状态")
+    private String taskStatus;
 
 
 }

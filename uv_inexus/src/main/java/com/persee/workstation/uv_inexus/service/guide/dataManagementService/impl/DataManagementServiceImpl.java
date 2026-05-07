@@ -1227,6 +1227,7 @@ public class DataManagementServiceImpl implements DataManagementService {
                     .methodId(record.getMethodKey())
                     .methodName(methodName)
                     .measureType(record.getMeasureType())
+                    .taskStatus(record.getTaskStatus()==null?"未测":record.getTaskStatus().equals(Constants.PARAM_ZERO)?"未测":record.getTaskStatus().equals(Constants.PARAM_ONE)?"已测":"结束")
                     .build();
             dtoList.add(dto);
         }
