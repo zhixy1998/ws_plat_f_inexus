@@ -15,6 +15,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.MethodBaseVo;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -198,6 +199,7 @@ public class ManageDataServiceImpl implements ManageDataService {
                     .methodId(record.getMethodKey())
                     .methodName(methodName)
                     .measureType(record.getMeasureType())
+                    .taskStatus(record.getIsSave()==(null)?"未保存":record.getIsSave().equals(Constants.PARAM_ZERO)?"未保存":"已保存")
                     .build();
             dtoList.add(dto);
         }
