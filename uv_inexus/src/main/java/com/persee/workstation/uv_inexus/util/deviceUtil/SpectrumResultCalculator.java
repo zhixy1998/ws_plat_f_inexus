@@ -7,6 +7,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -303,7 +304,13 @@ public class SpectrumResultCalculator {
             if (left >= wavelengths.size()) {
                 // x 比最大波长还大
                 double maxWl = wavelengths.get(wavelengths.size() - 1);
-                return Double.parseDouble(darkInfo.get(String.valueOf(maxWl)));
+                String s = darkInfo.get(String.valueOf(maxWl));
+                if (StringUtils.hasText(s)) {
+                    return Double.parseDouble(s);
+                } else {
+                    return 0.1;
+                }
+
             }
 
 
