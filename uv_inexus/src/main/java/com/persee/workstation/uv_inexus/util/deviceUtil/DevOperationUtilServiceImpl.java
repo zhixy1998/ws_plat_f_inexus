@@ -1228,7 +1228,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     }
                 }
 
-                if (comId.equals(ConnectEnum.SetCellPos.getComId())) {
+                if (comId.equals(ConnectEnum.SetCellPos.getComId()) || comId.equals(ConnectEnum.GetCellPos.getComId())) {
                     if (result.getAttachmentType() == null) {
                         continue;
                     }
