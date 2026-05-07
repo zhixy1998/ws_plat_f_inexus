@@ -1865,11 +1865,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (!zero.getSuccess()) {
                     return R.fail("零点失败");
                 }
-                zero = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
-
-                if (!zero.getSuccess()) {
-                    return R.fail("零点失败");
-                }
                 deviceManager.setZeroWavelength(deviceId, s);
                 deviceManager.setCurrentWavelength(deviceId, s);
 
@@ -1938,11 +1933,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             if (!zero.getSuccess()) {
                 return R.fail("零点失败");
             }
-            zero = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
 
-            if (!zero.getSuccess()) {
-                return R.fail("零点失败");
-            }
             deviceManager.setZeroWavelength(deviceId, wavelength);
             deviceManager.setCurrentWavelength(deviceId, wavelength);
 
@@ -2007,11 +1998,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 param = new Object[]{v};
                 bytes = protocolItemUtil.calcSendBytes(param, transition);
 
-                mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
-
-                if (!mesure.getSuccess()) {
-                    return R.fail("零点失败");
-                }
                 mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
 
                 if (!mesure.getSuccess()) {
@@ -2125,11 +2111,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             param = new Object[]{v};
             bytes = protocolItemUtil.calcSendBytes(param, transition);
 
-            mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
-
-            if (!mesure.getSuccess()) {
-                return R.fail("测量失败");
-            }
             mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
 
             if (!mesure.getSuccess()) {
