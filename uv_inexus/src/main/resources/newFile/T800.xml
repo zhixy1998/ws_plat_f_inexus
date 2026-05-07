@@ -837,6 +837,33 @@
         <string>255:101:19:4</string>
     </HeadReceiveBytes>
 </ProtocolItem>
+    <ProtocolItem>
+        <ID>LiveMeasure</ID>
+        <Describe>实时回显读取测量值</Describe>
+        <Timeout>30000</Timeout>
+        <ACK>Y</ACK>
+        <InputString>
+            <string/>
+        </InputString>
+        <OutputString>
+            <string>波长步数:AJ41:7</string>
+            <string>S:AJ42:7</string>
+            <string>D:AJ43:7</string>
+            <string>R:AJ44:7</string>
+        </OutputString>
+        <SendBytes>
+            <string>101:255:19:131:0:0:0:0:0:0:0:Check</string>
+        </SendBytes>
+        <ReadBytes>
+            <string>255:101:19:131:0:AJ41:AJ41:0:AJ42:AJ42:AJ42:Check:254:181:19:4:AJ43:AJ43:AJ43:0:AJ44:AJ44:AJ44:Check</string>
+        </ReadBytes>
+        <ReplyNumber>36</ReplyNumber>
+        <HeadReceiveBytes>
+            <string>255:101:19:131</string>
+            <string>255:101:19:132</string>
+        </HeadReceiveBytes>
+    </ProtocolItem>
+
 <ProtocolItem>
 <ID>BaseLine</ID>
 <Describe>基线</Describe>
