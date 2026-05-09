@@ -306,14 +306,44 @@ public class ExportServiceImpl implements ExportService {
             model.setUnit(formula.getUnit());
             model.setInputParam1Name(formula.getInputParam1Name());
             model.setInputParam1Identity(formula.getInputParam1Identity());
+            model.setIsSampleAttribute1(formula.getIsSampleAttribute1());
+            model.setCurveIdentifier1(formula.getCurveIdentifier1());
             model.setInputParam2Name(formula.getInputParam2Name());
             model.setInputParam2Identity(formula.getInputParam2Identity());
+            model.setIsSampleAttribute2(formula.getIsSampleAttribute2());
+            model.setCurveIdentifier2(formula.getCurveIdentifier2());
             model.setInputParam3Name(formula.getInputParam3Name());
             model.setInputParam3Identity(formula.getInputParam3Identity());
+            model.setIsSampleAttribute3(formula.getIsSampleAttribute3());
+            model.setCurveIdentifier3(formula.getCurveIdentifier3());
             model.setInputParam4Name(formula.getInputParam4Name());
             model.setInputParam4Identity(formula.getInputParam4Identity());
+            model.setIsSampleAttribute4(formula.getIsSampleAttribute4());
+            model.setCurveIdentifier4(formula.getCurveIdentifier4());
             model.setInputParam5Name(formula.getInputParam5Name());
             model.setInputParam5Identity(formula.getInputParam5Identity());
+            model.setIsSampleAttribute5(formula.getIsSampleAttribute5());
+            model.setCurveIdentifier5(formula.getCurveIdentifier5());
+            model.setInputParam6Name(formula.getInputParam6Name());
+            model.setInputParam6Identity(formula.getInputParam6Identity());
+            model.setIsSampleAttribute6(formula.getIsSampleAttribute6());
+            model.setCurveIdentifier6(formula.getCurveIdentifier6());
+            model.setInputParam7Name(formula.getInputParam7Name());
+            model.setInputParam7Identity(formula.getInputParam7Identity());
+            model.setIsSampleAttribute7(formula.getIsSampleAttribute7());
+            model.setCurveIdentifier7(formula.getCurveIdentifier7());
+            model.setInputParam8Name(formula.getInputParam8Name());
+            model.setInputParam8Identity(formula.getInputParam8Identity());
+            model.setIsSampleAttribute8(formula.getIsSampleAttribute8());
+            model.setCurveIdentifier8(formula.getCurveIdentifier8());
+            model.setInputParam9Name(formula.getInputParam9Name());
+            model.setInputParam9Identity(formula.getInputParam9Identity());
+            model.setIsSampleAttribute9(formula.getIsSampleAttribute9());
+            model.setCurveIdentifier9(formula.getCurveIdentifier9());
+            model.setInputParam10Name(formula.getInputParam10Name());
+            model.setInputParam10Identity(formula.getInputParam10Identity());
+            model.setIsSampleAttribute10(formula.getIsSampleAttribute10());
+            model.setCurveIdentifier10(formula.getCurveIdentifier10());
             model.setFormulaText(formula.getFormulaText());
             // 关键：不设置Base64到单元格，避免超长
             model.setFormulaImage(""); 
@@ -379,8 +409,9 @@ public class ExportServiceImpl implements ExportService {
 
     // 图片处理器（核心优化6：从缓存读取Base64，直接转换为图片插入，不读取单元格）
     private class FormulaImageHandler implements RowWriteHandler {
-        // 图片所在列索引（必须与CalculationFormulaExcelModel中formulaImage的@ExcelProperty(index)一致）
-        private static final int IMAGE_COLUMN_INDEX = 25;
+        // 图片所在列索引：4个基础字段 + 10组参数(4字段每组) + 1公式文本 = 4+40+1=45
+        // 即 formulaImage 在第46列（索引从0计）
+        private static final int IMAGE_COLUMN_INDEX = 45;
 
         @Override
         public void afterRowDispose(WriteSheetHolder writeSheetHolder,

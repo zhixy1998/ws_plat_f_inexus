@@ -129,6 +129,9 @@ public class ImportService {
                     jsonObject.put("强制过零点", model.getForceZeroCrossing());
                     jsonObject.put("斜率", model.getSlope());
                     jsonObject.put("截距", model.getIntercept());
+                    jsonObject.put("是否重复", model.getIsRepeat());
+                    jsonObject.put("重复次数", model.getRepeatCount());
+                    jsonObject.put("重复时间间隔(s)", model.getRepeatInterval());
                     detectionParametersMap.put(model.getDetectionId(), jsonObject);
                 }
             }
@@ -442,25 +445,50 @@ public class ImportService {
                     formula.setUnit(model.getUnit());
                     formula.setInputParam1Name(model.getInputParam1Name());
                     formula.setInputParam1Identity(model.getInputParam1Identity());
+                    formula.setIsSampleAttribute1(model.getIsSampleAttribute1());
+                    formula.setCurveIdentifier1(model.getCurveIdentifier1());
                     formula.setInputParam2Name(model.getInputParam2Name());
                     formula.setInputParam2Identity(model.getInputParam2Identity());
+                    formula.setIsSampleAttribute2(model.getIsSampleAttribute2());
+                    formula.setCurveIdentifier2(model.getCurveIdentifier2());
                     formula.setInputParam3Name(model.getInputParam3Name());
                     formula.setInputParam3Identity(model.getInputParam3Identity());
+                    formula.setIsSampleAttribute3(model.getIsSampleAttribute3());
+                    formula.setCurveIdentifier3(model.getCurveIdentifier3());
                     formula.setInputParam4Name(model.getInputParam4Name());
                     formula.setInputParam4Identity(model.getInputParam4Identity());
+                    formula.setIsSampleAttribute4(model.getIsSampleAttribute4());
+                    formula.setCurveIdentifier4(model.getCurveIdentifier4());
                     formula.setInputParam5Name(model.getInputParam5Name());
                     formula.setInputParam5Identity(model.getInputParam5Identity());
+                    formula.setIsSampleAttribute5(model.getIsSampleAttribute5());
+                    formula.setCurveIdentifier5(model.getCurveIdentifier5());
                     formula.setInputParam6Name(model.getInputParam6Name());
                     formula.setInputParam6Identity(model.getInputParam6Identity());
+                    formula.setIsSampleAttribute6(model.getIsSampleAttribute6());
+                    formula.setCurveIdentifier6(model.getCurveIdentifier6());
                     formula.setInputParam7Name(model.getInputParam7Name());
                     formula.setInputParam7Identity(model.getInputParam7Identity());
+                    formula.setIsSampleAttribute7(model.getIsSampleAttribute7());
+                    formula.setCurveIdentifier7(model.getCurveIdentifier7());
                     formula.setInputParam8Name(model.getInputParam8Name());
                     formula.setInputParam8Identity(model.getInputParam8Identity());
+                    formula.setIsSampleAttribute8(model.getIsSampleAttribute8());
+                    formula.setCurveIdentifier8(model.getCurveIdentifier8());
                     formula.setInputParam9Name(model.getInputParam9Name());
                     formula.setInputParam9Identity(model.getInputParam9Identity());
+                    formula.setIsSampleAttribute9(model.getIsSampleAttribute9());
+                    formula.setCurveIdentifier9(model.getCurveIdentifier9());
                     formula.setInputParam10Name(model.getInputParam10Name());
                     formula.setInputParam10Identity(model.getInputParam10Identity());
-                    formula.setFormulaText(model.getFormulaText());
+                    formula.setIsSampleAttribute10(model.getIsSampleAttribute10());
+                    formula.setCurveIdentifier10(model.getCurveIdentifier10());
+                    // 公式文本：将中文括号替换为英文括号
+                    String formulaText = model.getFormulaText();
+                    if (formulaText != null) {
+                        formulaText = formulaText.replace("（", "(").replace("）", ")");
+                    }
+                    formula.setFormulaText(formulaText);
                     formula.setFormulaImage(base64Image);
                     formula.setDetectionLimit(model.getDetectionLimit());
 
