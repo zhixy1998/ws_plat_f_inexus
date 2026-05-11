@@ -37,6 +37,15 @@ public class StandardDetectionUVVISPhotometryExcelModel {
     @ExcelProperty("波长6")
     private String wavelength6;
 
+    @ExcelProperty("是否重复")
+    private String isRepeat;
+
+    @ExcelProperty("重复次数")
+    private String repeatCount;
+
+    @ExcelProperty("重复时间间隔(s)")
+    private String repeatInterval;
+
     // Getters and Setters
     public String getDetectionId() {
         return detectionId;
@@ -92,5 +101,29 @@ public class StandardDetectionUVVISPhotometryExcelModel {
 
     public void setWavelength6(String wavelength6) {
         this.wavelength6 = wavelength6;
+    }
+
+    public String getIsRepeat() {
+        return isRepeat;
+    }
+
+    public void setIsRepeat(String isRepeat) {
+        this.isRepeat = isRepeat;
+    }
+
+    public String getRepeatCount() {
+        return repeatCount;
+    }
+
+    public void setRepeatCount(String repeatCount) {
+        this.repeatCount = repeatCount;
+    }
+
+    public String getRepeatInterval() {
+        return repeatInterval;
+    }
+
+    public void setRepeatInterval(String repeatInterval) {
+        this.repeatInterval = repeatInterval;
     }
 }

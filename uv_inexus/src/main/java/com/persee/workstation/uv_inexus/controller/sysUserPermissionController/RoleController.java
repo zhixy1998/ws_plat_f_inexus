@@ -125,13 +125,16 @@ public class RoleController {
             @RequestBody PermissionTreeQueryDTO queryDTO) {
         String permType = queryDTO.getPermType();
         String roleId = queryDTO.getRoleId();
+        Integer quickConfigType = queryDTO.getQuickConfigType();
+
         List<Integer> permTypeList = null;
         if (permType != null && !permType.isEmpty()) {
             permTypeList = Arrays.stream(permType.split(","))
                     .map(Integer::parseInt)
                     .collect(Collectors.toList());
         }
-        System.out.println("permTypeList: " + permTypeList + ", roleId: " + roleId);
-        return sysRoleService.getPermissionTree(permTypeList, roleId);
+        System.out.println("permTypeList: " + permTypeList + ", roleId: " + roleId + ", quickConfigType: " + quickConfigType);
+        return sysRoleService.getPermissionTree(permTypeList, roleId, quickConfigType);
     }
+
 }

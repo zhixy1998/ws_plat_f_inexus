@@ -109,6 +109,8 @@ public class ManageDataServiceImpl implements ManageDataService {
                     vo.setMeasurementType(method.getMeasurementType());
                     vo.setCreateTime(method.getMethodCreateTime() != null ?
                             method.getMethodCreateTime().format(formatter) : null);
+                    vo.setRecentUsageTime(method.getMethodUseTime() != null ?
+                            method.getMethodUseTime().format(formatter) : "—");
 
                     if (method.getProjectItemKey() != null) {
                         FMeasureProject project = getProjectById(method.getProjectItemKey());

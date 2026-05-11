@@ -42,6 +42,9 @@ public class CalculationFormula extends BasePO {
     @TableField("input_param1_identity")
     private String inputParam1Identity;
 
+    @TableField("input_param1_unit")
+    private String inputParam1Unit;
+
     @TableField("is_sample_attribute1")
     private String isSampleAttribute1;
 
@@ -54,6 +57,9 @@ public class CalculationFormula extends BasePO {
 
     @TableField("input_param2_identity")
     private String inputParam2Identity;
+
+    @TableField("input_param2_unit")
+    private String inputParam2Unit;
 
     @TableField("is_sample_attribute2")
     private String isSampleAttribute2;
@@ -68,6 +74,9 @@ public class CalculationFormula extends BasePO {
     @TableField("input_param3_identity")
     private String inputParam3Identity;
 
+    @TableField("input_param3_unit")
+    private String inputParam3Unit;
+
     @TableField("is_sample_attribute3")
     private String isSampleAttribute3;
 
@@ -80,6 +89,9 @@ public class CalculationFormula extends BasePO {
 
     @TableField("input_param4_identity")
     private String inputParam4Identity;
+
+    @TableField("input_param4_unit")
+    private String inputParam4Unit;
 
     @TableField("is_sample_attribute4")
     private String isSampleAttribute4;
@@ -94,6 +106,9 @@ public class CalculationFormula extends BasePO {
     @TableField("input_param5_identity")
     private String inputParam5Identity;
 
+    @TableField("input_param5_unit")
+    private String inputParam5Unit;
+
     @TableField("is_sample_attribute5")
     private String isSampleAttribute5;
 
@@ -106,6 +121,9 @@ public class CalculationFormula extends BasePO {
 
     @TableField("input_param6_identity")
     private String inputParam6Identity;
+
+    @TableField("input_param6_unit")
+    private String inputParam6Unit;
 
     @TableField("is_sample_attribute6")
     private String isSampleAttribute6;
@@ -120,6 +138,9 @@ public class CalculationFormula extends BasePO {
     @TableField("input_param7_identity")
     private String inputParam7Identity;
 
+    @TableField("input_param7_unit")
+    private String inputParam7Unit;
+
     @TableField("is_sample_attribute7")
     private String isSampleAttribute7;
 
@@ -132,6 +153,9 @@ public class CalculationFormula extends BasePO {
 
     @TableField("input_param8_identity")
     private String inputParam8Identity;
+
+    @TableField("input_param8_unit")
+    private String inputParam8Unit;
 
     @TableField("is_sample_attribute8")
     private String isSampleAttribute8;
@@ -146,6 +170,9 @@ public class CalculationFormula extends BasePO {
     @TableField("input_param9_identity")
     private String inputParam9Identity;
 
+    @TableField("input_param9_unit")
+    private String inputParam9Unit;
+
     @TableField("is_sample_attribute9")
     private String isSampleAttribute9;
 
@@ -158,6 +185,9 @@ public class CalculationFormula extends BasePO {
 
     @TableField("input_param10_identity")
     private String inputParam10Identity;
+
+    @TableField("input_param10_unit")
+    private String inputParam10Unit;
 
     @TableField("is_sample_attribute10")
     private String isSampleAttribute10;

@@ -68,6 +68,15 @@ public class StandardDetectionUVVISCurveExcelModel {
     @ExcelProperty("截距")
     private String intercept;
 
+    @ExcelProperty("是否重复")
+    private String isRepeat;
+
+    @ExcelProperty("重复次数")
+    private String repeatCount;
+
+    @ExcelProperty("重复时间间隔(s)")
+    private String repeatInterval;
+
     // Getters and Setters
     public String getDetectionId() {
         return detectionId;
@@ -203,5 +212,29 @@ public class StandardDetectionUVVISCurveExcelModel {
 
     public void setIntercept(String intercept) {
         this.intercept = intercept;
+    }
+
+    public String getIsRepeat() {
+        return isRepeat;
+    }
+
+    public void setIsRepeat(String isRepeat) {
+        this.isRepeat = isRepeat;
+    }
+
+    public String getRepeatCount() {
+        return repeatCount;
+    }
+
+    public void setRepeatCount(String repeatCount) {
+        this.repeatCount = repeatCount;
+    }
+
+    public String getRepeatInterval() {
+        return repeatInterval;
+    }
+
+    public void setRepeatInterval(String repeatInterval) {
+        this.repeatInterval = repeatInterval;
     }
 }

@@ -74,11 +74,11 @@ public class Detection extends BasePO {
     private String releaseDate;
 
     @TableField("expiration_date")
-    @ApiModelProperty("失效时间")
+    @ApiModelProperty("废止日期")
     private String expirationDate;
 
     @TableField("effective_date")
-    @ApiModelProperty("实施时间")
+    @ApiModelProperty("实施日期")
     private String effectiveDate;
 
     @TableField("release_status")

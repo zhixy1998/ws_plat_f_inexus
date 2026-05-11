@@ -37,11 +37,29 @@ public class CalculationFormulaExcelModel {
     @ExcelProperty("输入参数1标识")
     private String inputParam1Identity;
 
+    @ExcelProperty("参数1单位")
+    private String inputParam1Unit;
+
+    @ExcelProperty("是否为样品输入参数1")
+    private String isSampleAttribute1;
+
+    @ExcelProperty("软件绑定标识1")
+    private String curveIdentifier1;
+
     @ExcelProperty("输入参数2名称")
     private String inputParam2Name;
 
     @ExcelProperty("输入参数2标识")
     private String inputParam2Identity;
+
+    @ExcelProperty("参数2单位")
+    private String inputParam2Unit;
+
+    @ExcelProperty("是否为样品输入参数2")
+    private String isSampleAttribute2;
+
+    @ExcelProperty("软件绑定标识2")
+    private String curveIdentifier2;
 
     @ExcelProperty("输入参数3名称")
     private String inputParam3Name;
@@ -49,11 +67,29 @@ public class CalculationFormulaExcelModel {
     @ExcelProperty("输入参数3标识")
     private String inputParam3Identity;
 
+    @ExcelProperty("参数3单位")
+    private String inputParam3Unit;
+
+    @ExcelProperty("是否为样品输入参数3")
+    private String isSampleAttribute3;
+
+    @ExcelProperty("软件绑定标识3")
+    private String curveIdentifier3;
+
     @ExcelProperty("输入参数4名称")
     private String inputParam4Name;
 
     @ExcelProperty("输入参数4标识")
     private String inputParam4Identity;
+
+    @ExcelProperty("参数4单位")
+    private String inputParam4Unit;
+
+    @ExcelProperty("是否为样品输入参数4")
+    private String isSampleAttribute4;
+
+    @ExcelProperty("软件绑定标识4")
+    private String curveIdentifier4;
 
     @ExcelProperty("输入参数5名称")
     private String inputParam5Name;
@@ -61,11 +97,29 @@ public class CalculationFormulaExcelModel {
     @ExcelProperty("输入参数5标识")
     private String inputParam5Identity;
 
+    @ExcelProperty("参数5单位")
+    private String inputParam5Unit;
+
+    @ExcelProperty("是否为样品输入参数5")
+    private String isSampleAttribute5;
+
+    @ExcelProperty("软件绑定标识5")
+    private String curveIdentifier5;
+
     @ExcelProperty("输入参数6名称")
     private String inputParam6Name;
 
     @ExcelProperty("输入参数6标识")
     private String inputParam6Identity;
+
+    @ExcelProperty("参数6单位")
+    private String inputParam6Unit;
+
+    @ExcelProperty("是否为样品输入参数6")
+    private String isSampleAttribute6;
+
+    @ExcelProperty("软件绑定标识6")
+    private String curveIdentifier6;
 
     @ExcelProperty("输入参数7名称")
     private String inputParam7Name;
@@ -73,11 +127,29 @@ public class CalculationFormulaExcelModel {
     @ExcelProperty("输入参数7标识")
     private String inputParam7Identity;
 
+    @ExcelProperty("参数7单位")
+    private String inputParam7Unit;
+
+    @ExcelProperty("是否为样品输入参数7")
+    private String isSampleAttribute7;
+
+    @ExcelProperty("软件绑定标识7")
+    private String curveIdentifier7;
+
     @ExcelProperty("输入参数8名称")
     private String inputParam8Name;
 
     @ExcelProperty("输入参数8标识")
     private String inputParam8Identity;
+
+    @ExcelProperty("参数8单位")
+    private String inputParam8Unit;
+
+    @ExcelProperty("是否为样品输入参数8")
+    private String isSampleAttribute8;
+
+    @ExcelProperty("软件绑定标识8")
+    private String curveIdentifier8;
 
     @ExcelProperty("输入参数9名称")
     private String inputParam9Name;
@@ -85,11 +157,29 @@ public class CalculationFormulaExcelModel {
     @ExcelProperty("输入参数9标识")
     private String inputParam9Identity;
 
+    @ExcelProperty("参数9单位")
+    private String inputParam9Unit;
+
+    @ExcelProperty("是否为样品输入参数9")
+    private String isSampleAttribute9;
+
+    @ExcelProperty("软件绑定标识9")
+    private String curveIdentifier9;
+
     @ExcelProperty("输入参数10名称")
     private String inputParam10Name;
 
     @ExcelProperty("输入参数10标识")
     private String inputParam10Identity;
+
+    @ExcelProperty("参数10单位")
+    private String inputParam10Unit;
+
+    @ExcelProperty("是否为样品输入参数10")
+    private String isSampleAttribute10;
+
+    @ExcelProperty("软件绑定标识10")
+    private String curveIdentifier10;
 
     @ExcelProperty("公式文本")
     private String formulaText;
@@ -147,6 +237,30 @@ public class CalculationFormulaExcelModel {
         this.inputParam1Identity = inputParam1Identity;
     }
 
+    public String getInputParam1Unit() {
+        return inputParam1Unit;
+    }
+
+    public void setInputParam1Unit(String inputParam1Unit) {
+        this.inputParam1Unit = inputParam1Unit;
+    }
+
+    public String getIsSampleAttribute1() {
+        return isSampleAttribute1;
+    }
+
+    public void setIsSampleAttribute1(String isSampleAttribute1) {
+        this.isSampleAttribute1 = isSampleAttribute1;
+    }
+
+    public String getCurveIdentifier1() {
+        return curveIdentifier1;
+    }
+
+    public void setCurveIdentifier1(String curveIdentifier1) {
+        this.curveIdentifier1 = curveIdentifier1;
+    }
+
     public String getInputParam2Name() {
         return inputParam2Name;
     }
@@ -161,6 +275,30 @@ public class CalculationFormulaExcelModel {
 
     public void setInputParam2Identity(String inputParam2Identity) {
         this.inputParam2Identity = inputParam2Identity;
+    }
+
+    public String getInputParam2Unit() {
+        return inputParam2Unit;
+    }
+
+    public void setInputParam2Unit(String inputParam2Unit) {
+        this.inputParam2Unit = inputParam2Unit;
+    }
+
+    public String getIsSampleAttribute2() {
+        return isSampleAttribute2;
+    }
+
+    public void setIsSampleAttribute2(String isSampleAttribute2) {
+        this.isSampleAttribute2 = isSampleAttribute2;
+    }
+
+    public String getCurveIdentifier2() {
+        return curveIdentifier2;
+    }
+
+    public void setCurveIdentifier2(String curveIdentifier2) {
+        this.curveIdentifier2 = curveIdentifier2;
     }
 
     public String getInputParam3Name() {
@@ -179,6 +317,30 @@ public class CalculationFormulaExcelModel {
         this.inputParam3Identity = inputParam3Identity;
     }
 
+    public String getInputParam3Unit() {
+        return inputParam3Unit;
+    }
+
+    public void setInputParam3Unit(String inputParam3Unit) {
+        this.inputParam3Unit = inputParam3Unit;
+    }
+
+    public String getIsSampleAttribute3() {
+        return isSampleAttribute3;
+    }
+
+    public void setIsSampleAttribute3(String isSampleAttribute3) {
+        this.isSampleAttribute3 = isSampleAttribute3;
+    }
+
+    public String getCurveIdentifier3() {
+        return curveIdentifier3;
+    }
+
+    public void setCurveIdentifier3(String curveIdentifier3) {
+        this.curveIdentifier3 = curveIdentifier3;
+    }
+
     public String getInputParam4Name() {
         return inputParam4Name;
     }
@@ -193,6 +355,30 @@ public class CalculationFormulaExcelModel {
 
     public void setInputParam4Identity(String inputParam4Identity) {
         this.inputParam4Identity = inputParam4Identity;
+    }
+
+    public String getInputParam4Unit() {
+        return inputParam4Unit;
+    }
+
+    public void setInputParam4Unit(String inputParam4Unit) {
+        this.inputParam4Unit = inputParam4Unit;
+    }
+
+    public String getIsSampleAttribute4() {
+        return isSampleAttribute4;
+    }
+
+    public void setIsSampleAttribute4(String isSampleAttribute4) {
+        this.isSampleAttribute4 = isSampleAttribute4;
+    }
+
+    public String getCurveIdentifier4() {
+        return curveIdentifier4;
+    }
+
+    public void setCurveIdentifier4(String curveIdentifier4) {
+        this.curveIdentifier4 = curveIdentifier4;
     }
 
     public String getInputParam5Name() {
@@ -211,6 +397,30 @@ public class CalculationFormulaExcelModel {
         this.inputParam5Identity = inputParam5Identity;
     }
 
+    public String getInputParam5Unit() {
+        return inputParam5Unit;
+    }
+
+    public void setInputParam5Unit(String inputParam5Unit) {
+        this.inputParam5Unit = inputParam5Unit;
+    }
+
+    public String getIsSampleAttribute5() {
+        return isSampleAttribute5;
+    }
+
+    public void setIsSampleAttribute5(String isSampleAttribute5) {
+        this.isSampleAttribute5 = isSampleAttribute5;
+    }
+
+    public String getCurveIdentifier5() {
+        return curveIdentifier5;
+    }
+
+    public void setCurveIdentifier5(String curveIdentifier5) {
+        this.curveIdentifier5 = curveIdentifier5;
+    }
+
     public String getInputParam6Name() {
         return inputParam6Name;
     }
@@ -225,6 +435,30 @@ public class CalculationFormulaExcelModel {
 
     public void setInputParam6Identity(String inputParam6Identity) {
         this.inputParam6Identity = inputParam6Identity;
+    }
+
+    public String getInputParam6Unit() {
+        return inputParam6Unit;
+    }
+
+    public void setInputParam6Unit(String inputParam6Unit) {
+        this.inputParam6Unit = inputParam6Unit;
+    }
+
+    public String getIsSampleAttribute6() {
+        return isSampleAttribute6;
+    }
+
+    public void setIsSampleAttribute6(String isSampleAttribute6) {
+        this.isSampleAttribute6 = isSampleAttribute6;
+    }
+
+    public String getCurveIdentifier6() {
+        return curveIdentifier6;
+    }
+
+    public void setCurveIdentifier6(String curveIdentifier6) {
+        this.curveIdentifier6 = curveIdentifier6;
     }
 
     public String getInputParam7Name() {
@@ -243,6 +477,30 @@ public class CalculationFormulaExcelModel {
         this.inputParam7Identity = inputParam7Identity;
     }
 
+    public String getInputParam7Unit() {
+        return inputParam7Unit;
+    }
+
+    public void setInputParam7Unit(String inputParam7Unit) {
+        this.inputParam7Unit = inputParam7Unit;
+    }
+
+    public String getIsSampleAttribute7() {
+        return isSampleAttribute7;
+    }
+
+    public void setIsSampleAttribute7(String isSampleAttribute7) {
+        this.isSampleAttribute7 = isSampleAttribute7;
+    }
+
+    public String getCurveIdentifier7() {
+        return curveIdentifier7;
+    }
+
+    public void setCurveIdentifier7(String curveIdentifier7) {
+        this.curveIdentifier7 = curveIdentifier7;
+    }
+
     public String getInputParam8Name() {
         return inputParam8Name;
     }
@@ -257,6 +515,30 @@ public class CalculationFormulaExcelModel {
 
     public void setInputParam8Identity(String inputParam8Identity) {
         this.inputParam8Identity = inputParam8Identity;
+    }
+
+    public String getInputParam8Unit() {
+        return inputParam8Unit;
+    }
+
+    public void setInputParam8Unit(String inputParam8Unit) {
+        this.inputParam8Unit = inputParam8Unit;
+    }
+
+    public String getIsSampleAttribute8() {
+        return isSampleAttribute8;
+    }
+
+    public void setIsSampleAttribute8(String isSampleAttribute8) {
+        this.isSampleAttribute8 = isSampleAttribute8;
+    }
+
+    public String getCurveIdentifier8() {
+        return curveIdentifier8;
+    }
+
+    public void setCurveIdentifier8(String curveIdentifier8) {
+        this.curveIdentifier8 = curveIdentifier8;
     }
 
     public String getInputParam9Name() {
@@ -274,6 +556,30 @@ public class CalculationFormulaExcelModel {
     public void setInputParam9Identity(String inputParam9Identity) {
         this.inputParam9Identity = inputParam9Identity;
     }
+
+    public String getInputParam9Unit() {
+        return inputParam9Unit;
+    }
+
+    public void setInputParam9Unit(String inputParam9Unit) {
+        this.inputParam9Unit = inputParam9Unit;
+    }
+
+    public String getIsSampleAttribute9() {
+        return isSampleAttribute9;
+    }
+
+    public void setIsSampleAttribute9(String isSampleAttribute9) {
+        this.isSampleAttribute9 = isSampleAttribute9;
+    }
+
+    public String getCurveIdentifier9() {
+        return curveIdentifier9;
+    }
+
+    public void setCurveIdentifier9(String curveIdentifier9) {
+        this.curveIdentifier9 = curveIdentifier9;
+    }
     
     public String getInputParam10Name() {
         return inputParam10Name;
@@ -289,6 +595,30 @@ public class CalculationFormulaExcelModel {
 
     public void setInputParam10Identity(String inputParam10Identity) {
         this.inputParam10Identity = inputParam10Identity;
+    }
+
+    public String getInputParam10Unit() {
+        return inputParam10Unit;
+    }
+
+    public void setInputParam10Unit(String inputParam10Unit) {
+        this.inputParam10Unit = inputParam10Unit;
+    }
+
+    public String getIsSampleAttribute10() {
+        return isSampleAttribute10;
+    }
+
+    public void setIsSampleAttribute10(String isSampleAttribute10) {
+        this.isSampleAttribute10 = isSampleAttribute10;
+    }
+
+    public String getCurveIdentifier10() {
+        return curveIdentifier10;
+    }
+
+    public void setCurveIdentifier10(String curveIdentifier10) {
+        this.curveIdentifier10 = curveIdentifier10;
     }
 
     public String getFormulaText() {
