@@ -16,4 +16,8 @@ public class PermissionTreeQueryDTO {
 
     @ApiModelProperty(value = "角色ID", required = true)
     private String roleId;
+
+    @ApiModelProperty(value = "快速配置类型：0-普通用户，1-GMP，null表示所有类型")
+    private Integer quickConfigType;
 }
+

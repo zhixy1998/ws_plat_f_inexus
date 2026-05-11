@@ -13,7 +13,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,21 +42,17 @@ import com.persee.workstation.uv_inexus.excel.RoundingRulesExcelModel;
 import com.persee.workstation.uv_inexus.excel.StandardDetectionExcelModel;
 import com.persee.workstation.uv_inexus.excel.StandardDetectionUVVISCurveExcelModel;
 import com.persee.workstation.uv_inexus.excel.StandardDetectionUVVISPhotometryExcelModel;
+import com.persee.workstation.uv_inexus.excel.StandardDetectionUVVISSpectrumScanExcelModel;
 import com.persee.workstation.uv_inexus.excel.StandardPretreatmentExcelModel;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingParamVO;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.CalculationFormula;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.Detection;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.QualityControl;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.RoundingRules;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.StandardPretreatment;
-   
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingParamVO;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
-import com.persee.workstation.uv_inexus.model.R;
 
 @Service
 public class ImportService {
@@ -108,6 +112,16 @@ public class ImportService {
                 errorMessages.add("标准信息表：未找到UV-VIS-光度测量-检测参数表，忽略该部分数据");
             }
 
+            List<StandardDetectionUVVISSpectrumScanExcelModel> spectrumScanList = null;
+            try {
+                spectrumScanList = EasyExcel.read(file.getInputStream())
+                        .head(StandardDetectionUVVISSpectrumScanExcelModel.class)
+                        .sheet("UV-VIS-光谱扫描-检测参数表")
+                        .doReadSync();
+            } catch (Exception e) {
+                errorMessages.add("标准信息表：未找到UV-VIS-光谱扫描-检测参数表，忽略该部分数据");
+            }
+
             // 合并检测参数
             Map<String, JSONObject> detectionParametersMap = new HashMap<>();
             if (standardCurveList != null) {
@@ -129,6 +143,9 @@ public class ImportService {
                     jsonObject.put("强制过零点", model.getForceZeroCrossing());
                     jsonObject.put("斜率", model.getSlope());
                     jsonObject.put("截距", model.getIntercept());
+                    jsonObject.put("是否重复", model.getIsRepeat());
+                    jsonObject.put("重复次数", model.getRepeatCount());
+                    jsonObject.put("重复时间间隔(s)", model.getRepeatInterval());
                     detectionParametersMap.put(model.getDetectionId(), jsonObject);
                 }
             }
@@ -141,12 +158,47 @@ public class ImportService {
                         jsonObject.put("波长2", model.getWavelength2());
                         jsonObject.put("波长3", model.getWavelength3());
                         jsonObject.put("波长4", model.getWavelength4());
+                        jsonObject.put("波长5", model.getWavelength5());
+                        jsonObject.put("波长6", model.getWavelength6());
+                        jsonObject.put("是否重复", model.getIsRepeat());
+                        jsonObject.put("重复次数", model.getRepeatCount());
+                        jsonObject.put("重复时间间隔(s)", model.getRepeatInterval());
                     } else {
                         JSONObject jsonObject = new JSONObject();
                         jsonObject.put("波长1", model.getWavelength1());
                         jsonObject.put("波长2", model.getWavelength2());
                         jsonObject.put("波长3", model.getWavelength3());
                         jsonObject.put("波长4", model.getWavelength4());
+                        jsonObject.put("波长5", model.getWavelength5());
+                        jsonObject.put("波长6", model.getWavelength6());
+                        jsonObject.put("是否重复", model.getIsRepeat());
+                        jsonObject.put("重复次数", model.getRepeatCount());
+                        jsonObject.put("重复时间间隔(s)", model.getRepeatInterval());
+                        detectionParametersMap.put(model.getDetectionId(), jsonObject);
+                    }
+                }
+            }
+
+            if (spectrumScanList != null) {
+                for (StandardDetectionUVVISSpectrumScanExcelModel model : spectrumScanList) {
+                    if (detectionParametersMap.containsKey(model.getDetectionId())) {
+                        JSONObject jsonObject = detectionParametersMap.get(model.getDetectionId());
+                        jsonObject.put("起始波长", model.getStartWavelength());
+                        jsonObject.put("终止波长", model.getEndWavelength());
+                        jsonObject.put("扫描间隔", model.getScanInterval());
+                        jsonObject.put("扫描速度", model.getScanSpeed());
+                        jsonObject.put("是否重复", model.getIsRepeat());
+                        jsonObject.put("重复次数", model.getRepeatCount());
+                        jsonObject.put("重复时间间隔(s)", model.getRepeatInterval());
+                    } else {
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("起始波长", model.getStartWavelength());
+                        jsonObject.put("终止波长", model.getEndWavelength());
+                        jsonObject.put("扫描间隔", model.getScanInterval());
+                        jsonObject.put("扫描速度", model.getScanSpeed());
+                        jsonObject.put("是否重复", model.getIsRepeat());
+                        jsonObject.put("重复次数", model.getRepeatCount());
+                        jsonObject.put("重复时间间隔(s)", model.getRepeatInterval());
                         detectionParametersMap.put(model.getDetectionId(), jsonObject);
                     }
                 }
@@ -442,25 +494,60 @@ public class ImportService {
                     formula.setUnit(model.getUnit());
                     formula.setInputParam1Name(model.getInputParam1Name());
                     formula.setInputParam1Identity(model.getInputParam1Identity());
+                    formula.setInputParam1Unit(model.getInputParam1Unit());
+                    formula.setIsSampleAttribute1(model.getIsSampleAttribute1());
+                    formula.setCurveIdentifier1(model.getCurveIdentifier1());
                     formula.setInputParam2Name(model.getInputParam2Name());
                     formula.setInputParam2Identity(model.getInputParam2Identity());
+                    formula.setInputParam2Unit(model.getInputParam2Unit());
+                    formula.setIsSampleAttribute2(model.getIsSampleAttribute2());
+                    formula.setCurveIdentifier2(model.getCurveIdentifier2());
                     formula.setInputParam3Name(model.getInputParam3Name());
                     formula.setInputParam3Identity(model.getInputParam3Identity());
+                    formula.setInputParam3Unit(model.getInputParam3Unit());
+                    formula.setIsSampleAttribute3(model.getIsSampleAttribute3());
+                    formula.setCurveIdentifier3(model.getCurveIdentifier3());
                     formula.setInputParam4Name(model.getInputParam4Name());
                     formula.setInputParam4Identity(model.getInputParam4Identity());
+                    formula.setInputParam4Unit(model.getInputParam4Unit());
+                    formula.setIsSampleAttribute4(model.getIsSampleAttribute4());
+                    formula.setCurveIdentifier4(model.getCurveIdentifier4());
                     formula.setInputParam5Name(model.getInputParam5Name());
                     formula.setInputParam5Identity(model.getInputParam5Identity());
+                    formula.setInputParam5Unit(model.getInputParam5Unit());
+                    formula.setIsSampleAttribute5(model.getIsSampleAttribute5());
+                    formula.setCurveIdentifier5(model.getCurveIdentifier5());
                     formula.setInputParam6Name(model.getInputParam6Name());
                     formula.setInputParam6Identity(model.getInputParam6Identity());
+                    formula.setInputParam6Unit(model.getInputParam6Unit());
+                    formula.setIsSampleAttribute6(model.getIsSampleAttribute6());
+                    formula.setCurveIdentifier6(model.getCurveIdentifier6());
                     formula.setInputParam7Name(model.getInputParam7Name());
                     formula.setInputParam7Identity(model.getInputParam7Identity());
+                    formula.setInputParam7Unit(model.getInputParam7Unit());
+                    formula.setIsSampleAttribute7(model.getIsSampleAttribute7());
+                    formula.setCurveIdentifier7(model.getCurveIdentifier7());
                     formula.setInputParam8Name(model.getInputParam8Name());
                     formula.setInputParam8Identity(model.getInputParam8Identity());
+                    formula.setInputParam8Unit(model.getInputParam8Unit());
+                    formula.setIsSampleAttribute8(model.getIsSampleAttribute8());
+                    formula.setCurveIdentifier8(model.getCurveIdentifier8());
                     formula.setInputParam9Name(model.getInputParam9Name());
                     formula.setInputParam9Identity(model.getInputParam9Identity());
+                    formula.setInputParam9Unit(model.getInputParam9Unit());
+                    formula.setIsSampleAttribute9(model.getIsSampleAttribute9());
+                    formula.setCurveIdentifier9(model.getCurveIdentifier9());
                     formula.setInputParam10Name(model.getInputParam10Name());
                     formula.setInputParam10Identity(model.getInputParam10Identity());
-                    formula.setFormulaText(model.getFormulaText());
+                    formula.setInputParam10Unit(model.getInputParam10Unit());
+                    formula.setIsSampleAttribute10(model.getIsSampleAttribute10());
+                    formula.setCurveIdentifier10(model.getCurveIdentifier10());
+                    // 公式文本：将中文括号替换为英文括号
+                    String formulaText = model.getFormulaText();
+                    if (formulaText != null) {
+                        formulaText = formulaText.replace("（", "(").replace("）", ")");
+                    }
+                    formula.setFormulaText(formulaText);
                     formula.setFormulaImage(base64Image);
                     formula.setDetectionLimit(model.getDetectionLimit());
 

@@ -49,10 +49,10 @@ public class StandardDetectionExcelModel {
     @ExcelProperty("发布时间")
     private String releaseDate;
 
-    @ExcelProperty("失效时间")
+    @ExcelProperty("废止日期")
     private String expirationDate;
 
-    @ExcelProperty("实施时间")
+    @ExcelProperty("实施日期")
     private String effectiveDate;
     
     @ExcelProperty("状态")
