@@ -10,6 +10,8 @@
 package com.persee.workstation.uv_inexus;
 
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
@@ -17,15 +19,31 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 @SpringBootApplication
 @ComponentScan("com.persee.workstation.uv_inexus")
 @MapperScan("com.persee.workstation.uv_inexus.dao")
 @EnableAspectJAutoProxy(proxyTargetClass = true)
 @EnableScheduling
 @EnableCaching
-public class Application {
+public class Application implements ApplicationRunner {
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
+    }
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        String version = getClass().getPackage().getImplementationVersion();
+        if (version == null) {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd-HHmmss");
+            version = sdf.format(new Date()) + "-SNAPSHOT";
+        }
+        System.out.println("===========================================");
+        System.out.println("应用启动成功！");
+        System.out.println("当前版本: v" + version);
+        System.out.println("===========================================");
     }
 }
