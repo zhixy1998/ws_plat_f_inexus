@@ -37,6 +37,9 @@ public class CalculationFormulaExcelModel {
     @ExcelProperty("输入参数1标识")
     private String inputParam1Identity;
 
+    @ExcelProperty("参数1单位")
+    private String inputParam1Unit;
+
     @ExcelProperty("是否为样品输入参数1")
     private String isSampleAttribute1;
 
@@ -48,6 +51,9 @@ public class CalculationFormulaExcelModel {
 
     @ExcelProperty("输入参数2标识")
     private String inputParam2Identity;
+
+    @ExcelProperty("参数2单位")
+    private String inputParam2Unit;
 
     @ExcelProperty("是否为样品输入参数2")
     private String isSampleAttribute2;
@@ -61,6 +67,9 @@ public class CalculationFormulaExcelModel {
     @ExcelProperty("输入参数3标识")
     private String inputParam3Identity;
 
+    @ExcelProperty("参数3单位")
+    private String inputParam3Unit;
+
     @ExcelProperty("是否为样品输入参数3")
     private String isSampleAttribute3;
 
@@ -72,6 +81,9 @@ public class CalculationFormulaExcelModel {
 
     @ExcelProperty("输入参数4标识")
     private String inputParam4Identity;
+
+    @ExcelProperty("参数4单位")
+    private String inputParam4Unit;
 
     @ExcelProperty("是否为样品输入参数4")
     private String isSampleAttribute4;
@@ -85,6 +97,9 @@ public class CalculationFormulaExcelModel {
     @ExcelProperty("输入参数5标识")
     private String inputParam5Identity;
 
+    @ExcelProperty("参数5单位")
+    private String inputParam5Unit;
+
     @ExcelProperty("是否为样品输入参数5")
     private String isSampleAttribute5;
 
@@ -96,6 +111,9 @@ public class CalculationFormulaExcelModel {
 
     @ExcelProperty("输入参数6标识")
     private String inputParam6Identity;
+
+    @ExcelProperty("参数6单位")
+    private String inputParam6Unit;
 
     @ExcelProperty("是否为样品输入参数6")
     private String isSampleAttribute6;
@@ -109,6 +127,9 @@ public class CalculationFormulaExcelModel {
     @ExcelProperty("输入参数7标识")
     private String inputParam7Identity;
 
+    @ExcelProperty("参数7单位")
+    private String inputParam7Unit;
+
     @ExcelProperty("是否为样品输入参数7")
     private String isSampleAttribute7;
 
@@ -120,6 +141,9 @@ public class CalculationFormulaExcelModel {
 
     @ExcelProperty("输入参数8标识")
     private String inputParam8Identity;
+
+    @ExcelProperty("参数8单位")
+    private String inputParam8Unit;
 
     @ExcelProperty("是否为样品输入参数8")
     private String isSampleAttribute8;
@@ -133,6 +157,9 @@ public class CalculationFormulaExcelModel {
     @ExcelProperty("输入参数9标识")
     private String inputParam9Identity;
 
+    @ExcelProperty("参数9单位")
+    private String inputParam9Unit;
+
     @ExcelProperty("是否为样品输入参数9")
     private String isSampleAttribute9;
 
@@ -144,6 +171,9 @@ public class CalculationFormulaExcelModel {
 
     @ExcelProperty("输入参数10标识")
     private String inputParam10Identity;
+
+    @ExcelProperty("参数10单位")
+    private String inputParam10Unit;
 
     @ExcelProperty("是否为样品输入参数10")
     private String isSampleAttribute10;
@@ -207,6 +237,14 @@ public class CalculationFormulaExcelModel {
         this.inputParam1Identity = inputParam1Identity;
     }
 
+    public String getInputParam1Unit() {
+        return inputParam1Unit;
+    }
+
+    public void setInputParam1Unit(String inputParam1Unit) {
+        this.inputParam1Unit = inputParam1Unit;
+    }
+
     public String getIsSampleAttribute1() {
         return isSampleAttribute1;
     }
@@ -237,6 +275,14 @@ public class CalculationFormulaExcelModel {
 
     public void setInputParam2Identity(String inputParam2Identity) {
         this.inputParam2Identity = inputParam2Identity;
+    }
+
+    public String getInputParam2Unit() {
+        return inputParam2Unit;
+    }
+
+    public void setInputParam2Unit(String inputParam2Unit) {
+        this.inputParam2Unit = inputParam2Unit;
     }
 
     public String getIsSampleAttribute2() {
@@ -271,6 +317,14 @@ public class CalculationFormulaExcelModel {
         this.inputParam3Identity = inputParam3Identity;
     }
 
+    public String getInputParam3Unit() {
+        return inputParam3Unit;
+    }
+
+    public void setInputParam3Unit(String inputParam3Unit) {
+        this.inputParam3Unit = inputParam3Unit;
+    }
+
     public String getIsSampleAttribute3() {
         return isSampleAttribute3;
     }
@@ -301,6 +355,14 @@ public class CalculationFormulaExcelModel {
 
     public void setInputParam4Identity(String inputParam4Identity) {
         this.inputParam4Identity = inputParam4Identity;
+    }
+
+    public String getInputParam4Unit() {
+        return inputParam4Unit;
+    }
+
+    public void setInputParam4Unit(String inputParam4Unit) {
+        this.inputParam4Unit = inputParam4Unit;
     }
 
     public String getIsSampleAttribute4() {
@@ -335,6 +397,14 @@ public class CalculationFormulaExcelModel {
         this.inputParam5Identity = inputParam5Identity;
     }
 
+    public String getInputParam5Unit() {
+        return inputParam5Unit;
+    }
+
+    public void setInputParam5Unit(String inputParam5Unit) {
+        this.inputParam5Unit = inputParam5Unit;
+    }
+
     public String getIsSampleAttribute5() {
         return isSampleAttribute5;
     }
@@ -365,6 +435,14 @@ public class CalculationFormulaExcelModel {
 
     public void setInputParam6Identity(String inputParam6Identity) {
         this.inputParam6Identity = inputParam6Identity;
+    }
+
+    public String getInputParam6Unit() {
+        return inputParam6Unit;
+    }
+
+    public void setInputParam6Unit(String inputParam6Unit) {
+        this.inputParam6Unit = inputParam6Unit;
     }
 
     public String getIsSampleAttribute6() {
@@ -399,6 +477,14 @@ public class CalculationFormulaExcelModel {
         this.inputParam7Identity = inputParam7Identity;
     }
 
+    public String getInputParam7Unit() {
+        return inputParam7Unit;
+    }
+
+    public void setInputParam7Unit(String inputParam7Unit) {
+        this.inputParam7Unit = inputParam7Unit;
+    }
+
     public String getIsSampleAttribute7() {
         return isSampleAttribute7;
     }
@@ -429,6 +515,14 @@ public class CalculationFormulaExcelModel {
 
     public void setInputParam8Identity(String inputParam8Identity) {
         this.inputParam8Identity = inputParam8Identity;
+    }
+
+    public String getInputParam8Unit() {
+        return inputParam8Unit;
+    }
+
+    public void setInputParam8Unit(String inputParam8Unit) {
+        this.inputParam8Unit = inputParam8Unit;
     }
 
     public String getIsSampleAttribute8() {
@@ -463,6 +557,14 @@ public class CalculationFormulaExcelModel {
         this.inputParam9Identity = inputParam9Identity;
     }
 
+    public String getInputParam9Unit() {
+        return inputParam9Unit;
+    }
+
+    public void setInputParam9Unit(String inputParam9Unit) {
+        this.inputParam9Unit = inputParam9Unit;
+    }
+
     public String getIsSampleAttribute9() {
         return isSampleAttribute9;
     }
@@ -493,6 +595,14 @@ public class CalculationFormulaExcelModel {
 
     public void setInputParam10Identity(String inputParam10Identity) {
         this.inputParam10Identity = inputParam10Identity;
+    }
+
+    public String getInputParam10Unit() {
+        return inputParam10Unit;
+    }
+
+    public void setInputParam10Unit(String inputParam10Unit) {
+        this.inputParam10Unit = inputParam10Unit;
     }
 
     public String getIsSampleAttribute10() {
