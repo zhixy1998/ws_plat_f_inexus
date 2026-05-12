@@ -1,4 +1,4 @@
 spring:
   profiles:
-    active: dev  # 开发环境配置
-#    active: prod  # 部署配置
+#    active: dev  # 开发环境配置
+    active: prod  # 部署配置
