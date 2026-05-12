@@ -2500,9 +2500,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     public Result listOfMethods(String methodName, Integer pageNum, Integer pageSize, String sort, String updateBy, Boolean isMethodManage) {
 
         // 为不干扰其他使用场景，仅仅方法管理里根据用户进行了查询
-        if (!isMethodManage) {
-            updateBy = null;
-        }
+//        if (!isMethodManage) {
+//            updateBy = null;
+//        }
 
         // 1. 构建查询条件
         LambdaQueryWrapper<TMeasureMethod> queryWrapper = Wrappers.lambdaQuery();

@@ -1194,6 +1194,13 @@ public class DataManagementServiceImpl implements DataManagementService {
             queryWrapper.like(TMeasureTask::getTaskName, taskQueryParam.getKeyword());
         }
 
+        // 根据名称查询当前用户id
+        if (StringUtils.isNotBlank(taskQueryParam.getUpdateBy())){
+            SysUserPO user = userService.getOne(new QueryWrapper<SysUserPO>().eq("username", taskQueryParam.getUpdateBy()));
+            queryWrapper.eq(TMeasureTask::getUserId, user.getId());
+        }
+
+
         Page<TMeasureTask> result = taskManagementMapper.selectPage(page, queryWrapper);
         List<TMeasureTask> records = result.getRecords();
         List<TaskManagementDto> dtoList = new ArrayList<>();

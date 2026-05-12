@@ -5,17 +5,19 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dto.concise.common.Box;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
+import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.MethodBaseVo;
-import com.persee.workstation.uv_inexus.constant.Constants;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +61,9 @@ public class ManageDataServiceImpl implements ManageDataService {
 
     @Autowired
     private FMeasureAnalysisImageService analysisImageService;
+
+    @Autowired
+    private SysUserService userService;
 
     
     // 日期格式化器
@@ -175,6 +180,13 @@ public class ManageDataServiceImpl implements ManageDataService {
         if (StringUtils.isNotBlank(taskQueryParam.getKeyword())) {
             queryWrapper.like(FMeasureTask::getTaskName, taskQueryParam.getKeyword());
         }
+
+        // 根据名称查询当前用户id
+        if (StringUtils.isNotBlank(taskQueryParam.getUpdateBy())){
+            SysUserPO user = userService.getOne(new QueryWrapper<SysUserPO>().eq("username", taskQueryParam.getUpdateBy()));
+            queryWrapper.eq(FMeasureTask::getUserId, user.getId());
+        }
+
 
         Page<FMeasureTask> result = taskService.page(page, queryWrapper);
         List<FMeasureTask> records = result.getRecords();
