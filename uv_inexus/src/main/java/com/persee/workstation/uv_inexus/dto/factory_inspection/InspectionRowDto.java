@@ -26,4 +26,17 @@ public class InspectionRowDto {
         private String standardValue;   // 指标验收标准值（表头：指标验收标准值）
         private Object measuredValue;   // 验收实测值（单个值为 String，多个值为 List<String>）
     }
+
+    @Override
+    public String toString() {
+        return "InspectionRowDto{" +
+                "wavelength_mpe=" + wavelength_mpe +
+                ", wl_rep=" + wl_rep +
+                ", bsl_stab=" + bsl_stab +
+                ", stab=" + stab +
+                ", noise=" + noise +
+                ", stray_lt=" + stray_lt +
+                ", photo_acc=" + photo_acc +
+                '}';
+    }
 }

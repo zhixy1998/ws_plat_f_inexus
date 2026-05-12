@@ -8,13 +8,12 @@ import com.alibaba.excel.read.metadata.ReadSheet;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.dynamic.datasource.annotation.DS;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
+import com.persee.workstation.uv_inexus.enums.factoryInspection.TemplateKindEnum;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.factory_inspection.CalStdCats;
-import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelDataAsset;
-import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
-import com.persee.workstation.uv_inexus.po.factory_inspection.TaskExecutionDetail;
+import com.persee.workstation.uv_inexus.po.factory_inspection.*;
 import com.persee.workstation.uv_inexus.service.factory_inspection.*;
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -29,8 +28,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -249,36 +251,563 @@ public class ExcelImportServiceImpl implements ExcelImportService {
         return result;
     }
 
-    private static boolean isSameFill(CellStyle s1, CellStyle s2, Workbook workbook) {
-        // 比较填充模式
-        if (s1.getFillPattern() != s2.getFillPattern()) {
-            return false;
+//    private static boolean isSameFill(CellStyle s1, CellStyle s2, Workbook workbook) {
+//        // 比较填充模式
+//        if (s1.getFillPattern() != s2.getFillPattern()) {
+//            return false;
+//        }
+//
+//        // 比较前景色（需要转换为实际颜色）
+//        short fg1 = s1.getFillForegroundColor();
+//        short fg2 = s2.getFillForegroundColor();
+//
+//        // 如果都是自动色或无填充，视为相同
+//        if ((fg1 == IndexedColors.AUTOMATIC.getIndex() || fg1 == IndexedColors.WHITE.getIndex()) &&
+//                (fg2 == IndexedColors.AUTOMATIC.getIndex() || fg2 == IndexedColors.WHITE.getIndex())) {
+//            return true;
+//        }
+//
+//        // 如果前景色不同，则样式不同
+//        if (fg1 != fg2) {
+//            return false;
+//        }
+//
+//        // 可选：比较背景色
+//        short bg1 = s1.getFillBackgroundColor();
+//        short bg2 = s2.getFillBackgroundColor();
+//        if (bg1 != bg2) {
+//            return false;
+//        }
+//
+//        return true;
+//    }
+
+
+    /**
+     * 基于主模板创建衍生模板（开箱模板和出厂模板）
+     *
+     * @param sourceTemplateCode 源模板编码
+     * @param sourceTemplateName 源模板名称
+     * @param yellowColumnsMap 黄色高亮列信息
+     */
+    private void createDerivedTemplates(String sourceTemplateCode, String sourceTemplateName, Map<String, List<String>> yellowColumnsMap) {
+        try {
+            log.info("开始创建衍生模板，源模板: {}", sourceTemplateCode);
+
+            // 1. 创建出厂模板（完全复制源模板）
+            createFactoryTemplate(sourceTemplateCode, sourceTemplateName, yellowColumnsMap);
+
+            // 2. 创建开箱模板（只包含特定检测项）
+            createUnpackingTemplate(sourceTemplateCode, sourceTemplateName, yellowColumnsMap);
+
+        } catch (Exception e) {
+            log.error("创建衍生模板失败", e);
+            // 不抛出异常，避免影响主流程
         }
-
-        // 比较前景色（需要转换为实际颜色）
-        short fg1 = s1.getFillForegroundColor();
-        short fg2 = s2.getFillForegroundColor();
-
-        // 如果都是自动色或无填充，视为相同
-        if ((fg1 == IndexedColors.AUTOMATIC.getIndex() || fg1 == IndexedColors.WHITE.getIndex()) &&
-                (fg2 == IndexedColors.AUTOMATIC.getIndex() || fg2 == IndexedColors.WHITE.getIndex())) {
-            return true;
-        }
-
-        // 如果前景色不同，则样式不同
-        if (fg1 != fg2) {
-            return false;
-        }
-
-        // 可选：比较背景色
-        short bg1 = s1.getFillBackgroundColor();
-        short bg2 = s2.getFillBackgroundColor();
-        if (bg1 != bg2) {
-            return false;
-        }
-
-        return true;
     }
+
+    /**
+     * 创建出厂模板（完全复制源模板）
+     */
+    private void createFactoryTemplate(String sourceTemplateCode, String sourceTemplateName, Map<String, List<String>> yellowColumnsMap) {
+        try {
+            log.info("开始创建出厂模板");
+
+            // 查询源模板
+            ExcelTemplate sourceTemplate = templateService.getById(sourceTemplateCode);
+            if (sourceTemplate == null) {
+                log.error("源模板不存在: {}", sourceTemplateCode);
+                return;
+            }
+
+            // 创建出厂模板
+            ExcelTemplate factoryTemplate = new ExcelTemplate();
+            factoryTemplate.setId(IdGeneratorUtil.generateIdWithPrefix("template"));
+            factoryTemplate.setTemplateCode(factoryTemplate.getId());
+            factoryTemplate.setTemplateName(sourceTemplateName + "-出厂");
+            factoryTemplate.setStatus(TemplateKindEnum.FACTORY_INSPECTION.getStatus()); // 保持相同状态
+            factoryTemplate.setColumnConfig(sourceTemplate.getColumnConfig()); // 复制列配置
+
+            templateService.save(factoryTemplate);
+            log.info("创建出厂模板成功，模板编码: {}", factoryTemplate.getTemplateCode());
+
+            // 复制ExcelDataAsset（检测项数据）
+            copyExcelDataAssets(sourceTemplateCode, factoryTemplate.getTemplateCode());
+
+            // 复制WorkbookData（工作簿数据）
+            copyWorkbookData(sourceTemplateCode, factoryTemplate.getTemplateCode(), yellowColumnsMap);
+
+            log.info("出厂模板创建完成");
+        } catch (Exception e) {
+            log.error("创建出厂模板失败", e);
+        }
+    }
+
+    /**
+     * 创建开箱模板（只包含特定检测项）
+     * 根据图片，开箱模板包含：
+     * - 波长示值误差与重复性校验（氘灯(486.0)）
+     * - 基线平直度检验（基线平直度）
+     * - 漂移检验（漂移检验）
+     * - 噪声检验（500nm100%噪声）
+     * - 透射比示值误差与重复性校验（紫外分光光度计标准物质GBW(E)130066）
+     * - 杂散光校验（360nm杂散光）
+     */
+    private void createUnpackingTemplate(String sourceTemplateCode, String sourceTemplateName, Map<String, List<String>> yellowColumnsMap) {
+        try {
+            log.info("开始创建开箱模板");
+
+            // 定义开箱模板需要的检测项特征值（根据图片）
+            Set<String> unpackingProjectNames = new HashSet<>(Arrays.asList(
+                    "氘灯(486.0)",
+                    "基线平直度",
+                    "漂移检验",
+                    "500nm100%噪声",
+                    "紫外分光光度计标准物质GBW(E)130066",
+                    "360nm杂散光"
+            ));
+
+            // 查询源模板
+            ExcelTemplate sourceTemplate = templateService.getById(sourceTemplateCode);
+            if (sourceTemplate == null) {
+                log.error("源模板不存在: {}", sourceTemplateCode);
+                return;
+            }
+
+            // 创建开箱模板
+            ExcelTemplate unpackingTemplate = new ExcelTemplate();
+            unpackingTemplate.setId(IdGeneratorUtil.generateIdWithPrefix("template"));
+            unpackingTemplate.setTemplateCode(unpackingTemplate.getId());
+            unpackingTemplate.setTemplateName(sourceTemplateName + "-开箱");
+            unpackingTemplate.setStatus(TemplateKindEnum.OPEN_BOX_INSPECTION.getStatus());
+            unpackingTemplate.setColumnConfig(sourceTemplate.getColumnConfig());
+
+            templateService.save(unpackingTemplate);
+            log.info("创建开箱模板成功，模板编码: {}", unpackingTemplate.getTemplateCode());
+
+            // 复制符合条件的ExcelDataAsset（只复制特定检测项）
+            copyFilteredExcelDataAssets(sourceTemplateCode, unpackingTemplate.getTemplateCode(), unpackingProjectNames);
+
+            // 复制WorkbookData（工作簿数据）
+//            copyWorkbookData(sourceTemplateCode, unpackingTemplate.getTemplateCode(), yellowColumnsMap);
+            copyWorkbookDataForUnpackingTemplate(sourceTemplateCode, unpackingTemplate.getTemplateCode(), yellowColumnsMap, unpackingProjectNames);
+
+            log.info("开箱模板创建完成");
+        } catch (Exception e) {
+            log.error("创建开箱模板失败", e);
+        }
+    }
+
+    // ... existing code ...
+
+    /**
+     * 复制ExcelDataAsset（检测项数据）
+     */
+    private void copyExcelDataAssets(String sourceTemplateCode, String targetTemplateCode) {
+        try {
+            // 查询源模板的所有检测项
+            LambdaQueryWrapper<ExcelDataAsset> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(ExcelDataAsset::getTemplateCode, sourceTemplateCode);
+            List<ExcelDataAsset> sourceAssets = excelDataAssetService.list(queryWrapper);
+
+            if (CollectionUtils.isEmpty(sourceAssets)) {
+                log.warn("源模板没有检测项数据: {}", sourceTemplateCode);
+                return;
+            }
+
+            // 复制检测项
+            List<ExcelDataAsset> targetAssets = new ArrayList<>();
+            Map<String, String> assetIdMapping = new HashMap<>(); // 旧ID -> 新ID映射
+
+            for (ExcelDataAsset sourceAsset : sourceAssets) {
+                ExcelDataAsset targetAsset = new ExcelDataAsset();
+                String newId = IdGeneratorUtil.generateIdWithPrefix("asset");
+                assetIdMapping.put(sourceAsset.getId(), newId);
+
+                targetAsset.setId(newId);
+                targetAsset.setTemplateCode(targetTemplateCode);
+                targetAsset.setBatchNo(sourceAsset.getBatchNo());
+                targetAsset.setStructuredData(sourceAsset.getStructuredData());
+                targetAsset.setImportStatus(sourceAsset.getImportStatus());
+
+                targetAssets.add(targetAsset);
+            }
+
+            if (CollectionUtils.isNotEmpty(targetAssets)) {
+                excelDataAssetService.saveBatch(targetAssets);
+                log.info("复制了{}个检测项到模板{}", targetAssets.size(), targetTemplateCode);
+            }
+
+            // 复制TaskExecutionDetail（检测项与标准物质的关联关系）
+            copyTaskExecutionDetails(sourceTemplateCode, targetTemplateCode, assetIdMapping);
+
+        } catch (Exception e) {
+            log.error("复制ExcelDataAsset失败", e);
+        }
+    }
+
+    /**
+     * 复制过滤后的ExcelDataAsset（只复制特定检测项）
+     */
+    private void copyFilteredExcelDataAssets(String sourceTemplateCode, String targetTemplateCode, Set<String> projectNames) {
+        try {
+            // 查询源模板的所有检测项
+            LambdaQueryWrapper<ExcelDataAsset> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(ExcelDataAsset::getTemplateCode, sourceTemplateCode);
+            List<ExcelDataAsset> sourceAssets = excelDataAssetService.list(queryWrapper);
+
+            if (CollectionUtils.isEmpty(sourceAssets)) {
+                log.warn("源模板没有检测项数据: {}", sourceTemplateCode);
+                return;
+            }
+
+            // 过滤并复制检测项
+            List<ExcelDataAsset> targetAssets = new ArrayList<>();
+            Map<String, String> assetIdMapping = new HashMap<>();
+
+            for (ExcelDataAsset sourceAsset : sourceAssets) {
+                Map<String, Object> dataMap = sourceAsset.getDataMap();
+                String projectName = MapUtils.getString(dataMap, PROJECT_NAME.getDescription());
+
+                // 只复制匹配的检测项
+                if (projectNames.contains(projectName)) {
+                    ExcelDataAsset targetAsset = new ExcelDataAsset();
+                    String newId = IdGeneratorUtil.generateIdWithPrefix("asset");
+                    assetIdMapping.put(sourceAsset.getId(), newId);
+
+                    targetAsset.setId(newId);
+                    targetAsset.setTemplateCode(targetTemplateCode);
+                    targetAsset.setBatchNo(sourceAsset.getBatchNo());
+                    targetAsset.setStructuredData(sourceAsset.getStructuredData());
+                    targetAsset.setImportStatus(sourceAsset.getImportStatus());
+
+                    targetAssets.add(targetAsset);
+                    log.info("复制检测项: {} 到开箱模板", projectName);
+                }
+            }
+
+            if (CollectionUtils.isNotEmpty(targetAssets)) {
+                excelDataAssetService.saveBatch(targetAssets);
+                log.info("开箱模板复制了{}个检测项", targetAssets.size());
+            }
+
+            // 复制TaskExecutionDetail（检测项与标准物质的关联关系）
+            copyTaskExecutionDetails(sourceTemplateCode, targetTemplateCode, assetIdMapping);
+
+        } catch (Exception e) {
+            log.error("复制过滤后的ExcelDataAsset失败", e);
+        }
+    }
+
+    /**
+     * 复制TaskExecutionDetail（检测项与标准物质的关联关系）
+     */
+    private void copyTaskExecutionDetails(String sourceTemplateCode, String targetTemplateCode, Map<String, String> assetIdMapping) {
+        try {
+            log.info("开始复制TaskExecutionDetail，源模板: {}, 目标模板: {}", sourceTemplateCode, targetTemplateCode);
+
+            // 查询源模板的所有检测项ID
+            LambdaQueryWrapper<ExcelDataAsset> assetQueryWrapper = new LambdaQueryWrapper<>();
+            assetQueryWrapper.eq(ExcelDataAsset::getTemplateCode, sourceTemplateCode);
+            List<ExcelDataAsset> sourceAssets = excelDataAssetService.list(assetQueryWrapper);
+
+            if (CollectionUtils.isEmpty(sourceAssets)) {
+                log.warn("源模板没有检测项，跳过TaskExecutionDetail复制");
+                return;
+            }
+
+            // 获取源检测项ID列表
+            List<String> sourceAssetIds = sourceAssets.stream()
+                    .map(ExcelDataAsset::getId)
+                    .collect(Collectors.toList());
+
+            // 查询这些检测项的TaskExecutionDetail（task_id为null或空的记录）
+            LambdaQueryWrapper<TaskExecutionDetail> detailQueryWrapper = new LambdaQueryWrapper<>();
+            detailQueryWrapper.in(TaskExecutionDetail::getItemId, sourceAssetIds)
+                    .and(wrapper -> wrapper.isNull(TaskExecutionDetail::getTaskId)
+                            .or()
+                            .eq(TaskExecutionDetail::getTaskId, ""));
+
+            List<TaskExecutionDetail> sourceDetails = taskExecutionDetailMapper.selectList(detailQueryWrapper);
+
+            if (CollectionUtils.isEmpty(sourceDetails)) {
+                log.info("源模板没有TaskExecutionDetail记录");
+                return;
+            }
+
+            log.info("找到{}条TaskExecutionDetail记录需要复制", sourceDetails.size());
+
+            // 复制TaskExecutionDetail，更新item_id为新的检测项ID
+            List<TaskExecutionDetail> targetDetails = new ArrayList<>();
+            for (TaskExecutionDetail sourceDetail : sourceDetails) {
+                TaskExecutionDetail targetDetail = new TaskExecutionDetail();
+                targetDetail.setId(IdGeneratorUtil.generateId());
+
+                // 更新item_id为新的检测项ID
+                String newAssetId = assetIdMapping.get(sourceDetail.getItemId());
+                if (newAssetId != null) {
+                    targetDetail.setItemId(newAssetId);
+                    targetDetail.setStandardId(sourceDetail.getStandardId());
+                    targetDetail.setStandardType(sourceDetail.getStandardType());
+                    // task_id保持为null，因为这是模板级别的数据
+                    targetDetails.add(targetDetail);
+                } else {
+                    log.warn("未找到检测项ID映射: {}", sourceDetail.getItemId());
+                }
+            }
+
+            if (CollectionUtils.isNotEmpty(targetDetails)) {
+                targetDetails.forEach(taskExecutionDetailMapper::insert);
+                log.info("成功复制{}条TaskExecutionDetail记录到模板{}", targetDetails.size(), targetTemplateCode);
+            }
+
+        } catch (Exception e) {
+            log.error("复制TaskExecutionDetail失败", e);
+        }
+    }
+
+
+
+    // ... existing code ...
+
+    /**
+     * 复制WorkbookData（工作簿数据）
+     */
+    private void copyWorkbookData(String sourceTemplateCode, String targetTemplateCode, Map<String, List<String>> yellowColumnsMap) {
+        try {
+            // 查询源模板的WorkbookData
+            LambdaQueryWrapper<WorkbookData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(WorkbookData::getTemplateCode, sourceTemplateCode)
+                    .eq(WorkbookData::getIsActive, true)
+                    .orderByDesc(WorkbookData::getCreateTime)
+                    .last("LIMIT 1");
+
+            WorkbookData sourceData = workbookDataService.getOne(queryWrapper);
+            if (sourceData != null && sourceData.getWorkbookData() != null) {
+                // 创建新的WorkbookData
+                WorkbookData newData = new WorkbookData();
+                newData.setId(IdGeneratorUtil.generateId());
+                newData.setTemplateCode(targetTemplateCode);
+                newData.setTaskId(targetTemplateCode);
+                newData.setWorkbookData(sourceData.getWorkbookData()); // 复制Excel数据
+                newData.setYellowHighlightedColumns(sourceData.getYellowHighlightedColumns()); // 复制黄色列信息
+                newData.setIsActive(true);
+                newData.setCreateTime(LocalDateTime.now());
+                newData.setLastAccessTime(LocalDateTime.now());
+                newData.setUpdateTime(LocalDateTime.now());
+                newData.setUpdateBy("sys");
+
+                workbookDataService.save(newData);
+                log.info("为模板{}复制WorkbookData成功", targetTemplateCode);
+            } else {
+                log.warn("源模板没有WorkbookData: {}", sourceTemplateCode);
+            }
+        } catch (Exception e) {
+            log.error("复制WorkbookData失败，targetTemplateCode: {}", targetTemplateCode, e);
+        }
+    }
+
+    /**
+     * 为开箱模板复制并过滤WorkbookData（只保留特定检测项的行）
+     */
+    private void copyWorkbookDataForUnpackingTemplate(String sourceTemplateCode, String targetTemplateCode,
+                                                      Map<String, List<String>> yellowColumnsMap,
+                                                      Set<String> unpackingProjectNames) {
+        try {
+            log.info("开始为开箱模板过滤工作簿数据");
+
+            // 查询源模板的WorkbookData
+            LambdaQueryWrapper<WorkbookData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(WorkbookData::getTemplateCode, sourceTemplateCode)
+                    .eq(WorkbookData::getIsActive, true)
+                    .orderByDesc(WorkbookData::getCreateTime)
+                    .last("LIMIT 1");
+
+            WorkbookData sourceData = workbookDataService.getOne(queryWrapper);
+            if (sourceData == null || sourceData.getWorkbookData() == null) {
+                log.warn("源模板没有WorkbookData: {}", sourceTemplateCode);
+                return;
+            }
+
+            // 从字节数组加载Workbook
+            try (ByteArrayInputStream bais = new ByteArrayInputStream(sourceData.getWorkbookData());
+                 Workbook workbook = new XSSFWorkbook(bais)) {
+
+                // 遍历所有Sheet，只保留包含特定检测项的行
+                for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+                    Sheet sheet = workbook.getSheetAt(i);
+                    String sheetName = sheet.getSheetName();
+
+                    // 跳过不包含检测项的Sheet（如Report等）
+                    if (sheetName.equals("检测项信息")) {
+                        continue;
+                    }
+
+                    log.info("过滤Sheet[{}]的检测项行", sheetName);
+
+                    // 收集需要保留的行索引（标题行 + 匹配的检测项行）
+                    Set<Integer> rowsToKeep = new HashSet<>();
+                    rowsToKeep.add(0); // 保留标题行
+
+                    // 遍历数据行，找出需要保留的行
+                    for (int rowNum = 1; rowNum <= sheet.getLastRowNum(); rowNum++) {
+                        Row row = sheet.getRow(rowNum);
+                        if (row == null) continue;
+
+                        // 获取第一列的值（项目名称）
+                        String projectName = getFirstColumnValueFromRow(row, sheet);
+
+                        // 如果项目名称在开箱模板的检测项列表中，保留该行
+                        if (unpackingProjectNames.contains(projectName)) {
+                            rowsToKeep.add(rowNum);
+                            log.info("保留检测项行: {} (行号: {})", projectName, rowNum);
+
+                            // 如果是合并单元格，保留整个合并区域
+                            for (int j = 0; j < sheet.getNumMergedRegions(); j++) {
+                                CellRangeAddress mergedRegion = sheet.getMergedRegion(j);
+                                if (mergedRegion.getFirstRow() <= rowNum && mergedRegion.getLastRow() >= rowNum) {
+                                    // 保留整个合并区域的所有行
+                                    for (int r = mergedRegion.getFirstRow(); r <= mergedRegion.getLastRow(); r++) {
+                                        rowsToKeep.add(r);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 重新构建Sheet（只保留需要的行）
+                    if (!rowsToKeep.isEmpty()) {
+                        rebuildSheetWithRetainedRows(workbook, sheet, rowsToKeep);
+                    }
+                }
+
+                // 计算公式
+                FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+                evaluator.evaluateAll();
+
+                // 将过滤后的Workbook转换为字节数组
+                try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                    workbook.write(baos);
+                    byte[] filteredWorkbookData = baos.toByteArray();
+
+                    // 创建新的WorkbookData
+                    WorkbookData newData = new WorkbookData();
+                    newData.setId(IdGeneratorUtil.generateId());
+                    newData.setTemplateCode(targetTemplateCode);
+                    newData.setTaskId(targetTemplateCode);
+                    newData.setWorkbookData(filteredWorkbookData); // 保存过滤后的Excel数据
+                    newData.setYellowHighlightedColumns(sourceData.getYellowHighlightedColumns());
+                    newData.setIsActive(true);
+                    newData.setCreateTime(LocalDateTime.now());
+                    newData.setLastAccessTime(LocalDateTime.now());
+                    newData.setUpdateTime(LocalDateTime.now());
+                    newData.setUpdateBy("sys");
+
+                    workbookDataService.save(newData);
+                    log.info("为开箱模板{}创建过滤后的WorkbookData成功", targetTemplateCode);
+                }
+            }
+        } catch (Exception e) {
+            log.error("为开箱模板过滤WorkbookData失败", e);
+        }
+    }
+
+    /**
+     * 从行中获取第一列的值（支持合并单元格）
+     */
+    private String getFirstColumnValueFromRow(Row row, Sheet sheet) {
+        // 查找合并区域
+        for (int i = 0; i < sheet.getNumMergedRegions(); i++) {
+            CellRangeAddress mergedRegion = sheet.getMergedRegion(i);
+            if (mergedRegion.getFirstColumn() == 0 &&
+                    mergedRegion.getLastColumn() >= 0 &&
+                    mergedRegion.getFirstRow() <= row.getRowNum() &&
+                    mergedRegion.getLastRow() >= row.getRowNum()) {
+                // 找到合并区域，获取左上角单元格的值
+                Cell cell = sheet.getRow(mergedRegion.getFirstRow()).getCell(0);
+                return getCellValue(cell);
+            }
+        }
+
+        // 如果没有合并单元格，直接获取第一列的值
+        Cell cell = row.getCell(0);
+        return getCellValue(cell);
+    }
+
+    /**
+     * 重新构建Sheet，只保留指定的行
+     * 参考 TemplateServiceImpl.rebuildSheetWithRetainedRows
+     */
+    private void rebuildSheetWithRetainedRows(Workbook workbook, Sheet originalSheet, Set<Integer> rowsToKeep) {
+        if (rowsToKeep.isEmpty()) {
+            return;
+        }
+
+        String sheetName = originalSheet.getSheetName();
+        Sheet tempSheet = workbook.createSheet(sheetName + "_temp");
+
+        // 复制列宽
+        for (int i = 0; i < 20; i++) { // 假设最多20列
+            tempSheet.setColumnWidth(i, originalSheet.getColumnWidth(i));
+        }
+
+        // 按行号排序
+        List<Integer> sortedRows = new ArrayList<>(rowsToKeep);
+        Collections.sort(sortedRows);
+
+        int newIndex = 0;
+        for (int originalRowNum : sortedRows) {
+            Row originalRow = originalSheet.getRow(originalRowNum);
+            if (originalRow == null) continue;
+
+            Row newRow = tempSheet.createRow(newIndex);
+            newRow.setHeightInPoints(originalRow.getHeightInPoints());
+
+            // 复制单元格
+            for (int cellNum = 0; cellNum <= originalRow.getLastCellNum(); cellNum++) {
+                Cell sourceCell = originalRow.getCell(cellNum);
+                if (sourceCell == null) continue;
+
+                Cell targetCell = newRow.createCell(cellNum);
+
+                // 复制样式
+                CellStyle newStyle = workbook.createCellStyle();
+                newStyle.cloneStyleFrom(sourceCell.getCellStyle());
+                targetCell.setCellStyle(newStyle);
+
+                // 复制值和公式
+                copyCellData(sourceCell, targetCell);
+            }
+
+            newIndex++;
+        }
+
+        // 复制合并区域（调整行号）
+        for (int i = 0; i < originalSheet.getNumMergedRegions(); i++) {
+            CellRangeAddress mergedRegion = originalSheet.getMergedRegion(i);
+
+            // 检查合并区域是否在保留的行中
+            if (rowsToKeep.contains(mergedRegion.getFirstRow())) {
+                // 计算新的行号
+                int newFirstRow = sortedRows.indexOf(mergedRegion.getFirstRow());
+                int newLastRow = sortedRows.indexOf(mergedRegion.getLastRow());
+
+                if (newFirstRow >= 0 && newLastRow >= 0) {
+                    CellRangeAddress newMergedRegion = new CellRangeAddress(
+                            newFirstRow, newLastRow,
+                            mergedRegion.getFirstColumn(), mergedRegion.getLastColumn()
+                    );
+                    tempSheet.addMergedRegion(newMergedRegion);
+                }
+            }
+        }
+
+        // 删除原Sheet，重命名临时Sheet
+        int sheetIndex = workbook.getSheetIndex(originalSheet);
+        workbook.removeSheetAt(sheetIndex);
+        workbook.setSheetName(workbook.getSheetIndex(tempSheet), sheetName);
+    }
+
 
 
 
@@ -336,8 +865,27 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     DRIFT_INSPECTION.getDescription()
             );
 //            sheetNames.add("Report");
+// ... existing code ...
 
             Workbook workbook = extractSheetsToNewWorkbook(file, sheetNames);
+
+            // 【新增】在提取工作表之前，先从原始文件中识别黄色高亮列
+            Map<String, List<String>> yellowColumnsMap = new HashMap<>();
+            try (Workbook originalWorkbook = new XSSFWorkbook(file.getInputStream())) {
+                for (int i = 0; i < originalWorkbook.getNumberOfSheets(); i++) {
+                    Sheet sheet = originalWorkbook.getSheetAt(i);
+                    String sheetName = sheet.getSheetName();
+
+                    // 只处理我们关心的工作表
+                    if (sheetNames.contains(sheetName)) {
+                        List<String> yellowHeaders = findTargetYellowHeaders(sheet);
+                        if (!yellowHeaders.isEmpty()) {
+                            yellowColumnsMap.put(sheetName, yellowHeaders);
+                            log.info("工作表[{}]中找到黄色高亮列: {}", sheetName, yellowHeaders);
+                        }
+                    }
+                }
+            }
 
             for (Sheet sheet : workbook) {
                 List<String> list = findHighlightedHeaders(sheet);
@@ -345,27 +893,25 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     log.info("找到高亮列名：{}", list);
                 }
             }
-//            /*构建要在根目录创建的文件名，路径*/
-//            String projectRoot = System.getProperty("user.dir");
-//            // 生成唯一文件名并保存
-//            String originalFilename = file.getOriginalFilename();
-//            String fileExtension = originalFilename != null && originalFilename.contains(".") ?
-//                    originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
-//            String uniqueFilename = IdGeneratorUtil.generateIdWithPrefix("IE") + fileExtension;
-//            String fullPath = projectRoot+"/"+excelSavePath + uniqueFilename;
-//
+
+// ... existing code ...
+
             ExcelTemplate template = new ExcelTemplate();
             template.setId(IdGeneratorUtil.generateIdWithPrefix("template"));
             /*保存模板信息*/
             // 生成模板编码
             String templateCode = template.getId();
-            boolean b = workbookDataService.uploadExcel(workbook, templateCode);
+
+            // 【新增】将黄色列信息保存到workbookDataService
+            boolean b = workbookDataService.uploadExcel(workbook, templateCode, yellowColumnsMap);
             if (!b) {
                 log.error("保存模板信息失败");
             }
             if (b) {
                 log.info("保存模板信息成功");
             }
+
+
 
             String sheeetName = "检测项信息";
             // 读取Excel文件，获取表头信息
@@ -380,9 +926,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                 return Result.fail("Excel文件没有表头信息");
             }
 
-            // 创建模板
 
-//            template.setTemplateCode(templateCode);
             //设置文件名
             String originalFilename = file.getOriginalFilename();
             String filenameWithoutExtension = originalFilename;
@@ -390,7 +934,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                 filenameWithoutExtension = originalFilename.substring(0, originalFilename.lastIndexOf("."));
             }
             template.setTemplateName(filenameWithoutExtension);
-            template.setStatus(1); // 模板为检定校准模板
+            template.setStatus(TemplateKindEnum.DETECTION_CALIBRATION.getStatus()); // 模板为检定校准模板
             // 构建列配置
             List<ExcelTemplate.ColumnConfig> columnConfigs = new ArrayList<>();
             List<String> headers = headList.get(0);
@@ -591,6 +1135,9 @@ public class ExcelImportServiceImpl implements ExcelImportService {
             if (CollectionUtils.isNotEmpty(taskDetails)) {
                 taskDetails.forEach(taskExecutionDetailMapper::insert);
             }
+            // 【新增】基于当前模板创建开箱模板和出厂模板
+            createDerivedTemplates(templateCode, template.getTemplateName(), yellowColumnsMap);
+
 //            // 保存文件
 //            File destFile = new File(fullPath);
 //            file.transferTo(destFile);
@@ -606,6 +1153,108 @@ public class ExcelImportServiceImpl implements ExcelImportService {
             return Result.fail("导入失败: " + e.getMessage());
         }
     }
+// ... existing code ...
+
+    private static boolean isSameFill(CellStyle s1, CellStyle s2, Workbook workbook) {
+        // 比较填充模式
+        if (s1.getFillPattern() != s2.getFillPattern()) {
+            return false;
+        }
+
+        // 比较前景色（需要转换为实际颜色）
+        short fg1 = s1.getFillForegroundColor();
+        short fg2 = s2.getFillForegroundColor();
+
+        // 如果都是自动色或无填充，视为相同
+        if ((fg1 == IndexedColors.AUTOMATIC.getIndex() || fg1 == IndexedColors.WHITE.getIndex()) &&
+                (fg2 == IndexedColors.AUTOMATIC.getIndex() || fg2 == IndexedColors.WHITE.getIndex())) {
+            return true;
+        }
+
+        // 如果前景色不同，则样式不同
+        if (fg1 != fg2) {
+            return false;
+        }
+
+        // 可选：比较背景色
+        short bg1 = s1.getFillBackgroundColor();
+        short bg2 = s2.getFillBackgroundColor();
+        if (bg1 != bg2) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * 查找RGB(255, 192, 0)黄色背景的表头列名
+     *
+     * @param sheet 工作表
+     * @return 黄色列名列表
+     */
+    private List<String> findTargetYellowHeaders(Sheet sheet) {
+        List<String> result = new ArrayList<>();
+
+        Row headerRow = sheet.getRow(0);
+        if (headerRow == null) {
+            return result;
+        }
+
+        for (Cell cell : headerRow) {
+            if (cell == null || cell.getStringCellValue() == null || cell.getStringCellValue().trim().isEmpty()) {
+                continue;
+            }
+
+            if (isTargetYellowBackground(cell)) {
+                result.add(cell.getStringCellValue());
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * 判断单元格是否为特定黄色背景 RGB(255, 192, 0)
+     *
+     * @param cell 单元格
+     * @return true表示是目标黄色背景
+     */
+    private boolean isTargetYellowBackground(Cell cell) {
+        if (cell == null) {
+            return false;
+        }
+
+        CellStyle style = cell.getCellStyle();
+        Color fillColor = style.getFillForegroundColorColor();
+
+        if (fillColor == null) {
+            return false;
+        }
+
+        if (!(fillColor instanceof XSSFColor)) {
+            return false;
+        }
+
+        XSSFColor xssfColor = (XSSFColor) fillColor;
+
+        try {
+            byte[] rgb = xssfColor.getRGB();
+            if (rgb != null && rgb.length >= 3) {
+                int r = rgb[0] & 0xFF;
+                int g = rgb[1] & 0xFF;
+                int b = rgb[2] & 0xFF;
+
+                // 使用范围判断黄色（与ExcelReader.java保持一致）
+                return r > 200 && g > 150 && b < 100;
+            }
+        } catch (Exception e) {
+            log.warn("获取单元格颜色失败: {}", e.getMessage());
+        }
+
+        return false;
+    }
+
+// ... existing code ...
 
     /**
      * 从原始Excel中提取指定Sheet并生成新工作簿

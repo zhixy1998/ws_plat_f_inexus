@@ -165,4 +165,18 @@ public class TaskManagementController {
     public Result<Map<String, Object>> generateReport(@RequestParam String taskId) {
         return taskManagementService.generateReport(taskId);
     }
+    /**
+     * 设置任务定时提醒属性
+     */
+    @RequestMapping("/set-task-reminder")
+    public Result<Boolean> setTaskReminder(@RequestBody @Valid TaskReminderDto dto) {
+        return taskManagementService.setTaskReminder(dto);
+    }
+//    /**
+//     * 查看任务定时提醒属性
+//     */
+//    @RequestMapping("/get-task-reminder")
+//    public Result<TaskReminderDto> getTaskReminder(@RequestParam String taskId) {
+//        return taskManagementService.getTaskReminder(taskId);
+//    }
 }

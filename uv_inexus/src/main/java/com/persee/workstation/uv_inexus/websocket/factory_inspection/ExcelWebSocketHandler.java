@@ -151,6 +151,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     @Qualifier("measurementTaskExecutor")
     private ThreadPoolTaskExecutor taskExecutor;
     @Autowired
+    private WorkbookDataService workbookDataService;
+    @Autowired
     private EhcacheUtil ehcacheUtil;
     //波形图持久化机制
     @Autowired
@@ -836,6 +838,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         sendToActiveSession(null, taskId, jsonObject);
     }
 
+
     private void pushEntireWorkbook(WebSocketSession session, String taskId, String fileName) throws IOException {
         if (!isSessionValid(session)) {
             log.warn("尝试向无效的session发送数据: taskId={}", taskId);
@@ -843,16 +846,149 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         }
 
         Workbook workbook = workbookCacheManager.getTaskWorkbook(taskId);
+        if (workbook == null) {
+            log.error("无法获取任务{}的工作簿缓存，fileName={}, taskId={}", fileName, taskId);
+            return;
+        }
+
+        // 【修改】直接传入taskId，让getYellowColumnsFromDatabase内部处理任务/模板的查询逻辑
+        Map<String, List<String>> yellowColumnsMap = getYellowColumnsFromDatabase(taskId);
+
+        log.info("推送工作簿到前端，taskId: {}, fileName: {}, 黄色列信息: {}个sheet",
+                taskId, fileName, yellowColumnsMap.size());
 
         WorkbookDto workbookDto = new WorkbookDto();
         workbookDto.setWorkbookName(fileName);
-        workbookDto.setSheets(extractAllSheetsData(workbook));
+        workbookDto.setSheets(extractAllSheetsData(workbook, yellowColumnsMap));
 
         ObjectMapper mapper = new ObjectMapper();
         String jsonData = mapper.writeValueAsString(workbookDto);
         JSONObject jsonObject = JSONObject.parseObject(jsonData);
         sendToActiveSession(null, taskId, jsonObject);
-//        session.sendMessage(new TextMessage(jsonData));
+    }
+
+
+    /**
+     * 从数据库获取黄色高亮列信息,入参可能是模板的id，也可能是任务的id
+     */
+    private Map<String, List<String>> getYellowColumnsFromDatabase(String templateCode) {
+        if (templateCode == null || templateCode.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        try {
+            // 查询calibration_workbook_data表获取黄色列信息
+            LambdaQueryWrapper<WorkbookData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(WorkbookData::getTaskId, templateCode)
+//                    .eq(WorkbookData::getIsActive, true)
+                    .orderByDesc(WorkbookData::getCreateTime)
+                    .last("LIMIT 1");
+
+            WorkbookData workbookData = workbookDataService.getOne(queryWrapper);
+
+            if (workbookData != null && workbookData.getYellowHighlightedColumns() != null) {
+                // 解析JSON格式的黄色列信息
+                String jsonStr = workbookData.getYellowHighlightedColumns();
+                // 直接使用ObjectMapper解析（Jackson）
+                ObjectMapper objectMapper = new ObjectMapper();
+                return objectMapper.readValue(jsonStr, new TypeReference<Map<String, List<String>>>() {});
+            }
+        } catch (Exception e) {
+            log.error("获取模板{}的黄色高亮列信息失败", templateCode, e);
+        }
+
+        return new HashMap<>();
+    }
+
+
+
+
+    private List<SheetDto> extractAllSheetsData(Workbook workbook, Map<String, List<String>> yellowColumnsMap) {
+        List<SheetDto> sheets = new ArrayList<>();
+        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+            Sheet sheet = workbook.getSheetAt(i);
+            String sheetName = sheet.getSheetName();
+            List<String> yellowColumns = yellowColumnsMap != null ? yellowColumnsMap.get(sheetName) : null;
+            SheetDto sheetDto = extractSheetData(sheet, workbook, yellowColumns);
+            sheets.add(sheetDto);
+        }
+        return sheets;
+    }
+
+
+    private SheetDto extractSheetData(Sheet sheet, Workbook workbook, List<String> yellowColumns) {
+        SheetDto sheetDto = new SheetDto();
+        sheetDto.setSheetName(sheet.getSheetName());
+        sheetDto.setFirstRowNum(sheet.getFirstRowNum());
+        sheetDto.setLastRowNum(sheet.getLastRowNum());
+
+        // 【新增】设置黄色高亮列
+        sheetDto.setYellowColumns(yellowColumns);
+
+        // 为每次提取数据创建新的公式评估器
+        FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+        evaluator.clearAllCachedResultValues();
+
+        // 提取合并区域
+        List<MergedRegionDto> mergedRegions = new ArrayList<>();
+
+        for (CellRangeAddress region : sheet.getMergedRegions()) {
+            MergedRegionDto merged = new MergedRegionDto();
+            merged.setFirstRow(region.getFirstRow());
+            merged.setLastRow(region.getLastRow());
+            merged.setFirstCol(region.getFirstColumn());
+            merged.setLastCol(region.getLastColumn());
+
+            // 获取左上角单元格的值
+            Row row = sheet.getRow(region.getFirstRow());
+            if (row != null) {
+                Cell cell = row.getCell(region.getFirstColumn());
+                if (cell != null) {
+                    merged.setValue(String.valueOf(getCellValue(cell, evaluator)));
+                }
+            }
+            mergedRegions.add(merged);
+        }
+        sheetDto.setMergedRegions(mergedRegions);
+
+        // 提取普通单元格数据
+        Map<String, Map<String, Object>> rowData = new HashMap<>();
+        for (int rowNum = sheet.getFirstRowNum(); rowNum <= sheet.getLastRowNum(); rowNum++) {
+            Row row = sheet.getRow(rowNum);
+            if (row != null) {
+                Map<String, Object> cellData = new HashMap<>();
+                boolean hasValidContent = false;
+                for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
+                    Cell cell = row.getCell(cellNum);
+                    if (cell != null) {
+                        Object value = getCellValue(cell, evaluator);
+                        if (value != null && !"".equals(value)) {
+                            cellData.put(String.valueOf(cellNum), value);
+                            hasValidContent = true;
+                        }
+                    }
+                }
+                if (hasValidContent && !cellData.isEmpty()) {
+                    rowData.put(String.valueOf(rowNum), cellData);
+                }
+            }
+        }
+        sheetDto.setRows(rowData);
+
+        return sheetDto;
+    }
+
+    /**
+     * 根据任务ID获取模板编码
+     */
+    private String getTemplateCodeByTaskId(String taskId) {
+        try {
+            TaskManagement task = taskService.getById(taskId);
+            return task != null ? task.getTemplateCode() : null;
+        } catch (Exception e) {
+            log.error("获取任务{}的模板编码失败", taskId, e);
+            return null;
+        }
     }
 
 

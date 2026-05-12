@@ -9,6 +9,8 @@
 
 package com.persee.workstation.uv_inexus.vo.messageVo;
 
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -31,4 +33,7 @@ public class MessageReport {
 
     @ApiModelProperty("消息摘要")
     private String messageSummary;
+    @ApiModelProperty("消息内容")
+    @TableField(value = "message_content", typeHandler = JacksonTypeHandler.class)
+    private String messageContent;
 }

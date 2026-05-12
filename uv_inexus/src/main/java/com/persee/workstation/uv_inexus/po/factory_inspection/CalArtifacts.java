@@ -13,7 +13,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.persee.workstation.uv_inexus.model.BasePO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -85,4 +85,50 @@ public class CalArtifacts extends BasePO {
     @TableField(value = "remark")
     @ApiModelProperty(value="描述")
     private String remark;
+
+
+
+//    /**
+//     * 生产日期
+//     */
+//    @TableField(exist = false)
+//    @ApiModelProperty(value="生产日期")
+//    private java.util.Date productionDate;
+//
+//    /**
+//     * 保质期
+//     */
+//    @ApiModelProperty(value="保质期")
+//    @TableField(exist = false)
+//    private Integer shelfLife;
+
+    /**
+     * 有效期截止日期
+     */
+    @TableField(value = "expiry_date")
+    @ApiModelProperty(value="有效期截止日期")
+    @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
+    private java.util.Date expiryDate;
+
+    /**
+     * 是否启用效期提醒：0-否，1-是
+     */
+    @TableField(value = "reminder_enabled")
+    @ApiModelProperty(value="是否启用效期提醒：0-否，1-是")
+    private Integer reminderEnabled;
+
+    /**
+     * 提前提醒天数（默认30天）
+     */
+    @TableField(value = "reminder_days")
+    @ApiModelProperty(value="提前提醒天数")
+    private Integer reminderDays;
+
+    /**
+     * 上次提醒日期
+     */
+    @TableField(value = "last_reminder_date")
+    @ApiModelProperty(value="上次提醒日期")
+    @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
+    private java.util.Date lastReminderDate;
 }

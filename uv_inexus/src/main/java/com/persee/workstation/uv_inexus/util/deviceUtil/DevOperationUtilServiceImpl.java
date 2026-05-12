@@ -58,7 +58,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
-
 /**
  * 仪器操作工具类，定义所有的仪器操作，根据业务层传参来组装发送报文，然后 从队列里取接收报文并处理
  * 将处理后的结果返给业务层
@@ -214,7 +213,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 OperationResultEntity result = (OperationResultEntity) r.getData();
                 String sn = result.getDeviceSerialNumber();
 
-                if (!sn.equals(deviceSerialNumber)) {
+                if (sn == null || !sn.equals(deviceSerialNumber)) {
                     log.info("当前ip的序列号以改变！");
                     unConnectedDevice.add(deviceSerialNumber);
                 }
@@ -484,7 +483,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         if (!r.getSuccess()) {
             return R.fail(r.getMessage());
         }
-        OperationResultEntity data = (OperationResultEntity)r.getData();
+        OperationResultEntity data = (OperationResultEntity) r.getData();
         return R.ok(data);
     }
 
@@ -1360,6 +1359,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
     /**
      * 根据 MAC 地址生成唯一的 IP 最后一位
+     *
      * @param macAddress 设备的 MAC 地址
      * @return IP 最后一位 (1-254)
      */
@@ -1655,7 +1655,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         Map<String, String> darkInfo = info.getDarkInfo();
         String z = "1";
-        if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
             z = "0.1";
         }
 //        if (darkInfo != null && StringUtils.hasText(darkInfo.get(device.getCurrentWavelength()))) {
@@ -1686,12 +1686,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 String s;
                 if (!Objects.isNull(zeroParam)) {
                     s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z));
-                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z));
                     }
                 } else {
                     s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z));
-                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z));
                     }
                 }
@@ -1712,12 +1712,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (!Objects.isNull(zeroParam)) {
                     s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z));
 
-                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z));
                     }
                 } else {
                     s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z));
-                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z));
                     }
                 }
@@ -2035,10 +2035,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                         measureResult.setValue(value);
 
-                    } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())){
+                    } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
                         Map<String, String> darkInfo = info.getDarkInfo();
                         String z = "1";
-                        if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                             z = "0.1";
                         }
 //                        if (darkInfo != null && StringUtils.hasText(darkInfo.get(s))) {
@@ -2050,7 +2050,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         }
                         String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
 
-                        if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                             tPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
                         }
 
@@ -2148,10 +2148,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                     measureResult.setValue(value);
 
-                } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())){
+                } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
                     Map<String, String> darkInfo = info.getDarkInfo();
                     String z = "1";
-                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         z = "0.1";
                     }
 //                    if (darkInfo != null && StringUtils.hasText(darkInfo.get(wavelength))) {
@@ -2164,7 +2164,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                     String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
 
-                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         tPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
                     }
                     String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);

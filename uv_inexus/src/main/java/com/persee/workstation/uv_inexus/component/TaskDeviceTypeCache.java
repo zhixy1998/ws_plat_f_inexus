@@ -13,6 +13,7 @@ import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,7 @@ import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CA
  * 内部使用 Ehcache 实现，支持跨类访问和持久化
  */
 @Component
+@Slf4j
 public class TaskDeviceTypeCache {
     @Autowired
     private EhcacheUtil ehcacheUtil;
@@ -37,6 +39,7 @@ public class TaskDeviceTypeCache {
     /**
      * 从缓存获取设备型号
      */
+
     public String get(String taskId) {
         Object value = ehcacheUtil.get(
                 DEFAULT_CACHE.getCacheName(),
@@ -46,12 +49,25 @@ public class TaskDeviceTypeCache {
         );
         if (ObjectUtils.isEmpty(value)) {
             TaskManagement taskManagement = taskService.getById(taskId);
-            String s1 = deviceInfoService.queryDeviceTypeBySerialNumber(taskManagement.getOperationInstrument());
-            this.put(taskId, s1);
-            return s1;
+            if (taskManagement == null) {
+                log.warn("任务不存在，taskId: {}", taskId);
+                return null;
+            }
+
+            String serialNumber = taskManagement.getOperationInstrument();
+            if (serialNumber == null || serialNumber.isEmpty()) {
+                log.warn("任务未绑定仪器，taskId: {}", taskId);
+                return null;
+            }
+
+            String deviceType = deviceInfoService.queryDeviceTypeBySerialNumber(serialNumber);
+            this.put(taskId, deviceType);
+            return deviceType;
         }
         return (String) value;
     }
+
+
 
     /**
      * 向缓存放入设备型号
