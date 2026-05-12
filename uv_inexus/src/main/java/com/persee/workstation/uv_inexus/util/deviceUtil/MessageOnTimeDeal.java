@@ -503,6 +503,8 @@ public class MessageOnTimeDeal {
                                 if (Constants.firstDataTime != null && Constants.secondDataTime != null){
                                     Constants.pushInterval = (Constants.secondDataTime - Constants.firstDataTime) / 1000.0;
                                     log.info("计算得到推送间隔: {} 秒", Constants.pushInterval);
+                                    Constants.firstDataTime= null;
+                                    Constants.secondDataTime= null;
                                 }
 
                                 if (Constants.firstDataTime != null && Constants.secondDataTime == null){
