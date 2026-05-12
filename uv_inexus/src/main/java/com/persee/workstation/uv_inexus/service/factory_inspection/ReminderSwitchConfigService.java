@@ -7,8 +7,6 @@ import com.persee.workstation.uv_inexus.po.factory_inspection.ReminderSwitchConf
 import com.persee.workstation.uv_inexus.vo.factory_inspection.ReminderSwitchConfigListVo;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.ReminderSwitchConfigVo;
 
-import java.util.List;
-
 public interface ReminderSwitchConfigService extends IService<ReminderSwitchConfigPO> {
 
     /**
@@ -29,7 +27,7 @@ public interface ReminderSwitchConfigService extends IService<ReminderSwitchConf
     /**
      * 批量更新配置
      */
-    Result<Boolean> batchUpdateConfigs(List<ReminderSwitchConfigDto> dtos);
+    Result<Boolean> batchUpdateConfigs(ReminderSwitchConfigListVo dtos);
 
     /**
      * 检查提醒功能是否启用（总开关）
