@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.util.List;
 
 @Api(tags = "提醒功能开关配置管理")
 @RestController
@@ -41,7 +40,7 @@ public class ReminderSwitchConfigController {
 
     @ApiOperation("批量更新配置")
     @PostMapping("/batch-update-configs")
-    public Result<Boolean> batchUpdateConfigs(@RequestBody List<ReminderSwitchConfigDto> dtos) {
+    public Result<Boolean> batchUpdateConfigs(@RequestBody ReminderSwitchConfigListVo dtos) {
         return reminderSwitchConfigService.batchUpdateConfigs(dtos);
     }
 }

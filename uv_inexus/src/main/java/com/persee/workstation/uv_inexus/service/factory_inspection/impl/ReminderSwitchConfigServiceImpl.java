@@ -129,30 +129,52 @@ public class ReminderSwitchConfigServiceImpl extends ServiceImpl<ReminderSwitchC
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Result<Boolean> batchUpdateConfigs(List<ReminderSwitchConfigDto> dtos) {
+    public Result<Boolean> batchUpdateConfigs(ReminderSwitchConfigListVo configList) {
         try {
-            if (CollectionUtils.isEmpty(dtos)) {
+            if (configList == null) {
                 return Result.fail("配置列表不能为空");
             }
 
-            for (ReminderSwitchConfigDto dto : dtos) {
+            int updateCount = 0;
+
+            if (configList.getGlobalSwitch() != null && configList.getGlobalSwitch().getEnabled() != null) {
                 LambdaQueryWrapper<ReminderSwitchConfigPO> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(ReminderSwitchConfigPO::getReminderType, dto.getReminderType());
+                wrapper.eq(ReminderSwitchConfigPO::getReminderType, GLOBAL_SWITCH_TYPE);
                 ReminderSwitchConfigPO config = this.getOne(wrapper);
 
-                if (config != null && dto.getEnabled() != null) {
-                    config.setEnabled(dto.getEnabled());
+                if (config != null) {
+                    config.setEnabled(configList.getGlobalSwitch().getIsEnabled()?1:0);
                     this.updateById(config);
+                    updateCount++;
+                    log.info("更新总开关配置: enabled={}", config.getEnabled());
                 }
             }
 
-            log.info("批量更新提醒配置成功，数量: {}", dtos.size());
+            if (!CollectionUtils.isEmpty(configList.getItemConfigs())) {
+                for (ReminderSwitchConfigVo vo : configList.getItemConfigs()) {
+                    if (vo.getReminderType() != null && vo.getEnabled() != null) {
+                        LambdaQueryWrapper<ReminderSwitchConfigPO> wrapper = new LambdaQueryWrapper<>();
+                        wrapper.eq(ReminderSwitchConfigPO::getReminderType, vo.getReminderType());
+                        ReminderSwitchConfigPO config = this.getOne(wrapper);
+
+                        if (config != null) {
+                            config.setEnabled(vo.getIsEnabled()?1:0);
+                            this.updateById(config);
+                            updateCount++;
+                            log.info("更新配置项: type={}, enabled={}", vo.getReminderType(), config.getEnabled());
+                        }
+                    }
+                }
+            }
+
+            log.info("批量更新提醒配置成功，共更新 {} 条配置", updateCount);
             return Result.ok(true);
         } catch (Exception e) {
             log.error("批量更新提醒配置异常", e);
             return Result.fail("批量更新提醒配置异常：" + e.getMessage());
         }
     }
+
 
     @Override
     public boolean isReminderEnabled() {

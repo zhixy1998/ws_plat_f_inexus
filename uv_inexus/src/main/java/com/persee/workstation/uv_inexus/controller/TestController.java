@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.controller;
 
+import com.persee.workstation.uv_inexus.listener.CalArtifactsExpiryReminderScheduler;
 import com.persee.workstation.uv_inexus.listener.TaskReminderScheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,10 +18,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class TestController {
     @Autowired
     private TaskReminderScheduler taskReminderScheduler;
+    @Autowired
+    private CalArtifactsExpiryReminderScheduler calArtifactsExpiryReminderScheduler;
 
     @GetMapping("/test")
     public String test() {
-        taskReminderScheduler.manualCheckReminders();
+//        taskReminderScheduler.manualCheckReminders();
+        calArtifactsExpiryReminderScheduler.checkMissedRemindersOnStartup();
+
         return "success";
     }
 }

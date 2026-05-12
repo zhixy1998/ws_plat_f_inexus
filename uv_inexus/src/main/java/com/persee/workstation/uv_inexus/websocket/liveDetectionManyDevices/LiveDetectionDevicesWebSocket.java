@@ -894,31 +894,43 @@ public class LiveDetectionDevicesWebSocket {
             String[] split = destination.split("/");
             String user = split[split.length - 1];
 
-            // 检查此会话是否已经订阅了此设备
             boolean isNewSubscription = addSubscription(sessionId, user);
             if (isNewSubscription) {
                 log.info("新增消息订阅: 会话={}", sessionId);
                 try {
-                    org.ehcache.Cache<String, String> cache = cacheManager.getCache("default_cache", String.class, String.class);
+                    org.ehcache.Cache<String, Object> cache = cacheManager.getCache("defaultCache", String.class, Object.class);
                     if (cache != null) {
-                        String existingUsers = cache.get("message_subscribers");
+                        Object value = cache.get("message_subscribers");
+                        String existingUsers = value != null ? value.toString() : null;
+
+                        boolean alreadyExists = false;
                         String subscribers;
+
                         if (existingUsers == null || existingUsers.isEmpty()) {
                             subscribers = user;
                         } else {
-                            if (!existingUsers.contains(user)) {
+                            String[] users = existingUsers.split(",");
+                            for (String existingUser : users) {
+                                if (existingUser.trim().equals(user)) {
+                                    alreadyExists = true;
+                                    break;
+                                }
+                            }
+
+                            if (!alreadyExists) {
                                 subscribers = existingUsers + "," + user;
+                                log.debug("消息订阅用户已缓存: {}, 当前订阅用户: {}", user, subscribers);
                             } else {
                                 subscribers = existingUsers;
+                                log.debug("用户已存在，无需重复添加: {}", user);
                             }
                         }
+
                         cache.put("message_subscribers", subscribers);
-                        log.debug("消息订阅用户已缓存: {}, 当前订阅用户: {}", user, subscribers);
                     }
                 } catch (Exception e) {
                     log.error("缓存消息订阅失败: 会话={}, 用户={}", sessionId, user, e);
                 }
-//                sendMessage(user);
             } else {
                 log.debug("重复消息订阅忽略: 会话={} ", sessionId);
             }
@@ -995,9 +1007,10 @@ public class LiveDetectionDevicesWebSocket {
             log.info("移除消息订阅: 会话={}", sessionId);
 
             try {
-                org.ehcache.Cache<String, String> cache = cacheManager.getCache("default_cache", String.class, String.class);
+                org.ehcache.Cache<String, Object> cache = cacheManager.getCache("defaultCache", String.class, Object.class);
                 if (cache != null) {
-                    String existingUsers = cache.get("message_subscribers");
+                    Object value = cache.get("message_subscribers");
+                    String existingUsers = value != null ? value.toString() : null;
                     if (existingUsers != null && !existingUsers.isEmpty()) {
                         String[] users = existingUsers.split(",");
                         StringBuilder newSubscribers = new StringBuilder();

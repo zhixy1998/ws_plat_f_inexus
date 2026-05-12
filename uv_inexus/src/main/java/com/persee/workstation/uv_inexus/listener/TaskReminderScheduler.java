@@ -195,7 +195,7 @@ public class TaskReminderScheduler {
     private Set<String> getOnlineUsersFromCache() {
         Set<String> onlineUsers = new HashSet<>();
         try {
-            org.ehcache.Cache<String, String> cache = cacheManager.getCache("default_cache", String.class, String.class);
+            org.ehcache.Cache<String, String> cache = cacheManager.getCache("defaultCache", String.class, String.class);
             if (cache != null) {
                 String subscribers = cache.get("message_subscribers");
                 if (subscribers != null && !subscribers.isEmpty()) {
@@ -350,7 +350,7 @@ public class TaskReminderScheduler {
 
         MessageInfoPO messageInfoPO = new MessageInfoPO();
         messageInfoPO.setMessageType(TYPE_REMIND_MESSAGE.getCode());
-        messageInfoPO.setMessageSummary(notification.toString());
+        messageInfoPO.setMessageSummary("期间核查提醒");
         messageInfoPO.setMessageSource(Constants.MESSAGE_SOURCE_SYSTEM);
         messageInfoPO.setMessageContent(notification.toString());
         Boolean b = messageInfoService.saveMessageInfo(messageInfoPO);

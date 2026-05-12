@@ -19,7 +19,8 @@ public class ReminderSwitchConfigVo {
 
     @ApiModelProperty("是否启用：0-关闭，1-开启")
     private Integer enabled;
-
+    @ApiModelProperty("是否启用（布尔值）")
+    private Boolean isEnabled;
     @ApiModelProperty("排序号")
     private Integer sortOrder;
 
@@ -31,4 +32,9 @@ public class ReminderSwitchConfigVo {
 
     @ApiModelProperty("更新时间")
     private String updateTime;
+
+    public void setEnabled(Integer enabled) {
+        this.enabled = enabled;
+        this.isEnabled = enabled != null && enabled == 1;
+    }
 }

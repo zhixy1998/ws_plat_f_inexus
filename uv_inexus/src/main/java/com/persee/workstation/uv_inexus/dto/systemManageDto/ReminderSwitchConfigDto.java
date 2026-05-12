@@ -15,7 +15,7 @@ public class ReminderSwitchConfigDto {
     @ApiModelProperty(value = "配置ID")
     private String id;
 
-    @ApiModelProperty(value = "提醒类型：0-总开关，1-检定提醒，2-校准提醒，3-期间核查提醒，4-标准物质效期提醒", required = true)
+    @ApiModelProperty(value = "提醒类型：0-总开关，1-期间核查提醒，2-标准物质效期提醒", required = true)
     @NotNull(message = "提醒类型不能为空")
     private Integer reminderType;
 
@@ -26,10 +26,14 @@ public class ReminderSwitchConfigDto {
     @Min(0)
     @Max(1)
     private Integer enabled;
+    private Boolean isEnabled;
 
     @ApiModelProperty(value = "排序号")
     private Integer sortOrder;
 
     @ApiModelProperty(value = "描述说明")
     private String description;
+    public void setEnabled(Integer enabled) {
+        this.enabled = isEnabled?1:0;
+    }
 }

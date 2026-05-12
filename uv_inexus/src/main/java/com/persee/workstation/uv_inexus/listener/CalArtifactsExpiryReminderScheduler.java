@@ -70,7 +70,7 @@ public class CalArtifactsExpiryReminderScheduler {
 //     * cron表达式：秒 分 时 日 月 周
 //     * 0 0 */3 * * ? 表示每3小时的整点执行（0点、3点、6点、9点、12点、15点、18点、21点）
 //
-    @Scheduled(cron = "0 0 */3 * * ?")
+    @Scheduled(cron = "*/30 * * * * ?")
     public void scheduledCheckExpiryReminders() {
         log.info("开始执行标准物质效期定时提醒检查...");
 
@@ -119,56 +119,42 @@ public class CalArtifactsExpiryReminderScheduler {
             }
             log.info("当前在线用户: {}", onlineUsers);
 
-            // 按用户分组（使用updateUser作为接收者）
-            Map<String, List<ExpiryReminder>> remindersByUser = new HashMap<>();
+            // 收集所有需要提醒的标准物质
+            List<ExpiryReminder> allReminders = new ArrayList<>();
 
             for (CalArtifacts artifact : artifacts) {
                 ExpiryCheckResult result = checkExpiryStatus(artifact, today);
 
                 if (result.shouldNotify) {
-                    String updateUser = artifact.getUpdateBy();
-                    if (updateUser != null && !updateUser.isEmpty()) {
-                        // 只给在线用户发送提醒
-                        if (onlineUsers.contains(updateUser)) {
-                            remindersByUser.computeIfAbsent(updateUser, k -> new ArrayList<>()).add(new ExpiryReminder(artifact, result));
-                        } else {
-                            log.debug("标准物质 {} 的负责人 {} 不在线，跳过提醒", artifact.getName(), updateUser);
-                        }
-                    } else {
-                        // 如果没有更新用户，使用默认用户（如果在线）
-                        if (onlineUsers.contains("admin")) {
-                            remindersByUser.computeIfAbsent("admin", k -> new ArrayList<>()).add(new ExpiryReminder(artifact, result));
-                        }
-                    }
+                    allReminders.add(new ExpiryReminder(artifact, result));
                 }
             }
 
-            if (remindersByUser.isEmpty()) {
-                log.info("✓ 今天没有需要提醒的标准物质效期（或负责人不在线）");
+            if (allReminders.isEmpty()) {
+                log.info("✓ 今天没有需要提醒的标准物质效期");
                 return;
             }
 
+            // 给所有在线用户发送相同的提醒（广播模式）
             int totalReminders = 0;
-            for (Map.Entry<String, List<ExpiryReminder>> entry : remindersByUser.entrySet()) {
-                String updateUser = entry.getKey();
-                List<ExpiryReminder> userReminders = entry.getValue();
+            for (String user : onlineUsers) {
+                sendBatchNotification(user, allReminders, today);
+                totalReminders++;
 
-                sendBatchNotification(updateUser, userReminders, today);
-                totalReminders += userReminders.size();
-
-                // 更新上次提醒日期
-                for (ExpiryReminder reminder : userReminders) {
+                // 更新所有标准物质的最后提醒日期
+                for (ExpiryReminder reminder : allReminders) {
                     updateLastReminderDate(reminder.artifact);
                 }
             }
 
-            log.info("✓ 标准物质效期检查完成，共发送 {} 条提醒给 {} 个在线用户",
-                    totalReminders, remindersByUser.size());
+            log.info("✓ 标准物质效期检查完成，共发送 {} 条提醒给 {} 个在线用户，涉及 {} 个标准物质",
+                    totalReminders, onlineUsers.size(), allReminders.size());
 
         } catch (Exception e) {
             log.error("执行标准物质效期提醒检查异常", e);
         }
     }
+
 
     /**
      * 从缓存中获取在线用户列表
@@ -176,15 +162,18 @@ public class CalArtifactsExpiryReminderScheduler {
     private Set<String> getOnlineUsersFromCache() {
         Set<String> onlineUsers = new HashSet<>();
         try {
-            org.ehcache.Cache<String, String> cache = cacheManager.getCache("default_cache", String.class, String.class);
+            org.ehcache.Cache<String, Object> cache = cacheManager.getCache("defaultCache", String.class, Object.class);
             if (cache != null) {
-                String subscribers = cache.get("message_subscribers");
-                if (subscribers != null && !subscribers.isEmpty()) {
-                    // 订阅用户以逗号分隔
-                    String[] users = subscribers.split(",");
-                    for (String user : users) {
-                        if (user != null && !user.trim().isEmpty()) {
-                            onlineUsers.add(user.trim());
+                Object value = cache.get("message_subscribers");
+                if (value != null) {
+                    String subscribers = value.toString();
+                    if (!subscribers.isEmpty()) {
+                        // 订阅用户以逗号分隔
+                        String[] users = subscribers.split(",");
+                        for (String user : users) {
+                            if (user != null && !user.trim().isEmpty()) {
+                                onlineUsers.add(user.trim());
+                            }
                         }
                     }
                 }
@@ -236,23 +225,18 @@ public class CalArtifactsExpiryReminderScheduler {
         }
 
         // 防重复提醒：检查今天是否已经提醒过
-//        Date lastReminderDate = artifact.getLastReminderDate();
-//        if (lastReminderDate != null) {
-//            LocalDate lastReminder = lastReminderDate.toInstant()
-//                    .atZone(ZoneId.systemDefault())
-//                    .toLocalDate();
-//
-//            if (lastReminder.isEqual(today)) {
-//                log.debug("标准物质 {} 今天已发送过效期提醒，跳过", artifact.getName());
-//                return new ExpiryCheckResult(false, daysUntilExpiry, null);
-//            }
-//        }
         Date lastReminderDate = artifact.getLastReminderDate();
         if (lastReminderDate != null) {
-            log.debug("标准物质 {} 已发送过效期提醒（最后提醒时间：{}），跳过",
-                    artifact.getName(), lastReminderDate);
-            return new ExpiryCheckResult(false, daysUntilExpiry, null);
+            LocalDate lastReminder = lastReminderDate.toInstant()
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
+
+            if (lastReminder.isEqual(today)) {
+                log.debug("标准物质 {} 今天已发送过效期提醒，跳过", artifact.getName());
+                return new ExpiryCheckResult(false, daysUntilExpiry, null);
+            }
         }
+
         log.debug("标准物质 {} 需要提醒: {}, 剩余{}天",
                 artifact.getName(), notifyReason, daysUntilExpiry);
 
@@ -280,42 +264,42 @@ public class CalArtifactsExpiryReminderScheduler {
         }
 
         StringBuilder notification = new StringBuilder();
-        notification.append("⚠️ 标准物质效期提醒\n\n");
+//        notification.append("⚠️ 标准物质效期提醒<br>");
 
         if (!expiringReminders.isEmpty()) {
-            notification.append("【即将到期的标准物质】\n");
+            notification.append("【即将到期的标准物质】<br>");
             for (int i = 0; i < expiringReminders.size(); i++) {
                 ExpiryReminder reminder = expiringReminders.get(i);
                 long days = reminder.result.daysUntilExpiry;
                 String expiryDateStr = reminder.artifact.getExpiryDate().toString().substring(0, 10);
 
                 if (days == 0) {
-                    notification.append(String.format("%d. 🔴 %s - 今天到期！\n",
+                    notification.append(String.format("%d. 🔴 %s - 今天到期！<br>",
                             i + 1, reminder.artifact.getName()));
                 } else {
-                    notification.append(String.format("%d. 🟡 %s - %d天后到期 (%s)\n",
+                    notification.append(String.format("%d. 🟡 %s - %d天后到期 (%s)<br>",
                             i + 1, reminder.artifact.getName(), days, expiryDateStr));
                 }
             }
-            notification.append("\n");
+//            notification.append("<br>");
         }
 
         if (!expiredReminders.isEmpty()) {
-            notification.append("【已过期的标准物质】\n");
+            notification.append("【已过期的标准物质】<br>");
             for (int i = 0; i < expiredReminders.size(); i++) {
                 ExpiryReminder reminder = expiredReminders.get(i);
                 long expiredDays = Math.abs(reminder.result.daysUntilExpiry);
                 String expiryDateStr = reminder.artifact.getExpiryDate().toString().substring(0, 10);
 
-                notification.append(String.format("%d. ❌ %s - 已过期%d天 (应于%s更换)\n",
+                notification.append(String.format("%d. ❌ %s - 已过期%d天 (应于%s更换)<br>",
                         i + 1, reminder.artifact.getName(), expiredDays, expiryDateStr));
             }
-            notification.append("\n");
+//            notification.append("<br>");
         }
 
         notification.append("请及时更换或重新标定标准物质，确保检测数据准确性！");
 
-        log.warn("发送标准物质效期提醒给用户 {}: \n{}", updateUser, notification.toString());
+        log.warn("发送标准物质效期提醒给用户 {}: <br>{}", updateUser, notification.toString());
 
         // 创建消息记录
         MessageInfoPO messageInfoPO = new MessageInfoPO();
