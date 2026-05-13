@@ -17,6 +17,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigGrantPermDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigSaveDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysQuickConfigPO;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
@@ -59,4 +60,9 @@ public interface SysQuickConfigService extends IService<SysQuickConfigPO> {
     Result<List<Map<String, Object>>> getQuickConfigTree(String groupId, Integer quickConfigType);
 
     Result<Boolean> grantQuickConfigToGroup(QuickConfigGrantPermDTO grantDTO);
+
+    /**
+     * 查询快捷配置列表（树形结构，支持条件筛选）
+     */
+    Result<List<QuickConfigTreeDTO>> getQuickConfigList(QuickConfigQueryDTO queryDTO);
 }

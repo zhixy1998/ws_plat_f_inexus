@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.softwareActivation.DeviceInfoDTO;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -243,7 +243,7 @@ public class SoftwareActivationController {
      */
     @DeleteMapping("/{id}")
 //    @ButtonPermission("softwareActivationDeleteInstrument")
-    @OperateLog(module = "删除仪器", description = "执行删除仪器操作", recordParams = true)
+    @OperateLog(module = "删除仪器", description = "执行删除仪器操作", recordParams = true, recordResult = true, compare = true)
     @ApiOperation("根据ID删除软件激活记录")
     public Result<Void> deleteById(@PathVariable Integer id) {
         softwareActivationService.removeById(id);
@@ -254,7 +254,7 @@ public class SoftwareActivationController {
      * 批量删除
      */
 //    @ButtonPermission("softwareActivationBatchInstrument")
-    @OperateLog(module = "批量删除", description = "批量删除软件激活记录", recordParams = true)
+    @OperateLog(module = "批量删除", description = "批量删除软件激活记录", recordParams = true, recordResult = true, compare = true)
     @DeleteMapping("/batch")
 //    @ButtonPermission(value = "revokeActivation",description = "批量删除")
     @ApiOperation("批量删除软件激活记录")
@@ -271,6 +271,7 @@ public class SoftwareActivationController {
     /**
      * 分页查询新增的设备数据（支持搜索）
      */
+    @OperateLog(module = "仪器管理-软件激活-设备发现", description = "执行仪器管理-软件激活-设备发现操作", recordParams = true, recordResult = true, compare = true)
     @GetMapping("/addDevice")
     @ApiOperation("自动新增设备并分页查询（保留needAdd参数用于其他用途）")
     public Result<PageView<DeviceInfoDTO>> addAndGetDevices(
@@ -296,6 +297,7 @@ public class SoftwareActivationController {
      * 重置所有设备的isAddStatus为0
      * 前端关闭弹窗时调用
      */
+    @OperateLog(module = "仪器管理-软件激活-设备列表新增", description = "执行仪器管理-软件激活-设备列表新增操作", recordParams = true, recordResult = true, compare = true)
     @PostMapping("/resetAllAddStatus")
     @ApiOperation("关闭弹窗时重置所有设备状态为历史状态")
     public Result<Boolean> resetAllDeviceAddStatus(@RequestBody Map<String, Object> params) {
