@@ -11,14 +11,16 @@ package com.persee.workstation.uv_inexus.po.guide.instrumentPo;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.persee.workstation.uv_inexus.model.BasePO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.CalibrationTableVO;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-@TableName("t_ins_calibration_temp")
+@TableName(value = "t_ins_calibration_temp", autoResultMap = true)
 public class CalibrationTempPO  extends BasePO {
 
     @ApiModelProperty("仪器序列号")
@@ -36,4 +38,8 @@ public class CalibrationTempPO  extends BasePO {
     @ApiModelProperty("参数值")
     @TableField("param_value")
     private String paramValue;
+
+    @ApiModelProperty("表格数据")
+    @TableField(value = "table_data", typeHandler = JacksonTypeHandler.class)
+    private CalibrationTableVO tableData;
 }

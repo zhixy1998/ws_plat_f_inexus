@@ -525,6 +525,33 @@ public class DeviceConnectionManager {
         return currentWavelength;
     }
 
+    public boolean setDarkWavelength(String deviceId, String currentWavelength) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置当前波长失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.setDarkWavelength(currentWavelength);
+        device.updateLastUseTime();
+        logInfo("设置当前波长: %s -> %s", deviceId, currentWavelength);
+        return true;
+    }
+
+    public String getDarkWavelength(String deviceId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("获取当前波长失败: 设备不存在 %s", deviceId);
+            return null;
+        }
+
+        device.updateLastUseTime();
+        String currentWavelength = device.getDarkWavelength();
+
+        logInfo("获取当前波长: %s -> %s", deviceId, currentWavelength);
+        return currentWavelength;
+    }
+
 
     /**
      * 设置光度模式

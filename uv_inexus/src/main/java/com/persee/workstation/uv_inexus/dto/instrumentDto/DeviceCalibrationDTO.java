@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.dto.instrumentDto;
 
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DataNameValue;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.CalibrationTableData;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -23,6 +24,12 @@ public class DeviceCalibrationDTO {
 
     @ApiModelProperty("校准参数")
     private List<DataNameValue> data;
+
+    @ApiModelProperty("表数据")
+    private List<CalibrationTableData> calibrationTableData;
+
+    @ApiModelProperty("表格里所有数据")
+    private List<CalibrationTableData> allTableData;
 
     @ApiModelProperty("校准类型")
     private Integer calibrationType;

@@ -34,4 +34,7 @@ public class DeviceCalibrationParams {
 
     @ApiModelProperty("下拉参数")
     private List<DataNameValue> data;
+
+    @ApiModelProperty("表格和图谱数据")
+    private CalibrationTableVO tableData;
 }

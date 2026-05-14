@@ -148,6 +148,11 @@ public interface DeviceManageService {
 
     R<Boolean> deviceNewCalibration(DeviceCalibrationDTO calibrationDTO);
 
+    R<Boolean> sendMultiCalibrationToDevice(DeviceCalibrationDTO dto);
+
+    R<Boolean> multiCalibration(DeviceCalibrationDTO dto, String multiType);
+
+
     R<List<WorkTimeInfo>> queryLampLifeInfo(String deviceSerialNumber, Boolean isUpdate);
 
     R<Boolean> hasWorkTime(String deviceSerialNumber);
