@@ -399,6 +399,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             case QueryLifeTime:
                 result = queryLifeTime(inputParam);
                 break;
+            case SetWlList:
+                result = setWlList(inputParam);
+                break;
             default:
                 infoService.newReleaseDevice(deviceSerialNumber);
                 break;
@@ -408,6 +411,85 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             infoService.newReleaseDevice(deviceSerialNumber);
         }
         return result;
+    }
+
+    private R<OperationResultEntity> setWlList(DevOperationInputParam inputParam) {
+
+        OperationResultEntity resultEntity = new OperationResultEntity();
+
+        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+
+        String deviceId = info.getDeviceId();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String xmlKey = device.getXmlKey();
+        Integer connectType = device.getConnectType();
+        Object[] param = new Object[4];
+
+        String cmdId = T600ComIdEnums.SetWlList.getComId();
+        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+        Transition transition = xml.get(cmdId);
+        int replyNumber = transition.getReplyNumber();
+        int timeout = transition.getTimeout();
+        byte[] endBytes = null;
+        List<String> headReceiveBytes = transition.getHeadReceiveBytes();
+
+
+        int total = inputParam.getSetWlList().size();
+
+        for (int i = 0; i < total; i++) {
+            StepPoint point = inputParam.getSetWlList().get(i);
+
+            param[0] = i + 1;
+            param[1] = total;
+            param[2] = point.getTheoryStep();
+            param[3] = point.getActualStep();
+
+            byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
+
+            R<Object> calibration = new R<>();
+
+            boolean isDealOnTime = false;
+            if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
+
+            } else {
+
+                if (replyNumber < 0) {
+                    String[] readBytes = transition.getReadBytes();
+                    if (readBytes != null && readBytes.length > 0) {
+                        endBytes = new byte[4];
+                        String fullStr = readBytes[0];
+                        String[] parts = fullStr.split(":");
+
+                        for (int j = 0; j < 4 && i < parts.length; j++) {
+                            String part = parts[j].trim();
+                            // 跳过非数字部分（比如 "Check"）
+                            if (!part.matches("\\d+")) {
+                                break; // 或 continue，根据逻辑决定
+                            }
+                            // 解析为 int（支持 0~255）
+                            int intValue = Integer.parseInt(part);
+                            // 安全转为 byte（保留低8位）
+                            endBytes[i] = (byte) (intValue & 0xFF);
+                        }
+                    }
+
+                    calibration = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout, isDealOnTime, deviceSerialNumber, endBytes, headReceiveBytes);
+
+                } else {
+                    calibration = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+                }
+            }
+            if (!calibration.getSuccess()) {
+                //TODO 国际化待定
+
+                return R.fail("设置波长列表失败");
+            }
+
+            resultEntity = (OperationResultEntity) calibration.getData();
+
+        }
+        return R.ok(resultEntity);
     }
 
     private R<OperationResultEntity> queryLifeTime(DevOperationInputParam inputParam) {
@@ -1280,6 +1362,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     OperationResultEntity entity = (OperationResultEntity) data;
                     List<StepPoint> stepPoints = entity.getStepPoints();
                     String s = formulaUtil.addFormula(stepPoints, result.getDeviceSerialNumber());
+                    result.setStepPoints(stepPoints);
 
                     result.setLinearSegment(s);
                     continue;

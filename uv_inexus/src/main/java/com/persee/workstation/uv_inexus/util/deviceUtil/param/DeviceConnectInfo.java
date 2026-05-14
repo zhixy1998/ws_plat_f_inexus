@@ -120,6 +120,11 @@ public class DeviceConnectInfo {
      *  当前波长
      */
     private String currentWavelength = "";
+
+    /**
+     *  暗电流当前波长
+     */
+    private String darkWavelength = "";
     /**
      *  光度模式
      */
