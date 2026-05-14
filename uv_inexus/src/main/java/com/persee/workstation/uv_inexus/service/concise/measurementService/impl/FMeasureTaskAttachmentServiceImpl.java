@@ -37,7 +37,7 @@ public class FMeasureTaskAttachmentServiceImpl extends ServiceImpl<FMeasureTaskA
             return R.ok(attachment);
         }
         //未找到记录
-        return R.fail(YamlMessageSource.getMessageStatic("00100025"));
+        return R.fail("00100025");
     }
 
     @Override

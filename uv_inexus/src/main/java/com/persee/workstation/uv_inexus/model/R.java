@@ -84,6 +84,15 @@ public class R<T> {
         return build(data, true);
     }
 
+    // 操作成功（通过消息码与占位参数）- 自动识别消息码
+    public static<T> R<T> ok(String messageCode, Object... obj){
+        if (isMessageCode(messageCode)) {
+            return build(true, messageCode, obj);
+        } else {
+            return build(true, messageCode);
+        }
+    }
+
     // 操作成功（通过消息码与占位参数）
     public static<T> R<T> okCode(String messageCode, Object... obj){
         return build(true, messageCode, obj);
@@ -115,13 +124,27 @@ public class R<T> {
     }
 
     public static<T> R<T> fail(String message) {
-        R<T> R = build(false,message);
-        return R;
+        // 判断是否是消息码（8位十六进制）
+        if (isMessageCode(message)) {
+            return build(false, message, new Object[0]);  // 显式传递空数组，触发正确的重载
+        } else {
+            R<T> R = build(false,message);
+            return R;
+        }
     }
+// ... existing code ...
 
-    // 操作失败（通过消息码与占位参数）
+
+
+    // 操作失败（通过消息码与占位参数）- 自动识别消息码
     public static<T> R<T> fail(String messageCode, Object... obj){
-        return build(false, messageCode, obj);
+        // 判断是否是消息码（8位十六进制）
+        if (isMessageCode(messageCode)) {
+            return build(false, messageCode, obj);
+        } else {
+            // 如果不是消息码，直接返回原文
+            return build(false, messageCode);
+        }
     }
 
     // 失败别名，统一调用风格
@@ -137,7 +160,13 @@ public class R<T> {
 
 
     public R<T> message(String msg){
-        this.setMessage(msg);
+        // 判断是否是消息码（8位十六进制）
+        if (isMessageCode(msg)) {
+            this.setMessageCode(msg);
+            this.setMessage(msg);
+        } else {
+            this.setMessage(msg);
+        }
         return this;
     }
 
@@ -154,5 +183,15 @@ public class R<T> {
     public R<T> obj(Object... obj){
         this.setObj(obj);
         return this;
+    }
+
+    /**
+     * 判断是否为消息码（8位十六进制）
+     */
+    private static boolean isMessageCode(String code) {
+        if (code == null || code.isEmpty()) {
+            return false;
+        }
+        return code.matches("^[0-9a-fA-F]{8}$");
     }
 }

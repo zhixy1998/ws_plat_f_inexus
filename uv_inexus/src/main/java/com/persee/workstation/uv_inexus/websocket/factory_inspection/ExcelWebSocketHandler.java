@@ -3828,7 +3828,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
             // 检查响应体是否为空
             if (responseBody == null) {
-                throw new BusinessException(YamlMessageSource.getMessageStatic("00000032")); // "算法服务返回异常"
+                throw new BusinessException("00000032"); // "算法服务返回异常"
             }
 
             Integer code = (Integer) responseBody.get("code");

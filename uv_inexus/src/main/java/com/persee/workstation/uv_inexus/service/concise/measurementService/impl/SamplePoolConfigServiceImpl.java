@@ -145,13 +145,13 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         if (!StringUtils.hasText(changeDto.getDeviceSerialNumber())) {
             log.info("未连接仪器");
             //未连接仪器
-            return R.fail(YamlMessageSource.getMessageStatic("0000001D"));
+            return R.fail("0000001D");
         }
 
         if (!StringUtils.hasText(changeDto.getUpdateBy())) {
             log.info("缺少更新人信息");
             //请登录后操作！
-            return R.fail(YamlMessageSource.getMessageStatic("00307004"));
+            return R.fail("00307004");
         }
 
         LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
@@ -159,7 +159,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         SamplePoolConfigPO po = dao.selectOne(query);
         if (po == null) {
             //未找到该仪器附件配置
-            return R.fail(YamlMessageSource.getMessageStatic("00106001"));
+            return R.fail("00106001");
         }
         if (changeDto.getIsAutoChangePool() == null && changeDto.getPoolNum() == null && changeDto.getPoolStatus() != null) {
             changeDto.setIsAutoChangePool(changeDto.getPoolStatus());
@@ -194,7 +194,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
                 List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
                 if (list == null || list.size() <= 1) {
                     //没有切换的样品池
-                    return R.fail(YamlMessageSource.getMessageStatic("00106002"));
+                    return R.fail("00106002");
                 }
             }
 
@@ -218,13 +218,13 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         } else {
             if (changeDto.getPoolStatus() != null || changeDto.getPoolPurpose() != null) {
                 //请选择要操作的样品池
-                return R.fail(YamlMessageSource.getMessageStatic("00106003"));
+                return R.fail("00106003");
             }
         }
         boolean b = dao.updateById(po) > 0;
         if (!b) {
             //更新失败
-            return R.fail(YamlMessageSource.getMessageStatic("00000048"));
+            return R.fail("00000048");
         }
         if (StringUtils.hasText(changeDto.getTaskId()) && po.getIsAutoChangePool()) {
             List<Integer> usefulLocation = getUsefulLocation(changeDto.getDeviceSerialNumber());
@@ -246,7 +246,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         SamplePoolConfigPO po = dao.selectOne(query);
         if (po == null || !StringUtils.hasText(po.getPoolInfo())) {
             //未找到该仪器附件配置
-            return R.fail(YamlMessageSource.getMessageStatic("00106001"));
+            return R.fail("00106001");
         }
 
         FSamplePoolInfoVO vo = new FSamplePoolInfoVO();
@@ -289,12 +289,12 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         if (!StringUtils.hasText(deviceSerialNumber)) {
             log.info("未连接仪器");
             //未连接仪器
-            return R.fail(YamlMessageSource.getMessageStatic("0000001D"));
+            return R.fail("0000001D");
         }
         if (!StringUtils.hasText(updateBy)) {
             log.info("缺少更新人信息");
             //请登录后操作
-            return R.fail(YamlMessageSource.getMessageStatic("00307004"));
+            return R.fail("00307004");
         }
         LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
         query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
@@ -329,7 +329,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
             return R.ok(true);
         } else {
             //更新失败
-            return R.fail(YamlMessageSource.getMessageStatic("00000048"));
+            return R.fail("00000048");
         }
     }
 
@@ -340,7 +340,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         SamplePoolConfigPO po = dao.selectOne(query);
         if (po == null || !StringUtils.hasText(po.getPoolInfo())) {
             //未找到该仪器附件配置
-            return R.fail(YamlMessageSource.getMessageStatic("00106001"));
+            return R.fail("00106001");
         }
 
         SamplePoolInfoVO vo = new SamplePoolInfoVO();

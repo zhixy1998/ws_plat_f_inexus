@@ -54,7 +54,7 @@ public class RoundingRulesController { // 修改了控制器类名
         RoundingRules roundingRules = roundingRulesService.findById(id); // 修改了变量名和Service方法调用
         if (roundingRules == null) {
             //"未找到ID为" + id + "的修约规则记录"
-            return Result.fail(404, YamlMessageSource.getMessageStatic("00406001",id)); // 修改了错误消息
+            return Result.fail("00406001", id); // 修改了错误消息
         } else {
             return Result.ok(roundingRules);
         }

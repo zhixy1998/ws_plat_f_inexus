@@ -166,14 +166,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (deviceInfoPO == null || deviceInfoPO.getId() == null) {
             log.info("未找到连接仪器信息！");
             //未查找到仪器信息
-            return R.fail(YamlMessageSource.getMessageStatic("00203001"));
+            return R.fail("00203001");
         }
 
         List<InitRecordPO> initList = initRecordService.searchInitStatus(deviceSerialNumber, deviceInfoPO.getId());
         if (initList.isEmpty()) {
             log.info("查询初始化状态异常");
             //查询初始化状态异常
-            return R.fail(false, YamlMessageSource.getMessageStatic("00203002"));
+            return R.fail(false, "00203002");
         }
 
         vo.setIsInited(deviceInfoPO.getIsInited());
@@ -219,7 +219,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (info == null || info.getDeviceCurrentStatus() == null || !StringUtils.hasText(info.getDeviceId())) {
             log.info("未找到连接仪器信息！");
             //未查找到仪器信息
-            return R.fail(YamlMessageSource.getMessageStatic("00203001"));
+            return R.fail("00203001");
         }
 
 //        DeviceConnectionManager manager = DeviceConnectionManager.getInstance();
@@ -257,14 +257,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (initDTO.getDeviceSerialNumber().isEmpty()) {
             log.info("未传仪器序列号！");
             //缺少序列号
-            return R.fail(YamlMessageSource.getMessageStatic("00203003"));
+            return R.fail("00203003");
         }
 
         DeviceInfoPO infoPO = infoService.getInfo(initDTO.getDeviceSerialNumber());
         if (infoPO == null || !StringUtils.hasText(infoPO.getId()) || !StringUtils.hasText(infoPO.getDeviceModel())) {
             log.info("未找到连接仪器信息！");
             //未查找到仪器信息
-            return R.fail(YamlMessageSource.getMessageStatic("00203001"));
+            return R.fail("00203001");
         }
         log.info("调用机器初始化接口");
 
@@ -743,13 +743,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
             log.info("缺少序列号");
             //缺少序列号
-            return R.fail(YamlMessageSource.getMessageStatic("00203003"));
+            return R.fail("00203003");
         }
 
         if (dto.getCalibrationType() == null || DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()) == null) {
             log.info("缺少校准类型");
             //缺少校准类型
-            return R.fail(YamlMessageSource.getMessageStatic("00203004"));
+            return R.fail("00203004");
         }
 
         String ip = infoService.getIp(dto.getDeviceSerialNumber());
@@ -1669,13 +1669,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (!StringUtils.hasText(deviceSerialNumber)) {
             log.info("缺少序列号");
             //缺少序列号
-            return R.fail(YamlMessageSource.getMessageStatic("00203003"));
+            return R.fail("00203003");
         }
 
         if (dto.getCalibrationType() == null || DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()) == null) {
             log.info("缺少校准类型");
             //缺少校准类型
-            return R.fail(YamlMessageSource.getMessageStatic("00203004"));
+            return R.fail("00203004");
         }
 
 

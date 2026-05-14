@@ -1,14 +1,6 @@
-/*
- * *
- *  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
- *  * 本软件受商业机密法和版权法保护。
- *  * 本代码仅限与北京普析通用仪器有限责任公司签订有效协议的授权用户内部使用。
- *  * 任何未经明确许可的复制、使用、修改、分发或公开均被严格禁止。
- *
- */
-
 package com.persee.workstation.uv_inexus.web;
 
+import com.persee.workstation.uv_inexus.i18n.LocaleContext;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.R;
@@ -23,10 +15,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
 import java.util.Locale;
-/**
-* 信息码拦截器，暂未使用。建议使用YamlMessageSource的静态方法getMessageStatic返回信息
-* */
-@RestControllerAdvice(basePackages = "com.persee.workstation.uv_inexus.controller")
+
+@RestControllerAdvice(basePackages = "com.persee.workstation.uv_inexus")
 public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
 
     @Autowired
@@ -49,8 +39,9 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
             return null;
         }
 
-        // 默认使用简体中文
-        Locale locale = Locale.SIMPLIFIED_CHINESE;
+        // 从 LocaleContext 获取当前用户的语言设置
+        String localeStr = LocaleContext.getLocale();
+        Locale locale = parseLocale(localeStr);
 
         if (body instanceof Result) {
             Result<?> result = (Result<?>) body;
@@ -58,12 +49,13 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
             Object[] obj = result.getObj();
 
             if (messageCode != null && !messageCode.trim().isEmpty()) {
-                String yamlMessage = yamlMessageSource.getMessage(messageCode, obj, null);
+                // 使用当前用户的语言进行翻译
+                String yamlMessage = yamlMessageSource.getMessage(messageCode, localeStr, obj, null);
                 if (!messageCode.equals(yamlMessage)) {
                     result.setMessage(yamlMessage);
                     return result;
                 }
-                System.out.println("DEBUG: Message code " + messageCode + " not found in YAML, returned: " + yamlMessage);
+                System.out.println("DEBUG: Message code " + messageCode + " not found in YAML for locale " + localeStr + ", returned: " + yamlMessage);
             }
 
             try {
@@ -81,12 +73,13 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
             Object[] obj = r.getObj();
 
             if (messageCode != null && !messageCode.trim().isEmpty()) {
-                String yamlMessage = yamlMessageSource.getMessage(messageCode, obj, null);
+                // 使用当前用户的语言进行翻译
+                String yamlMessage = yamlMessageSource.getMessage(messageCode, localeStr, obj, null);
                 if (!messageCode.equals(yamlMessage)) {
                     r.setMessage(yamlMessage);
                     return r;
                 }
-                System.out.println("DEBUG: Message code " + messageCode + " not found in YAML, returned: " + yamlMessage);
+                System.out.println("DEBUG: Message code " + messageCode + " not found in YAML for locale " + localeStr + ", returned: " + yamlMessage);
             }
 
             try {
@@ -99,5 +92,29 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
         }
 
         return body;
+    }
+
+    /**
+     * 解析语言字符串为 Locale 对象
+     * @param localeStr 语言字符串，如 "zh_CN", "en_US", "ja_JP"
+     * @return Locale 对象
+     */
+    private Locale parseLocale(String localeStr) {
+        if (localeStr == null || localeStr.isEmpty()) {
+            return Locale.SIMPLIFIED_CHINESE;
+        }
+
+        try {
+            String[] parts = localeStr.split("_");
+            if (parts.length == 2) {
+                return new Locale(parts[0], parts[1]);
+            } else if (parts.length == 3) {
+                return new Locale(parts[0], parts[1], parts[2]);
+            }
+        } catch (Exception e) {
+            // 解析失败，使用默认语言
+        }
+
+        return Locale.SIMPLIFIED_CHINESE;
     }
 }

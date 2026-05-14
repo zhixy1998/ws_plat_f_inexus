@@ -80,7 +80,7 @@ public class DetectionController {
     public Result<DetectionDetailDTO> getDetail(@PathVariable Integer id) {
         DetectionDetailDTO detailDTO = detectionService.getDetailById(id);
         //"未找到ID为" + id + "的记录"
-        return detailDTO != null ? Result.ok(detailDTO) : Result.fail(404, YamlMessageSource.getMessageStatic("00401001",id));
+        return detailDTO != null ? Result.ok(detailDTO) : Result.fail("00401001", id);
     }
 
     // 新增：参数及子表字段接口
@@ -89,7 +89,7 @@ public class DetectionController {
     public Result<DetectionParametersDTO> getParametersById(@PathVariable Integer id) {
         DetectionParametersDTO paramsDTO = detectionService.getParametersById(id);
         //"未找到ID为" + id + "的记录"
-        return paramsDTO != null ? Result.ok(paramsDTO) : Result.fail(404, YamlMessageSource.getMessageStatic("00401001",id));
+        return paramsDTO != null ? Result.ok(paramsDTO) : Result.fail("00401001", id);
     }
 
     @GetMapping("/detail/multi_tables/{id}")
@@ -97,7 +97,7 @@ public class DetectionController {
     public Result<MultiTableDataDTO> getMultiTablesData(@PathVariable Integer id) {
         MultiTableDataDTO dataDTO = detectionService.getMultiTablesData(id);
         // //"未找到ID为" + id + "的记录"
-        return dataDTO != null ? Result.ok(dataDTO) : Result.fail(404, YamlMessageSource.getMessageStatic("00401001",id));
+        return dataDTO != null ? Result.ok(dataDTO) : Result.fail("00401001", id);
     }
     
     // 其他原有接口保持不变...
@@ -106,7 +106,7 @@ public class DetectionController {
     public Result<Detection> findById(@PathVariable Integer id) {
         Detection detection = detectionService.findById(id);
         // //"未找到ID为" + id + "的记录"
-        return detection != null ? Result.ok(detection) : Result.fail(404, YamlMessageSource.getMessageStatic("00401001",id));
+        return detection != null ? Result.ok(detection) : Result.fail("00401001", id);
     }
 
     @GetMapping("/industryType")
@@ -147,6 +147,6 @@ public class DetectionController {
     public Result<Void> deleteBatch(@RequestBody List<Integer> ids) {
         int count = detectionService.deleteBatchIds(ids);
         //批量删除失败
-        return count > 0 ? Result.ok() : Result.fail(500, YamlMessageSource.getMessageStatic("0000004C"));
+        return count > 0 ? Result.ok() : Result.fail("0000004C");
     }
 }

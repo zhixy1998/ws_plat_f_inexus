@@ -89,6 +89,19 @@ public class Result<T> {
         return build(data, ResultCodeEnum.SUCCESS);
     }
 
+    // 操作成功（通过消息码与参数）- 自动识别消息码
+    public static<T> Result<T> ok(String messageCode, Object... obj){
+        if (isMessageCode(messageCode)) {
+            return build(ResultCodeEnum.SUCCESS.getCode(), messageCode, obj);
+        } else {
+            // 使用 build 方法直接构造
+            Result<T> result = new Result<>();
+            result.setCode(ResultCodeEnum.SUCCESS.getCode());
+            result.setMessage(messageCode);
+            return result;
+        }
+    }
+
     // 避免与 ok(T data) 发生重载冲突的便捷别名（直接通过 YAML 解析构建）
     public static<T> Result<T> okCode(String messageCode, Object... obj){
         return build(ResultCodeEnum.SUCCESS.getCode(), messageCode, obj);
@@ -103,6 +116,7 @@ public class Result<T> {
         result.setMessage(messageCode);
         return result;
     }
+
     public static<T> Result<T> warn(){
         return Result.warn(null);
     }
@@ -112,9 +126,17 @@ public class Result<T> {
         return build(data, ResultCodeEnum.WARN);
     }
 
-    // 警告（通过消息码与参数）
+    // 警告（通过消息码与参数）- 自动识别消息码
     public static<T> Result<T> warn(String messageCode, Object... obj){
-        return build(ResultCodeEnum.WARN.getCode(), messageCode, obj);
+        if (isMessageCode(messageCode)) {
+            return build(ResultCodeEnum.WARN.getCode(), messageCode, obj);
+        } else {
+            // 使用 build 方法直接构造
+            Result<T> result = new Result<>();
+            result.setCode(ResultCodeEnum.WARN.getCode());
+            result.setMessage(messageCode);
+            return result;
+        }
     }
 
     // 警告便捷别名，统一调用风格
@@ -130,17 +152,34 @@ public class Result<T> {
         Result<T> result = build(code, message);
         return result;
     }
+
     public static<T> Result<T> fail(){
         return Result.fail(null);
     }
 
     public static<T> Result<T> fail(String message){
-        return Result.fail(ResultCodeEnum.FAIL.getCode(), message);
+        // 判断是否是消息码（8位十六进制）
+        if (isMessageCode(message)) {
+            return build(ResultCodeEnum.FAIL.getCode(), message, new Object[0]);  // 显式传递空数组
+        } else {
+            return Result.fail(ResultCodeEnum.FAIL.getCode(), message);
+        }
     }
 
-    // 操作失败（通过消息码与参数）
+
+
+    // 操作失败（通过消息码与参数）- 自动识别消息码
     public static<T> Result<T> fail(String messageCode, Object... obj){
-        return build(ResultCodeEnum.FAIL.getCode(), messageCode, obj);
+        // 判断是否是消息码（8位十六进制）
+        if (isMessageCode(messageCode)) {
+            return build(ResultCodeEnum.FAIL.getCode(), messageCode, obj);
+        } else {
+            // 如果不是消息码，直接返回原文
+            Result<T> result = new Result<>();
+            result.setCode(ResultCodeEnum.FAIL.getCode());
+            result.setMessage(messageCode);
+            return result;
+        }
     }
 
     // 失败便捷别名，统一调用风格
@@ -185,15 +224,20 @@ public class Result<T> {
         return checkFail(null);
     }
 
+
     /**
      * 参数校验失败（通过消息码与参数）
-     * @param messageCode 消息码
-     * @param obj 占位符参数
-     * @param <T>
-     * @return
+     * 注意：如果 T 为 String 类型且传入消息码，请使用 checkFailCode() 避免歧义
      */
     public static<T> Result<T> checkFail(String messageCode, Object... obj){
-        return build(ResultCodeEnum.ARGUMENT_VALID_ERROR.getCode(), messageCode, obj);
+        if (isMessageCode(messageCode)) {
+            return build(ResultCodeEnum.ARGUMENT_VALID_ERROR.getCode(), messageCode, obj);
+        } else {
+            Result<T> result = new Result<>();
+            result.setCode(ResultCodeEnum.ARGUMENT_VALID_ERROR.getCode());
+            result.setMessage(messageCode);
+            return result;
+        }
     }
 
     /**
@@ -230,7 +274,13 @@ public class Result<T> {
     }
 
     public Result<T> message(String msg){
-        this.setMessage(msg);
+        // 判断是否是消息码（8位十六进制）
+        if (isMessageCode(msg)) {
+            this.setMessageCode(msg);
+            this.setMessage(msg);
+        } else {
+            this.setMessage(msg);
+        }
         return this;
     }
 
@@ -247,5 +297,15 @@ public class Result<T> {
     public Result<T> obj(Object... obj){
         this.setObj(obj);
         return this;
+    }
+
+    /**
+     * 判断是否为消息码（8位十六进制）
+     */
+    private static boolean isMessageCode(String code) {
+        if (code == null || code.isEmpty()) {
+            return false;
+        }
+        return code.matches("^[0-9a-fA-F]{8}$");
     }
 }
