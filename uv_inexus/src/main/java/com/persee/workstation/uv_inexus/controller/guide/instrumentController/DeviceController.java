@@ -12,9 +12,9 @@ package com.persee.workstation.uv_inexus.controller.guide.instrumentController;
 
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationParamEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceAutoInjectorPO;
@@ -508,6 +508,50 @@ public class DeviceController {
     @ApiOperation("仪器校准")
     public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto) {
         R<Boolean> r = deviceManageService.deviceNewCalibration(dto);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @OperateLog(
+            module = "实验测试-仪器管理",
+            description = "执行仪器管理-仪器校正-{operateType}",
+            recordParams = true
+    )
+    @PostMapping("/calibrationBaseline")
+    @ApiOperation("多波长校正-基线")
+    public Result<Boolean> calibrationBaseline(@RequestBody DeviceCalibrationDTO dto) {
+        R<Boolean> r = deviceManageService.multiCalibration(dto, DeviceCalibrationParamEnum.Baseline.getType());
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @OperateLog(
+            module = "实验测试-仪器管理",
+            description = "执行仪器管理-仪器校正-{operateType}",
+            recordParams = true
+    )
+    @PostMapping("/calibrationScan")
+    @ApiOperation("多波长校正-扫描")
+    public Result<Boolean> calibrationScan(@RequestBody DeviceCalibrationDTO dto) {
+        R<Boolean> r = deviceManageService.multiCalibration(dto, DeviceCalibrationParamEnum.Scan.getType());
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    //sendMultiCalibrationToDevice
+    @PostMapping("/sendMultiCalibrationToDevice")
+    @ApiOperation("多波长校正-发送给仪器")
+    public Result<Boolean> sendMultiCalibrationToDevice(@RequestBody DeviceCalibrationDTO dto) {
+        R<Boolean> r = deviceManageService.sendMultiCalibrationToDevice(dto);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
         } else {
