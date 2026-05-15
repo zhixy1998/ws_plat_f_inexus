@@ -35,7 +35,7 @@ public class LocaleInterceptor implements HandlerInterceptor {
         if (user != null && StringUtils.isNotBlank(user.getLanguage())) {
             locale = user.getLanguage();
             // 在这里直接做转换：将数据库的代码转为前端友好的名称
-            locale = convertToName(locale);
+//            locale = convertToName(locale);
         }
 
 //        // 3. 如果数据库没配，再看请求头（兼容未登录或旧数据）
