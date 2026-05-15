@@ -41,31 +41,27 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
 
         // 从 LocaleContext 获取当前用户的语言设置
         String localeStr = LocaleContext.getLocale();
-        Locale locale = parseLocale(localeStr);
+        System.out.println("🌍 [ResultMessageAdvice] 准备翻译消息，当前语言: " + localeStr);
+
+//        Locale locale = parseLocale(localeStr);
 
         if (body instanceof Result) {
             Result<?> result = (Result<?>) body;
             String messageCode = result.getMessageCode();
-            Object[] obj = result.getObj();
 
             if (messageCode != null && !messageCode.trim().isEmpty()) {
+                System.out.println("🔍 [ResultMessageAdvice] 正在查找消息码: " + messageCode);
                 // 使用当前用户的语言进行翻译
-                String yamlMessage = yamlMessageSource.getMessage(messageCode, localeStr, obj, null);
+                String yamlMessage = yamlMessageSource.getMessage(messageCode, localeStr, result.getObj(), null);
+                System.out.println("📝 [ResultMessageAdvice] 翻译结果: " + yamlMessage);
+
                 if (!messageCode.equals(yamlMessage)) {
                     result.setMessage(yamlMessage);
                     return result;
                 }
-                System.out.println("DEBUG: Message code " + messageCode + " not found in YAML for locale " + localeStr + ", returned: " + yamlMessage);
             }
-
-            try {
-                String message = messageSource.getMessage(result.getMessage(), obj, locale);
-                result.setMessage(message);
-            } catch (Exception e) {
-                // 忽略异常，保留原始消息
-            }
-            return result;
         }
+
 
         if (body instanceof R) {
             R<?> r = (R<?>) body;
@@ -82,12 +78,12 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
                 System.out.println("DEBUG: Message code " + messageCode + " not found in YAML for locale " + localeStr + ", returned: " + yamlMessage);
             }
 
-            try {
-                String message = messageSource.getMessage(r.getMessage(), obj, locale);
-                r.setMessage(message);
-            } catch (Exception e) {
-                // 忽略异常，保留原始消息
-            }
+//            try {
+////                String message = messageSource.getMessage(r.getMessage(), obj, locale);
+//                r.setMessage(message);
+//            } catch (Exception e) {
+//                // 忽略异常，保留原始消息
+//            }
             return r;
         }
 
@@ -96,6 +92,7 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
 
     /**
      * 解析语言字符串为 Locale 对象
+     *
      * @param localeStr 语言字符串，如 "zh_CN", "en_US", "ja_JP"
      * @return Locale 对象
      */

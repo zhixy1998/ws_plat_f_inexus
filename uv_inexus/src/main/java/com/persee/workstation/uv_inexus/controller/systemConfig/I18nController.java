@@ -9,30 +9,49 @@ package com.persee.workstation.uv_inexus.controller.systemConfig;
  *
 */
 
+import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemManageDAO;
 import com.persee.workstation.uv_inexus.i18n.LocaleContext;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemManagePO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/i18n")
 @Api(tags = "国际化管理")
 @Slf4j
 public class I18nController {
-
+    @Autowired
+    SystemManageDAO systemManageDao;
+    @Value("${sys-manage-default.defaultId}")
+    String defaultId;
     @PostMapping("/setLocale")
     @ApiOperation("设置当前语言")
-    public Result<String> setLocale(@RequestParam String locale) {
+    public Result<String> setLocale(@RequestParam String locale, HttpServletRequest request) {
+
+        // 2. 构造对象并更新数据库
+        SystemManagePO updatePO = new SystemManagePO();
+        updatePO.setId(defaultId);
+        updatePO.setLanguage(locale);
+        systemManageDao.updateById(updatePO);
+
+        // 3. 立即更新当前线程上下文，让本次响应生效
         LocaleContext.setLocale(locale);
-        log.info("用户切换语言为: {}", locale);
-        return Result.ok("语言切换成功");
+
+        return Result.ok();
     }
+
 
     @GetMapping("/getLocale")
     @ApiOperation("获取当前语言")
     public Result<String> getLocale() {
-        return Result.ok(LocaleContext.getLocale());
+        SystemManagePO systemManagePO = systemManageDao.selectById(defaultId);
+        return Result.ok(systemManagePO.getLanguage());
     }
 }

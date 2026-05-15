@@ -1,7 +1,7 @@
 # =====================================================
-# 国际化消息字典 - 中英日三语
+# 国际化消息字典 - 中英日俄四语
 # 规则：模块(三位) + 子模块(两位) + 具体编号(三位十六进制)
-# 最后更新：2026-05-13
+# 最后更新：2026-05-15
 # =====================================================
 
 messages:
@@ -10,1464 +10,1753 @@ messages:
     zh_CN: '用户不存在'
     en_US: 'User does not exist'
     ja_JP: 'ユーザーが存在しません'
+    ru_RU: 'Пользователь не существует'
 
   '00000002':
     zh_CN: '请选择方法'
     en_US: 'Please select a method'
     ja_JP: 'メソッドを選択してください'
+    ru_RU: 'Пожалуйста, выберите метод'
 
   '00000003':
     zh_CN: '任务id不能为空'
     en_US: 'Task ID cannot be empty'
     ja_JP: 'タスクIDは空にできません'
+    ru_RU: 'ID задачи не может быть пустым'
 
   '00000004':
     zh_CN: '没有找到该任务'
     en_US: 'Task not found'
     ja_JP: 'タスクが見つかりません'
+    ru_RU: 'Задача не найдена'
 
   '00000005':
     zh_CN: '类型错误,请重新选择'
     en_US: 'Type error, please select again'
     ja_JP: 'タイプエラー、再選択してください'
+    ru_RU: 'Ошибка типа, пожалуйста, выберите снова'
 
   '00000006':
     zh_CN: '请选择任务'
     en_US: 'Please select a task'
     ja_JP: 'タスクを選択してください'
+    ru_RU: 'Пожалуйста, выберите задачу'
 
   '00000007':
     zh_CN: '缺少参数'
     en_US: 'Missing parameters'
     ja_JP: 'パラメータが不足しています'
+    ru_RU: 'Отсутствуют параметры'
 
   '00000008':
     zh_CN: '未选择方法'
     en_US: 'No method selected'
     ja_JP: 'メソッドが選択されていません'
+    ru_RU: 'Метод не выбран'
 
   '00000009':
     zh_CN: '没有找到该方法'
     en_US: 'Method not found'
     ja_JP: 'メソッドが見つかりません'
+    ru_RU: 'Метод не найден'
 
   '0000000A':
     zh_CN: '请选择样品'
     en_US: 'Please select a sample'
     ja_JP: 'サンプルを選択してください'
+    ru_RU: 'Пожалуйста, выберите образец'
 
   '0000000B':
     zh_CN: '样品不存在'
     en_US: 'Sample does not exist'
     ja_JP: 'サンプルが存在しません'
+    ru_RU: 'Образец не существует'
 
   '0000000C':
     zh_CN: '没有找到对应的图片数据'
     en_US: 'Image data not found'
     ja_JP: '画像データが見つかりません'
+    ru_RU: 'Данные изображения не найдены'
 
   '0000000D':
     zh_CN: '未知的测量类型'
     en_US: 'Unknown measurement type'
     ja_JP: '不明な測定タイプ'
+    ru_RU: 'Неизвестный тип измерения'
 
   '0000000E':
     zh_CN: '请填写波长值'
     en_US: 'Please enter wavelength value'
     ja_JP: '波長値を入力してください'
+    ru_RU: 'Пожалуйста, введите значение длины волны'
 
   '0000000F':
     zh_CN: '创建成功'
     en_US: 'Created successfully'
     ja_JP: '作成成功'
+    ru_RU: 'Успешно создано'
 
   '00000010':
     zh_CN: '创建失败'
     en_US: 'Creation failed'
     ja_JP: '作成失敗'
+    ru_RU: 'Создание не удалось'
 
   '00000011':
     zh_CN: '请先创建方法'
     en_US: 'Please create a method first'
     ja_JP: '先にメソッドを作成してください'
+    ru_RU: 'Пожалуйста, сначала создайте метод'
 
   '00000012':
     zh_CN: '至少需要一个表头'
     en_US: 'At least one header is required'
     ja_JP: '少なくとも1つのヘッダーが必要です'
+    ru_RU: 'Требуется хотя бы один заголовок'
 
   '00000013':
     zh_CN: '表格新增列数不能超过10列'
     en_US: 'Cannot add more than 10 columns'
     ja_JP: '列の追加は10列までです'
+    ru_RU: 'Нельзя добавить более 10 столбцов'
 
   '00000014':
     zh_CN: '系统出错'
     en_US: 'System error'
     ja_JP: 'システムエラー'
+    ru_RU: 'Системная ошибка'
 
   '00000015':
     zh_CN: '请选择需要删除的任务和样品'
     en_US: 'Please select tasks and samples to delete'
     ja_JP: '削除するタスクとサンプルを選択してください'
+    ru_RU: 'Пожалуйста, выберите задачи и образцы для удаления'
 
   '00000016':
     zh_CN: '任务无样品'
     en_US: 'Task has no samples'
     ja_JP: 'タスクにサンプルがありません'
+    ru_RU: 'В задаче нет образцов'
 
   '00000017':
     zh_CN: '未查询到该方法参数'
     en_US: 'Method parameters not found'
     ja_JP: 'メソッドパラメータが見つかりません'
+    ru_RU: 'Параметры метода не найдены'
 
   '00000018':
     zh_CN: '方法参数格式错误'
     en_US: 'Method parameter format error'
     ja_JP: 'メソッドパラメータの形式エラー'
+    ru_RU: 'Ошибка формата параметров метода'
 
   '00000019':
     zh_CN: '缺少任务id'
     en_US: 'Missing task ID'
     ja_JP: 'タスクIDが不足しています'
+    ru_RU: 'Отсутствует ID задачи'
 
   '0000001B':
     zh_CN: '未选择任务'
     en_US: 'No task selected'
     ja_JP: 'タスクが選択されていません'
+    ru_RU: 'Задача не выбрана'
 
   '0000001C':
     zh_CN: '缺少样品id'
     en_US: 'Missing sample ID'
     ja_JP: 'サンプルIDが不足しています'
+    ru_RU: 'Отсутствует ID образца'
 
   '0000001D':
     zh_CN: '未连接仪器'
     en_US: 'Instrument not connected'
     ja_JP: '機器が接続されていません'
+    ru_RU: 'Инструмент не подключен'
 
   '0000001E':
     zh_CN: '缺少波长'
     en_US: 'Missing wavelength'
     ja_JP: '波長が不足しています'
+    ru_RU: 'Отсутствует длина волны'
 
   '0000001F':
     zh_CN: '未创建任务，无法保存'
     en_US: 'Cannot save without creating a task'
     ja_JP: 'タスクを作成しないと保存できません'
+    ru_RU: 'Невозможно сохранить без создания задачи'
 
   '00000020':
     zh_CN: '名称格式错误'
     en_US: 'Name format error'
     ja_JP: '名前の形式エラー'
+    ru_RU: 'Ошибка формата имени'
 
   '00000021':
     zh_CN: '方法id不能为空,请创建方法或选择方法'
     en_US: 'Method ID cannot be empty, please create or select a method'
     ja_JP: 'メソッドIDは空にできません、メソッドを作成または選択してください'
+    ru_RU: 'ID метода не может быть пустым, пожалуйста, создайте или выберите метод'
 
   '00000022':
     zh_CN: '请填写波长参数'
     en_US: 'Please enter wavelength parameters'
     ja_JP: '波長パラメータを入力してください'
+    ru_RU: 'Пожалуйста, введите параметры длины волны'
 
   '00000023':
     zh_CN: '缺少样品种类'
     en_US: 'Missing sample type'
     ja_JP: 'サンプルタイプが不足しています'
+    ru_RU: 'Отсутствует тип образца'
 
   '00000024':
     zh_CN: '样品种类出错'
     en_US: 'Sample type error'
     ja_JP: 'サンプルタイプエラー'
+    ru_RU: 'Ошибка типа образца'
 
   '00000025':
     zh_CN: '没有方法!'
     en_US: 'No method!'
     ja_JP: 'メソッドがありません！'
+    ru_RU: 'Нет метода!'
 
   '00000026':
     zh_CN: '标准样品表头为空'
     en_US: 'Standard sample header is empty'
     ja_JP: '標準サンプルのヘッダーが空です'
+    ru_RU: 'Заголовок стандартного образца пуст'
 
   '00000027':
     zh_CN: '未知样品表头为空'
     en_US: 'Unknown sample header is empty'
     ja_JP: '不明サンプルのヘッダーが空です'
+    ru_RU: 'Заголовок неизвестного образца пуст'
 
   '00000028':
     zh_CN: '标准样品表格新增列数不能超过10列'
     en_US: 'Cannot add more than 10 columns to standard sample table'
     ja_JP: '標準サンプル表の列追加は10列までです'
+    ru_RU: 'Нельзя добавить более 10 столбцов в таблицу стандартных образцов'
 
   '00000029':
     zh_CN: '未知样品表格新增列数不能超过10列'
     en_US: 'Cannot add more than 10 columns to unknown sample table'
     ja_JP: '不明サンプル表の列追加は10列までです'
+    ru_RU: 'Нельзя добавить более 10 столбцов в таблицу неизвестных образцов'
 
   '0000002A':
     zh_CN: '没有数据'
     en_US: 'No data'
     ja_JP: 'データがありません'
+    ru_RU: 'Нет данных'
 
   '0000002B':
     zh_CN: '暂不支持'
     en_US: 'Not supported yet'
     ja_JP: 'まだサポートされていません'
+    ru_RU: 'Пока не поддерживается'
 
   '0000002C':
     zh_CN: '请输入变换名称'
     en_US: 'Please enter transformation name'
     ja_JP: '変換名を入力してください'
+    ru_RU: 'Пожалуйста, введите имя преобразования'
 
   '0000002D':
     zh_CN: '变换名称重复'
     en_US: 'Transformation name already exists'
     ja_JP: '変換名が重複しています'
+    ru_RU: 'Имя преобразования уже существует'
 
   '0000002E':
     zh_CN: '请选择测量数据1'
     en_US: 'Please select measurement data 1'
     ja_JP: '測定データ1を選択してください'
+    ru_RU: 'Пожалуйста, выберите данные измерения 1'
 
   '0000002F':
     zh_CN: '请选择测量数据2'
     en_US: 'Please select measurement data 2'
     ja_JP: '測定データ2を選択してください'
+    ru_RU: 'Пожалуйста, выберите данные измерения 2'
 
   '00000030':
     zh_CN: '请选择运算符'
     en_US: 'Please select an operator'
     ja_JP: '演算子を選択してください'
+    ru_RU: 'Пожалуйста, выберите оператор'
 
   '00000031':
     zh_CN: '请选择数据类型'
     en_US: 'Please select data type'
     ja_JP: 'データタイプを選択してください'
+    ru_RU: 'Пожалуйста, выберите тип данных'
 
   '00000032':
     zh_CN: 'python接口调用失败'
     en_US: 'Python API call failed'
     ja_JP: 'Python API呼び出しに失敗しました'
+    ru_RU: 'Вызов Python API не удался'
 
   '00000033':
     zh_CN: '请选择变换类型'
     en_US: 'Please select transformation type'
     ja_JP: '変換タイプを選択してください'
+    ru_RU: 'Пожалуйста, выберите тип преобразования'
 
   '00000034':
     zh_CN: '数据保存失败'
     en_US: 'Data save failed'
     ja_JP: 'データ保存に失敗しました'
+    ru_RU: 'Сохранение данных не удалось'
 
   '00000035':
     zh_CN: '请选择测量数据'
     en_US: 'Please select measurement data'
     ja_JP: '測定データを選択してください'
+    ru_RU: 'Пожалуйста, выберите данные измерения'
 
   '00000036':
     zh_CN: '您当前的光度模式不支持进行转换!'
     en_US: 'Current photometric mode does not support transformation!'
     ja_JP: '現在の光度モードでは変換をサポートしていません！'
+    ru_RU: 'Текущий фотометрический режим не поддерживает преобразование!'
 
   '00000037':
     zh_CN: '请填写重复次数'
     en_US: 'Please enter repeat count'
     ja_JP: '繰り返し回数を入力してください'
+    ru_RU: 'Пожалуйста, введите количество повторений'
 
   '00000038':
     zh_CN: '请输入系数'
     en_US: 'Please enter coefficient'
     ja_JP: '係数を入力してください'
+    ru_RU: 'Пожалуйста, введите коэффициент'
 
   '00000039':
     zh_CN: '请输入点数'
     en_US: 'Please enter number of points'
     ja_JP: '点数を入力してください'
+    ru_RU: 'Пожалуйста, введите количество точек'
 
   '0000003A':
     zh_CN: '系数不能大于等于点数'
     en_US: 'Coefficient cannot be greater than or equal to number of points'
     ja_JP: '係数は点数以上にはできません'
+    ru_RU: 'Коэффициент не может быть больше или равен количеству точек'
 
   '0000003B':
     zh_CN: '测量数据不存在'
     en_US: 'Measurement data does not exist'
     ja_JP: '測定データが存在しません'
+    ru_RU: 'Данные измерения не существуют'
 
   '0000003C':
     zh_CN: 'height参数太高'
     en_US: 'Height parameter is too high'
     ja_JP: 'heightパラメータが高すぎます'
+    ru_RU: 'Параметр height слишком высокий'
 
   '0000003D':
     zh_CN: '没有找到该分析数据'
     en_US: 'Analysis data not found'
     ja_JP: '分析データが見つかりません'
+    ru_RU: 'Данные анализа не найдены'
 
   '0000003E':
     zh_CN: '请选择标记点'
     en_US: 'Please select marker point'
     ja_JP: 'マーカーポイントを選択してください'
+    ru_RU: 'Пожалуйста, выберите маркерную точку'
 
   '0000003F':
     zh_CN: '样品编号重复'
     en_US: 'Sample number already exists'
     ja_JP: 'サンプル番号が重複しています'
+    ru_RU: 'Номер образца уже существует'
 
   '00000040':
     zh_CN: '图片不存在'
     en_US: 'Image does not exist'
     ja_JP: '画像が存在しません'
+    ru_RU: 'Изображение не существует'
 
   '00000041':
     zh_CN: '任务附属不存在'
     en_US: 'Task attachment does not exist'
     ja_JP: 'タスク添付ファイルが存在しません'
+    ru_RU: 'Вложение задачи не существует'
 
   '00000042':
     zh_CN: 'Type类型错误'
     en_US: 'Type error'
     ja_JP: 'Typeタイプエラー'
+    ru_RU: 'Ошибка типа Type'
 
   '00000043':
     zh_CN: '成功删除数据'
     en_US: 'Data deleted successfully'
     ja_JP: 'データ削除成功'
+    ru_RU: 'Данные успешно удалены'
 
   '00000044':
     zh_CN: '删除数据失败'
     en_US: 'Failed to delete data'
     ja_JP: 'データ削除に失敗しました'
+    ru_RU: 'Не удалось удалить данные'
 
   '00000045':
     zh_CN: '参数不能为空'
     en_US: 'Parameters cannot be empty'
     ja_JP: 'パラメータは空にできません'
+    ru_RU: 'Параметры не могут быть пустыми'
 
   '00000046':
     zh_CN: '请先添加备注'
     en_US: 'Please add remarks first'
     ja_JP: '先に備考を追加してください'
+    ru_RU: 'Пожалуйста, сначала добавьте примечания'
 
   '00000047':
     zh_CN: '样品数据不存在'
     en_US: 'Sample data does not exist'
     ja_JP: 'サンプルデータが存在しません'
+    ru_RU: 'Данные образца не существуют'
 
   '00000048':
     zh_CN: '更新失败'
     en_US: 'Update failed'
     ja_JP: '更新に失敗しました'
+    ru_RU: 'Обновление не удалось'
 
   '00000049':
     zh_CN: '样品信息不存在'
     en_US: 'Sample information does not exist'
     ja_JP: 'サンプル情報が存在しません'
+    ru_RU: 'Информация об образце не существует'
 
   '0000004A':
     zh_CN: '无测量数据'
     en_US: 'No measurement data'
     ja_JP: '測定データがありません'
+    ru_RU: 'Нет данных измерения'
 
   '0000004B':
     zh_CN: '类型不能为空'
     en_US: 'Type cannot be empty'
     ja_JP: 'タイプは空にできません'
+    ru_RU: 'Тип не может быть пустым'
 
   '0000004C':
     zh_CN: '批量删除失败'
     en_US: 'Batch deletion failed'
     ja_JP: '一括削除に失敗しました'
+    ru_RU: 'Пакетное удаление не удалось'
 
   '0000004D':
     zh_CN: '任务名称重复'
     en_US: 'Task name already exists'
     ja_JP: 'タスク名が重複しています'
+    ru_RU: 'Имя задачи уже существует'
 
   '0000004E':
     zh_CN: '样品编号不能为空！'
     en_US: 'Sample number cannot be empty!'
     ja_JP: 'サンプル番号は空にできません！'
+    ru_RU: 'Номер образца не может быть пустым!'
 
   # ========== 简洁模式公共模块 (00100) ==========
   '00100001':
     zh_CN: '新建失败'
     en_US: 'Creation failed'
     ja_JP: '作成に失敗しました'
+    ru_RU: 'Создание не удалось'
 
   '00100002':
     zh_CN: '应用失败'
     en_US: 'Application failed'
     ja_JP: '適用に失敗しました'
+    ru_RU: 'Применение не удалось'
 
   '00100003':
     zh_CN: '任务保存样品信息出错'
     en_US: 'Error saving sample information for task'
     ja_JP: 'タスクのサンプル情報保存エラー'
+    ru_RU: 'Ошибка сохранения информации об образце для задачи'
 
   '00100004':
     zh_CN: '要恢复的样品编号重复，请处理重复编号后再恢复！'
     en_US: 'Sample numbers to restore are duplicated, please handle duplicates before restoring!'
     ja_JP: '復元するサンプル番号が重複しています、重複を処理してから復元してください！'
+    ru_RU: 'Номера образцов для восстановления дублируются, пожалуйста, обработайте дубликаты перед восстановлением!'
 
   '00100005':
     zh_CN: '保存草稿失败'
     en_US: 'Failed to save draft'
     ja_JP: 'ドラフト保存に失敗しました'
+    ru_RU: 'Не удалось сохранить черновик'
 
   '00100006':
     zh_CN: '方法类型不能为空'
     en_US: 'Method type cannot be empty'
     ja_JP: 'メソッドタイプは空にできません'
+    ru_RU: 'Тип метода не может быть пустым'
 
   '00100007':
     zh_CN: '没有默认方法'
     en_US: 'No default method'
     ja_JP: 'デフォルトメソッドがありません'
+    ru_RU: 'Нет метода по умолчанию'
 
   '00100008':
     zh_CN: '删除失败'
     en_US: 'Deletion failed'
     ja_JP: '削除に失敗しました'
+    ru_RU: 'Удаление не удалось'
 
   '00100009':
     zh_CN: '更新人不能为空'
     en_US: 'Updater cannot be empty'
     ja_JP: '更新者は空にできません'
+    ru_RU: 'Обновляющий пользователь не может быть пустым'
 
   '0010000A':
     zh_CN: '新建方法失败'
     en_US: 'Failed to create method'
     ja_JP: 'メソッド作成に失敗しました'
+    ru_RU: 'Не удалось создать метод'
 
   '0010000B':
     zh_CN: '请先创建方法或者选择方法'
     en_US: 'Please create or select a method first'
     ja_JP: '先にメソッドを作成または選択してください'
+    ru_RU: 'Пожалуйста, сначала создайте или выберите метод'
 
   '0010000C':
     zh_CN: '存在空的样品编号'
     en_US: 'Empty sample number exists'
     ja_JP: '空のサンプル番号が存在します'
+    ru_RU: 'Существует пустой номер образца'
 
   '0010000D':
     zh_CN: '样品编号长度不能超过256个字符'
     en_US: 'Sample number length cannot exceed 256 characters'
     ja_JP: 'サンプル番号の長さは256文字を超えられません'
+    ru_RU: 'Длина номера образца не может превышать 256 символов'
 
   '0010000E':
     zh_CN: '样品名称长度不能超过256个字符'
     en_US: 'Sample name length cannot exceed 256 characters'
     ja_JP: 'サンプル名の長さは256文字を超えられません'
+    ru_RU: 'Длина имени образца не может превышать 256 символов'
 
   '0010000F':
     zh_CN: '样品编号不能为空'
     en_US: 'Sample number cannot be empty'
     ja_JP: 'サンプル番号は空にできません'
+    ru_RU: 'Номер образца не может быть пустым'
 
   '00100010':
     zh_CN: '该方法下没有草稿,请新建草稿'
     en_US: 'No draft under this method, please create a new draft'
     ja_JP: 'このメソッドにドラフトがありません、新しいドラフトを作成してください'
+    ru_RU: 'Под этим методом нет черновика, пожалуйста, создайте новый черновик'
 
   '00100011':
     zh_CN: '数据ID不能为空'
     en_US: 'Data ID cannot be empty'
     ja_JP: 'データIDは空にできません'
+    ru_RU: 'ID данных не может быть пустым'
 
   '00100012':
     zh_CN: '峰谷间距不可以小于1'
     en_US: 'Peak-valley distance cannot be less than 1'
     ja_JP: 'ピークバレー間隔は1未満にできません'
+    ru_RU: 'Расстояние между пиком и впадиной не может быть меньше 1'
 
   '00100013':
     zh_CN: '没有查询到数据'
     en_US: 'No data found'
     ja_JP: 'データが見つかりません'
+    ru_RU: 'Данные не найдены'
 
   '00100014':
     zh_CN: '请选择源2'
     en_US: 'Please select source 2'
     ja_JP: 'ソース2を選択してください'
+    ru_RU: 'Пожалуйста, выберите источник 2'
 
   '00100015':
     zh_CN: 'Abs光度模式不可使用高级运算'
     en_US: 'Advanced operations not available in Abs mode'
     ja_JP: 'Abs光度モードでは高度な演算を使用できません'
+    ru_RU: 'Расширенные операции недоступны в режиме Abs'
 
   '00100016':
     zh_CN: '请创建任务'
     en_US: 'Please create a task'
     ja_JP: 'タスクを作成してください'
+    ru_RU: 'Пожалуйста, создайте задачу'
 
   '00100017':
     zh_CN: '没有可用的位置'
     en_US: 'No available positions'
     ja_JP: '利用可能な位置がありません'
+    ru_RU: 'Нет доступных позиций'
 
   '00100018':
     zh_CN: '没有样品,不需要处理'
     en_US: 'No samples, no processing needed'
     ja_JP: 'サンプルがないため、処理不要です'
+    ru_RU: 'Нет образцов, обработка не требуется'
 
   '00100019':
     zh_CN: '样品信息解析失败'
     en_US: 'Failed to parse sample information'
     ja_JP: 'サンプル情報の解析に失敗しました'
+    ru_RU: 'Не удалось разобрать информацию об образце'
 
   '00100020':
     zh_CN: '下限值不能大于上限值'
     en_US: 'Lower limit cannot be greater than upper limit'
     ja_JP: '下限値は上限値より大きくできません'
+    ru_RU: 'Нижний предел не может быть больше верхнего предела'
 
   '00100021':
     zh_CN: '当上下限值相等且为有限值时，必须同时包含两端点'
     en_US: 'When lower and upper limits are equal and finite, both endpoints must be included'
     ja_JP: '上下限値が等しく有限値の場合、両端点を含める必要があります'
+    ru_RU: 'Когда нижний и верхний пределы равны и конечны, должны быть включены обе конечные точки'
 
   '00100022':
     zh_CN: '删除成功'
     en_US: 'Deleted successfully'
     ja_JP: '削除成功'
+    ru_RU: 'Успешно удалено'
 
   '00100023':
     zh_CN: '区间重叠，请检查！'
     en_US: 'Ranges overlap, please check!'
     ja_JP: '範囲が重複しています、確認してください！'
+    ru_RU: 'Диапазоны перекрываются, пожалуйста, проверьте!'
 
   '00100024':
     zh_CN: '修约范围未覆盖所有区间！'
     en_US: 'Rounding range does not cover all intervals!'
     ja_JP: '丸め範囲がすべての区間をカバーしていません！'
+    ru_RU: 'Диапазон округления не покрывает все интервалы!'
 
   '00100025':
     zh_CN: '未找到记录'
     en_US: 'Record not found'
     ja_JP: 'レコードが見つかりません'
+    ru_RU: 'Запись не найдена'
 
   '00100026':
     zh_CN: '上下限为空时不可选包含！'
     en_US: 'Cannot select include when limits are empty!'
     ja_JP: '上下限が空の場合、含めるを選択できません！'
+    ru_RU: 'Нельзя выбрать включение, когда пределы пусты!'
 
   '00100027':
     zh_CN: '峰谷差阈值不可超过100'
     en_US: 'Peak-valley difference threshold cannot exceed 100'
     ja_JP: 'ピークバレー差の閾値は100を超えられません'
+    ru_RU: 'Порог разницы пик-впадина не может превышать 100'
 
   '00100028':
     zh_CN: '校零失败，波长设置出错！'
     en_US: 'Zero calibration failed, wavelength setting error!'
     ja_JP: 'ゼロ校正に失敗しました、波長設定エラー！'
+    ru_RU: 'Калибровка нуля не удалась, ошибка настройки длины волны!'
 
   # ========== 通用模块=01 (00101) ==========
   '00101001':
     zh_CN: '{0}没有默认方法'
     en_US: '{0} has no default method'
     ja_JP: '{0}にデフォルトメソッドがありません'
+    ru_RU: '{0} не имеет метода по умолчанию'
 
   '00101002':
     zh_CN: '用户不能为空'
     en_US: 'User cannot be empty'
     ja_JP: 'ユーザーは空にできません'
+    ru_RU: 'Пользователь не может быть пустым'
 
   '00101003':
     zh_CN: '该类型暂未开发'
     en_US: 'This type is not yet developed'
     ja_JP: 'このタイプはまだ開発されていません'
+    ru_RU: 'Этот тип еще не разработан'
 
   '00101004':
     zh_CN: '草稿不存在'
     en_US: 'Draft does not exist'
     ja_JP: 'ドラフトが存在しません'
+    ru_RU: 'Черновик не существует'
 
   '00101005':
     zh_CN: '方法类型不存在'
     en_US: 'Method type does not exist'
     ja_JP: 'メソッドタイプが存在しません'
+    ru_RU: 'Тип метода не существует'
 
   '00101006':
     zh_CN: '请先创建任务'
     en_US: 'Please create a task first'
     ja_JP: '先にタスクを作成してください'
+    ru_RU: 'Пожалуйста, сначала создайте задачу'
 
   '00101008':
     zh_CN: '修改失败'
     en_US: 'Modification failed'
     ja_JP: '変更に失敗しました'
+    ru_RU: 'Изменение не удалось'
 
   '00101009':
     zh_CN: '请输入参数！'
     en_US: 'Please enter parameters!'
     ja_JP: 'パラメータを入力してください！'
+    ru_RU: 'Пожалуйста, введите параметры!'
 
   '0010100A':
     zh_CN: '标识格式错误：必须以大写字母开头，后跟1-10位数字'
     en_US: 'Identifier format error: must start with uppercase letter, followed by 1-10 digits'
     ja_JP: '識別子の形式エラー：大文字で始まり、1〜10桁の数字が続く必要があります'
+    ru_RU: 'Ошибка формата идентификатора: должен начинаться с заглавной буквы, за которой следуют 1-10 цифр'
 
   '0010100B':
     zh_CN: '标识已存在'
     en_US: 'Identifier already exists'
     ja_JP: '識別子が既に存在します'
+    ru_RU: 'Идентификатор уже существует'
 
   '0010100C':
     zh_CN: '请输入公式！'
     en_US: 'Please enter formula!'
     ja_JP: '式を入力してください！'
+    ru_RU: 'Пожалуйста, введите формулу!'
 
   '0010100D':
     zh_CN: '请先设置输入参数！'
     en_US: 'Please set input parameters first!'
     ja_JP: '先に入力パラメータを設定してください！'
+    ru_RU: 'Пожалуйста, сначала установите входные параметры!'
 
   '0010100E':
     zh_CN: '存在与该历史方法相关联的历史文件，请删除关联历史文件之后进行方法删除！！！'
     en_US: 'Historical files associated with this method exist, please delete them before deleting the method!!!'
     ja_JP: 'この履歴メソッドに関連する履歴ファイルが存在します、関連ファイルを削除してからメソッドを削除してください！！！'
+    ru_RU: 'Существуют исторические файлы, связанные с этим методом, пожалуйста, удалите их перед удалением метода!!!'
 
   '0010100F':
     zh_CN: '更新任务失败'
     en_US: 'Failed to update task'
     ja_JP: 'タスクの更新に失敗しました'
+    ru_RU: 'Не удалось обновить задачу'
 
   '00101010':
     zh_CN: '修改成功'
     en_US: 'Modified successfully'
     ja_JP: '変更成功'
+    ru_RU: 'Успешно изменено'
 
   '00101011':
     zh_CN: '未找到样品池信息'
     en_US: 'Sample cell information not found'
     ja_JP: 'サンプルセル情報が見つかりません'
+    ru_RU: 'Информация о кювете не найдена'
 
   '00101012':
     zh_CN: '创建样品失败'
     en_US: 'Failed to create sample'
     ja_JP: 'サンプルの作成に失敗しました'
+    ru_RU: 'Не удалось создать образец'
 
   '00101013':
     zh_CN: '拷贝失败,传入taskId不能为空！！！'
     en_US: 'Copy failed, taskId cannot be empty!!!'
     ja_JP: 'コピーに失敗しました、taskIdは空にできません！！！'
+    ru_RU: 'Копирование не удалось, taskId не может быть пустым!!!'
 
   '00101014':
     zh_CN: '拷贝成功'
     en_US: 'Copied successfully'
     ja_JP: 'コピー成功'
+    ru_RU: 'Успешно скопировано'
 
   '00101015':
     zh_CN: '拷贝失败'
     en_US: 'Copy failed'
     ja_JP: 'コピーに失敗しました'
+    ru_RU: 'Копирование не удалось'
 
   '00101017':
     zh_CN: '请输入显示标题'
     en_US: 'Please enter display title'
     ja_JP: '表示タイトルを入力してください'
+    ru_RU: 'Пожалуйста, введите отображаемый заголовок'
 
   '00101018':
     zh_CN: '请输入结果标识！'
     en_US: 'Please enter result identifier!'
     ja_JP: '結果識別子を入力してください！'
+    ru_RU: 'Пожалуйста, введите идентификатор результата!'
 
   '00101019':
     zh_CN: '请输入结果单位！'
     en_US: 'Please enter result unit!'
     ja_JP: '結果単位を入力してください！'
+    ru_RU: 'Пожалуйста, введите единицу результата!'
 
   # ========== 定向测量模块=02 (00102) ==========
   '00102001':
     zh_CN: '标准样品编号重复'
     en_US: 'Standard sample number already exists'
     ja_JP: '標準サンプル番号が重複しています'
+    ru_RU: 'Номер стандартного образца уже существует'
 
   '00102002':
     zh_CN: '未知样品编号重复'
     en_US: 'Unknown sample number already exists'
     ja_JP: '不明サンプル番号が重複しています'
+    ru_RU: 'Номер неизвестного образца уже существует'
 
   '00102003':
     zh_CN: '定量测定参数对象不能为空'
     en_US: 'Quantitative analysis parameter object cannot be empty'
     ja_JP: '定量測定パラメータオブジェクトは空にできません'
+    ru_RU: 'Объект параметров количественного анализа не может быть пустым'
 
   '00102004':
     zh_CN: '波长值最多支持3个，当前数量：{0}'
     en_US: 'Maximum 3 wavelength values supported, current: {0}'
     ja_JP: '波長値は最大3つまで、現在：{0}'
+    ru_RU: 'Максимум 3 значения длины волны поддерживаются, текущее: {0}'
 
   '00102005':
     zh_CN: '第{0}个波长值不能为空字符串'
     en_US: 'Wavelength value {0} cannot be empty string'
     ja_JP: '{0}番目の波長値は空文字列にできません'
+    ru_RU: 'Значение длины волны {0} не может быть пустой строкой'
 
   '00102006':
     zh_CN: '第{0}个波长值超出范围({3},{4})，当前值：{1}'
     en_US: 'Wavelength value {0} out of range ({3},{4}), current: {1}'
     ja_JP: '{0}番目の波長値が範囲({3},{4})を超えています、現在値：{1}'
+    ru_RU: 'Значение длины волны {0} вне диапазона ({3},{4}), текущее: {1}'
 
   '00102007':
     zh_CN: '第{0}个波长值格式错误（需为数字），当前值：{1}'
     en_US: 'Wavelength value {0} format error (must be number), current: {1}'
     ja_JP: '{0}番目の波長値の形式エラー（数字が必要です）、現在値：{1}'
+    ru_RU: 'Ошибка формата значения длины волны {0} (должно быть числом), текущее: {1}'
 
   '00102008':
     zh_CN: '波长参数不能为空'
     en_US: 'Wavelength parameter cannot be empty'
     ja_JP: '波長パラメータは空にできません'
+    ru_RU: 'Параметр длины волны не может быть пустым'
 
   '00102009':
     zh_CN: '波长参数数量需与波长值一致（当前参数数：{0}，波长数：{1})'
     en_US: 'Number of wavelength parameters must match wavelength values (current parameters: {0}, wavelengths: {1})'
     ja_JP: '波長パラメータの数は波長値と一致する必要があります（現在のパラメータ数：{0}、波長数：{1}）'
+    ru_RU: 'Количество параметров длины волны должно соответствовать значениям длин волн (текущие параметры: {0}, длины волн: {1})'
 
   '0010200A':
     zh_CN: '第{0}个波长参数不能为空字符串'
     en_US: 'Wavelength parameter {0} cannot be empty string'
     ja_JP: '{0}番目の波長パラメータは空文字列にできません'
+    ru_RU: 'Параметр длины волны {0} не может быть пустой строкой'
 
   '0010200B':
     zh_CN: '曲线类型不能为空'
     en_US: 'Curve type cannot be empty'
     ja_JP: '曲線タイプは空にできません'
+    ru_RU: 'Тип кривой не может быть пустым'
 
   '0010200C':
     zh_CN: '方程类型不能为空'
     en_US: 'Equation type cannot be empty'
     ja_JP: '方程式タイプは空にできません'
+    ru_RU: 'Тип уравнения не может быть пустым'
 
   '0010200D':
     zh_CN: '系数方式不能为空'
     en_US: 'Coefficient method cannot be empty'
     ja_JP: '係数方法は空にできません'
+    ru_RU: 'Метод коэффициентов не может быть пустым'
 
   '0010200E':
     zh_CN: '系数方式不合法（可选值：直接系数法、标准曲线法）'
     en_US: 'Invalid coefficient method (options: direct coefficient, standard curve)'
     ja_JP: '無効な係数方法（選択肢：直接係数法、標準曲線法）'
+    ru_RU: 'Недопустимый метод коэффициентов (варианты: прямой коэффициент, стандартная кривая)'
 
   '0010200F':
     zh_CN: '系数参数不能为空'
     en_US: 'Coefficient parameter cannot be empty'
     ja_JP: '係数パラメータは空にできません'
+    ru_RU: 'Параметр коэффициента не может быть пустым'
 
   '00102010':
     zh_CN: '系数参数最多支持10个，当前数量：{0}'
     en_US: 'Maximum 10 coefficient parameters supported, current: {0}'
     ja_JP: '係数パラメータは最大10個まで、現在：{0}'
+    ru_RU: 'Максимум 10 параметров коэффициентов поддерживается, текущее: {0}'
 
   '00102011':
     zh_CN: '系数参数数量不足，当前数量：{0}，所需数量：{1}'
     en_US: 'Insufficient coefficient parameters, current: {0}, required: {1}'
     ja_JP: '係数パラメータの数が不足しています、現在：{0}、必要数：{1}'
+    ru_RU: 'Недостаточно параметров коэффициентов, текущее: {0}, требуется: {1}'
 
   '00102012':
     zh_CN: '第{0}个系数参数不能为空字符串'
     en_US: 'Coefficient parameter {0} cannot be empty string'
     ja_JP: '{0}番目の係数パラメータは空文字列にできません'
+    ru_RU: 'Параметр коэффициента {0} не может быть пустой строкой'
 
   '00102013':
     zh_CN: '第{0}个系数参数小数位数不能超过3位，当前值：{1}'
     en_US: 'Coefficient parameter {0} decimal places cannot exceed 3, current: {1}'
     ja_JP: '{0}番目の係数パラメータの小数桁数は3桁を超えられません、現在値：{1}'
+    ru_RU: 'Количество десятичных знаков параметра коэффициента {0} не может превышать 3, текущее: {1}'
 
   '00102014':
     zh_CN: '第{0}个系数参数格式错误（需为数字），当前值：{1}'
     en_US: 'Coefficient parameter {0} format error (must be number), current: {1}'
     ja_JP: '{0}番目の係数パラメータの形式エラー（数字が必要です）、現在値：{1}'
+    ru_RU: 'Ошибка формата параметра коэффициента {0} (должно быть числом), текущее: {1}'
 
   '00102015':
     zh_CN: '零点方式不合法（可选值：过零点、插入零点）'
     en_US: 'Invalid zero mode (options: through zero, insert zero)'
     ja_JP: '無効なゼロモード（選択肢：過零点、挿入零点）'
+    ru_RU: 'Недопустимый режим нуля (варианты: через ноль, вставить ноль)'
 
   '00102016':
     zh_CN: '重复模式不合法'
     en_US: 'Invalid repeat mode'
     ja_JP: '無効な繰り返しモード'
+    ru_RU: 'Недопустимый режим повторения'
 
   '00102017':
     zh_CN: '单池重复模式下，重复次数不能为空'
     en_US: 'Repeat count cannot be empty in single cell repeat mode'
     ja_JP: '単セル繰り返しモードでは、繰り返し回数は空にできません'
+    ru_RU: 'Количество повторений не может быть пустым в режиме повторения одной кюветы'
 
   '00102018':
     zh_CN: '重复次数需在2-10范围内，当前值：{0}'
     en_US: 'Repeat count must be between 2-10, current: {0}'
     ja_JP: '繰り返し回数は2〜10の範囲内である必要があります、現在値：{0}'
+    ru_RU: 'Количество повторений должно быть в диапазоне 2-10, текущее: {0}'
 
   '00102019':
     zh_CN: '重复次数格式错误（需为整数），当前值：{0}'
     en_US: 'Repeat count format error (must be integer), current: {0}'
     ja_JP: '繰り返し回数の形式エラー（整数が必要です）、現在値：{0}'
+    ru_RU: 'Ошибка формата количества повторений (должно быть целым числом), текущее: {0}'
 
   '0010201A':
     zh_CN: '单池重复模式下，时间间隔不能为空'
     en_US: 'Time interval cannot be empty in single cell repeat mode'
     ja_JP: '単セル繰り返しモードでは、時間間隔は空にできません'
+    ru_RU: 'Временной интервал не может быть пустым в режиме повторения одной кюветы'
 
   '0010201B':
     zh_CN: '时间间隔需在0-60秒范围内，当前值：{0}'
     en_US: 'Time interval must be between 0-60 seconds, current: {0}'
     ja_JP: '時間間隔は0〜60秒の範囲内である必要があります、現在値：{0}'
+    ru_RU: 'Временной интервал должен быть в диапазоне 0-60 секунд, текущее: {0}'
 
   '0010201C':
     zh_CN: '时间间隔小数位数不能超过1位，当前值：{0}'
     en_US: 'Time interval decimal places cannot exceed 1, current: {0}'
     ja_JP: '時間間隔の小数桁数は1桁を超えられません、現在値：{0}'
+    ru_RU: 'Количество десятичных знаков временного интервала не может превышать 1, текущее: {0}'
 
   '0010201D':
     zh_CN: '时间间隔格式错误（需为数字），当前值：{0}'
     en_US: 'Time interval format error (must be number), current: {0}'
     ja_JP: '時間間隔の形式エラー（数字が必要です）、現在値：{0}'
+    ru_RU: 'Ошибка формата временного интервала (должно быть числом), текущее: {0}'
 
   '0010201E':
     zh_CN: '样品输入参数最多支持20个，当前数量：{0}'
     en_US: 'Maximum 20 sample input parameters supported, current: {0}'
     ja_JP: 'サンプル入力パラメータは最大20個まで、現在：{0}'
+    ru_RU: 'Максимум 20 входных параметров образца поддерживается, текущее: {0}'
 
   '0010201F':
     zh_CN: '第{0}个样品输入参数标题不能为空'
     en_US: 'Sample input parameter {0} title cannot be empty'
     ja_JP: '{0}番目のサンプル入力パラメータのタイトルは空にできません'
+    ru_RU: 'Заголовок входного параметра образца {0} не может быть пустым'
 
   '00102020':
     zh_CN: '待计算结果参数最多支持5个，当前数量：{0}'
     en_US: 'Maximum 5 result calculation parameters supported, current: {0}'
     ja_JP: '計算結果パラメータは最大5個まで、現在：{0}'
+    ru_RU: 'Максимум 5 параметров расчета результатов поддерживается, текущее: {0}'
 
   '00102021':
     zh_CN: '第{0}个待计算结果参数标题或公式不能为空'
     en_US: 'Result calculation parameter {0} title or formula cannot be empty'
     ja_JP: '{0}番目の計算結果パラメータのタイトルまたは式は空にできません'
+    ru_RU: 'Заголовок или формула параметра расчета результата {0} не могут быть пустыми'
 
   '00102022':
     zh_CN: '质控设置最多支持10个规则，当前数量：{0}'
     en_US: 'Maximum 10 quality control rules supported, current: {0}'
     ja_JP: '品質管理ルールは最大10個まで、現在：{0}'
+    ru_RU: 'Максимум 10 правил контроля качества поддерживается, текущее: {0}'
 
   '00102023':
     zh_CN: '方法名称长度不能超过256字符'
     en_US: 'Method name length cannot exceed 256 characters'
     ja_JP: 'メソッド名の長さは256文字を超えられません'
+    ru_RU: 'Длина имени метода не может превышать 256 символов'
 
   '00102024':
     zh_CN: '请设置标准浓度'
     en_US: 'Please set standard concentration'
     ja_JP: '標準濃度を設定してください'
+    ru_RU: 'Пожалуйста, установите стандартную концентрацию'
 
   '00102025':
     zh_CN: '请选择曲线类型'
     en_US: 'Please select curve type'
     ja_JP: '曲線タイプを選択してください'
+    ru_RU: 'Пожалуйста, выберите тип кривой'
 
   '00102026':
     zh_CN: '数据点数不足，不进行曲线拟合'
     en_US: 'Insufficient data points, no curve fitting performed'
     ja_JP: 'データポイントが不足しているため、曲線フィッティングを実行しません'
+    ru_RU: 'Недостаточно точек данных, подгонка кривой не выполняется'
 
   '00102027':
     zh_CN: '获取标准样品表头失败：{0}'
     en_US: 'Failed to get standard sample header: {0}'
     ja_JP: '標準サンプルヘッダーの取得に失敗しました：{0}'
+    ru_RU: 'Не удалось получить заголовок стандартного образца: {0}'
 
   '00102028':
     zh_CN: '获取未知样品表头失败：{0}'
     en_US: 'Failed to get unknown sample header: {0}'
     ja_JP: '不明サンプルヘッダーの取得に失敗しました：{0}'
+    ru_RU: 'Не удалось получить заголовок неизвестного образца: {0}'
 
   '00102029':
     zh_CN: '没有可导出的样品数据'
     en_US: 'No sample data to export'
     ja_JP: 'エクスポート可能なサンプルデータがありません'
+    ru_RU: 'Нет данных образцов для экспорта'
 
   '0010202A':
     zh_CN: '换灯波长要在（330-390）之间，当前值：{0}'
     en_US: 'Lamp change wavelength must be between 330-390, current: {0}'
     ja_JP: 'ランプ交換波長は330〜390の間である必要があります、現在値：{0}'
+    ru_RU: 'Длина волны смены лампы должна быть между 330-390, текущее: {0}'
 
   '0010202B':
     zh_CN: '换灯波长不能和测量波长一样！'
     en_US: 'Lamp change wavelength cannot be the same as measurement wavelength!'
     ja_JP: 'ランプ交換波長は測定波長と同じにできません！'
+    ru_RU: 'Длина волны смены лампы не может быть такой же, как длина волны измерения!'
 
   '0010202C':
     zh_CN: '标准浓度输入有误！'
     en_US: 'Standard concentration input error!'
     ja_JP: '標準濃度の入力エラー！'
+    ru_RU: 'Ошибка ввода стандартной концентрации!'
 
   '0010202D':
     zh_CN: '标准浓度为非负数！'
     en_US: 'Standard concentration must be non-negative!'
     ja_JP: '標準濃度は負でない数値である必要があります！'
+    ru_RU: 'Стандартная концентрация должна быть неотрицательной!'
 
   # ========== 光度测量模块=03 (00103) ==========
   '00103001':
     zh_CN: '重新分析出错'
     en_US: 'Re-analysis error'
     ja_JP: '再分析エラー'
+    ru_RU: 'Ошибка повторного анализа'
 
   '00103002':
     zh_CN: '{0}模式下请选择能量灯并设置增益'
     en_US: 'Please select energy lamp and set gain in {0} mode'
     ja_JP: '{0}モードではエネルギーランプを選択し、ゲインを設定してください'
+    ru_RU: 'Пожалуйста, выберите энергетическую лампу и установите усиление в режиме {0}'
 
   '00103003':
     zh_CN: '{0}模式下请设置增益'
     en_US: 'Please set gain in {0} mode'
     ja_JP: '{0}モードではゲインを設定してください'
+    ru_RU: 'Пожалуйста, установите усиление в режиме {0}'
 
   '00103004':
     zh_CN: '光度模式选择出错'
     en_US: 'Photometric mode selection error'
     ja_JP: '光度モード選択エラー'
+    ru_RU: 'Ошибка выбора фотометрического режима'
 
   '00103005':
     zh_CN: '波长值数量必须在1-26个范围内'
     en_US: 'Number of wavelength values must be between 1-26'
     ja_JP: '波長値の数は1〜26の範囲内である必要があります'
+    ru_RU: 'Количество значений длин волн должно быть в диапазоне 1-26'
 
   '00103006':
     zh_CN: '波长值不能包含空值'
     en_US: 'Wavelength values cannot contain null values'
     ja_JP: '波長値にnull値を含めることはできません'
+    ru_RU: 'Значения длин волн не могут содержать null значения'
 
   '00103007':
     zh_CN: '重复模式不能为空'
     en_US: 'Repeat mode cannot be empty'
     ja_JP: '繰り返しモードは空にできません'
+    ru_RU: 'Режим повторения не может быть пустым'
 
   '00103008':
     zh_CN: '重复模式只能是rmNone(不重复)、rmCR(单池重复)'
     en_US: 'Repeat mode can only be rmNone (no repeat), rmCR (single cell repeat)'
     ja_JP: '繰り返しモードはrmNone（繰り返しなし）、rmCR（単セル繰り返し）のみ可能です'
+    ru_RU: 'Режим повторения может быть только rmNone (без повторения), rmCR (повторение одной кюветы)'
 
   '00103009':
     zh_CN: '单池重复模式下重复次数不能为空'
     en_US: 'Repeat count cannot be empty in single cell repeat mode'
     ja_JP: '単セル繰り返しモードでは繰り返し回数は空にできません'
+    ru_RU: 'Количество повторений не может быть пустым в режиме повторения одной кюветы'
 
   '0010300A':
     zh_CN: '重复次数必须在2-10范围内'
     en_US: 'Repeat count must be between 2-10'
     ja_JP: '繰り返し回数は2〜10の範囲内である必要があります'
+    ru_RU: 'Количество повторений должно быть в диапазоне 2-10'
 
   '0010300B':
     zh_CN: '重复次数必须为有效的整数'
     en_US: 'Repeat count must be a valid integer'
     ja_JP: '繰り返し回数は有効な整数である必要があります'
+    ru_RU: 'Количество повторений должно быть действительным целым числом'
 
   '0010300C':
     zh_CN: '单池重复模式下时间间隔不能为空'
     en_US: 'Time interval cannot be empty in single cell repeat mode'
     ja_JP: '単セル繰り返しモードでは時間間隔は空にできません'
+    ru_RU: 'Временной интервал не может быть пустым в режиме повторения одной кюветы'
 
   '0010300D':
     zh_CN: '时间间隔必须在0-60范围内（单位：秒）'
     en_US: 'Time interval must be between 0-60 (unit: seconds)'
     ja_JP: '時間間隔は0〜60の範囲内である必要があります（単位：秒）'
+    ru_RU: 'Временной интервал должен быть в диапазоне 0-60 (единица: секунды)'
 
   '0010300E':
     zh_CN: '输入参数数量不能超过40个'
     en_US: 'Number of input parameters cannot exceed 40'
     ja_JP: '入力パラメータの数は40個を超えられません'
+    ru_RU: 'Количество входных параметров не может превышать 40'
 
   '0010300F':
     zh_CN: '待计算结果数量不能超过5个'
     en_US: 'Number of result calculations cannot exceed 5'
     ja_JP: '計算結果の数は5個を超えられません'
+    ru_RU: 'Количество расчетов результатов не может превышать 5'
 
   '00103010':
     zh_CN: '最多支持修约10个变量{0}'
     en_US: 'Maximum 10 variables can be rounded {0}'
     ja_JP: '最大10個の変数を丸めできます{0}'
+    ru_RU: 'Максимум 10 переменных могут быть округлены {0}'
 
   '00103011':
     zh_CN: '修约设置{0}的修约条件不能为空'
     en_US: 'Rounding condition for setting {0} cannot be empty'
     ja_JP: '丸め設定{0}の丸め条件は空にできません'
+    ru_RU: 'Условие округления для настройки {0} не может быть пустым'
 
   '00103012':
     zh_CN: '修约设置{0}的修约条件数量不能超过10个'
     en_US: 'Number of rounding conditions for setting {0} cannot exceed 10'
     ja_JP: '丸め設定{0}の丸め条件の数は10個を超えられません'
+    ru_RU: 'Количество условий округления для настройки {0} не может превышать 10'
 
   '00103013':
     zh_CN: '质控设置数量不能超过10个'
     en_US: 'Number of quality control settings cannot exceed 10'
     ja_JP: '品質管理設定の数は10個を超えられません'
+    ru_RU: 'Количество настроек контроля качества не может превышать 10'
 
   '00103014':
     zh_CN: '没有可应用的方法参数'
     en_US: 'No applicable method parameters'
     ja_JP: '適用可能なメソッドパラメータがありません'
+    ru_RU: 'Нет применимых параметров метода'
 
   '00103015':
     zh_CN: '没有可应用的方法或参数'
     en_US: 'No applicable method or parameters'
     ja_JP: '適用可能なメソッドまたはパラメータがありません'
+    ru_RU: 'Нет применимого метода или параметров'
 
   '00103016':
     zh_CN: '没有测量数据'
     en_US: 'No measurement data'
     ja_JP: '測定データがありません'
+    ru_RU: 'Нет данных измерений'
 
   '00103017':
     zh_CN: '更新数据失败'
     en_US: 'Failed to update data'
     ja_JP: 'データの更新に失敗しました'
+    ru_RU: 'Не удалось обновить данные'
 
   '00103018':
     zh_CN: '请先选择方法'
     en_US: 'Please select a method first'
     ja_JP: '先にメソッドを選択してください'
+    ru_RU: 'Пожалуйста, сначала выберите метод'
 
   '00103019':
     zh_CN: '该方法没有用于分析的公式'
     en_US: 'This method has no formula for analysis'
     ja_JP: 'このメソッドには分析用の式がありません'
+    ru_RU: 'У этого метода нет формулы для анализа'
 
   # ========== 光谱扫描模块=04 (00104) ==========
   '00104001':
     zh_CN: '方法参数一致'
     en_US: 'Method parameters match'
     ja_JP: 'メソッドパラメータが一致します'
+    ru_RU: 'Параметры метода совпадают'
 
   '00104003':
     zh_CN: '参数错误'
     en_US: 'Parameter error'
     ja_JP: 'パラメータエラー'
+    ru_RU: 'Ошибка параметра'
 
   '00104004':
     zh_CN: '波长 {0} 不存在，请重新选择'
     en_US: 'Wavelength {0} does not exist, please select again'
     ja_JP: '波長{0}が存在しません、再選択してください'
+    ru_RU: 'Длина волны {0} не существует, пожалуйста, выберите снова'
 
   '00104005':
     zh_CN: '光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：{0}'
     en_US: 'Invalid photometric mode (options: 1-abs, 2-T%, 3-Es, 4-Er), current: {0}'
     ja_JP: '無効な光度モード（選択肢：1-abs、2-T%、3-Es、4-Er）、現在値：{0}'
+    ru_RU: 'Недопустимый фотометрический режим (варианты: 1-abs, 2-T%, 3-Es, 4-Er), текущее: {0}'
 
   '00104006':
     zh_CN: '开始波长不能为空'
     en_US: 'Start wavelength cannot be empty'
     ja_JP: '開始波長は空にできません'
+    ru_RU: 'Начальная длина волны не может быть пустой'
 
   '00104007':
     zh_CN: '开始波长需在190-900范围内，当前值：{0}'
     en_US: 'Start wavelength must be between 190-900, current: {0}'
     ja_JP: '開始波長は190〜900の範囲内である必要があります、現在値：{0}'
+    ru_RU: 'Начальная длина волны должна быть в диапазоне 190-900, текущее: {0}'
 
   '00104008':
     zh_CN: '开始波长小数点后最多保留1位，当前值：{0}'
     en_US: 'Start wavelength can have at most 1 decimal place, current: {0}'
     ja_JP: '開始波長は小数点以下1桁まで、現在値：{0}'
+    ru_RU: 'Начальная длина волны может иметь максимум 1 десятичный знак, текущее: {0}'
 
   '00104009':
     zh_CN: '开始波长格式错误（需为数字），当前值：{0}'
     en_US: 'Start wavelength format error (must be number), current: {0}'
     ja_JP: '開始波長の形式エラー（数字が必要です）、現在値：{0}'
+    ru_RU: 'Ошибка формата начальной длины волны (должно быть числом), текущее значение: {0}'
 
   '0010400A':
     zh_CN: '结束波长不能为空'
     en_US: 'End wavelength cannot be empty'
     ja_JP: '終了波長は空にできません'
+    ru_RU: 'Конечная длина волны не может быть пустой'
 
   '0010400B':
     zh_CN: '结束波长需在190-900范围内，当前值：{0}'
     en_US: 'End wavelength must be between 190-900, current: {0}'
     ja_JP: '終了波長は190〜900の範囲内である必要があります、現在値：{0}'
+    ru_RU: 'Конечная длина волны должна быть в диапазоне 190-900, текущее значение: {0}'
 
   '0010400C':
     zh_CN: '结束波长小数点后最多保留1位，当前值：{0}'
     en_US: 'End wavelength can have at most 1 decimal place, current: {0}'
     ja_JP: '終了波長は小数点以下1桁まで、現在値：{0}'
+    ru_RU: 'Конечная длина волны может иметь не более 1 знака после запятой, текущее значение: {0}'
 
   '0010400D':
     zh_CN: '开始波长必须大于结束波长（开始：{0}，结束：{1})'
     en_US: 'Start wavelength must be greater than end wavelength (start: {0}, end: {1})'
     ja_JP: '開始波長は終了波長より大きくなければなりません（開始：{0}、終了：{1}）'
+    ru_RU: 'Начальная длина волны должна быть больше конечной (начало: {0}, конец: {1})'
 
   '0010400E':
     zh_CN: '结束波长格式错误（需为数字），当前值：{0}'
     en_US: 'End wavelength format error (must be number), current: {0}'
     ja_JP: '終了波長の形式エラー（数字が必要です）、現在値：{0}'
+    ru_RU: 'Ошибка формата конечной длины волны (должно быть числом), текущее значение: {0}'
 
   '0010400F':
     zh_CN: '波长间隔不能为空'
     en_US: 'Wavelength interval cannot be empty'
     ja_JP: '波長間隔は空にできません'
+    ru_RU: 'Интервал длин волн не может быть пустым'
 
   '00104010':
     zh_CN: '波长间隔不合法（可选值：{0}），当前值：{1}'
     en_US: 'Invalid wavelength interval (options: {0}), current: {1}'
     ja_JP: '無効な波長間隔（選択肢：{0}）、現在値：{1}'
+    ru_RU: 'Недопустимый интервал длин волн (варианты: {0}), текущее значение: {1}'
 
   '00104011':
     zh_CN: '重复模式不合法（可选值：0-不重复、1-单池重复），当前值：{0}'
     en_US: 'Invalid repeat mode (options: 0-no repeat, 1-single cell repeat), current: {0}'
     ja_JP: '無効な繰り返しモード（選択肢：0-繰り返しなし、1-単セル繰り返し）、現在値：{0}'
+    ru_RU: 'Недопустимый режим повторения (варианты: 0-без повторения, 1-повторение одной ячейки), текущее значение: {0}'
 
   '00104012':
     zh_CN: '时间间隔小数点后最多保留1位，当前值：{0}'
     en_US: 'Time interval can have at most 1 decimal place, current: {0}'
     ja_JP: '時間間隔は小数点以下1桁まで、現在値：{0}'
+    ru_RU: 'Временной интервал может иметь не более 1 знака после запятой, текущее значение: {0}'
 
   '00104013':
     zh_CN: '扫描速度不能为空'
     en_US: 'Scan speed cannot be empty'
     ja_JP: 'スキャン速度は空にできません'
+    ru_RU: 'Скорость сканирования не может быть пустой'
 
   '00104014':
     zh_CN: '扫描速度不合法（可选值：0-慢速、1-中速、2-快速、3-极快），当前值：{0}'
     en_US: 'Invalid scan speed (options: 0-slow, 1-medium, 2-fast, 3-ultra fast), current: {0}'
     ja_JP: '無効なスキャン速度（選択肢：0-低速、1-中速、2-高速、3-超高速）、現在値：{0}'
+    ru_RU: 'Недопустимая скорость сканирования (варианты: 0-медленная, 1-средняя, 2-быстрая, 3-ультра быстрая), текущее значение: {0}'
 
   '00104015':
     zh_CN: '起始波长不能小于等于停止波长'
     en_US: 'Start wavelength cannot be less than or equal to stop wavelength'
     ja_JP: '開始波長は停止波長以下にできません'
+    ru_RU: 'Начальная длина волны не может быть меньше или равна конечной длине волны'
 
   '00104016':
     zh_CN: '样品信息不存在: {0}'
     en_US: 'Sample information does not exist: {0}'
     ja_JP: 'サンプル情報が存在しません：{0}'
+    ru_RU: 'Информация об образце не существует: {0}'
 
   '00104017':
     zh_CN: '时间{0}不存在，请重新选择'
     en_US: 'Time {0} does not exist, please select again'
     ja_JP: '時間{0}が存在しません、再選択してください'
+    ru_RU: 'Время {0} не существует, пожалуйста, выберите снова'
 
   # ========== 时间扫描模块=05 (00105) ==========
   '00105001':
     zh_CN: '光度模式不能为空'
     en_US: 'Photometric mode cannot be empty'
     ja_JP: '光度モードは空にできません'
+    ru_RU: 'Фотометрический режим не может быть пустым'
 
   '00105002':
     zh_CN: '光度模式只能是1(abs)、2(T%)、3(Es)、4(Er)'
     en_US: 'Photometric mode can only be 1(abs), 2(T%), 3(Es), 4(Er)'
     ja_JP: '光度モードは1(abs)、2(T%)、3(Es)、4(Er)のみ可能です'
+    ru_RU: 'Фотометрический режим может быть только 1(abs), 2(T%), 3(Es), 4(Er)'
 
   '00105003':
     zh_CN: '波长值不能为空'
     en_US: 'Wavelength value cannot be empty'
     ja_JP: '波長値は空にできません'
+    ru_RU: 'Значение длины волны не может быть пустым'
 
   '00105004':
     zh_CN: '波长值 {0} 必须在{1}-{2}范围内'
     en_US: 'Wavelength value {0} must be between {1}-{2}'
     ja_JP: '波長値{0}は{1}〜{2}の範囲内である必要があります'
+    ru_RU: 'Значение длины волны {0} должно быть в диапазоне {1}-{2}'
 
   '00105005':
     zh_CN: '波长值{0}小数点后最多保留1位'
     en_US: 'Wavelength value {0} can have at most 1 decimal place'
     ja_JP: '波長値{0}は小数点以下1桁まで'
+    ru_RU: 'Значение длины волны {0} может иметь не более 1 знака после запятой'
 
   '00105006':
     zh_CN: '波长值{0}必须为有效的数字'
     en_US: 'Wavelength value {0} must be a valid number'
     ja_JP: '波長値{0}は有効な数字である必要があります'
+    ru_RU: 'Значение длины волны {0} должно быть допустимым числом'
 
   '00105007':
     zh_CN: '扫描总时长不能为空'
     en_US: 'Total scan duration cannot be empty'
     ja_JP: 'スキャン総時間は空にできません'
+    ru_RU: 'Общая продолжительность сканирования не может быть пустой'
 
   '00105008':
     zh_CN: '扫描总时长必须在0-10000范围内'
     en_US: 'Total scan duration must be between 0-10000'
     ja_JP: 'スキャン総時間は0〜10000の範囲内である必要があります'
+    ru_RU: 'Общая продолжительность сканирования должна быть в диапазоне 0-10000'
 
   '00105009':
     zh_CN: '扫描总时长小数点后最多保留1位'
     en_US: 'Total scan duration can have at most 1 decimal place'
     ja_JP: 'スキャン総時間は小数点以下1桁まで'
+    ru_RU: 'Общая продолжительность сканирования может иметь не более 1 знака после запятой'
 
   '0010500A':
     zh_CN: '扫描总时长必须为有效的数字'
     en_US: 'Total scan duration must be a valid number'
     ja_JP: 'スキャン総時間は有効な数字である必要があります'
+    ru_RU: 'Общая продолжительность сканирования должна быть допустимым числом'
 
   '0010500B':
     zh_CN: '扫描单位不能为空'
     en_US: 'Scan unit cannot be empty'
     ja_JP: 'スキャン単位は空にできません'
+    ru_RU: 'Единица сканирования не может быть пустой'
 
   '0010500C':
     zh_CN: '扫描单位只能是0(分)、1(秒)'
     en_US: 'Scan unit can only be 0(minutes), 1(seconds)'
     ja_JP: 'スキャン単位は0(分)、1(秒)のみ可能です'
+    ru_RU: 'Единица сканирования может быть только 0(минуты), 1(секунды)'
 
   '0010500D':
     zh_CN: '时间间隔不能为空'
     en_US: 'Time interval cannot be empty'
     ja_JP: '時間間隔は空にできません'
+    ru_RU: 'Временной интервал не может быть пустым'
 
   '0010500E':
     zh_CN: '时间间隔必须在0-100范围内'
     en_US: 'Time interval must be between 0-100'
     ja_JP: '時間間隔は0〜100の範囲内である必要があります'
+    ru_RU: 'Временной интервал должен быть в диапазоне 0-100'
 
   '0010500F':
     zh_CN: '时间间隔小数点后最多保留1位'
     en_US: 'Time interval can have at most 1 decimal place'
     ja_JP: '時間間隔は小数点以下1桁まで'
+    ru_RU: 'Временной интервал может иметь не более 1 знака после запятой'
 
   '00105010':
     zh_CN: '时间间隔必须为有效的数字'
     en_US: 'Time interval must be a valid number'
     ja_JP: '時間間隔は有効な数字である必要があります'
+    ru_RU: 'Временной интервал должен быть допустимым числом'
 
   '00105011':
     zh_CN: '扫描总个数不能为空'
     en_US: 'Total scan count cannot be empty'
     ja_JP: 'スキャン総数は空にできません'
+    ru_RU: 'Общее количество сканирований не может быть пустым'
 
   '00105012':
     zh_CN: '扫描总个数必须为有效的整数'
     en_US: 'Total scan count must be a valid integer'
     ja_JP: 'スキャン総数は有効な整数である必要があります'
+    ru_RU: 'Общее количество сканирований должно быть допустимым целым числом'
 
   '00105013':
     zh_CN: '多联池模式不能为空'
     en_US: 'Multi-cell mode cannot be empty'
     ja_JP: 'マルチセルモードは空にできません'
+    ru_RU: 'Режим мульти-ячеек не может быть пустым'
 
   '00105014':
     zh_CN: '多联池模式只能是0(顺序单池连续采样)、1(循环多池交替采样)'
     en_US: 'Multi-cell mode can only be 0(sequential single cell continuous sampling), 1(circular multi-cell alternating sampling)'
     ja_JP: 'マルチセルモードは0(順序単セル連続サンプリング)、1(循環マルチセル交互サンプリング)のみ可能です'
+    ru_RU: 'Режим мульти-ячеек может быть только 0(последовательная непрерывная выборка одной ячейки), 1(циклическая попеременная выборка нескольких ячеек)'
 
   '00105016':
     zh_CN: '请勿重复使用'
     en_US: 'Please do not reuse'
     ja_JP: '再利用しないでください'
+    ru_RU: 'Пожалуйста, не используйте повторно'
 
   '00105017':
     zh_CN: '方法参数错误'
     en_US: 'Method parameter error'
     ja_JP: 'メソッドパラメータエラー'
+    ru_RU: 'Ошибка параметра метода'
 
   '00105018':
     zh_CN: '图片解码失败'
     en_US: 'Image decoding failed'
     ja_JP: '画像デコードに失敗しました'
+    ru_RU: 'Ошибка декодирования изображения'
 
   '00105019':
     zh_CN: '波长值小数点后最多保留1位'
     en_US: 'Wavelength value can have at most 1 decimal place'
     ja_JP: '波長値は小数点以下1桁まで'
+    ru_RU: 'Значение длины волны может иметь не более 1 знака после запятой'
 
   '0010501A':
     zh_CN: '波长值必须为有效的数字'
     en_US: 'Wavelength value must be a valid number'
     ja_JP: '波長値は有効な数字である必要があります'
+    ru_RU: 'Значение длины волны должно быть допустимым числом'
 
   '0010501B':
     zh_CN: '样品编号重复:{0}'
     en_US: 'Sample number already exists: {0}'
     ja_JP: 'サンプル番号が重複しています：{0}'
+    ru_RU: 'Номер образца уже существует: {0}'
 
   # ========== 样品池控制模块=06 (00106) ==========
   '00106001':
     zh_CN: '未找到该仪器附件配置'
     en_US: 'Instrument accessory configuration not found'
     ja_JP: '機器アクセサリー設定が見つかりません'
+    ru_RU: 'Конфигурация аксессуаров прибора не найдена'
 
   '00106002':
     zh_CN: '没有切换的样品池'
     en_US: 'No switchable sample cell'
     ja_JP: '切り替え可能なサンプルセルがありません'
+    ru_RU: 'Нет переключаемой ячейки для образца'
 
   '00106003':
     zh_CN: '请选择要操作的样品池'
     en_US: 'Please select the sample cell to operate'
     ja_JP: '操作するサンプルセルを選択してください'
+    ru_RU: 'Пожалуйста, выберите ячейку для образца для операции'
 
   '00106004':
     zh_CN: '设置出错'
     en_US: 'Setting error'
     ja_JP: '設定エラー'
-
+    ru_RU: 'Ошибка настройки'
   # ========== 仪器管理模块=002 ==========
   # 进样器模块=01
   '00201001':
     zh_CN: '请先连接仪器！'
     en_US: 'Please connect the instrument first!'
     ja_JP: '先に機器を接続してください！'
+    ru_RU: 'Пожалуйста, сначала подключите прибор!'
 
   '00201002':
     zh_CN: '仪器设置成功，数据库保存失败，请检查数据库设置'
     en_US: 'Instrument settings successful, database save failed, please check database settings'
     ja_JP: '機器設定は成功しましたが、データベース保存に失敗しました、データベース設定を確認してください'
+    ru_RU: 'Настройки прибора успешны, сохранение в базу данных не удалось, пожалуйста, проверьте настройки базы данных'
 
   # 仪器信息模块=02
   '00202001':
     zh_CN: '请先激活仪器'
     en_US: 'Please activate the instrument first'
     ja_JP: '先に機器をアクティベートしてください'
+    ru_RU: 'Пожалуйста, сначала активируйте прибор'
 
   '00202002':
     zh_CN: '设备正在初始化，请等待'
     en_US: 'Device is initializing, please wait'
     ja_JP: 'デバイスを初期化中です、お待ちください'
+    ru_RU: 'Устройство инициализируется, пожалуйста, подождите'
 
   '00202003':
     zh_CN: '设备正在测量，请等待'
     en_US: 'Device is measuring, please wait'
     ja_JP: 'デバイスが測定中です、お待ちください'
+    ru_RU: 'Устройство выполняет измерение, пожалуйста, подождите'
 
   '00202004':
     zh_CN: '请先初始化仪器！'
     en_US: 'Please initialize the instrument first!'
     ja_JP: '先に機器を初期化してください！'
+    ru_RU: 'Пожалуйста, сначала инициализируйте прибор!'
 
   '00202005':
     zh_CN: '系统异常'
     en_US: 'System exception'
     ja_JP: 'システム異常'
+    ru_RU: 'Системное исключение'
 
   '00202006':
     zh_CN: '设备正在使用中，请等待'
     en_US: 'Device is in use, please wait'
     ja_JP: 'デバイスが使用中です、お待ちください'
+    ru_RU: 'Устройство используется, пожалуйста, подождите'
 
   '00202007':
     zh_CN: '仪器已断开！'
     en_US: 'Instrument disconnected!'
     ja_JP: '機器が切断されました！'
+    ru_RU: 'Прибор отключен!'
 
   # 仪器配置模块=03
   '00203001':
     zh_CN: '未查找到仪器信息'
     en_US: 'Instrument information not found'
     ja_JP: '機器情報が見つかりません'
+    ru_RU: 'Информация о приборе не найдена'
 
   '00203002':
     zh_CN: '查询初始化状态异常'
     en_US: 'Query initialization status exception'
     ja_JP: '初期化状態の照会異常'
+    ru_RU: 'Исключение при запросе состояния инициализации'
 
   '00203003':
     zh_CN: '请先连接仪器！'
     en_US: 'Please connect the instrument first!'
     ja_JP: '先に機器を接続してください！'
+    ru_RU: 'Пожалуйста, сначала подключите прибор!'
 
   '00203004':
     zh_CN: '缺少校准类型'
     en_US: 'Missing calibration type'
     ja_JP: 'キャリブレーションタイプが不足しています'
+    ru_RU: 'Отсутствует тип калибровки'
 
   '00203005':
     zh_CN: '未找到该设备'
     en_US: 'Device not found'
     ja_JP: 'デバイスが見つかりません'
+    ru_RU: 'Устройство не найдено'
 
   '00203006':
     zh_CN: '未识别该型号'
     en_US: 'Model not recognized'
     ja_JP: 'モデルが認識されません'
+    ru_RU: 'Модель не распознана'
 
   # 系统用户管理=04
   '00204001':
     zh_CN: '缺少用户角色'
     en_US: 'Missing user role'
     ja_JP: 'ユーザーロールが不足しています'
+    ru_RU: 'Отсутствует роль пользователя'
 
   '00204002':
     zh_CN: '添加用户出错，权限不足'
     en_US: 'Error adding user, insufficient permissions'
     ja_JP: 'ユーザー追加エラー、権限不足'
+    ru_RU: 'Ошибка добавления пользователя, недостаточно прав'
 
   '00204003':
     zh_CN: '当前用户名已存在'
     en_US: 'Username already exists'
     ja_JP: '現在のユーザー名は既に存在します'
+    ru_RU: 'Текущее имя пользователя уже существует'
 
   '00204004':
     zh_CN: '修改用户出错，权限不足'
     en_US: 'Error modifying user, insufficient permissions'
     ja_JP: 'ユーザー変更エラー、権限不足'
+    ru_RU: 'Ошибка изменения пользователя, недостаточно прав'
 
   '00204005':
     zh_CN: '修改用户名出错，请检查'
     en_US: 'Error modifying username, please check'
     ja_JP: 'ユーザー名の変更エラー、確認してください'
+    ru_RU: 'Ошибка изменения имени пользователя, пожалуйста, проверьте'
 
   '00204006':
     zh_CN: '管理员不允许删除'
     en_US: 'Administrator cannot be deleted'
     ja_JP: '管理者は削除できません'
+    ru_RU: 'Администратор не может быть удален'
 
   '00204007':
     zh_CN: '不能删除自己'
     en_US: 'Cannot delete yourself'
     ja_JP: '自分自身を削除することはできません'
+    ru_RU: 'Нельзя удалить себя'
 
   '00204008':
     zh_CN: '删除用户出错，权限不足'
     en_US: 'Error deleting user, insufficient permissions'
     ja_JP: 'ユーザー削除エラー、権限不足'
+    ru_RU: 'Ошибка удаления пользователя, недостаточно прав'
 
   '00204009':
     zh_CN: '缺少用户名或密码'
     en_US: 'Missing username or password'
     ja_JP: 'ユーザー名またはパスワードが不足しています'
+    ru_RU: 'Отсутствует имя пользователя или пароль'
 
   '0020400A':
     zh_CN: '没找到该用户'
     en_US: 'User not found'
     ja_JP: 'ユーザーが見つかりません'
+    ru_RU: 'Пользователь не найден'
 
   '0020400B':
     zh_CN: '密码错误!'
     en_US: 'Password error!'
     ja_JP: 'パスワードエラー！'
+    ru_RU: 'Ошибка пароля!'
 
   # 仪器管理=05
   '00205001':
     zh_CN: '仪器编号为空'
     en_US: 'Instrument number is empty'
     ja_JP: '機器番号が空です'
+    ru_RU: 'Номер прибора пуст'
 
   '00205002':
     zh_CN: '用户名为空'
     en_US: 'Username is empty'
     ja_JP: 'ユーザー名が空です'
+    ru_RU: 'Имя пользователя пусто'
 
   '00205003':
     zh_CN: '该用户不存在'
     en_US: 'User does not exist'
     ja_JP: 'ユーザーが存在しません'
+    ru_RU: 'Этот пользователь не существует'
 
   '00205004':
     zh_CN: '检测类型分项统计功能未开启'
     en_US: 'Detection type statistics function not enabled'
     ja_JP: '検出タイプ統計機能が有効になっていません'
+    ru_RU: 'Функция статистики по типу обнаружения не включена'
 
   '00205005':
     zh_CN: '检测项目分项统计功能未开启'
     en_US: 'Detection item statistics function not enabled'
     ja_JP: '検出項目統計機能が有効になっていません'
+    ru_RU: 'Функция статистики по элементам обнаружения не включена'
 
   '00205006':
     zh_CN: '获取检测类型分项统计异常'
     en_US: 'Exception getting detection type statistics'
     ja_JP: '検出タイプ統計の取得異常'
+    ru_RU: 'Исключение при получении статистики по типу обнаружения'
 
   '00205007':
     zh_CN: '获取检测项目分项统计异常'
     en_US: 'Exception getting detection item statistics'
     ja_JP: '検出項目統計の取得異常'
+    ru_RU: 'Исключение при получении статистики по элементам обнаружения'
 
   '00205008':
     zh_CN: '开始时间不能大于结束时间'
     en_US: 'Start time cannot be greater than end time'
     ja_JP: '開始時刻は終了時刻より大きくできません'
+    ru_RU: 'Время начала не может быть больше времени окончания'
 
   # ========== 经典模式模块=003 ==========
   # 通用模块=00
@@ -1475,528 +1764,630 @@ messages:
     zh_CN: '不支持的导出格式，仅支持word/txt/xlsx'
     en_US: 'Unsupported export format, only word/txt/xlsx supported'
     ja_JP: 'サポートされていないエクスポート形式、word/txt/xlsxのみサポート'
+    ru_RU: 'Неподдерживаемый формат экспорта, поддерживаются только word/txt/xlsx'
 
   '00300002':
     zh_CN: '方法名格式错误'
     en_US: 'Method name format error'
     ja_JP: 'メソッド名の形式エラー'
+    ru_RU: 'Ошибка формата имени метода'
 
   '00300003':
     zh_CN: '缺少分析参数，无法计算分析'
     en_US: 'Missing analysis parameters, cannot calculate analysis'
     ja_JP: '分析パラメータが不足しているため、分析を計算できません'
+    ru_RU: 'Отсутствуют параметры анализа, невозможно выполнить расчет анализа'
 
   '00300004':
     zh_CN: '缺少映射关系，无法计算分析'
     en_US: 'Missing mapping relationship, cannot calculate analysis'
     ja_JP: 'マッピング関係が不足しているため、分析を計算できません'
+    ru_RU: 'Отсутствует отношение отображения, невозможно выполнить расчет анализа'
 
   '00300005':
     zh_CN: '缺少参数映射：{0}'
     en_US: 'Missing parameter mapping: {0}'
     ja_JP: 'パラメータマッピングが不足しています：{0}'
+    ru_RU: 'Отсутствует отображение параметра: {0}'
 
   '00300006':
     zh_CN: '缺少数据！'
     en_US: 'Missing data!'
     ja_JP: 'データが不足しています！'
+    ru_RU: 'Отсутствуют данные!'
 
   '00300007':
     zh_CN: '公式计算出错!{0}'
     en_US: 'Formula calculation error! {0}'
     ja_JP: '式の計算エラー！{0}'
+    ru_RU: 'Ошибка расчета по формуле! {0}'
 
   '00300008':
     zh_CN: '保存失败'
     en_US: 'Save failed'
     ja_JP: '保存に失敗しました'
+    ru_RU: 'Сохранение не удалось'
 
   '00300009':
     zh_CN: '测量方法不存在'
     en_US: 'Measurement method does not exist'
     ja_JP: '測定メソッドが存在しません'
+    ru_RU: 'Метод измерения не существует'
 
   '0030000A':
     zh_CN: '没有此类型的数据'
     en_US: 'No data of this type'
     ja_JP: 'このタイプのデータはありません'
+    ru_RU: 'Нет данных этого типа'
 
   '0030000B':
     zh_CN: '变换数据不存在'
     en_US: 'Transformation data does not exist'
     ja_JP: '変換データが存在しません'
+    ru_RU: 'Данные преобразования не существуют'
 
   '0030000C':
     zh_CN: '仪器设置参数失败！'
     en_US: 'Instrument parameter setting failed!'
     ja_JP: '機器パラメータ設定に失敗しました！'
+    ru_RU: 'Не удалось установить параметры прибора!'
 
   # 实验测试模块=01
   '00301001':
     zh_CN: '该项目已存在'
     en_US: 'Project already exists'
     ja_JP: 'プロジェクトは既に存在します'
+    ru_RU: 'Этот проект уже существует'
 
   '00301002':
     zh_CN: '方法名称重复'
     en_US: 'Method name already exists'
     ja_JP: 'メソッド名が重複しています'
+    ru_RU: 'Имя метода уже существует'
 
   '00301003':
     zh_CN: '创建方法失败'
     en_US: 'Failed to create method'
     ja_JP: 'メソッドの作成に失敗しました'
+    ru_RU: 'Не удалось создать метод'
 
   '00301004':
     zh_CN: '请选择测量类型'
     en_US: 'Please select measurement type'
     ja_JP: '測定タイプを選択してください'
+    ru_RU: 'Пожалуйста, выберите тип измерения'
 
   '00301007':
     zh_CN: '请选择光度测量'
     en_US: 'Please select photometric measurement'
     ja_JP: '光度測定を選択してください'
+    ru_RU: 'Пожалуйста, выберите фотометрическое измерение'
 
   '00301008':
     zh_CN: '请选择定量测定'
     en_US: 'Please select quantitative analysis'
     ja_JP: '定量分析を選択してください'
+    ru_RU: 'Пожалуйста, выберите количественный анализ'
 
   '00301009':
     zh_CN: '请选择光谱扫描'
     en_US: 'Please select spectrum scan'
     ja_JP: 'スペクトルスキャンを選択してください'
+    ru_RU: 'Пожалуйста, выберите спектральное сканирование'
 
   '0030100A':
     zh_CN: '请选择时间扫描'
     en_US: 'Please select time scan'
     ja_JP: '時間スキャンを選択してください'
+    ru_RU: 'Пожалуйста, выберите временное сканирование'
 
   '0030100B':
     zh_CN: '请选择双组份定量分析'
     en_US: 'Please select dual-component quantitative analysis'
     ja_JP: '二成分定量分析を選択してください'
+    ru_RU: 'Пожалуйста, выберите двухкомпонентный количественный анализ'
 
   '0030100C':
     zh_CN: '未查询到数据'
     en_US: 'No data found'
     ja_JP: 'データが見つかりません'
+    ru_RU: 'Данные не найдены'
 
   '0030100D':
     zh_CN: '未查询到前处理信息'
     en_US: 'Pretreatment information not found'
     ja_JP: '前処理情報が見つかりません'
+    ru_RU: 'Информация о предварительной обработке не найдена'
 
   '0030100E':
     zh_CN: '暂未开放'
     en_US: 'Not yet available'
     ja_JP: 'まだ利用できません'
+    ru_RU: 'Еще не доступно'
 
   '0030100F':
     zh_CN: '未测量,请先测量'
     en_US: 'Not measured, please measure first'
     ja_JP: '未測定です、先に測定してください'
+    ru_RU: 'Не измерено, пожалуйста, сначала выполните измерение'
 
   '00301010':
     zh_CN: '项目不存在'
     en_US: 'Project does not exist'
     ja_JP: 'プロジェクトが存在しません'
+    ru_RU: 'Проект не существует'
 
   '00301011':
     zh_CN: '方法删除失败'
     en_US: 'Failed to delete method'
     ja_JP: 'メソッドの削除に失敗しました'
+    ru_RU: 'Не удалось удалить метод'
 
   '00301012':
     zh_CN: '当前方法缺少类型'
     en_US: 'Current method missing type'
     ja_JP: '現在のメソッドにタイプがありません'
+    ru_RU: 'Текущему методу отсутствует тип'
 
   '00301013':
     zh_CN: '未找到该测量数据'
     en_US: 'Measurement data not found'
     ja_JP: '測定データが見つかりません'
+    ru_RU: 'Данные измерения не найдены'
 
   '00301014':
     zh_CN: '方法已删除'
     en_US: 'Method has been deleted'
     ja_JP: 'メソッドは削除されました'
+    ru_RU: 'Метод был удален'
 
   '00301015':
     zh_CN: '成功导入{0}个方法'
     en_US: 'Successfully imported {0} methods'
     ja_JP: '{0}個のメソッドを正常にインポートしました'
+    ru_RU: 'Успешно импортировано {0} методов'
 
   '00301016':
     zh_CN: '请先删除所有任务'
     en_US: 'Please delete all tasks first'
     ja_JP: '先にすべてのタスクを削除してください'
+    ru_RU: 'Пожалуйста, сначала удалите все задачи'
 
   '00301017':
     zh_CN: '项目清空失败'
     en_US: 'Failed to clear project'
     ja_JP: 'プロジェクトのクリアに失敗しました'
+    ru_RU: 'Не удалось очистить проект'
 
   '00301018':
     zh_CN: '任务样品删除失败,请重新删除'
     en_US: 'Failed to delete task samples, please try again'
     ja_JP: 'タスクサンプルの削除に失敗しました、再試行してください'
+    ru_RU: 'Не удалось удалить образцы задачи, пожалуйста, попробуйте снова'
 
   '00301019':
     zh_CN: '任务测量数据删除失败,请重新删除'
     en_US: 'Failed to delete task measurement data, please try again'
     ja_JP: 'タスク測定データの削除に失敗しました、再試行してください'
+    ru_RU: 'Не удалось удалить данные измерения задачи, пожалуйста, попробуйте снова'
 
   '0030101A':
     zh_CN: '任务分析数据删除失败,请重新删除'
     en_US: 'Failed to delete task analysis data, please try again'
     ja_JP: 'タスク分析データの削除に失敗しました、再試行してください'
+    ru_RU: 'Не удалось удалить данные анализа задачи, пожалуйста, попробуйте снова'
 
   '0030101B':
     zh_CN: '任务附属信息删除失败,请重新删除'
     en_US: 'Failed to delete task attachment information, please try again'
     ja_JP: 'タスク付属情報の削除に失敗しました、再試行してください'
+    ru_RU: 'Не удалось удалить дополнительную информацию задачи, пожалуйста, попробуйте снова'
 
   '0030101C':
     zh_CN: '任务已删除'
     en_US: 'Task deleted'
     ja_JP: 'タスク削除済み'
+    ru_RU: 'Задача удалена'
 
   '0030101D':
     zh_CN: '任务删除失败'
     en_US: 'Failed to delete task'
     ja_JP: 'タスクの削除に失敗しました'
+    ru_RU: 'Не удалось удалить задачу'
 
   '0030101E':
     zh_CN: '项目已清空'
     en_US: 'Project cleared'
     ja_JP: 'プロジェクトクリア済み'
+    ru_RU: 'Проект очищен'
 
   '0030101F':
     zh_CN: '请先删除使用该方法的所有任务'
     en_US: 'Please delete all tasks using this method first'
     ja_JP: '先にこのメソッドを使用しているすべてのタスクを削除してください'
-
+    ru_RU: 'Пожалуйста, сначала удалите все задачи, использующие этот метод'
   # 光度测量模块=02
   '00302001':
     zh_CN: '缺少方法'
     en_US: 'Missing method'
     ja_JP: 'メソッドが不足しています'
+    ru_RU: 'Отсутствует метод'
 
   '00302002':
     zh_CN: '缺少结果参数'
     en_US: 'Missing result parameters'
     ja_JP: '結果パラメータが不足しています'
+    ru_RU: 'Отсутствуют параметры результата'
 
   '00302003':
     zh_CN: '没有要保存的数据'
     en_US: 'No data to save'
     ja_JP: '保存するデータがありません'
+    ru_RU: 'Нет данных для сохранения'
 
   '00302004':
     zh_CN: '缺少备注'
     en_US: 'Missing remarks'
     ja_JP: '備考が不足しています'
+    ru_RU: 'Отсутствуют примечания'
 
   '00302005':
     zh_CN: '没有可导出的数据'
     en_US: 'No data to export'
     ja_JP: 'エクスポート可能なデータがありません'
+    ru_RU: 'Нет данных для экспорта'
 
   '00302006':
     zh_CN: '文件生成失败：{0}'
     en_US: 'File generation failed: {0}'
     ja_JP: 'ファイル生成に失敗しました：{0}'
+    ru_RU: 'Не удалось создать файл: {0}'
 
   '00302007':
     zh_CN: '变量{0}缺少数据'
     en_US: 'Variable {0} missing data'
     ja_JP: '変数{0}のデータが不足しています'
+    ru_RU: 'Переменная {0}缺少数据'
 
-  # 定量测定模块=03
+#   定量测定模块=03
   '00303001':
     zh_CN: '参考标准方法长度超限'
     en_US: 'Reference standard method length exceeded'
     ja_JP: '参照標準メソッドの長さが制限を超えています'
+    ru_RU: 'Превышена длина ссылочного стандартного метода'
 
   '00303002':
     zh_CN: '前处理参数个数超限'
     en_US: 'Pretreatment parameter count exceeded'
     ja_JP: '前処理パラメータ数が制限を超えています'
+    ru_RU: 'Превышено количество параметров предварительной обработки'
 
   '00303003':
     zh_CN: '前处理参数长度超限'
     en_US: 'Pretreatment parameter length exceeded'
     ja_JP: '前処理パラメータの長さが制限を超えています'
+    ru_RU: 'Превышена длина параметра предварительной обработки'
 
   '00303004':
     zh_CN: '波长个数需在1-3之间'
     en_US: 'Number of wavelengths must be between 1-3'
     ja_JP: '波長の数は1〜3の間である必要があります'
+    ru_RU: 'Количество длин волн должно быть от 1 до 3'
 
   '00303005':
     zh_CN: '波长超出范围(190-900)'
     en_US: 'Wavelength out of range (190-900)'
     ja_JP: '波長が範囲(190-900)を超えています'
+    ru_RU: 'Длина волны вне диапазона (190-900)'
 
   '00303006':
     zh_CN: '波长需保留1位小数'
     en_US: 'Wavelength must have 1 decimal place'
     ja_JP: '波長は小数点以下1桁が必要です'
+    ru_RU: 'Длина волны должна иметь 1 знак после запятой'
 
   '00303007':
     zh_CN: '波长格式错误'
     en_US: 'Wavelength format error'
     ja_JP: '波長の形式エラー'
+    ru_RU: 'Ошибка формата длины волны'
 
   '00303008':
     zh_CN: '曲线次数范围应为1-4'
     en_US: 'Curve degree range should be 1-4'
     ja_JP: '曲線の次数範囲は1〜4である必要があります'
+    ru_RU: 'Диапазон степени кривой должен быть 1-4'
 
   '00303009':
     zh_CN: '曲线系数数据个数需在1-10之间'
     en_US: 'Number of curve coefficient data must be between 1-10'
     ja_JP: '曲線係数データの数は1〜10の間である必要があります'
+    ru_RU: 'Количество данных коэффициентов кривой должно быть от 1 до 10'
 
   '0030300A':
     zh_CN: '结果单位长度应为1-10'
     en_US: 'Result unit length should be 1-10'
     ja_JP: '結果単位の長さは1〜10である必要があります'
+    ru_RU: 'Длина единицы результата должна быть 1-10'
 
   '0030300B':
     zh_CN: '方法ID格式应为32位'
     en_US: 'Method ID format should be 32 bits'
     ja_JP: 'メソッドIDの形式は32ビットである必要があります'
+    ru_RU: 'Формат ID метода должен быть 32 бита'
 
   '0030300C':
     zh_CN: '非标准样品，跳过'
     en_US: 'Non-standard sample, skipped'
     ja_JP: '非標準サンプル、スキップ'
+    ru_RU: 'Нестандартный образец, пропущено'
 
   '0030300E':
     zh_CN: '未找到对应波长数据'
     en_US: 'Corresponding wavelength data not found'
     ja_JP: '対応する波長データが見つかりません'
+    ru_RU: 'Соответствующие данные длины волны не найдены'
 
   '0030300F':
     zh_CN: '曲线拟合失败'
     en_US: 'Curve fitting failed'
     ja_JP: '曲線フィッティングに失敗しました'
+    ru_RU: 'Не удалось выполнить аппроксимацию кривой'
 
   '00303010':
     zh_CN: '没有样品'
     en_US: 'No samples'
     ja_JP: 'サンプルがありません'
+    ru_RU: 'Нет образцов'
 
   '00303011':
     zh_CN: '数据处理出错且没有找到旧数据，处理失败'
     en_US: 'Data processing error and old data not found, processing failed'
     ja_JP: 'データ処理エラーで古いデータも見つからないため、処理に失敗しました'
+    ru_RU: 'Ошибка обработки данных и старые данные не найдены, обработка не удалась'
 
   '00303012':
     zh_CN: '未选择样品种类'
     en_US: 'Sample type not selected'
     ja_JP: 'サンプルタイプが選択されていません'
+    ru_RU: 'Тип образца не выбран'
 
   '00303013':
     zh_CN: '样品种类有误'
     en_US: 'Sample type error'
     ja_JP: 'サンプルタイプエラー'
+    ru_RU: 'Ошибка типа образца'
 
   '00303014':
     zh_CN: '查询样品数据失败：{0}'
     en_US: 'Failed to query sample data: {0}'
     ja_JP: 'サンプルデータの照会に失敗しました：{0}'
+    ru_RU: 'Не удалось запросить данные образца: {0}'
 
   '00303015':
     zh_CN: '样品数据为空'
     en_US: 'Sample data is empty'
     ja_JP: 'サンプルデータが空です'
+    ru_RU: 'Данные образца пусты'
 
   '00303016':
     zh_CN: '没有可导出的标准样品数据'
     en_US: 'No standard sample data to export'
     ja_JP: 'エクスポート可能な標準サンプルデータがありません'
+    ru_RU: 'Нет данных стандартных образцов для экспорта'
 
   '00303017':
     zh_CN: '光谱扫描参数对象不能为空'
     en_US: 'Spectrum scan parameter object cannot be empty'
     ja_JP: 'スペクトルスキャンパラメータオブジェクトは空にできません'
+    ru_RU: 'Объект параметров спектрального сканирования не может быть пустым'
 
   '00303018':
     zh_CN: '波长系数个数需在1-3之间'
     en_US: 'Number of wavelength coefficients must be between 1-3'
     ja_JP: '波長係数の数は1〜3の間である必要があります'
+    ru_RU: 'Количество коэффициентов длины волны должно быть от 1 до 3'
 
   # 光谱测量模块=04
   '00304001':
     zh_CN: '数据转换失败'
     en_US: 'Data conversion failed'
     ja_JP: 'データ変換に失敗しました'
+    ru_RU: 'Не удалось преобразовать данные'
 
   '00304002':
     zh_CN: '请选择正确的光度模式'
     en_US: 'Please select correct photometric mode'
     ja_JP: '正しい光度モードを選択してください'
+    ru_RU: 'Пожалуйста, выберите правильный фотометрический режим'
 
   '00304003':
     zh_CN: '请选择正确的扫描速度'
     en_US: 'Please select correct scan speed'
     ja_JP: '正しいスキャン速度を選択してください'
+    ru_RU: 'Пожалуйста, выберите правильную скорость сканирования'
 
   '00304004':
     zh_CN: '变换类型错误'
     en_US: 'Transformation type error'
     ja_JP: '変換タイプエラー'
+    ru_RU: 'Ошибка типа преобразования'
 
   '00304005':
     zh_CN: '样品编号不能位空'
     en_US: 'Sample number cannot be empty'
     ja_JP: 'サンプル番号は空にできません'
+    ru_RU: 'Номер образца не может быть пустым'
 
   '00304006':
     zh_CN: '预处理参数不存在'
     en_US: 'Pretreatment parameters do not exist'
     ja_JP: '前処理パラメータが存在しません'
+    ru_RU: 'Параметры предварительной обработки не существуют'
 
   '00304007':
     zh_CN: '方法编号不能为空'
     en_US: 'Method number cannot be empty'
     ja_JP: 'メソッド番号は空にできません'
+    ru_RU: 'Номер метода не может быть пустым'
 
   '00304008':
     zh_CN: '设备编号不能为空'
     en_US: 'Device number cannot be empty'
     ja_JP: 'デバイス番号は空にできません'
+    ru_RU: 'Номер устройства не может быть пустым'
 
   '00304009':
     zh_CN: '设置参数失败'
     en_US: 'Failed to set parameters'
     ja_JP: 'パラメータ設定に失敗しました'
+    ru_RU: 'Не удалось установить параметры'
 
   '0030400A':
     zh_CN: '文件生成失败：文件不存在'
     en_US: 'File generation failed: file does not exist'
     ja_JP: 'ファイル生成に失敗しました：ファイルが存在しません'
+    ru_RU: 'Не удалось создать файл: файл не существует'
 
   # 时间扫描模块=05
   '00305001':
     zh_CN: '用户名过长！'
     en_US: 'Username too long!'
     ja_JP: 'ユーザー名が長すぎます！'
+    ru_RU: 'Имя пользователя слишком длинное!'
 
   '00305002':
     zh_CN: '暂不支持此测量类型'
     en_US: 'This measurement type is not supported yet'
     ja_JP: 'この測定タイプはまだサポートされていません'
+    ru_RU: 'Этот тип измерения пока не поддерживается'
 
   '00305003':
     zh_CN: '暂无任务数据'
     en_US: 'No task data available'
     ja_JP: 'タスクデータがありません'
+    ru_RU: 'Нет данных задачи'
 
   '00305004':
     zh_CN: '方法名称过长！'
     en_US: 'Method name too long!'
     ja_JP: 'メソッド名が長すぎます！'
+    ru_RU: 'Имя метода слишком длинное!'
 
   '00305005':
     zh_CN: '没有此方法'
     en_US: 'Method does not exist'
     ja_JP: 'メソッドがありません'
+    ru_RU: 'Этот метод не существует'
 
   '00305006':
     zh_CN: '此方法没有参数'
     en_US: 'This method has no parameters'
     ja_JP: 'このメソッドにはパラメータがありません'
+    ru_RU: 'У этого метода нет параметров'
 
   '00305007':
     zh_CN: '缺少设备序列号'
     en_US: 'Missing device serial number'
     ja_JP: 'デバイスシリアル番号が不足しています'
+    ru_RU: 'Отсутствует серийный номер устройства'
 
   '00305008':
     zh_CN: '缺少方法id'
     en_US: 'Missing method ID'
     ja_JP: 'メソッドIDが不足しています'
+    ru_RU: 'Отсутствует ID метода'
 
   '00305009':
     zh_CN: '没有要新增或删除的样品！'
     en_US: 'No samples to add or delete!'
     ja_JP: '追加または削除するサンプルがありません！'
-
+    ru_RU: 'Нет образцов для добавления или удаления!'
   # 数据库管理模块=06
   '00306001':
     zh_CN: '查询失败'
     en_US: 'Query failed'
     ja_JP: '照会に失敗しました'
+    ru_RU: 'Запрос не удался'
 
   '00306002':
     zh_CN: '查询参数不能为空'
     en_US: 'Query parameters cannot be empty'
     ja_JP: '照会パラメータは空にできません'
+    ru_RU: 'Параметры запроса не могут быть пустыми'
 
   '00306003':
     zh_CN: '参数不能为空'
     en_US: 'Parameters cannot be empty'
     ja_JP: 'パラメータは空にできません'
+    ru_RU: 'Параметры не могут быть пустыми'
 
   '00306004':
     zh_CN: '数量不能为0'
     en_US: 'Quantity cannot be 0'
     ja_JP: '数量は0にできません'
+    ru_RU: 'Количество не может быть 0'
 
   '00306005':
     zh_CN: '数量不能大于50'
     en_US: 'Quantity cannot be greater than 50'
     ja_JP: '数量は50より大きくできません'
+    ru_RU: 'Количество не может быть больше 50'
 
   '00306006':
     zh_CN: '该方法包含未完成的任务'
     en_US: 'This method contains incomplete tasks'
     ja_JP: 'このメソッドには未完了のタスクが含まれています'
+    ru_RU: 'Этот метод содержит незавершенные задачи'
 
   '00306007':
     zh_CN: '该项目包含未删除的方法'
     en_US: 'This project contains undeleted methods'
     ja_JP: 'このプロジェクトには削除されていないメソッドが含まれています'
+    ru_RU: 'Этот проект содержит неудаленные методы'
 
   # 模板管理模块=07
   '00307001':
     zh_CN: '没有可保存为模板的信息'
     en_US: 'No information to save as template'
     ja_JP: 'テンプレートとして保存する情報はありません'
+    ru_RU: 'Нет информации для сохранения в качестве шаблона'
 
   '00307002':
     zh_CN: '模板名称不能为空'
     en_US: 'Template name cannot be empty'
     ja_JP: 'テンプレート名は空にできません'
+    ru_RU: 'Имя шаблона не может быть пустым'
 
   '00307003':
     zh_CN: '测量类型不能为空'
     en_US: 'Measurement type cannot be empty'
     ja_JP: '測定タイプは空にできません'
+    ru_RU: 'Тип измерения не может быть пустым'
 
   '00307004':
     zh_CN: '请登录后操作！'
     en_US: 'Please log in to operate!'
     ja_JP: 'ログインして操作してください！'
+    ru_RU: 'Пожалуйста, войдите в систему для выполнения операции!'
 
   '00307005':
     zh_CN: '该模板已存在,模板名称为：{0}'
     en_US: 'Template already exists, template name: {0}'
     ja_JP: 'テンプレートは既に存在します、テンプレート名：{0}'
+    ru_RU: 'Этот шаблон уже существует, имя шаблона: {0}'
 
   '00307006':
     zh_CN: '没有要删除的模板'
     en_US: 'No templates to delete'
     ja_JP: '削除するテンプレートがありません'
+    ru_RU: 'Нет шаблонов для удаления'
 
   '00307007':
     zh_CN: '不可删除他人创建的模板'
     en_US: 'Cannot delete templates created by others'
     ja_JP: '他人が作成したテンプレートを削除することはできません'
+    ru_RU: 'Нельзя удалять шаблоны, созданные другими'
 
   # ========== 分析报告模块=004 ==========
   # 计算公式模块=01
@@ -2004,57 +2395,67 @@ messages:
     zh_CN: '未找到ID为{0}的计算公式记录'
     en_US: 'Calculation formula record with ID {0} not found'
     ja_JP: 'ID{0}の計算式レコードが見つかりません'
+    ru_RU: 'Запись формулы расчета с ID {0} не найдена'
 
   # 标准管理模块=02
   '00402001':
     zh_CN: '未找到ID为{0}的记录'
     en_US: 'Record with ID {0} not found'
     ja_JP: 'ID{0}のレコードが見つかりません'
+    ru_RU: 'Запись с ID {0} не найдена'
 
   # 导出管理模块=03
   '00403001':
     zh_CN: '当isAll=0时，必须提供exportIds参数'
     en_US: 'When isAll=0, exportIds parameter must be provided'
     ja_JP: 'isAll=0の場合、exportIdsパラメータを提供する必要があります'
+    ru_RU: 'Когда isAll=0, необходимо предоставить параметр exportIds'
 
   '00403002':
     zh_CN: '导出失败：{0}'
     en_US: 'Export failed: {0}'
     ja_JP: 'エクスポートに失敗しました：{0}'
+    ru_RU: 'Экспорт не удался: {0}'
 
   '00403003':
     zh_CN: '导出异常：{0}'
     en_US: 'Export exception: {0}'
     ja_JP: 'エクスポート例外：{0}'
+    ru_RU: 'Исключение при экспорте: {0}'
 
   # 导入管理模块=04
   '00404001':
     zh_CN: '文件上传成功'
     en_US: 'File uploaded successfully'
     ja_JP: 'ファイルアップロード成功'
+    ru_RU: 'Файл успешно загружен'
 
   '00404002':
     zh_CN: '文件上传失败：{0}'
     en_US: 'File upload failed: {0}'
     ja_JP: 'ファイルアップロードに失敗しました：{0}'
+    ru_RU: 'Не удалось загрузить файл: {0}'
 
   # 质控管理模块=05
   '00405001':
     zh_CN: '未找到ID为{0}的质控记录'
     en_US: 'Quality control record with ID {0} not found'
     ja_JP: 'ID{0}の品質管理レコードが見つかりません'
+    ru_RU: 'Запись контроля качества с ID {0} не найдена'
 
   # 修约规则模块=06
   '00406001':
     zh_CN: '未找到ID为{0}的修约规则记录'
     en_US: 'Rounding rule record with ID {0} not found'
     ja_JP: 'ID{0}の丸め規則レコードが見つかりません'
+    ru_RU: 'Запись правила округления с ID {0} не найдена'
 
   # 标准预处理模块=07
   '004007001':
     zh_CN: '未找到ID为{0}的检测记录'
     en_US: 'Detection record with ID {0} not found'
     ja_JP: 'ID{0}の検出レコードが見つかりません'
+    ru_RU: 'Запись обнаружения с ID {0} не найдена'
 
   # ========== 系统管理模块=005 ==========
   # 通用模块=00
@@ -2062,12 +2463,14 @@ messages:
     zh_CN: '小组ID不能为空'
     en_US: 'Group ID cannot be empty'
     ja_JP: 'グループIDは空にできません'
+    ru_RU: 'ID группы не может быть пустым'
 
   # 全局管理模块=01
   '00501001':
     zh_CN: '添加失败'
     en_US: 'Add failed'
     ja_JP: '追加に失敗しました'
+    ru_RU: 'Добавление не удалось'
 
   # ========== 用户管理模块=006 ==========
   # 用户管理模块=01
@@ -2075,252 +2478,301 @@ messages:
     zh_CN: '用户名已存在'
     en_US: 'Username already exists'
     ja_JP: 'ユーザー名は既に存在します'
+    ru_RU: 'Имя пользователя уже существует'
 
   '00601002':
     zh_CN: '该小组不存在，请刷新重试！'
     en_US: 'Group does not exist, please refresh and try again!'
     ja_JP: 'グループが存在しません、更新して再試行してください！'
+    ru_RU: 'Группа не существует, пожалуйста, обновите и попробуйте снова!'
 
   '00601003':
     zh_CN: '用户创建成功，已关联小组'
     en_US: 'User created successfully, group associated'
     ja_JP: 'ユーザー作成成功、グループ関連付け済み'
+    ru_RU: 'Пользователь успешно создан, группа связана'
 
   '00601004':
     zh_CN: '用户更新成功，已同步更新小组关联'
     en_US: 'User updated successfully, group association synchronized'
-    ja_JP: 'ユーザー更新成功、グルー'
+    ja_JP: 'ユーザー更新成功、グループ関連付け同期済み'
+    ru_RU: 'Пользователь успешно обновлен, связь с группой синхронизирована'
   '00601005':
     zh_CN: '请选择需要删除的用户'
     en_US: 'Please select users to delete'
     ja_JP: '削除するユーザーを選択してください'
+    ru_RU: 'Пожалуйста, выберите пользователей для удаления'
 
   '00601006':
     zh_CN: '用户删除成功'
     en_US: 'User deleted successfully'
     ja_JP: 'ユーザー削除成功'
+    ru_RU: 'Пользователь успешно удален'
 
   '00601007':
     zh_CN: '用户不存在，删除失败'
     en_US: 'User does not exist, deletion failed'
     ja_JP: 'ユーザーが存在しないため、削除に失敗しました'
+    ru_RU: 'Пользователь не существует, удаление не удалось'
 
   '00601008':
     zh_CN: '旧密码不正确'
     en_US: 'Old password is incorrect'
     ja_JP: '古いパスワードが正しくありません'
+    ru_RU: 'Старый пароль неверен'
 
   '00601009':
     zh_CN: '新密码不能与旧密码相同'
     en_US: 'New password cannot be the same as old password'
     ja_JP: '新しいパスワードは古いパスワードと同じにできません'
+    ru_RU: 'Новый пароль не может совпадать со старым'
 
   '0060100A':
     zh_CN: '新密码与确认密码不一致，请重新输入'
     en_US: 'New password and confirmation password do not match, please re-enter'
     ja_JP: '新しいパスワードと確認パスワードが一致しません、再入力してください'
+    ru_RU: 'Новый пароль и подтверждение пароля не совпадают, пожалуйста, введите снова'
 
   '0060100B':
     zh_CN: '密码修改成功'
     en_US: 'Password changed successfully'
     ja_JP: 'パスワード変更成功'
+    ru_RU: 'Пароль успешно изменен'
 
   '0060100C':
     zh_CN: '当前密码已是默认密码，无需重置'
     en_US: 'Current password is already default, no reset needed'
     ja_JP: '現在のパスワードはすでにデフォルトです、リセット不要'
+    ru_RU: 'Текущий пароль уже является паролем по умолчанию, сброс не требуется'
 
   '0060100D':
     zh_CN: '密码已重置为默认值123456，请提醒用户及时修改'
     en_US: 'Password has been reset to default 123456, please remind user to change it'
     ja_JP: 'パスワードはデフォルト値123456にリセットされました、ユーザーに変更を促してください'
+    ru_RU: 'Пароль сброшен до значения по умолчанию 123456, пожалуйста, напомните пользователю изменить его'
 
   # 小组管理模块=02
   '00602001':
     zh_CN: '小组名已存在，请更改'
     en_US: 'Group name already exists, please change'
     ja_JP: 'グループ名は既に存在します、変更してください'
+    ru_RU: 'Имя группы уже существует, пожалуйста, измените'
 
   '00602002':
     zh_CN: '角色ID不能为空'
     en_US: 'Role ID cannot be empty'
     ja_JP: 'ロールIDは空にできません'
+    ru_RU: 'ID роли не может быть пустым'
 
   '00602003':
     zh_CN: '该角色不存在，请刷新重试！'
     en_US: 'Role does not exist, please refresh and try again!'
     ja_JP: 'ロールが存在しません、更新して再試行してください！'
+    ru_RU: 'Роль не существует, пожалуйста, обновите и попробуйте снова!'
 
   '00602004':
     zh_CN: '小组创建成功，已关联角色'
     en_US: 'Group created successfully, role associated'
     ja_JP: 'グループ作成成功、ロール関連付け済み'
+    ru_RU: 'Группа успешно создана, роль связана'
 
   '00602005':
     zh_CN: '小组不存在'
     en_US: 'Group does not exist'
     ja_JP: 'グループが存在しません'
+    ru_RU: 'Группа не существует'
 
   '00602006':
     zh_CN: '小组更新成功，已同步更新角色关联'
     en_US: 'Group updated successfully, role association synchronized'
     ja_JP: 'グループ更新成功、ロール関連付け同期済み'
+    ru_RU: 'Группа успешно обновлена, связь с ролью синхронизирована'
 
   '00602007':
     zh_CN: '请选择需要删除的小组'
     en_US: 'Please select groups to delete'
     ja_JP: '削除するグループを選択してください'
+    ru_RU: 'Пожалуйста, выберите группы для удаления'
 
   '00602008':
     zh_CN: '小组删除成功'
     en_US: 'Group deleted successfully'
     ja_JP: 'グループ削除成功'
+    ru_RU: 'Группа успешно удалена'
 
   '00602009':
     zh_CN: '小组不存在，删除失败'
     en_US: 'Group does not exist, deletion failed'
     ja_JP: 'グループが存在しないため、削除に失敗しました'
+    ru_RU: 'Группа не существует, удаление не удалось'
 
   # 角色管理模块=03
   '00603001':
     zh_CN: '角色编码已存在'
     en_US: 'Role code already exists'
     ja_JP: 'ロールコードは既に存在します'
+    ru_RU: 'Код роли уже существует'
 
   '00603002':
     zh_CN: '角色创建成功'
     en_US: 'Role created successfully'
     ja_JP: 'ロール作成成功'
+    ru_RU: 'Роль успешно создана'
 
   '00603003':
     zh_CN: '角色不存在'
     en_US: 'Role does not exist'
     ja_JP: 'ロールが存在しません'
+    ru_RU: 'Роль не существует'
 
   '00603004':
     zh_CN: '角色更新成功'
     en_US: 'Role updated successfully'
     ja_JP: 'ロール更新成功'
+    ru_RU: 'Роль успешно обновлена'
 
   '00603005':
     zh_CN: '请选择需要删除的角色'
     en_US: 'Please select roles to delete'
     ja_JP: '削除するロールを選択してください'
+    ru_RU: 'Пожалуйста, выберите роли для удаления'
 
   '00603006':
     zh_CN: '角色删除成功'
     en_US: 'Role deleted successfully'
     ja_JP: 'ロール削除成功'
+    ru_RU: 'Роль успешно удалена'
 
   '00603007':
     zh_CN: '角色不存在，删除失败'
     en_US: 'Role does not exist, deletion failed'
     ja_JP: 'ロールが存在しないため、削除に失敗しました'
+    ru_RU: 'Роль не существует, удаление не удалось'
 
   '00603008':
     zh_CN: '该用户未分配任何组'
     en_US: 'User is not assigned to any group'
     ja_JP: 'このユーザーはどのグループにも割り当てられていません'
+    ru_RU: 'Пользователь не назначен ни в одну группу'
 
   '00603009':
     zh_CN: '用户所属组不存在'
     en_US: 'User group does not exist'
     ja_JP: 'ユーザー所属グループが存在しません'
+    ru_RU: 'Группа пользователя не существует'
 
   '0060300A':
     zh_CN: '用户所属组未分配角色'
     en_US: 'User group has no assigned role'
     ja_JP: 'ユーザー所属グループにロールが割り当てられていません'
+    ru_RU: 'Группе пользователя не назначена роль'
 
   '0060300B':
     zh_CN: '查询失败：{0}'
     en_US: 'Query failed: {0}'
     ja_JP: '照会に失敗しました：{0}'
+    ru_RU: 'Запрос не удался: {0}'
 
   '0060300C':
     zh_CN: '该角色已禁用，无法查询下属组'
     en_US: 'Role is disabled, cannot query subordinate groups'
     ja_JP: 'ロールは無効化されているため、下位グループを照会できません'
+    ru_RU: 'Роль отключена, невозможно запросить подчиненные группы'
 
   # 角色小组用户树=04
   '00604001':
     zh_CN: '用户不存在或已禁用'
     en_US: 'User does not exist or is disabled'
     ja_JP: 'ユーザーが存在しないか、無効化されています'
+    ru_RU: 'Пользователь не существует или отключен'
 
   '00604002':
     zh_CN: '该用户未分配任何角色'
     en_US: 'User has no assigned role'
     ja_JP: 'このユーザーにはロールが割り当てられていません'
+    ru_RU: 'Пользователю не назначена никакая роль'
 
   '00604003':
     zh_CN: '用户所属角色不存在或已禁用'
     en_US: 'User role does not exist or is disabled'
     ja_JP: 'ユーザー所属ロールが存在しないか、無効化されています'
+    ru_RU: 'Роль пользователя не существует или отключена'
 
   # 用户权限模块=05
   '00605001':
     zh_CN: '该用户未关联任何小组'
     en_US: 'User is not associated with any group'
     ja_JP: 'このユーザーはどのグループにも関連付けられていません'
+    ru_RU: 'Пользователь не связан ни с одной группой'
 
   '00605002':
     zh_CN: '小组不存在（groupId：{0}）'
     en_US: 'Group does not exist (groupId: {0})'
     ja_JP: 'グループが存在しません（groupId：{0}）'
+    ru_RU: 'Группа не существует (groupId: {0})'
 
   '00605003':
     zh_CN: '小组未关联任何角色（groupId：{0}）'
     en_US: 'Group has no associated role (groupId: {0})'
     ja_JP: 'グループはどのロールにも関連付けられていません（groupId：{0}）'
+    ru_RU: 'Группа не связана ни с одной ролью (groupId: {0})'
 
   '00605004':
     zh_CN: '角色不存在（roleId：{0}）'
     en_US: 'Role does not exist (roleId: {0})'
     ja_JP: 'ロールが存在しません（roleId：{0}）'
+    ru_RU: 'Роль не существует (roleId: {0})'
 
   '00605005':
     zh_CN: '查询权限树形结构失败：{0}'
     en_US: 'Failed to query permission tree structure: {0}'
     ja_JP: '権限ツリー構造の照会に失敗しました：{0}'
+    ru_RU: 'Не удалось запросить древовидную структуру разрешений: {0}'
 
   '00605006':
     zh_CN: '权限ID列表不能为空'
     en_US: 'Permission ID list cannot be empty'
     ja_JP: '権限IDリストは空にできません'
+    ru_RU: 'Список ID разрешений не может быть пустым'
 
   '00605007':
     zh_CN: '更新小组权限失败：{0}'
     en_US: 'Failed to update group permissions: {0}'
     ja_JP: 'グループ権限の更新に失敗しました：{0}'
+    ru_RU: 'Не удалось обновить разрешения группы: {0}'
 
   # 用户路由权限模块=06
   '00606001':
     zh_CN: '用户未关联任何小组，无访问权限'
     en_US: 'User not associated with any group, no access permission'
     ja_JP: 'ユーザーはどのグループにも関連付けられていないため、アクセス権限がありません'
+    ru_RU: 'Пользователь не связан ни с одной группой, нет прав доступа'
 
   '00606002':
     zh_CN: '用户所在小组未配置权限'
     en_US: 'User group has no configured permissions'
     ja_JP: 'ユーザー所属グループに権限が設定されていません'
+    ru_RU: 'В группе пользователя не настроены разрешения'
 
   # 系统面板配置=07
   '00607001':
     zh_CN: '用户未登录'
     en_US: 'User not logged in'
     ja_JP: 'ユーザーがログインしていません'
+    ru_RU: 'Пользователь не вошел в систему'
 
   # 用户登录模块=08
   '00608001':
     zh_CN: '用户名不存在或已被禁用'
     en_US: 'Username does not exist or has been disabled'
     ja_JP: 'ユーザー名が存在しないか、無効化されています'
+    ru_RU: 'Имя пользователя не существует или было отключено'
 
   '00609001':
     zh_CN: '登录成功，但身份令牌存储失败，请重试'
     en_US: 'Login successful, but token storage failed, please retry'
     ja_JP: 'ログイン成功しましたが、トークン保存に失敗しました、再試行してください'
+    ru_RU: 'Вход выполнен успешно, но сохранение токена не удалось, пожалуйста, повторите попытку'
 
   # ========== 软件激活模块=007 ==========
   # 软件激活模块=01
@@ -2328,66 +2780,79 @@ messages:
     zh_CN: '未找到ID为【{0}】的设备记录'
     en_US: 'Device record with ID [{0}] not found'
     ja_JP: 'ID【{0}】のデバイスレコードが見つかりません'
+    ru_RU: 'Запись устройства с ID 【{0}】 не найдена'
 
   '00701002':
     zh_CN: '激活码格式错误，缺少必要参数（deviceNumber或expirationDate）'
     en_US: 'Activation code format error, missing required parameters (deviceNumber or expirationDate)'
     ja_JP: 'アクティベーションコードの形式エラー、必須パラメータが不足しています（deviceNumberまたはexpirationDate）'
+    ru_RU: 'Ошибка формата кода активации, отсутствуют необходимые параметры (deviceNumber или expirationDate)'
 
   '00701003':
     zh_CN: '数据库记录中设备序列号为空'
     en_US: 'Device serial number is empty in database record'
     ja_JP: 'データベースレコードのデバイスシリアル番号が空です'
+    ru_RU: 'Серийный номер устройства пуст в записи базы данных'
 
   '00701004':
     zh_CN: '激活码与设备序列号不匹配'
     en_US: 'Activation code does not match device serial number'
     ja_JP: 'アクティベーションコードがデバイスシリアル番号と一致しません'
+    ru_RU: 'Код активации не совпадает с серийным номером устройства'
 
   '00701005':
     zh_CN: '激活码中的日期格式错误（应为yyyy-MM-dd）:{0}'
     en_US: 'Date format error in activation code (should be yyyy-MM-dd): {0}'
     ja_JP: 'アクティベーションコードの日付形式エラー（yyyy-MM-ddである必要があります）：{0}'
+    ru_RU: 'Ошибка формата даты в коде активации (должно быть yyyy-MM-dd): {0}'
 
   '00701006':
     zh_CN: '激活失败：{0}'
     en_US: 'Activation failed: {0}'
     ja_JP: 'アクティベートに失敗しました：{0}'
+    ru_RU: 'Активация не удалась: {0}'
 
   '00701007':
     zh_CN: '激活过程异常：{0}'
     en_US: 'Activation process exception: {0}'
     ja_JP: 'アクティベートプロセス例外：{0}'
+    ru_RU: 'Исключение в процессе активации: {0}'
 
   '00701008':
     zh_CN: '未找到ID为{0}的激活记录'
     en_US: 'Activation record with ID {0} not found'
     ja_JP: 'ID{0}のアクティベーションレコードが見つかりません'
+    ru_RU: 'Запись активации с ID {0} не найдена'
 
   '00701009':
     zh_CN: 'ID不能为空'
     en_US: 'ID cannot be empty'
     ja_JP: 'IDは空にできません'
+    ru_RU: 'ID не может быть пустым'
 
   '0070100A':
     zh_CN: '删除ID列表不能为空'
     en_US: 'Delete ID list cannot be empty'
     ja_JP: '削除IDリストは空にできません'
+    ru_RU: 'Список ID для удаления не может быть пустым'
 
   '0070100B':
     zh_CN: '设备状态重置失败'
     en_US: 'Device status reset failed'
     ja_JP: 'デバイス状態のリセットに失敗しました'
+    ru_RU: 'Сброс состояния устройства не удался'
 
   '0070100C':
     zh_CN: '激活成功'
     en_US: 'Activation successful'
     ja_JP: 'アクティベート成功'
+    ru_RU: 'Активация успешна'
 
   '0070100D':
     zh_CN: '激活码已过期'
     en_US: 'Activation code has expired'
     ja_JP: 'アクティベーションコードの有期限切れ'
+    ru_RU: 'Код активации истек'
 
   # ========== 平行样模块=008 ==========
   # 平行样控制模块=01
@@ -2395,11 +2860,13 @@ messages:
     zh_CN: '创建平行样失败'
     en_US: 'Failed to create parallel sample'
     ja_JP: '平行サンプルの作成に失敗しました'
+    ru_RU: 'Не удалось создать параллельный образец'
 
   '00801002':
     zh_CN: '平行样名称存在'
     en_US: 'Parallel sample name already exists'
     ja_JP: '平行サンプル名は既に存在します'
+    ru_RU: 'Имя параллельного образца уже существует'
 
   # ========== 文件加密模块=009 ==========
   # 文件加密模块=01
@@ -2407,13 +2874,16 @@ messages:
     zh_CN: '版本解析成功'
     en_US: 'Version parsing successful'
     ja_JP: 'バージョン解析成功'
+    ru_RU: 'Разбор версии успешен'
 
   '00901002':
     zh_CN: '当前版本已存在，请核实升级版本'
     en_US: 'Current version already exists, please verify upgrade version'
     ja_JP: '現在のバージョンは既に存在します、アップグレードバージョンを確認してください'
+    ru_RU: 'Текущая версия уже существует, пожалуйста, проверьте версию обновления'
 
   '00901003':
     zh_CN: '导入并存储版本信息成功'
     en_US: 'Version information imported and stored successfully'
     ja_JP: 'バージョン情報のインポートと保存に成功しました'
+    ru_RU: 'Информация о версии успешно импортирована и сохранена'
