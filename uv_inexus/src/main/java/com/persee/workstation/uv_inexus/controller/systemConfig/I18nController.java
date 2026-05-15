@@ -16,11 +16,12 @@ import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemManagePO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/i18n")
@@ -33,8 +34,9 @@ public class I18nController {
     String defaultId;
     @PostMapping("/setLocale")
     @ApiOperation("设置当前语言")
-    public Result<String> setLocale(@RequestParam String locale, HttpServletRequest request) {
+    public Result<String> setLocale(@RequestBody HashMap<String, String> ll) {
 
+        String locale = MapUtils.getString(ll, "locale");
         // 2. 构造对象并更新数据库
         SystemManagePO updatePO = new SystemManagePO();
         updatePO.setId(defaultId);
@@ -50,8 +52,38 @@ public class I18nController {
 
     @GetMapping("/getLocale")
     @ApiOperation("获取当前语言")
-    public Result<String> getLocale() {
+    public Result<HashMap<String, String>> getLocale() {
         SystemManagePO systemManagePO = systemManageDao.selectById(defaultId);
-        return Result.ok(systemManagePO.getLanguage());
+        HashMap<String, String> map = new HashMap<>();
+        map.put("locale", systemManagePO.getLanguage());
+        return Result.ok(map);
     }
+    @GetMapping("/getLocaleList")
+    @ApiOperation("获取所有语言")
+    public Result<List<Map<String, String>>> getLocaleList() {
+        List<Map<String, String>> locales = new ArrayList<>();
+
+        // 定义语言列表
+        Map<String, String> localeLabels = new LinkedHashMap<>();
+        localeLabels.put("zh-CN", "中文");
+        localeLabels.put("en-US", "English");
+        localeLabels.put("ja-JP", "日本語");
+        localeLabels.put("ru-RU", "Русский");
+
+        // 构建返回结果
+        for (Map.Entry<String, String> entry : localeLabels.entrySet()) {
+            Map<String, String> localeInfo = new HashMap<>();
+            localeInfo.put("value", entry.getKey());
+            localeInfo.put("label", entry.getValue());
+            locales.add(localeInfo);
+        }
+
+        return Result.ok(locales);
+    }
+
+
+
+
+
+
 }
