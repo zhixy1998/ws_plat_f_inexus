@@ -514,7 +514,7 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam1Identity());
                 dto.setIsSampleAttribute(formula.getIsSampleAttribute1());
-                dto.setCurveIdentifier(formula.getCurveIdentifier1());
+                dto.setCurveIdentifier(processCurveIdentifier(formula.getCurveIdentifier1()));
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam2Name() != null && !formula.getInputParam2Name().isEmpty()) {
@@ -523,7 +523,7 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam2Identity());
                 dto.setIsSampleAttribute(formula.getIsSampleAttribute2());
-                dto.setCurveIdentifier(formula.getCurveIdentifier2());
+                dto.setCurveIdentifier(processCurveIdentifier(formula.getCurveIdentifier2()));
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam3Name() != null && !formula.getInputParam3Name().isEmpty()) {
@@ -532,7 +532,7 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam3Identity());
                 dto.setIsSampleAttribute(formula.getIsSampleAttribute3());
-                dto.setCurveIdentifier(formula.getCurveIdentifier3());
+                dto.setCurveIdentifier(processCurveIdentifier(formula.getCurveIdentifier3()));
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam4Name() != null && !formula.getInputParam4Name().isEmpty()) {
@@ -541,7 +541,7 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam4Identity());
                 dto.setIsSampleAttribute(formula.getIsSampleAttribute4());
-                dto.setCurveIdentifier(formula.getCurveIdentifier4());
+                dto.setCurveIdentifier(processCurveIdentifier(formula.getCurveIdentifier4()));
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam5Name() != null && !formula.getInputParam5Name().isEmpty()) {
@@ -550,7 +550,7 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam5Identity());
                 dto.setIsSampleAttribute(formula.getIsSampleAttribute5());
-                dto.setCurveIdentifier(formula.getCurveIdentifier5());
+                dto.setCurveIdentifier(processCurveIdentifier(formula.getCurveIdentifier5()));
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam6Name() != null && !formula.getInputParam6Name().isEmpty()) {
@@ -559,7 +559,7 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam6Identity());
                 dto.setIsSampleAttribute(formula.getIsSampleAttribute6());
-                dto.setCurveIdentifier(formula.getCurveIdentifier6());
+                dto.setCurveIdentifier(processCurveIdentifier(formula.getCurveIdentifier6()));
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam7Name() != null && !formula.getInputParam7Name().isEmpty()) {
@@ -568,7 +568,7 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam7Identity());
                 dto.setIsSampleAttribute(formula.getIsSampleAttribute7());
-                dto.setCurveIdentifier(formula.getCurveIdentifier7());
+                dto.setCurveIdentifier(processCurveIdentifier(formula.getCurveIdentifier7()));
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam8Name() != null && !formula.getInputParam8Name().isEmpty()) {
@@ -577,7 +577,7 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam8Identity());
                 dto.setIsSampleAttribute(formula.getIsSampleAttribute8());
-                dto.setCurveIdentifier(formula.getCurveIdentifier8());
+                dto.setCurveIdentifier(processCurveIdentifier(formula.getCurveIdentifier8()));
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam9Name() != null && !formula.getInputParam9Name().isEmpty()) {
@@ -586,7 +586,7 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam9Identity());
                 dto.setIsSampleAttribute(formula.getIsSampleAttribute9());
-                dto.setCurveIdentifier(formula.getCurveIdentifier9());
+                dto.setCurveIdentifier(processCurveIdentifier(formula.getCurveIdentifier9()));
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam10Name() != null && !formula.getInputParam10Name().isEmpty()) {
@@ -595,7 +595,7 @@ public class DetectionServiceImpl implements DetectionService {
                 dto.setUnit(unit);
                 dto.setResultIdentity(formula.getInputParam10Identity());
                 dto.setIsSampleAttribute(formula.getIsSampleAttribute10());
-                dto.setCurveIdentifier(formula.getCurveIdentifier10());
+                dto.setCurveIdentifier(processCurveIdentifier(formula.getCurveIdentifier10()));
                 inputParamsSet.add(dto);
             }
         }
@@ -631,6 +631,30 @@ public class DetectionServiceImpl implements DetectionService {
         result.setPretreatments(pretreatmentDTOs);
         result.setQualityControls(qualityControlDTOs);
 
+        return result;
+    }
+
+    /**
+     * 处理curveIdentifier字段
+     * 如果为空或不包含冒号，返回空字符串；如果包含冒号，按冒号分割返回最后一个值
+     * 支持中文冒号（：）和英文冒号（:）
+     */
+    private String processCurveIdentifier(String curveIdentifier) {
+        if (curveIdentifier == null || curveIdentifier.trim().isEmpty()) {
+            return "";
+        }
+        if (!curveIdentifier.contains(":") && !curveIdentifier.contains("：")) {
+            return "";
+        }
+        String result = curveIdentifier;
+        if (curveIdentifier.contains("：")) {
+            String[] parts = curveIdentifier.split("：");
+            result = parts[parts.length - 1].trim();
+        }
+        if (result.contains(":")) {
+            String[] parts = result.split(":");
+            return parts[parts.length - 1].trim();
+        }
         return result;
     }
 
