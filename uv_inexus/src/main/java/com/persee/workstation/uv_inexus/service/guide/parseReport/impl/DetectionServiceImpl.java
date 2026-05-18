@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -391,15 +393,33 @@ public class DetectionServiceImpl implements DetectionService {
         try {
             JsonNode jsonNode = objectMapper.readTree(jsonStr);
 
-            // 提取波长1、波长2、波长3（按顺序添加）
-            if (jsonNode.has("波长1")) detectionParameters.add(jsonNode.get("波长1").asText());
-            if (jsonNode.has("波长2")) detectionParameters.add(jsonNode.get("波长2").asText());
-            if (jsonNode.has("波长3")) detectionParameters.add(jsonNode.get("波长3").asText());
+            // 提取所有波长（动态获取，按数字顺序排序）
+            List<String> wavelengthKeys = new ArrayList<>();
+            for (Iterator<String> it = jsonNode.fieldNames(); it.hasNext(); ) {
+                String key = it.next();
+                if (key.startsWith("波长")) {
+                    wavelengthKeys.add(key);
+                }
+            }
+            // 按数字排序：波长1、波长2、波长3...
+            wavelengthKeys.sort(Comparator.comparingInt(k -> Integer.parseInt(k.replace("波长", ""))));
+            for (String key : wavelengthKeys) {
+                detectionParameters.add(jsonNode.get(key).asText());
+            }
 
-            // 提取波长参数1、波长参数2（按顺序添加）
-            if (jsonNode.has("系数1")) wavelengthParamList.add(jsonNode.get("系数1").asText());
-            if (jsonNode.has("系数2")) wavelengthParamList.add(jsonNode.get("系数2").asText());
-            if (jsonNode.has("系数3")) wavelengthParamList.add(jsonNode.get("系数3").asText());
+            // 提取所有系数（动态获取，按数字顺序排序）
+            List<String> coefficientKeys = new ArrayList<>();
+            for (Iterator<String> it = jsonNode.fieldNames(); it.hasNext(); ) {
+                String key = it.next();
+                if (key.startsWith("系数")) {
+                    coefficientKeys.add(key);
+                }
+            }
+            // 按数字排序：系数1、系数2、系数3...
+            coefficientKeys.sort(Comparator.comparingInt(k -> Integer.parseInt(k.replace("系数", ""))));
+            for (String key : coefficientKeys) {
+                wavelengthParamList.add(jsonNode.get(key).asText());
+            }
 
             // 提取曲线参数：推荐单位、推荐标样浓度、拟合公式
             if (jsonNode.has("推荐单位")) curveParameter.put("recommended_unit", jsonNode.get("推荐单位").asText());
