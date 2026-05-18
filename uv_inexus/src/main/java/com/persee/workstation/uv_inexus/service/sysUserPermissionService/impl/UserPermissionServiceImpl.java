@@ -348,6 +348,9 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             // 6. 构建树形结构并标记权限拥有状态
             List<PermissionTreeDTO> permissionTree = buildPermissionTree(rolePermissions, groupPermIds);
 
+            // 按sort字段从小到大排序（确保所有层级都正确排序）
+            sortPermissionTree(permissionTree);
+
             return Result.ok(permissionTree);
 
         } catch (Exception e) {
