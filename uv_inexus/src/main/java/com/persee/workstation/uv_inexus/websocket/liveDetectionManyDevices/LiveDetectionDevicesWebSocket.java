@@ -479,6 +479,14 @@ public class LiveDetectionDevicesWebSocket {
                                 statusInfo.setDevCurrentStatus(devCurrentStatus);
                             }
                         }
+
+                        if (Constants.DEVICE_STATUS_CALIBRATION.equals(deviceInfo.getDeviceCurrentStatus()) ) {
+                            if (StringUtils.hasText(deviceManager.getDarkWavelength(deviceId))) {
+                                statusInfo.setX(device.getDarkWavelength() + "nm");
+                                statusInfo.setDevCurrentStatus(deviceInfo.getDeviceCurrentStatus());
+                                System.err.println("calibrationWavelength: " + device.getDarkWavelength()+"nm");
+                            }
+                        }
                         statusInfo.setDevUseType(device.getUseType());
                         statusInfo.setTaskId(device.getCurrentTaskId());
                     }

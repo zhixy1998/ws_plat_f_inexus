@@ -41,4 +41,7 @@ public class CalibrationTableData {
 
     @ApiModelProperty("物质标识")
     private String identifier;
+
+    @ApiModelProperty("是否已保存")
+    private Boolean isOriginData;
 }

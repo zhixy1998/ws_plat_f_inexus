@@ -9,15 +9,16 @@
 
 package com.persee.workstation.uv_inexus.po.guide.instrumentPo;
 
+import java.util.List;
+
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.persee.workstation.uv_inexus.model.BasePO;
+
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
-import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -68,5 +69,9 @@ public class DeviceAutoInjectorPO extends BasePO {
     @ApiModelProperty("进样盘参数列表")
     @TableField(value = "param_list",exist = false)
     List<InjectionTrayParamPO> paramList;
+
+    @ApiModelProperty("来源标识（用于日志记录，不持久化）")
+    @TableField(value = "source",exist = false)
+    private String source;
 
 }

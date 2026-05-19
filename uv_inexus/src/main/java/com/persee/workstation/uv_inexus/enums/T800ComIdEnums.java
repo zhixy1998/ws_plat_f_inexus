@@ -1,5 +1,8 @@
 package com.persee.workstation.uv_inexus.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum T800ComIdEnums {
     Search("Search","查找设备"),
     NewIP("NewIP","设置IP"),
@@ -9,6 +12,7 @@ public enum T800ComIdEnums {
     SetScanWlInterval("SetScanWlInterval","设置扫描间隔"),
     SetScanSpeed("SetScanSpeed","设置扫描速度"),
     SetWl("SetWl","定位波长"),
+    GotoMLamp("GotoMLamp","汞灯定位"),
     SetStartWl("SetStartWl","设置扫描开始波长"),
     SetEndWl("SetEndWl","设置扫描结束波长"),
     SetFilter("SetFilter","设置滤色片"),

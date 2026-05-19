@@ -408,6 +408,7 @@ public class MessageOnTimeDeal {
 
                                     if (isDark) {
                                         handleDarkRsd(temp, deviceSerialNumber, sp);
+                                        deviceManager.setDarkWavelength(deviceId, String.valueOf(sp.getWavelength()));
                                         tempMap.remove(deviceSerialNumber);
                                     }
 
@@ -474,6 +475,7 @@ public class MessageOnTimeDeal {
 
                                 if (isDark) {
                                     handleDarkRsdT1960(temp, deviceSerialNumber, sp);
+                                    deviceManager.setDarkWavelength(deviceId, String.valueOf(sp.getWavelength()));
                                     tempMap.remove(deviceSerialNumber);
                                 } else if (isScan) {
                                     sp.setScanRsd(temp);
