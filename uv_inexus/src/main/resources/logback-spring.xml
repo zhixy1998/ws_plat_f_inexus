@@ -42,7 +42,7 @@
     <logger name="org.aspectj" level="DEBUG"/>
 
     <!-- 根日志配置-->
-    <root level="ERROR">
+    <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>
 
