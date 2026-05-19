@@ -25,7 +25,6 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.factory_inspection.*;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
@@ -1516,8 +1515,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         //获取序列号
         String string = taskManagement.getOperationInstrument();
         DeviceInfoPO info = deviceInfoService.getInfo(string);
-//        R<String> device = deviceManageService.getConnectDevice(updateBy);
+        R<String> device = deviceManageService.getConnectDevice(updateBy);
 
+        if(!string.equals(device.getData())){
+            throw new BusinessException("当前任务与仪器序列号不匹配，请新建任务！！！");
+        }
         if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
 //            JSONObject jsonObject = new JSONObject();
 //            jsonObject.put("error", "请检查当前仪器是否连接");
@@ -1816,7 +1818,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             if (StringUtils.isBlank(string)) {
                                 throw new BusinessException("请检查是否连接仪器！！！");
                             }
-//                            R<String> device = deviceManageService.getConnectDevice(updateBy);
+                            R<String> device = deviceManageService.getConnectDevice(updateBy);
+
+                            if(!string.equals(device.getData())){
+                                throw new BusinessException("当前任务与仪器序列号不匹配，请新建任务！！！");
+                            }
                             DeviceInfoPO info = deviceInfoService.getInfo(string);
 
                             if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
