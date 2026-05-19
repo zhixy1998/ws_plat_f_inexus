@@ -542,6 +542,31 @@ public class DeviceController {
         }
     }
 
+    @PostMapping("/deleteMultiCalibrationInfo")
+    @ApiOperation("多波长校正-批量删除")
+    public Result<Boolean> deleteMultiCalibrationInfo(@RequestBody DeviceCalibrationDTO dto) {
+        R<Boolean> r = deviceManageService.deleteMultiCalibrationInfo(dto);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @GetMapping("/reFindPeak")
+    @ApiOperation("多波长校正-重新寻峰")
+    public Result<Boolean> reFindPeak(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
+        R<Boolean> r = deviceManageService.reFindPeak(deviceSerialNumber, updateBy);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+
+
+
     @OperateLog(
             module = "实验测试-仪器管理",
             description = "执行仪器管理-仪器校正-{operateType}",

@@ -933,6 +933,20 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                                     } else if (key.equals(DeviceCalibrationParamEnum.Lamp.getType())) {
                                         values = typeInfoPO.getLampType();
                                         paramEnum = MappingParamEnum.LAMP_TYPE;
+                                        List<DataNameValue> result = new ArrayList<>();
+                                        for (Integer value : values) {
+                                            DataNameValue dataNameValue = new DataNameValue();
+                                            dataNameValue.setDataValue(String.valueOf(value));
+
+                                            String name = EnergyLampEnums.getName(String.valueOf(value));
+
+                                            dataNameValue.setDataKey(name != null ? name : String.valueOf(value));
+
+                                            result.add(dataNameValue);
+                                        }
+                                        headVO.setData(result);
+                                        continue;
+
                                     } else if (key.equals(DeviceCalibrationParamEnum.Gain.getType())) {
                                         values = typeInfoPO.getGain();
                                     } else if (key.equals(DeviceCalibrationParamEnum.RealWavelength.getType()) || key.equals(DeviceCalibrationParamEnum.StandWavelength.getType())) {
@@ -1430,6 +1444,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     private void saveWlList(String deviceSerialNumber, List<StepPoint> stepPoints, String updateBy) {
+
+        if(stepPoints ==null || stepPoints.isEmpty()) {
+            log.info("没有要保存的校正信息");
+            return;
+
+        }
         // 1. 查询是否存在当前设备的校准记录
         LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber)
@@ -1523,6 +1543,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             data.setStandLength(String.valueOf(point.getTheoryStep() / coefficient));
             data.setRealLength(String.valueOf(point.getActualStep() / coefficient));
             data.setNum(String.valueOf(++currentNum));
+            data.setIsOriginData(true);
             list.add(data);
         }
         return list;
@@ -2105,6 +2126,212 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok();
     }
 
+//    @Override
+//    public R<Boolean> deleteMultiCalibrationInfo(DeviceCalibrationDTO dto) {
+//        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
+//            return R.fail("请连接仪器！");
+//        }
+//
+//        List<CalibrationTableData> deleteData = dto.getCalibrationTableData();
+//
+//
+//
+//        if (deleteData == null || deleteData.isEmpty()) {
+//            return R.fail("没有需要删除的波长信息！");
+//        }
+//
+//        Map<String, List<String>> toDeleteInfo = new HashMap<>();
+//
+//        for (CalibrationTableData de : deleteData) {
+//            String identifier = de.getIdentifier();
+//            String num = de.getNum();
+//            toDeleteInfo.computeIfAbsent(identifier, k -> new ArrayList<>()).add(num);
+//        }
+//
+//        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+//        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+//                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+//        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+//
+//        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
+//        if (tablePo == null) {
+//            return R.ok();
+//        }
+//        CalibrationTableVO tableData = tablePo.getTableData();
+//
+//        List<CalibrationTableData> content = tableData.getContent();
+//        List<CalibrationTableData> newContent = new ArrayList<>();
+//        for (CalibrationTableData data : content) {
+//            if (toDeleteInfo.get(data.getIdentifier()) != null && toDeleteInfo.get(data.getIdentifier()).contains(data.getNum())) {
+//                continue;
+//            }
+//            newContent.add(data);
+//        }
+//        tableData.setContent(newContent);
+//        tablePo.setTableData(tableData);
+//        tempDao.update(tablePo, wrapper);
+//
+//        wrapper.clear();
+//        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+//                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+//        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Graph.getType());
+//
+//        CalibrationTempPO graphPo = tempDao.selectOne(wrapper);
+//        if (graphPo == null) {
+//            return R.ok();
+//        }
+//        CalibrationTableVO graphData = graphPo.getTableData();
+//        Map<String, CalibrationGraphDataVO> graph = graphData.getGraph();
+//        List<CalibrationTableHeadVO> graphHead = graphData.getHead();
+//        List<CalibrationTableHeadVO> newGraphHead = graphData.getHead();
+//        List<String> removeKeys = new ArrayList<>();
+//
+//
+//        toDeleteInfo.forEach((identifier, nums) -> {
+//            CalibrationGraphDataVO vo = graph.get(identifier);
+//            if (vo != null && nums != null && !nums.isEmpty()) {
+//
+//                Map<String, List<GraphData>> voData = vo.getData();
+//                Map<String, List<GraphData>> newVoData = vo.getData();
+//                voData.forEach((key, value) -> {
+//                    if (!nums.contains(key)) {
+//                        newVoData.put(key, value);
+//                    }
+//                });
+//                if (!newVoData.isEmpty()) {
+//                    removeKeys.add(identifier);
+//                    graph.remove(identifier);
+//                } else {
+//                    vo.setData(newVoData);
+//                    graph.put(identifier, vo);
+//                }
+//            }
+//        });
+//        for (CalibrationTableHeadVO headVO : graphHead) {
+//            if (!removeKeys.contains(headVO.getKey())) {
+//                newGraphHead.add(headVO);
+//            }
+//        }
+//
+//        graphData.setHead(newGraphHead);
+//        graphData.setGraph(graph);
+//        graphPo.setTableData(graphData);
+//        tempDao.update(graphPo, wrapper);
+//
+//        return R.ok();
+//    }
+
+    @Override
+    public R<Boolean> deleteMultiCalibrationInfo(DeviceCalibrationDTO dto) {
+        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            return R.fail("请连接仪器！");
+        }
+
+        List<CalibrationTableData> deleteData = dto.getCalibrationTableData();
+        if (deleteData == null || deleteData.isEmpty()) {
+            return R.fail("没有需要删除的波长信息！");
+        }
+
+        Map<String, List<String>> toDeleteInfo = new HashMap<>();
+        for (CalibrationTableData de : deleteData) {
+            String identifier = de.getIdentifier();
+            String num = de.getNum();
+            toDeleteInfo.computeIfAbsent(identifier, k -> new ArrayList<>()).add(num);
+        }
+
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType())
+                .eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
+        if (tablePo != null && tablePo.getTableData() != null) {
+            CalibrationTableVO tableData = tablePo.getTableData();
+            List<CalibrationTableData> content = tableData.getContent();
+            if (content != null) {
+                List<CalibrationTableData> newContent = content.stream()
+                        .filter(data -> {
+                            List<String> numsToDelete = toDeleteInfo.get(data.getIdentifier());
+                            return numsToDelete == null || !numsToDelete.contains(data.getNum());
+                        })
+                        .collect(Collectors.toList());
+                tableData.setContent(newContent);
+                tablePo.setTableData(tableData);
+                tempDao.update(tablePo, wrapper);
+            }
+        }
+
+        wrapper.clear();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType())
+                .eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Graph.getType());
+
+        CalibrationTempPO graphPo = tempDao.selectOne(wrapper);
+        if (graphPo == null || graphPo.getTableData() == null) {
+            return R.ok();
+        }
+
+        CalibrationTableVO graphData = graphPo.getTableData();
+        Map<String, CalibrationGraphDataVO> graph = graphData.getGraph();
+        List<CalibrationTableHeadVO> graphHead = graphData.getHead();
+
+        if (graph == null || graph.isEmpty()) {
+            return R.ok();
+        }
+
+        List<String> removeKeys = new ArrayList<>();
+        Set<String> processedIdentifiers = new HashSet<>();
+
+        toDeleteInfo.forEach((identifier, nums) -> {
+            if (nums == null || nums.isEmpty()) {
+                return;
+            }
+
+            CalibrationGraphDataVO vo = graph.get(identifier);
+            if (vo == null) {
+                return;
+            }
+
+            Map<String, List<GraphData>> voData = vo.getData();
+            if (voData == null || voData.isEmpty()) {
+                return;
+            }
+
+            Map<String, List<GraphData>> newData = new HashMap<>();
+            voData.forEach((key, value) -> {
+                if (!nums.contains(key)) {
+                    newData.put(key, value);
+                }
+            });
+
+            if (newData.isEmpty()) {
+                removeKeys.add(identifier);
+            } else {
+                vo.setData(newData);
+                graph.put(identifier, vo);
+            }
+
+            processedIdentifiers.add(identifier);
+        });
+
+        if (!removeKeys.isEmpty()) {
+            removeKeys.forEach(graph::remove);
+        }
+
+        if (graphHead != null) {
+            List<CalibrationTableHeadVO> newGraphHead = graphHead.stream()
+                    .filter(headVO -> !removeKeys.contains(headVO.getKey()))
+                    .collect(Collectors.toList());
+            graphData.setHead(newGraphHead);
+        }
+
+        graphData.setGraph(graph);
+        graphPo.setTableData(graphData);
+        tempDao.update(graphPo, wrapper);
+
+        return R.ok();
+    }
+
     /**
      *
      * 下发所有的参数给仪器
@@ -2199,6 +2426,25 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
         SetParam param = r.getData();
 
+        if (param.getMlLamp() != null) {
+            DevOperationInputParam inputParam = new DevOperationInputParam();
+            inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+            inputParam.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+
+            SetParam closeParam = new SetParam();
+
+            closeParam.setLampPos(Integer.valueOf(EnergyLampEnums.Mercury.getIdentity()));
+
+            inputParam.setParam(closeParam);
+            R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+            if (!operation.getSuccess()) {
+                log.info("设置灯位置为汞灯失败：{}", operation.getMessage());
+                return R.fail(operation.getMessage());
+            }
+
+        }
+
+
         //表格数据保存
         LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
@@ -2221,6 +2467,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         tableVO.setContent(allTableData);
         allTableData.forEach(data -> {
             data.setIdentifier(data.getName());
+            data.setIsOriginData(true);
         });
 
         if (tablePo == null) {
@@ -2257,6 +2504,66 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
 
         baselineOrScan(dto, multiType, param);
+        return R.ok();
+    }
+
+    @Override
+    public R<Boolean> reFindPeak(String deviceSerialNumber, String updateBy) {
+
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        //图数据保存
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber)
+                .eq(CalibrationTempPO::getCalibrationType, DeviceCalibrationInfoEnum.MultiWavelength.getType());
+        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Graph.getType());
+
+        CalibrationTempPO originGraphPO = tempDao.selectOne(wrapper);
+
+        if (originGraphPO == null) {
+            return R.fail("没有数据可以寻峰！");
+        } else {
+            originGraphPO.setUpdateBy(updateBy);
+
+            CalibrationTableVO originTableData = originGraphPO.getTableData();
+            Map<String, CalibrationGraphDataVO> graph = originTableData.getGraph();
+            SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
+
+            double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+
+            for(String key : graph.keySet()) {
+
+                CalibrationGraphDataVO vo = graph.get(key);
+                Map<String, List<GraphData>> voData = vo.getData();
+                for(String key1 : voData.keySet()) {
+                    List<Double> xList = new ArrayList<>();
+                    List<Double> yList = new ArrayList<>();
+                    List<GraphData> list = voData.get(key1);
+                    for (GraphData graData : list) {
+                        xList.add(Double.valueOf(graData.getX()));
+                        yList.add(Double.valueOf(graData.getY()));
+                        graData.setFeng(null);
+                    }
+                    String s = restUtil.peakSearching(xList, yList, height, Double.parseDouble(confVO.getPeakInterval()));
+
+                    PeakReceiveInfo info = JSON.parseObject(s, PeakReceiveInfo.class);
+                    if (info != null && ResultCodeEnum.SUCCESS.getCode().equals(info.getCode()) && info.getPeakX() != null && !info.getPeakX().isEmpty()) {
+                        List<Double> peakX = info.getPeakX();
+
+                        for (GraphData gd : list) {
+                            Double x = Double.parseDouble(gd.getX());
+                            if (peakX.contains(x)) {
+                                gd.setFeng(DeviceCalibrationParamEnum.Peak.getType());
+                            }
+                        }
+                    }
+                    voData.put(key1, list);
+                }
+                vo.setData(voData);
+                graph.put(key, vo);
+            }
+            originGraphPO.setTableData(originTableData);
+            tempDao.update(originGraphPO, wrapper);
+
+        }
         return R.ok();
     }
 
@@ -2324,9 +2631,28 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                     break;
                 }
                 SpectrumPoint message = (SpectrumPoint) result;
+                DeviceConnectionManager manager = DeviceConnectionManager.getInstance();
+                DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+                manager.setDarkWavelength(info.getDeviceId(), String.valueOf(message.getWavelength()));
                 list.add(message);
             }
 
+            if (setParam.getMlLamp() != null) {
+                DevOperationInputParam param = new DevOperationInputParam();
+                param.setOperationType(OperationTypeEnums.SetParam.getType());
+                param.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+
+                SetParam closeParam = new SetParam();
+
+                closeParam.setMlLamp(0);
+                closeParam.setLampPos(0);
+
+                param.setParam(closeParam);
+                R<OperationResultEntity> operation = operationUtilService.operation(param);
+                if (!operation.getSuccess()) {
+                    log.error("关闭汞灯失败{}", operation.getMessage());
+                }
+            }
 
             saveMultiValue(dto, list, multiType, setParam);
 
@@ -2433,27 +2759,37 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             String s = restUtil.peakSearching(xList, yList, height, Double.parseDouble(confVO.getPeakInterval()));
 
             PeakReceiveInfo info = JSON.parseObject(s, PeakReceiveInfo.class);
-            if (info == null) {
-                log.error("寻峰失败");
-                return;
-            }
 
-            if (!ResultCodeEnum.SUCCESS.getCode().equals(info.getCode())) {
-                log.info("寻峰失败");
-                return ;
-            }
+            List<CalibrationTableData> tableDataList = dto.getCalibrationTableData();
+            if (info != null && ResultCodeEnum.SUCCESS.getCode().equals(info.getCode()) && info.getPeakX() != null && !info.getPeakX().isEmpty()) {
+                List<Double> peakX = info.getPeakX();
 
-            List<Double> peakX = info.getPeakX();
+                for (GraphData gd : graphData) {
+                    Double x = Double.parseDouble(gd.getX());
+                    if (peakX.contains(x)) {
+                        gd.setFeng(DeviceCalibrationParamEnum.Peak.getType());
+                    }
+                }
 
+                for (CalibrationTableData datum : tableDataList) {
 
-            for (GraphData gd : graphData) {
-                Double x = Double.parseDouble(gd.getX());
-                if (peakX.contains(x)) {
-                    gd.setFeng(DeviceCalibrationParamEnum.Peak.getType());
+                    double wavelength = Double.parseDouble(datum.getStandLength());
+
+                    double closestPeak = peakX.get(0);
+                    double minDiff = Math.abs(wavelength - closestPeak);
+
+                    for (int i = 1; i < peakX.size(); i++) {
+                        double currentDiff = Math.abs(wavelength - peakX.get(i));
+                        if (currentDiff < minDiff) {
+                            minDiff = currentDiff;
+                            closestPeak = peakX.get(i);
+                        }
+                    }
+                    datum.setRealLength(String.valueOf(closestPeak));
                 }
             }
 
-            List<CalibrationTableData> tableDataList = dto.getCalibrationTableData();
+
             Map<String, List<GraphData>> scanData = new HashMap<>();
 
             CalibrationGraphDataVO dataVO = new CalibrationGraphDataVO();
@@ -2475,22 +2811,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             head.setKey(identifier);
             headList.add(head);
 
-            for (CalibrationTableData datum : tableDataList) {
 
-                double wavelength = Double.parseDouble(datum.getStandLength());
-
-                double closestPeak = peakX.get(0);
-                double minDiff = Math.abs(wavelength - closestPeak);
-
-                for (int i = 1; i < peakX.size(); i++) {
-                    double currentDiff = Math.abs(wavelength - peakX.get(i));
-                    if (currentDiff < minDiff) {
-                        minDiff = currentDiff;
-                        closestPeak = peakX.get(i);
-                    }
-                }
-                datum.setRealLength(String.valueOf(closestPeak));
-            }
             vo.setGraph(graph);
             vo.setContent(tableDataList);
             vo.setHead(headList);
@@ -2760,7 +3081,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (mode.equals(WaveLengthEnum.er.getCode()) || mode.equals(WaveLengthEnum.es.getCode())) {
 
             setParam.setGain(gain);
-            setParam.setLampPos(Integer.valueOf(lamp));
+
+
+            if (lamp.equals(EnergyLampEnums.Mercury.getIdentity())) {
+                setParam.setMlLamp(1);
+            } else {
+                setParam.setLampPos(Integer.valueOf(lamp));
+            }
         }
         setParam.setStartWl(start);
         setParam.setEndWl(end);
@@ -2771,6 +3098,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             log.error("设置参数失败{}", operation.getMessage());
             return R.fail(operation.getMessage());
         }
+
+        if (lamp !=  null && lamp.equals(EnergyLampEnums.Mercury.getIdentity())) {
+            param.setOperationType(OperationTypeEnums.MercuryLocate.getType());
+            operation = operationUtilService.operation(param);
+            if (!operation.getSuccess()) {
+                log.error(" MercuryLocate失败{}", operation.getMessage());
+                return R.fail(operation.getMessage());
+            }
+        }
+
         return R.ok(setParam);
 
     }

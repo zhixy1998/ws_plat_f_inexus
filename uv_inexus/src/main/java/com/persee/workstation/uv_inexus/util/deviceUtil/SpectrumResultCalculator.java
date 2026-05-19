@@ -256,9 +256,11 @@ public class SpectrumResultCalculator {
 
             //当前波长
             double x = Double.parseDouble(wl);
+            BigDecimal wlBd = BigDecimal.valueOf(x);
+            String exactWl = wlBd.stripTrailingZeros().toPlainString();
 
             //精确匹配
-            String exact = darkInfo.get(wl);
+            String exact = darkInfo.get(exactWl);
             if (exact != null && !exact.isEmpty()) {
                 return Double.parseDouble(exact);
             }
@@ -298,13 +300,25 @@ public class SpectrumResultCalculator {
             if (right < 0) {
                 // x 比最小波长还小
                 double minWl = wavelengths.get(0);
-                return Double.parseDouble(darkInfo.get(String.valueOf(minWl)));
+
+                BigDecimal bd = BigDecimal.valueOf(minWl);
+                String key = bd.stripTrailingZeros().toPlainString();
+                String s = darkInfo.get(key);
+                if (StringUtils.hasText(s)) {
+                    return Double.parseDouble(s);
+                } else {
+                    return 0.1;
+                }
+
+//                return Double.parseDouble(darkInfo.get(key));
             }
 
             if (left >= wavelengths.size()) {
                 // x 比最大波长还大
                 double maxWl = wavelengths.get(wavelengths.size() - 1);
-                String s = darkInfo.get(String.valueOf(maxWl));
+                BigDecimal bd = BigDecimal.valueOf(maxWl);
+                String key = bd.stripTrailingZeros().toPlainString();
+                String s = darkInfo.get(key);
                 if (StringUtils.hasText(s)) {
                     return Double.parseDouble(s);
                 } else {

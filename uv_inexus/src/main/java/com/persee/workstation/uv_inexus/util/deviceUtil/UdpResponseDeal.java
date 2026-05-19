@@ -51,6 +51,8 @@ public class UdpResponseDeal {
         switch (cmdId) {
             case "GetSn":
                 return parseSn(responses);
+            case "GotoMLamp":
+                return goToMlLamp(responses);
 
             case "SetWLampStatus":
             case "SetDLampStatus":
@@ -110,6 +112,8 @@ public class UdpResponseDeal {
                 return parseScan(responses);
             case "GetWlList":
                 return parseWlList(responses);
+            case "T800GetWlList" :
+                return parseT800WlList(responses);
 
 
             case "SetResponseTime":
@@ -476,6 +480,60 @@ public class UdpResponseDeal {
         return resultEntity;
     }
 
+    private static OperationResultEntity parseT800WlList(List<byte[]> responses) {
+
+
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            resultEntity.setIsSuccess(false);
+            resultEntity.setErrorMsg("回应列表为空");
+            return resultEntity;
+        }
+
+        ArrayList<StepPoint> resultList = new ArrayList<>();
+
+        try {
+            for (byte[] resp : responses) {
+                if (resp == null || resp.length < 11) {
+                    System.out.println("回应报文长度不足11字节，跳过解析");
+                    continue;
+                }
+
+                int cmdType1 = resp[2] & 0xFF; // 第3个字节（索引2）
+                int cmdType = resp[3] & 0xFF;   // 第4个字节（索引3）
+
+                // 满足条件：第3字节为19 或 第4字节为10 时解析
+                if (cmdType1 == 19 || cmdType == 10) {
+                    int n = resp[5] & 0xFF;
+
+                    int actualStep = ((resp[7] & 0xFF) << 8) | (resp[8] & 0xFF);
+                    int theoryStep = ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+
+                    resultList.add(new StepPoint(actualStep, theoryStep, n));
+                }
+            }
+
+            if (resultList.isEmpty()) {
+                System.out.println("未解析到有效 StepPoint 数据");
+                resultEntity.setIsSuccess(false);
+                resultEntity.setErrorMsg("未解析到有效 StepPoint 数据");
+            } else {
+                System.out.println("WlList 解析结果：" + resultList);
+                resultEntity.setIsSuccess(true);
+                resultEntity.setErrorMsg(null);
+                resultEntity.setStepPoints(resultList);  // 使用新增字段 stepPoints
+            }
+
+            return resultEntity;
+
+        } catch (Exception e) {
+            System.out.println("WlList 解析异常: " + e.getMessage());
+            resultEntity.setIsSuccess(false);
+            resultEntity.setErrorMsg("解析异常: " + e.getMessage());
+            return resultEntity;
+        }
+    }
+
     private static OperationResultEntity parseWlList(List<byte[]> responses) {
 
 
@@ -620,6 +678,14 @@ public class UdpResponseDeal {
         resultEntity.setDeviceSerialNumber(Sn);
 
         System.out.println("设备序列号：" + Sn);
+        return resultEntity; // 返回处理后的结果
+    }
+
+    private static OperationResultEntity goToMlLamp(List<byte[]> responses) {
+        if (responses.size() < 4) {
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
+        }
         return resultEntity; // 返回处理后的结果
     }
 

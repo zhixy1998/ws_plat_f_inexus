@@ -483,7 +483,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     }
                 }
                 if (paramDto.getRationUnknowData() != null && !paramDto.getRationUnknowData().isEmpty()) {
-                    taskHeadSnapShot = new RationTaskHeadSnapShot();
+                    if (taskHeadSnapShot == null) {
+                        taskHeadSnapShot = new RationTaskHeadSnapShot();
+                    }
+
                     for (Map<String, String> map : paramDto.getRationUnknowData()) {
                         String jsonString = JSON.toJSONString(map);
                         TMeasureSample sample = JSON.parseObject(jsonString, TMeasureSample.class);
