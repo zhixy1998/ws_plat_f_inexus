@@ -10,30 +10,56 @@
 package com.persee.workstation.uv_inexus.controller.guide.instrumentController;
 
 
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.config.LogPoint;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
-import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationParamEnum;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DevConfigDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceCalibrationDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceHistoryTaskDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceInitDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceQueryDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceSoftCloseDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceStartDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceUsageCountDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceAutoInjectorPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InjectionTrayParamPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.*;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceAutoInjectorService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMonitorService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceUsageLogService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceCalibrationVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceComponentMonitorVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceConfigVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceInfoVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceMonitorVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceUsageLogVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceUsageStatisticsVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.HistoryTaskVO;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/dev/ins")
@@ -158,10 +184,10 @@ public class DeviceController {
 
     }
 
-    @OperateLog(module = "仪器管理-搜索仪器", description = "执行仪器管理-搜索仪器操作", recordParams = true, recordResult = true, compare = true)
     @GetMapping("/searchDevice")
     @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
     @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true, recordResult = true)
+    @OperateLog(module = "仪器管理-搜索仪器", description = "执行仪器管理-搜索仪器操作", recordParams = true, ignore = true)
     public Result<List<SearchInfo>> searchDevice(@RequestParam(required = false) Integer connectType, @RequestParam String updateBy) {
         R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType, updateBy);
         if (!r.getSuccess()) {
@@ -196,9 +222,9 @@ public class DeviceController {
         }
     }
 
-    @OperateLog(module = "仪器管理-仪器配置-断开连接", description = "执行仪器管理-仪器配置-断开连接记录", recordParams = true, recordResult = true, compare = true)
     @GetMapping("/disconnectDevice")
     @ApiOperation("新驱动-断开连接")
+    @OperateLog(module = "仪器管理-断开连接", description = "执行仪器管理-断开连接操作", recordParams = true, ignore = true)
     public Result<Boolean> disconnectDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
         R<Boolean> r = deviceManageService.disconnectDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
@@ -208,9 +234,9 @@ public class DeviceController {
         }
     }
 
-    @OperateLog(module = "仪器管理-仪器初始化", description = "执行仪器管理-仪器初始化操作", recordParams = true, recordResult = true, compare = true)
     @GetMapping("/initOneDevice")
     @ApiOperation("新驱动-初始化")
+    @OperateLog(module = "仪器管理-初始化", description = "执行仪器管理-初始化操作", recordParams = true, ignore = true)
     public Result<Boolean> initOneDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
         R<Boolean> r = deviceManageService.startInitDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
@@ -239,7 +265,7 @@ public class DeviceController {
 
     @GetMapping("/continueInit")
     @ApiOperation("新驱动-继续初始化")
-    @OperateLog(module = "仪器管理-仪器配置-继续初始化", description = "执行仪器管理-仪器配置-继续初始化记录", recordParams = true, recordResult = true, compare = true)
+    @OperateLog(module = "仪器管理-继续初始化", description = "执行仪器管理-继续初始化操作", recordParams = true, ignore = true)
     public Result<Boolean> continueInit(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
         R<Boolean> r = deviceManageService.continueInitDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
@@ -426,13 +452,12 @@ public class DeviceController {
 
 
     @ApiOperation("设置进样器参数配置")
-//    @OperateLog(
-//            module = "仪器管理-自动进样器配置-基本配置",
-//            description = "执行仪器管理-自动进样器配置-基本配置-{operateType}样品操作",
-//            recordParams = true
-//    )
     @PostMapping("/setInjectorConf")
+    @OperateLog(module = "仪器管理-{source}", description = "执行仪器管理-{source}操作", recordParams = true)
     public Result<Boolean> setInjectorConf(@RequestBody DeviceAutoInjectorPO injectorPO) {
+        if (injectorPO.getSource() == null || injectorPO.getSource().trim().isEmpty()) {
+            injectorPO.setSource("自动进样器配置保存");
+        }
         R<Boolean> r = injectorService.setInjectorConf(injectorPO);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -443,6 +468,7 @@ public class DeviceController {
 
     @ApiOperation("设置进样器托盘参数配置")
     @PostMapping("/setInjectorTray")
+    @OperateLog(module = "仪器管理-进样盘参数配置保存", description = "执行仪器管理-进样盘参数配置保存", recordParams = true)
     public Result<Boolean> setInjectorTray(@RequestBody List<InjectionTrayParamPO> poList) {
         R<Boolean> r = injectorService.setInjectorTray(poList);
         if (r.getSuccess()) {
@@ -500,8 +526,8 @@ public class DeviceController {
 //            permissionMapping = "instrumentCalibrationWavelengthCorrection=instrumentCalibrationWavelengthCorrection,instrumentCalibrationDarkCurrentCorrection=instrumentCalibrationDarkCurrentCorrection" // 自定义操作类型→驼峰权限标识
 //    )
     @OperateLog(
-            module = "实验测试-仪器管理",
-            description = "执行仪器管理-仪器校正-{operateType}",
+            module = "仪器管理-仪器校正-{source}",
+            description = "执行仪器管理-仪器校正-{source}操作",
             recordParams = true
     )
     @PostMapping("/calibration")
