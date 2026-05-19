@@ -13,6 +13,7 @@ package com.persee.workstation.uv_inexus.controller.guide.instrumentController;
 import java.util.List;
 import java.util.Map;
 
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationParamEnum;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
