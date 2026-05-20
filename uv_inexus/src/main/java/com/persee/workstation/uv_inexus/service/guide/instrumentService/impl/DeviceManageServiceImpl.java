@@ -2251,8 +2251,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             if (content != null) {
                 List<CalibrationTableData> newContent = content.stream()
                         .filter(data -> {
-                            List<String> numsToDelete = toDeleteInfo.get(data.getIdentifier());
-                            return numsToDelete == null || !numsToDelete.contains(data.getNum());
+                            List<String> numToDelete = toDeleteInfo.get(data.getIdentifier());
+                            return numToDelete == null || !numToDelete.contains(data.getNum());
                         })
                         .collect(Collectors.toList());
                 tableData.setContent(newContent);
@@ -2463,15 +2463,23 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         CalibrationTableVO tableVO = paramPO.getTableData();
 
         List<CalibrationTableData> allTableData = dto.getAllTableData();
+        dto.getCalibrationTableData().forEach(data -> {
+            data.setIdentifier(data.getName());
+            data.setIsOriginData(true);
+        });
 
         if (allTableData == null) {
             allTableData = dto.getCalibrationTableData();
         }
-        tableVO.setContent(allTableData);
+
         allTableData.forEach(data -> {
             data.setIdentifier(data.getName());
             data.setIsOriginData(true);
         });
+
+
+        tableVO.setContent(allTableData);
+        dto.setAllTableData(allTableData);
 
         if (tablePo == null) {
             CalibrationTempPO po = new CalibrationTempPO();
@@ -2497,6 +2505,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
 
             for (CalibrationTableData cont : allTableData) {
+                cont.setIsOriginData(true);
                 map.put(cont.getNum(), cont);
             }
             ans = new ArrayList<>(map.values());

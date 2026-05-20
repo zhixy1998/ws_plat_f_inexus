@@ -484,7 +484,6 @@ public class LiveDetectionDevicesWebSocket {
                             if (StringUtils.hasText(deviceManager.getDarkWavelength(deviceId))) {
                                 statusInfo.setX(device.getDarkWavelength() + "nm");
                                 statusInfo.setDevCurrentStatus(deviceInfo.getDeviceCurrentStatus());
-                                System.err.println("calibrationWavelength: " + device.getDarkWavelength()+"nm");
                             }
                         }
                         statusInfo.setDevUseType(device.getUseType());
