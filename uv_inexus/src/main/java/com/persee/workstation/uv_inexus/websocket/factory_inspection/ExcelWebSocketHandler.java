@@ -1243,6 +1243,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 taskService.update(updateWrapper);
                 // 记录任务 - 设备绑定关系
                 taskDeviceBindingMap.put(taskId, deviceSerialNumber);
+                // 重新查询获取最新的任务信息
+                management1 = taskService.getById(taskId);
             }
 
             if (StringUtils.isNotBlank(management1 != null ? management1.getOperationInstrument() : null)) {
