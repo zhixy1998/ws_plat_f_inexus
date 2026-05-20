@@ -209,5 +209,10 @@ public class Constants {
      */
     public static final Integer HANDSHAKE_TIMEOUT = 3000;
 
+    //多波长校正寻峰参数--峰间距
+    public static final Double CALIBRATION_PARAM_PEAK_INTERVAL = 1.0;
+    //多波长校正寻峰参数--峰谷差
+    public static final Double CALIBRATION_PARAM_PEAK_VALLEY_DIFF = 2.0;
+
 
 }

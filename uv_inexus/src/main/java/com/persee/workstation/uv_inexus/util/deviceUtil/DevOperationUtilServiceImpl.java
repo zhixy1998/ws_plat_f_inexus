@@ -508,17 +508,33 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         int total = inputParam.getSetWlList().size();
 
-        for (int i = 0; i < total; i++) {
-            StepPoint point = inputParam.getSetWlList().get(i);
+        for (int i = 0; i < total+1; i++) {
+            if (i < total) {
+                StepPoint point = inputParam.getSetWlList().get(i);
 
-            param[0] = i + 1;
-            param[1] = total;
-            param[2] = point.getTheoryStep();
-            param[3] = point.getActualStep();
-            if (device.getXmlKey().equals(DevXmlEnums.T800.getDevType())) {
-                param[2] = point.getActualStep();
-                param[3] = point.getTheoryStep();
+                param[0] = i + 1;
+                param[1] = total;
+                param[2] = point.getTheoryStep();
+                param[3] = point.getActualStep();
+                if (device.getXmlKey().equals(DevXmlEnums.T800.getDevType())) {
+                    param[2] = point.getActualStep();
+                    param[3] = point.getTheoryStep();
+                }
+            } else {
+                if (device.getXmlKey().equals(DevXmlEnums.T800.getDevType())) {
+                    cmdId = T800ComIdEnums.DoIt.getComId();
+                    xml = xmlManage.getXmlInfo(xmlKey);
+                    transition = xml.get(cmdId);
+                    replyNumber = transition.getReplyNumber();
+                    timeout = transition.getTimeout();
+                    endBytes = null;
+                    headReceiveBytes = transition.getHeadReceiveBytes();
+                    param = new Object[]{1};
+                } else {
+                    break;
+                }
             }
+
             byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
 
             R<Object> calibration = new R<>();
@@ -544,7 +560,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                             // 解析为 int（支持 0~255）
                             int intValue = Integer.parseInt(part);
                             // 安全转为 byte（保留低8位）
-                            endBytes[i] = (byte) (intValue & 0xFF);
+                            endBytes[j] = (byte) (intValue & 0xFF);
                         }
                     }
 
@@ -559,6 +575,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 return R.fail("设置波长列表失败");
             }
+
 
             resultEntity = (OperationResultEntity) calibration.getData();
 
@@ -1007,8 +1024,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         for (ParamCmdEnum e : ParamCmdEnum.values()) {
             Object value = getFieldValueByGetter(setParam, e.getParamField());
+            if (xmlKey.equals(DevXmlEnums.T600AndT700.getDevType()) && e.equals(ParamCmdEnum.CORR_STATUS)) {
+                log.warn("T600AndT700 不支持 CORR_STATUS 参数");
+                continue;
+            }
             if (value != null) {
-
                 // 默认参数
                 Object[] paramArray = new Object[]{value};
 
@@ -1605,7 +1625,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     int timeout = transition.getTimeout();
                     int replyNumber = transition.getReplyNumber();
                     List<String> headReceiveBytes = transition.getHeadReceiveBytes();
-
                     //Todo 结束前缀
                     byte[] endBytes = new byte[4];
 
@@ -2724,7 +2743,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
         } else if (cmdId.equals("SetCellPos")) {
             command = new Command(cmdId, new Object[]{1});
-        } else {
+        }else if(cmdId.equals(T800ComIdEnums.DoIt.getComId())) {
+            command = new Command(cmdId, new Object[]{1});
+        }else {
             command = new Command(cmdId, new Object[]{});
         }
         return command;

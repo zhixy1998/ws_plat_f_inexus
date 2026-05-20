@@ -13,6 +13,7 @@ public enum T800ComIdEnums {
     SetScanSpeed("SetScanSpeed","设置扫描速度"),
     SetWl("SetWl","定位波长"),
     GotoMLamp("GotoMLamp","汞灯定位"),
+    DoIt("DoIt","执行波长校正命令"),
     SetStartWl("SetStartWl","设置扫描开始波长"),
     SetEndWl("SetEndWl","设置扫描结束波长"),
     SetFilter("SetFilter","设置滤色片"),

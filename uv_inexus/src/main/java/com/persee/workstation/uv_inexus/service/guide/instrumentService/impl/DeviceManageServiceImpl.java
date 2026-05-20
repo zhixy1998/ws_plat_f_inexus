@@ -58,7 +58,6 @@ import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
-import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
@@ -1505,6 +1504,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 data.setStandLength(standLength);
                 data.setRealLength(realLength);
                 data.setNum(String.valueOf(++currentNum));
+                data.setIsOriginData(true);
                 newContent.add(data);
             }
 
@@ -2419,9 +2419,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public R<Boolean> multiCalibration(DeviceCalibrationDTO dto, String multiType) {
+        infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), WebSocketOperationEnum.Calibration.getOperation(), Constants.DEVICE_STATUS_CALIBRATION);
 
         R<SetParam> r = multiCheckAndSendParam(dto, multiType);
         if (!r.getSuccess()) {
+            infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
             return R.fail(r.getMessage());
         }
         SetParam param = r.getData();
@@ -2439,11 +2441,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
             if (!operation.getSuccess()) {
                 log.info("设置灯位置为汞灯失败：{}", operation.getMessage());
+                infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
+
                 return R.fail(operation.getMessage());
             }
 
         }
-
 
         //表格数据保存
         LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
@@ -2525,9 +2528,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             CalibrationTableVO originTableData = originGraphPO.getTableData();
             Map<String, CalibrationGraphDataVO> graph = originTableData.getGraph();
-            SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
-
-            double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+            double height = Constants.CALIBRATION_PARAM_PEAK_VALLEY_DIFF / 100;
 
             for(String key : graph.keySet()) {
 
@@ -2542,7 +2543,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                         yList.add(Double.valueOf(graData.getY()));
                         graData.setFeng(null);
                     }
-                    String s = restUtil.peakSearching(xList, yList, height, Double.parseDouble(confVO.getPeakInterval()));
+                    String s = restUtil.peakSearching(xList, yList, height, Constants.CALIBRATION_PARAM_PEAK_INTERVAL);
 
                     PeakReceiveInfo info = JSON.parseObject(s, PeakReceiveInfo.class);
                     if (info != null && ResultCodeEnum.SUCCESS.getCode().equals(info.getCode()) && info.getPeakX() != null && !info.getPeakX().isEmpty()) {
@@ -2571,7 +2572,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
 
         String deviceSerialNumber = dto.getDeviceSerialNumber();
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.Calibration.getOperation(), Constants.DEVICE_STATUS_CALIBRATION);
         ActionCmdEnum action = ActionCmdEnum.BaseLine;
         String key;
         if (multiType.equals(DeviceCalibrationParamEnum.Scan.getType())) {
@@ -2752,11 +2752,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 graphData.add(scanGraph);
             }
 
-            SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
 
-            double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+            double height = Constants.CALIBRATION_PARAM_PEAK_VALLEY_DIFF / 100;
 
-            String s = restUtil.peakSearching(xList, yList, height, Double.parseDouble(confVO.getPeakInterval()));
+            String s = restUtil.peakSearching(xList, yList, height, Constants.CALIBRATION_PARAM_PEAK_INTERVAL);
 
             PeakReceiveInfo info = JSON.parseObject(s, PeakReceiveInfo.class);
 
@@ -3078,10 +3077,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         setParam.setPhotoMode(Integer.valueOf(mode));
         setParam.setSlit1(2.0);
         setParam.setScanWlInterval(minInterval);
+
+        setParam.setCorrStatus(0);
         if (mode.equals(WaveLengthEnum.er.getCode()) || mode.equals(WaveLengthEnum.es.getCode())) {
 
             setParam.setGain(gain);
-
 
             if (lamp.equals(EnergyLampEnums.Mercury.getIdentity())) {
                 setParam.setMlLamp(1);
