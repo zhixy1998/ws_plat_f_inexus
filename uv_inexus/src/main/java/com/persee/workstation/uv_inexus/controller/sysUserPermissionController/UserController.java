@@ -36,7 +36,6 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
-import com.persee.workstation.uv_inexus.utils.OperateLog.AutoOperateLog;
 import com.persee.workstation.uv_inexus.utils.OperateLog.LogContext;
 import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
