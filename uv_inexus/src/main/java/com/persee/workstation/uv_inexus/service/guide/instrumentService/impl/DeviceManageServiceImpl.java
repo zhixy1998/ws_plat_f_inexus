@@ -879,6 +879,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (calibrationType != null && !calibrationType.isEmpty()) {
             for (Integer type : calibrationType) {
 
+                if (type.equals(DeviceCalibrationInfoEnum.MultiWavelength.getType())) {
+                    log.info("多波长校正，跳过");
+                    continue;
+                }
+
 
                 DeviceCalibrationVO vo = new DeviceCalibrationVO();
 
@@ -1012,6 +1017,182 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
 
         }
+
+        return ans;
+    }
+
+    @Override
+    public List<DeviceCalibrationVO> queryMultiCalibration(String deviceSerialNumber) {
+        String deviceType = "T600/T700";
+
+        DeviceTypeInfoPO typeInfoPO = new DeviceTypeInfoPO();
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        DeviceModelInfoPO modelInfoPO = null;
+
+
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            LambdaQueryWrapper<DeviceTypeInfoPO> query = new LambdaQueryWrapper<>();
+            query.eq(DeviceTypeInfoPO::getDevType, deviceType);
+            typeInfoPO = deviceTypeInfoDAO.selectOne(query);
+
+        } else {
+            //根据序列号，去查找仪器类型，根据仪器类型，去获取参数列表
+            log.info("检测仪器类型");
+            DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+            if (info != null) {
+                LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
+                query.eq(DeviceModelInfoPO::getDevModel, info.getDeviceModel());
+
+                modelInfoPO = deviceModelInfoDAO.selectOne(query);
+                if (modelInfoPO != null) {
+                    typeInfoPO = deviceTypeInfoDAO.selectById(modelInfoPO.getDevTypeId());
+                }
+            }
+
+        }
+
+        List<Integer> calibrationType = typeInfoPO.getCalibrationType();
+        Integer type = DeviceCalibrationInfoEnum.MultiWavelength.getType();
+
+        if (!calibrationType.contains(DeviceCalibrationInfoEnum.MultiWavelength.getType())) {
+            log.info("当前设备不支持多波长校准");
+            return null;
+        }
+
+        List<DeviceCalibrationVO> ans = new ArrayList<>();
+
+        DeviceCalibrationVO vo = new DeviceCalibrationVO();
+
+        DeviceCalibrationConfigPO configPO = calibrationConfigDAO.selectById(type);
+        List<Integer> paramList = configPO.getParamList();
+        List<DeviceCalibrationParams> params = new ArrayList<>();
+
+        vo.setCalibrationType(type);
+        vo.setCalibrationName(configPO.getCalibrationName());
+
+        for (Integer paramId : paramList) {
+
+            DeviceCalibrationParamPO param = calibrationParamDAO.selectById(paramId);
+            DeviceCalibrationParams paramVO = new DeviceCalibrationParams();
+            paramVO.setId(param.getId());
+            paramVO.setParamName(param.getParamName());
+            paramVO.setParam(param.getParam());
+            paramVO.setParamType(param.getParamType());
+
+            if (param.getParam().equals(DeviceCalibrationParamEnum.Table.getType()) || param.getParam().equals(DeviceCalibrationParamEnum.Graph.getType())) {
+                paramVO.setTableData(param.getTableData());
+
+                wrapper.eq(CalibrationTempPO::getCalibrationType, type);
+                wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber);
+                wrapper.eq(CalibrationTempPO::getParam, param.getParam());
+                wrapper.orderByDesc(CalibrationTempPO::getUpdated).last("limit 1");
+                CalibrationTempPO tempPO = tempDao.selectOne(wrapper);
+                wrapper.clear();
+                if (tempPO != null) {
+                    paramVO.setLastValue(tempPO.getParamValue());
+
+                    if(param.getParam().equals(DeviceCalibrationParamEnum.Table.getType())) {
+                        tempPO.getTableData().setHead(param.getTableData().getHead());
+
+                        List<CalibrationTableHeadVO> headVOList = param.getTableData().getHead();
+
+                        for (CalibrationTableHeadVO headVO : headVOList) {
+                            String key = headVO.getKey();
+                            List<Integer> values = null;
+                            MappingParamEnum paramEnum = null;
+
+                            if (key.equals(DeviceCalibrationParamEnum.Mode.getType())) {
+
+                                values = typeInfoPO.getLuminosity();
+                                if (values != null && !values.isEmpty()) {
+                                    values = values.stream()
+                                            .map(v -> v + 1)
+                                            .collect(Collectors.toList());
+                                }
+                                paramEnum = MappingParamEnum.LUMINOSITY;
+                            } else if (key.equals(DeviceCalibrationParamEnum.Lamp.getType())) {
+                                values = typeInfoPO.getLampType();
+                                paramEnum = MappingParamEnum.LAMP_TYPE;
+                                List<DataNameValue> result = new ArrayList<>();
+                                for (Integer value : values) {
+                                    DataNameValue dataNameValue = new DataNameValue();
+                                    dataNameValue.setDataValue(String.valueOf(value));
+
+                                    String name = EnergyLampEnums.getName(String.valueOf(value));
+
+                                    dataNameValue.setDataKey(name != null ? name : String.valueOf(value));
+
+                                    result.add(dataNameValue);
+                                }
+                                headVO.setData(result);
+                                continue;
+
+                            } else if (key.equals(DeviceCalibrationParamEnum.Gain.getType())) {
+                                values = typeInfoPO.getGain();
+                            } else if (key.equals(DeviceCalibrationParamEnum.RealWavelength.getType()) || key.equals(DeviceCalibrationParamEnum.StandWavelength.getType())) {
+                                List<DataNameValue> result = dealMaxAndMinLength(typeInfoPO);
+                                headVO.setData(result);
+                                continue;
+                            }
+
+                            if (values != null && !values.isEmpty()) {
+                                List<DataNameValue> data = buildDataNameValues(values, paramEnum);
+                                headVO.setData(data);
+                            }
+                        }
+                        tempPO.getTableData().setHead(headVOList);
+                    }
+                    paramVO.setTableData(tempPO.getTableData());
+                }
+
+                params.add(paramVO);
+                continue;
+            } else {
+                List<DataNameValue> defaultValue = param.getDefaultValue();
+                if (defaultValue != null && !defaultValue.isEmpty()) {
+
+
+                    if (paramVO.getParam().equals(DeviceCalibrationParamEnum.Start.getType())) {
+
+                        paramVO.setLastValue(typeInfoPO.getMaxWavelength());
+
+                    } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.End.getType())) {
+                        paramVO.setLastValue(typeInfoPO.getMinWavelength());
+                    } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.ScanSpeed.getType())) {
+                        Object speed = MappingParamEnum.SCAN_SPEED.getDefaultValue();
+                        String jsonString = JSONObject.toJSONString(speed);
+                        List<DeviceConfParam> options = JSON.parseArray(jsonString, DeviceConfParam.class);
+                        DeviceConfParam deviceConfParam = options.get(0);
+
+                        paramVO.setLastValue(deviceConfParam.getParamValue());
+                    }else {
+                        DataNameValue value = defaultValue.get(0);
+                        if (StringUtils.hasText(value.getDataValue())) {
+                            paramVO.setLastValue(value.getDataValue());
+                        }
+                    }
+                }
+            }
+
+            wrapper.eq(CalibrationTempPO::getCalibrationType, type);
+            wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber);
+            wrapper.eq(CalibrationTempPO::getParam, param.getParam());
+            wrapper.orderByDesc(CalibrationTempPO::getUpdated).last("limit 1");
+            CalibrationTempPO tempPO = tempDao.selectOne(wrapper);
+            wrapper.clear();
+            if (tempPO != null) {
+                paramVO.setLastValue(tempPO.getParamValue());
+            }
+            List<DataNameValue> dataNameValues = dealData(param, typeInfoPO, modelInfoPO);
+            paramVO.setData(dataNameValues);
+            params.add(paramVO);
+        }
+        vo.setParams(params);
+
+        ans.add(vo);
+
+
+
 
         return ans;
     }
@@ -1929,7 +2110,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (Objects.equals(dto.getCalibrationType(), DeviceCalibrationInfoEnum.T800Dark.getType())) {
             double start = 900.0;
             double end = 190.0;
-            double step = 0.5;
+            double step = 1.0;
 
             String scanSpeed = "medium";
             double darkBand = 2.0;
@@ -1962,12 +2143,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                         scanSpeed = datum.getDataValue();
                     }
 
-                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.WaveBrand.getType())) {
-                        darkBand = Double.parseDouble(datum.getDataValue());
-                    }
-                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.Step.getType())) {
-                        step = Double.parseDouble(datum.getDataValue());
-                    }
+//                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.WaveBrand.getType())) {
+//                        darkBand = Double.parseDouble(datum.getDataValue());
+//                    }
+//                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.Step.getType())) {
+//                        step = Double.parseDouble(datum.getDataValue());
+//                    }
                 } catch (Exception e) {
                     log.info("参数转换失败");
                 }
@@ -1995,12 +2176,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
             DeviceMeasureVO vo = r.getData();
 
-            List<String> bandWidth = vo.getBandWidth();
-            if (!bandWidth.contains(String.valueOf(darkBand))) {
-                log.info("当前仪器不支持该光谱带宽！");
-                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-                return R.fail("当前仪器不支持该光谱带宽！");
-            }
+//            List<String> bandWidth = vo.getBandWidth();
+//            if (!bandWidth.contains(String.valueOf(darkBand))) {
+//                log.info("当前仪器不支持该光谱带宽！");
+//                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+//                return R.fail("当前仪器不支持该光谱带宽！");
+//            }
             List<DeviceConfParam> speed = vo.getScanSpeed();
             int deviceScanSpeed = -1;
 
@@ -2126,100 +2307,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok();
     }
 
-//    @Override
-//    public R<Boolean> deleteMultiCalibrationInfo(DeviceCalibrationDTO dto) {
-//        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
-//            return R.fail("请连接仪器！");
-//        }
-//
-//        List<CalibrationTableData> deleteData = dto.getCalibrationTableData();
-//
-//
-//
-//        if (deleteData == null || deleteData.isEmpty()) {
-//            return R.fail("没有需要删除的波长信息！");
-//        }
-//
-//        Map<String, List<String>> toDeleteInfo = new HashMap<>();
-//
-//        for (CalibrationTableData de : deleteData) {
-//            String identifier = de.getIdentifier();
-//            String num = de.getNum();
-//            toDeleteInfo.computeIfAbsent(identifier, k -> new ArrayList<>()).add(num);
-//        }
-//
-//        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
-//        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
-//                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
-//        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
-//
-//        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
-//        if (tablePo == null) {
-//            return R.ok();
-//        }
-//        CalibrationTableVO tableData = tablePo.getTableData();
-//
-//        List<CalibrationTableData> content = tableData.getContent();
-//        List<CalibrationTableData> newContent = new ArrayList<>();
-//        for (CalibrationTableData data : content) {
-//            if (toDeleteInfo.get(data.getIdentifier()) != null && toDeleteInfo.get(data.getIdentifier()).contains(data.getNum())) {
-//                continue;
-//            }
-//            newContent.add(data);
-//        }
-//        tableData.setContent(newContent);
-//        tablePo.setTableData(tableData);
-//        tempDao.update(tablePo, wrapper);
-//
-//        wrapper.clear();
-//        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
-//                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
-//        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Graph.getType());
-//
-//        CalibrationTempPO graphPo = tempDao.selectOne(wrapper);
-//        if (graphPo == null) {
-//            return R.ok();
-//        }
-//        CalibrationTableVO graphData = graphPo.getTableData();
-//        Map<String, CalibrationGraphDataVO> graph = graphData.getGraph();
-//        List<CalibrationTableHeadVO> graphHead = graphData.getHead();
-//        List<CalibrationTableHeadVO> newGraphHead = graphData.getHead();
-//        List<String> removeKeys = new ArrayList<>();
-//
-//
-//        toDeleteInfo.forEach((identifier, nums) -> {
-//            CalibrationGraphDataVO vo = graph.get(identifier);
-//            if (vo != null && nums != null && !nums.isEmpty()) {
-//
-//                Map<String, List<GraphData>> voData = vo.getData();
-//                Map<String, List<GraphData>> newVoData = vo.getData();
-//                voData.forEach((key, value) -> {
-//                    if (!nums.contains(key)) {
-//                        newVoData.put(key, value);
-//                    }
-//                });
-//                if (!newVoData.isEmpty()) {
-//                    removeKeys.add(identifier);
-//                    graph.remove(identifier);
-//                } else {
-//                    vo.setData(newVoData);
-//                    graph.put(identifier, vo);
-//                }
-//            }
-//        });
-//        for (CalibrationTableHeadVO headVO : graphHead) {
-//            if (!removeKeys.contains(headVO.getKey())) {
-//                newGraphHead.add(headVO);
-//            }
-//        }
-//
-//        graphData.setHead(newGraphHead);
-//        graphData.setGraph(graph);
-//        graphPo.setTableData(graphData);
-//        tempDao.update(graphPo, wrapper);
-//
-//        return R.ok();
-//    }
 
     @Override
     public R<Boolean> deleteMultiCalibrationInfo(DeviceCalibrationDTO dto) {
