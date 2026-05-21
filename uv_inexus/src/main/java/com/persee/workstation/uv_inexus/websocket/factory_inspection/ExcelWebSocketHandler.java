@@ -1243,6 +1243,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 taskService.update(updateWrapper);
                 // 记录任务 - 设备绑定关系
                 taskDeviceBindingMap.put(taskId, deviceSerialNumber);
+                // 重新查询获取最新的任务信息
+                management1 = taskService.getById(taskId);
             }
 
             if (StringUtils.isNotBlank(management1 != null ? management1.getOperationInstrument() : null)) {
@@ -1903,12 +1905,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                         if (d == 0) {
                                             JSONObject json1 = new JSONObject();
                                             json1.put("itemName", category + "--" + projectName);
-                                            sendToActiveSession(null, taskId, json1);
+//                                            sendToActiveSession(null, taskId, json1);
 
 
                                             JSONObject jsonObject1 = new JSONObject();
                                             jsonObject1.put("itemId", itemId);
-                                            sendToActiveSession(null, taskId, jsonObject1);
+//                                            sendToActiveSession(null, taskId, jsonObject1);
                                         }
                                         map = sendBatchDataPoints(session, taskId, itemId, dataMap, updateBy, operationInstrument, list, samplePoolNum, d);
                                     }
