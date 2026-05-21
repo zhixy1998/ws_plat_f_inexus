@@ -1905,12 +1905,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                         if (d == 0) {
                                             JSONObject json1 = new JSONObject();
                                             json1.put("itemName", category + "--" + projectName);
-                                            sendToActiveSession(null, taskId, json1);
+//                                            sendToActiveSession(null, taskId, json1);
 
 
                                             JSONObject jsonObject1 = new JSONObject();
                                             jsonObject1.put("itemId", itemId);
-                                            sendToActiveSession(null, taskId, jsonObject1);
+//                                            sendToActiveSession(null, taskId, jsonObject1);
                                         }
                                         map = sendBatchDataPoints(session, taskId, itemId, dataMap, updateBy, operationInstrument, list, samplePoolNum, d);
                                     }
