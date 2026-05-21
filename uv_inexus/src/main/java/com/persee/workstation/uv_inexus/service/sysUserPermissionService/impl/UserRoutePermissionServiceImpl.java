@@ -63,7 +63,7 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
                 .collect(Collectors.toList());
         if (groupIds.isEmpty()) {
             //用户未关联任何小组，无访问权限
-            return Result.fail(YamlMessageSource.getMessageStatic("00606001"));
+            return Result.fail("00606001");
         }
 
         // 2. 查询小组关联的所有权限ID
@@ -75,7 +75,7 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
                 .collect(Collectors.toList());
         if (permIds.isEmpty()) {
             //用户所在小组未配置权限
-            return Result.fail(YamlMessageSource.getMessageStatic("00606002"));
+            return Result.fail("00606002");
         }
 
         // 3. 查询权限详情（只查菜单类型的权限），并提取 name 字段

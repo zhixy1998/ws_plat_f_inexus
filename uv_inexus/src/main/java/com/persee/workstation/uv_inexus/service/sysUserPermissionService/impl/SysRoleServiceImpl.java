@@ -9,49 +9,28 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
-
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupTreeDTO;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleSaveDTO;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserTreeDTO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.*;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysPermissionPO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.*;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysGroupService;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysRoleService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> implements SysRoleService {
@@ -102,7 +81,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         queryWrapper.eq("role_code", saveDTO.getRoleCode());
         if (baseMapper.selectCount(queryWrapper) > 0) {
             //角色编码已存在
-            return Result.fail(YamlMessageSource.getMessageStatic("00603001"));
+            return Result.fail("00603001");
         }
         
         SysRolePO rolePO = new SysRolePO();
@@ -113,7 +92,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         rolePO.setCreated(LocalDateTime.now());
         baseMapper.insert(rolePO);
         //角色创建成功
-        return Result.ok(YamlMessageSource.getMessageStatic("00603002"));
+        return Result.ok("00603002");
     }
 
     @Override
@@ -122,7 +101,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         SysRolePO rolePO = baseMapper.selectById(saveDTO.getId());
         if (rolePO == null) {
             //角色不存在
-            return Result.fail(YamlMessageSource.getMessageStatic("00603003"));
+            return Result.fail("00603003");
         }
         
         // 检查角色编码是否重复（排除当前角色）
@@ -131,7 +110,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
                    .ne("id", saveDTO.getId());
         if (baseMapper.selectCount(queryWrapper) > 0) {
             //角色编码已存在
-            return Result.fail(YamlMessageSource.getMessageStatic("00603001"));
+            return Result.fail("00603001");
         }
         
         BeanUtils.copyProperties(saveDTO, rolePO);
@@ -140,7 +119,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         rolePO.setUpdated(LocalDateTime.now());
         baseMapper.updateById(rolePO);
         //角色更新成功
-        return Result.ok(YamlMessageSource.getMessageStatic("00603004"));
+        return Result.ok("00603004");
     }
 
     @Override
@@ -148,7 +127,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
     public Result<String> deleteBatch(List<String> ids) {
         if (ids == null || ids.isEmpty()) {
             //请选择需要删除的角色
-            return Result.fail(YamlMessageSource.getMessageStatic("00603005"));
+            return Result.fail("00603005");
         }
 
         // 1. 查询这些角色下的所有组ID
@@ -168,7 +147,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         
         baseMapper.deleteBatchIds(ids);
         //角色删除成功
-        return Result.ok(YamlMessageSource.getMessageStatic("00603006"));
+        return Result.ok("00603006");
     }
 
     @Override
@@ -176,7 +155,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         SysRolePO rolePO = baseMapper.selectById(id);
         if (rolePO == null) {
             //角色不存在
-            return Result.fail(YamlMessageSource.getMessageStatic("00603003"));
+            return Result.fail("00603003");
         }
         return Result.ok(rolePO);
     }
@@ -188,7 +167,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         SysRolePO rolePO = baseMapper.selectById(id);
         if (rolePO == null) {
             //角色不存在，删除失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00603007"));
+            return Result.fail("00603007");
         }
 
         // 2. 查询该角色下的所有组ID
@@ -209,7 +188,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         // 4. 执行删除
         baseMapper.deleteById(id);
         //角色删除成功
-        return Result.ok(YamlMessageSource.getMessageStatic("00603006"));  // 修正描述错误
+        return Result.ok("00603006");  // 修正描述错误
     }
 
     @Override
@@ -222,7 +201,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             
             if (userGroups == null || userGroups.isEmpty()) {
                 //该用户未分配任何组
-                return Result.fail(YamlMessageSource.getMessageStatic("00603008"));
+                return Result.fail("00603008");
             }
             
             // 2. 从用户组中获取第一个组的角色ID（假设用户只属于同一角色的组）
@@ -230,20 +209,20 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             SysGroupPO firstGroup = sysGroupMapper.selectById(firstGroupId);
             if (firstGroup == null) {
                 //用户所属组不存在
-                return Result.fail(YamlMessageSource.getMessageStatic("00603009"));
+                return Result.fail("00603009");
             }
             
             String roleId = firstGroup.getRoleId();
             if (roleId == null) {
                 //用户所属组未分配角色
-                return Result.fail(YamlMessageSource.getMessageStatic("0060300A"));
+                return Result.fail("0060300A");
             }
             
             // 3. 查询角色信息
             SysRolePO role = baseMapper.selectById(roleId);
             if (role == null) {
                 //角色不存在
-                return Result.fail(YamlMessageSource.getMessageStatic("00603003"));
+                return Result.fail("00603003");
             }
             
             // 4. 转换为RoleTreeDTO
@@ -307,7 +286,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         } catch (Exception e) {
             log.error("查询用户角色组树形结构失败", e);
             //"查询失败：" + e.getMessage()
-            return Result.fail(YamlMessageSource.getMessageStatic("0060300B",e.getMessage()));
+            return Result.fail("0060300B",e.getMessage());
         }
     }
 
@@ -321,13 +300,13 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             SysRolePO rolePO = baseMapper.selectById(roleId);
             if (rolePO == null) {
                 //角色不存在
-                return Result.fail(YamlMessageSource.getMessageStatic("00603003"));
+                return Result.fail("00603003");
             }
             
             // 2. 校验角色状态（只查询启用的角色）
             if (rolePO.getStatus() != 1) {
                 //该角色已禁用，无法查询下属组
-                return Result.fail(YamlMessageSource.getMessageStatic("0060300C"));
+                return Result.fail("0060300C");
             }
 
             // 3. 使用MyBatis-Plus的LambdaQueryWrapper查询
@@ -342,7 +321,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             return Result.ok(groupList);
         } catch (Exception e) {
             //"查询失败：" + e.getMessage()
-            return Result.fail(YamlMessageSource.getMessageStatic("0060300B",e.getMessage()));
+            return Result.fail("0060300B",e.getMessage());
         }
     }
 
@@ -351,7 +330,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         try {
             SysRolePO rolePO = baseMapper.selectById(roleId);
             if (rolePO == null) {
-                return Result.fail(YamlMessageSource.getMessageStatic("00603003"));
+                return Result.fail("00603003");
             }
 
             String permIdsStr = rolePO.getPermIds();
@@ -379,7 +358,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             System.out.println("Permission Tree: " + JSON.toJSONString(tree));
             return Result.ok(tree);
         } catch (Exception e) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00605005",e.getMessage()));
+            return Result.fail("00605005",e.getMessage());
         }
     }
 
@@ -452,7 +431,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         SysRolePO rolePO = baseMapper.selectById(roleId);
         if (rolePO == null) {
             //角色不存在
-            return Result.fail(YamlMessageSource.getMessageStatic("00603003"));
+            return Result.fail("00603003");
         }
 
         // 2. 更新权限字段（直接存储逗号分隔的字符串，去除空格）
@@ -472,6 +451,6 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         baseMapper.updateById(rolePO);
         
         // 角色更新成功
-        return Result.ok(YamlMessageSource.getMessageStatic("00603004"));
+        return Result.ok("00603004");
     }
 }

@@ -9,39 +9,21 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.*;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.*;
+import com.persee.workstation.uv_inexus.service.sysUserPermissionService.UserPermissionService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupPermissionMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDTO;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
-import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPermissionPO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysPermissionPO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.sysUserPermissionService.UserPermissionService;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class UserPermissionServiceImpl implements UserPermissionService {
@@ -70,7 +52,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         SysUserPO userPO = systemUserManageDAO.selectById(userId);
         if (userPO == null) {
             //用户不存在
-            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+            return Result.fail("00000001");
         }
 
         // 2. 查用户关联的小组ID
@@ -79,7 +61,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(userGroupQuery);
         if (userGroupList.isEmpty()) {
             //该用户未关联任何小组
-            return Result.fail(YamlMessageSource.getMessageStatic("00605001"));
+            return Result.fail("00605001");
         }
         List<String> groupIds = userGroupList.stream()
                 .map(SysUserGroupPO::getGroupId)
@@ -243,7 +225,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         SysUserPO userPO = systemUserManageDAO.selectById(userId);
         if (userPO == null) {
             //用户不存在
-            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+            return Result.fail("00000001");
         }
 
         QueryWrapper<SysUserGroupPO> userGroupQuery = new QueryWrapper<>();
@@ -251,7 +233,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(userGroupQuery);
         if (userGroupList.isEmpty()) {
             //该用户未关联任何小组
-            return Result.fail(YamlMessageSource.getMessageStatic("00605001"));
+            return Result.fail("00605001");
         }
 
         List<String> groupIds = userGroupList.stream()
@@ -295,7 +277,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             // 1. 校验小组ID有效性
             if (!StringUtils.hasText(groupId)) {
                 //小组ID不能为空
-                return Result.fail(YamlMessageSource.getMessageStatic("00500001"));
+                return Result.fail("00500001");
             }
             
             // 2. 查询小组信息，获取关联的角色ID
@@ -303,14 +285,14 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             System.out.println("groupPO:"+groupPO);
             if (groupPO == null) {
                 //"小组不存在（groupId：" + groupId + "）"
-                return Result.fail(YamlMessageSource.getMessageStatic("00605002",groupId));
+                return Result.fail("00605002",groupId);
             }
             
             String roleId = groupPO.getRoleId();
             System.out.println("roleId:"+roleId);
             if (!StringUtils.hasText(roleId)) {
                 //"小组未关联任何角色（groupId：" + groupId + "）"
-                return Result.fail(YamlMessageSource.getMessageStatic("00605003",groupId));
+                return Result.fail("00605003",groupId);
             }
             
             // 3. 查询角色信息，获取该角色的所有权限ID（总权限）
@@ -318,7 +300,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             System.out.println("rolePO:"+rolePO);
             if (rolePO == null) {
                 //"角色不存在（roleId：" + roleId + "）"
-                return Result.fail(YamlMessageSource.getMessageStatic("00605004",roleId));
+                return Result.fail("00605004",roleId);
             }
             
             String permIdsStr = rolePO.getPermIds();
@@ -356,7 +338,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         } catch (Exception e) {
             e.printStackTrace();
             //"查询权限树形结构失败：" + e.getMessage()
-            return Result.fail(YamlMessageSource.getMessageStatic("00605005",e.getMessage()));
+            return Result.fail("00605005",e.getMessage());
         }
     }
 
@@ -478,11 +460,11 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             // 1. 校验参数
             if (!StringUtils.hasText(groupId)) {
                 //小组ID不能为空
-                return Result.fail(YamlMessageSource.getMessageStatic("00500001"));
+                return Result.fail("00500001");
             }
             if (CollectionUtils.isEmpty(targetPermIds)) {
                 //权限ID列表不能为空
-                return Result.fail(YamlMessageSource.getMessageStatic("00605006"));
+                return Result.fail("00605006");
             }
 
             // 关键修复：将不可修改的列表转换为可修改的ArrayList
@@ -587,7 +569,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         } catch (Exception e) {
             e.printStackTrace();
             //"更新小组权限失败：" + e.getMessage()
-            return Result.fail(YamlMessageSource.getMessageStatic("00605007",e.getMessage()));
+            return Result.fail("00605007",e.getMessage());
         }
     }
 

@@ -25,7 +25,6 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.factory_inspection.*;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
@@ -3973,7 +3972,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
             // 检查响应体是否为空
             if (responseBody == null) {
-                throw new BusinessException(YamlMessageSource.getMessageStatic("00000032")); // "算法服务返回异常"
+                throw new BusinessException("00000032"); // "算法服务返回异常"
             }
 
             Integer code = (Integer) responseBody.get("code");

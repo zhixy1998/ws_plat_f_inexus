@@ -166,7 +166,7 @@ public class ManageDataServiceImpl implements ManageDataService {
         // 参数校验
         if (taskQueryParam == null) {
             //查询参数不能为空
-            return Result.fail(YamlMessageSource.getMessageStatic("00306002"));
+            return Result.fail("00306002");
         }
 
         // 分页参数默认值设置
@@ -275,13 +275,13 @@ public class ManageDataServiceImpl implements ManageDataService {
                 boolean res = taskService.removeById(deleteTaskId);
                 if (!res) {
                     //任务删除失败
-                    return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
+                    return Result.fail("0030101D");
                 }
             } catch (Exception e) {
                 boolean i = taskService.removeById(deleteTaskId);
                 if (!i) {
                     //任务删除失败
-                    return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
+                    return Result.fail("0030101D");
                 }
             }
 

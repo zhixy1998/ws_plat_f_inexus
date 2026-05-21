@@ -56,7 +56,7 @@ public class StandardPretreatmentController {
         StandardPretreatment standardPretreatment = standardPretreatmentService.findById(id);
         if (standardPretreatment == null) {
             //"未找到ID为" + id + "的检测记录"
-            return Result.fail(404, YamlMessageSource.getMessageStatic("004007001",id)); // 使用自定义的错误代码和消息
+            return Result.fail("004007001", id); // 使用自定义的错误代码和消息
         } else {
             return Result.ok(standardPretreatment);
         }
