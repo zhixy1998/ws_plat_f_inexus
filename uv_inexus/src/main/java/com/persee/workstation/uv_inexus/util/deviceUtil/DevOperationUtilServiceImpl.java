@@ -906,11 +906,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         }
 
         // 连接校验
-        if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(inputParam.getConnectType())) {
+        if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(connectType)) {
             if (!StringUtils.hasText(connectUtil.getWifiMacAddress())) {
                 return R.fail("请检查 WIFI 连接！");
             }
-        } else if (DeviceConnectTypeEnum.ETHERNET.getConnectType().equals(inputParam.getConnectType())) {
+        } else if (DeviceConnectTypeEnum.ETHERNET.getConnectType().equals(connectType)) {
             if (!StringUtils.hasText(connectUtil.getEthernetMacAddress())) {
                 return R.fail("请检查网线连接！");
             }
@@ -1001,9 +1001,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         // 校验连接状态
         String macAddress = "";
-        if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(inputParam.getConnectType())) {
+        if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(connectType)) {
             // 串口
-        } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(inputParam.getConnectType())) {
+        } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(connectType)) {
             macAddress = connectUtil.getWifiMacAddress();
             if (!StringUtils.hasText(macAddress)) {
                 return R.fail("请检查 WIFI 连接！");
@@ -1214,7 +1214,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         if (allDevice.isEmpty()) {
             //连接上次连接的仪器
-            List<DeviceInfoPO> poList = infoService.getUserLastConnectDevice(inputParam.getUpdateBy());
+                List<DeviceInfoPO> poList = infoService.getUserLastConnectDevice(inputParam.getUpdateBy());
 
             if (poList != null && !poList.isEmpty()) {
 
@@ -2529,9 +2529,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         }
         // 校验连接状态
         String macAddress = "";
-        if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(inputParam.getConnectType())) {
+        if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(connectType)) {
             // 串口
-        } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(inputParam.getConnectType())) {
+        } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(connectType)) {
             macAddress = connectUtil.getWifiMacAddress();
             if (!StringUtils.hasText(macAddress)) {
                 return R.fail("请检查 WIFI 连接！");
