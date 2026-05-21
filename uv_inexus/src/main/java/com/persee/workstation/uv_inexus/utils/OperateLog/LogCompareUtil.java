@@ -7,6 +7,9 @@ import io.swagger.annotations.ApiModelProperty;
 
 public class LogCompareUtil {
 
+    // 排除字段列表（不记录这些字段的变更）
+    private static final String[] EXCLUDE_FIELDS = {"id", "roleId", "groupId", "userId"};
+
     public static String generateCompareContent(Object oldObj, Object newObj) {
         if (oldObj == null || newObj == null) return "";
 
@@ -16,6 +19,13 @@ public class LogCompareUtil {
 
         for (Field field : fields) {
             field.setAccessible(true);
+            String fieldName = field.getName();
+
+            // 跳过排除列表中的字段
+            if (isExcluded(fieldName)) {
+                continue;
+            }
+
             try {
                 Object oldVal = getFieldValue(oldObj, field.getName());
                 Object newVal = field.get(newObj);
@@ -29,6 +39,16 @@ public class LogCompareUtil {
             } catch (Exception e) {}
         }
         return sb.toString();
+    }
+
+    // 判断字段是否在排除列表中
+    private static boolean isExcluded(String fieldName) {
+        for (String excluded : EXCLUDE_FIELDS) {
+            if (excluded.equals(fieldName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // 新增：根据字段名取值（兼容不同类）
@@ -48,13 +68,13 @@ public class LogCompareUtil {
      */
     private static String getFieldChineseName(Field field, Class<?> newObjClass, Class<?> oldObjClass) {
         String fieldName = field.getName();
-        
+
         // 1. 首先尝试从当前字段（DTO字段）的@ApiModelProperty注解获取
         ApiModelProperty apiModelProperty = field.getAnnotation(ApiModelProperty.class);
         if (apiModelProperty != null && !apiModelProperty.value().isEmpty()) {
             return apiModelProperty.value();
         }
-        
+
         // 2. 尝试从DTO类中查找对应字段的@ApiModelProperty注解
         try {
             Field dtoField = newObjClass.getDeclaredField(fieldName);
@@ -65,7 +85,7 @@ public class LogCompareUtil {
         } catch (NoSuchFieldException e) {
             // 忽略，继续下一步
         }
-        
+
         // 3. 尝试从PO类（oldObj）中查找对应字段的@ApiModelProperty注解
         if (oldObjClass != null) {
             try {
@@ -78,7 +98,7 @@ public class LogCompareUtil {
                 // 忽略，继续下一步
             }
         }
-        
+
         // 4. 最后使用全局映射作为兜底
         return getGlobalFieldChineseName(fieldName);
     }

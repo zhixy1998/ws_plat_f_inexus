@@ -9,6 +9,17 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -24,21 +35,10 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPermissionPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysGroupService;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
-import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
 
 @Service
 public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO> implements SysGroupService {
