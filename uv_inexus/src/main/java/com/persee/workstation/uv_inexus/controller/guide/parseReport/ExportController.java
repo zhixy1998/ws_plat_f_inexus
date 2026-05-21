@@ -74,7 +74,7 @@ public class ExportController {
                 // 按ID筛选导出（必须提供exportIds）
                 if (exportIds == null || exportIds.isEmpty()) {
                     //当isAll=0时，必须提供exportIds参数
-                    return Result.fail(400, YamlMessageSource.getMessageStatic("00403001"));
+                    return Result.fail("00403001");
                 }
                 exportService.exportByCondition(outputStream, isAll, exportIds, validParams);
             }
@@ -88,12 +88,12 @@ public class ExportController {
                     .body(outputStream.toByteArray());
         } catch (IOException e) {
             //"导出失败: " + e.getMessage()
-            return Result.fail(500, YamlMessageSource.getMessageStatic("00403002",e.getMessage()));
+            return Result.fail("00403002", e.getMessage());
         } catch (IllegalArgumentException e) {
             return Result.fail(400, e.getMessage());
         } catch (Exception e) {
             //"导出异常: " + e.getMessage()
-            return Result.fail(500, YamlMessageSource.getMessageStatic("00403003",e.getMessage()));
+            return Result.fail("00403003", e.getMessage());
         }
     }
 

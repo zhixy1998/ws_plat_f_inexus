@@ -57,7 +57,7 @@ public class QualityControlController {
         QualityControl qualityControl = qualityControlService.findById(id);
         if (qualityControl == null) {
             //"未找到ID为" + id + "的质控记录"
-            return Result.fail(404, YamlMessageSource.getMessageStatic("00405001",id)); // 自定义错误码和消息
+            return Result.fail("00405001", id); // 自定义错误码和消息
         } else {
             return Result.ok(qualityControl);
         }

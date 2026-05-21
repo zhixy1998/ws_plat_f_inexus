@@ -191,34 +191,34 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
         if (!info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
             //仪器已断开！
-            return R.fail(YamlMessageSource.getMessageStatic("00202007"));
+            return R.fail("00202007");
         }
 
         Integer isActivated = info.getIsActivated();
         if (isActivated == null || isActivated == 0) {
             //请先激活仪器
-            return R.fail(YamlMessageSource.getMessageStatic("00202001"));
+            return R.fail("00202001");
         }
 
         Integer connectStatus = info.getDeviceCurrentStatus();
         if (connectStatus.equals(Constants.DEVICE_STATUS_INIT) && !DetectionConstants.isDeviceIdle){
             //设备正在初始化，请等待
-            return R.fail(YamlMessageSource.getMessageStatic("00202002"));
+            return R.fail("00202002");
         }
         if (connectStatus.equals(Constants.DEVICE_STATUS_MEASURE) && !DetectionConstants.isDeviceIdle){
             //设备正在测量，请等待
-            return R.fail(YamlMessageSource.getMessageStatic("00202003"));
+            return R.fail("00202003");
         }
 
         if (!status.equals(Constants.DEVICE_STATUS_INIT)) {
             if (isInited == null || isInited == 0) {
                 log.info("未初始化");
                 //未初始化
-                return R.fail(YamlMessageSource.getMessageStatic("00202004"));
+                return R.fail("00202004");
             }
 
             if (!info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
-                return R.fail(YamlMessageSource.getMessageStatic("00202004"));
+                return R.fail("00202004");
             }
         }
 
@@ -237,11 +237,11 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             } catch (InterruptedException e) {
                 log.error(e.getMessage());
                 //系统异常
-                return R.fail(YamlMessageSource.getMessageStatic("00202005"));
+                return R.fail("00202005");
             }
         }
         //设备正在使用中，请等待
-        return R.fail(YamlMessageSource.getMessageStatic("00202006"));
+        return R.fail("00202006");
     }
 
     @Override
@@ -257,25 +257,25 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
         if (!info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
             //仪器已断开！
-            return R.fail(YamlMessageSource.getMessageStatic("00202007"));
+            return R.fail("00202007");
         }
 
         if (!status.equals(Constants.DEVICE_STATUS_DIS_CONNECT)) {
             Integer isActivated = info.getIsActivated();
             if (isActivated == null || isActivated == 0) {
                 //请先激活仪器
-                return R.fail(YamlMessageSource.getMessageStatic("00202001"));
+                return R.fail("00202001");
             }
 
             if (!status.equals(Constants.DEVICE_STATUS_INIT) && !info.getDeviceCurrentStatus().equals(Constants.CONNECT_DEVICE_STOP)) {
                 if (isInited == null || isInited.equals(Constants.INIT_STATUS_NO)) {
                     log.info("未初始化");
                     //未初始化
-                    return R.fail(YamlMessageSource.getMessageStatic("00202004"));
+                    return R.fail("00202004");
                 }
 
                 if (!info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
-                    return R.fail(YamlMessageSource.getMessageStatic("00202004"));
+                    return R.fail("00202004");
                 }
             }
         }
@@ -287,11 +287,11 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
         if (currentStatus.equals(Constants.DEVICE_STATUS_INIT)){
             //设备正在初始化，请等待
-            return R.fail(YamlMessageSource.getMessageStatic("00202002"));
+            return R.fail("00202002");
         }
         if (currentStatus.equals(Constants.DEVICE_STATUS_MEASURE)){
             //设备正在测量，请等待
-            return R.fail(YamlMessageSource.getMessageStatic("00202003"));
+            return R.fail("00202003");
         }
 
 
@@ -313,11 +313,11 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             } catch (InterruptedException e) {
                 log.error(e.getMessage());
                 //系统异常
-                return R.fail(YamlMessageSource.getMessageStatic("00202005"));
+                return R.fail("00202005");
             }
         }
         //设备正在使用中，请等待
-        return R.fail(YamlMessageSource.getMessageStatic("00202006"));
+        return R.fail("00202006");
     }
 
     @Override
@@ -456,7 +456,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         DeviceInfoPO info = getInfo(deviceSerialNumber);
         if (info == null) {
             //未找到该设备
-            return R.fail(YamlMessageSource.getMessageStatic("00203005"));
+            return R.fail("00203005");
         }
 
         String devModel = deviceSerialNumber.substring(3, 8);
@@ -467,7 +467,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         DeviceModelInfoPO deviceModelInfoPO = deviceModelInfoDAO.selectOne(query);
         if (deviceModelInfoPO == null) {
             //未识别该型号
-            return R.fail(YamlMessageSource.getMessageStatic("00203006"));
+            return R.fail("00203006");
         }
 
         DeviceMeasureVO ans = new DeviceMeasureVO();
