@@ -13,9 +13,7 @@ import java.util.List;
 
 import javax.validation.Valid;
 
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
-import com.persee.workstation.uv_inexus.utils.OperateLog.LogContext;
-import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,6 +31,7 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupSaveDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysGroupService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogContext;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 import io.swagger.annotations.Api;
@@ -65,11 +64,23 @@ public class GroupController {
     }
 
 //    @ButtonPermission("catEditUserAddGroup")
-    @OperateLog(module = "用户管理-用户权限管理", description = "执行用户管理-用户权限管理-新增小组操作", recordParams = true)
     @PostMapping("/addGroup")
     @ApiOperation("新增小组")
     public Result<String> addGroup(@RequestBody @Valid GroupSaveDTO saveDTO) {
-        return sysGroupService.addGroup(saveDTO);
+        // 执行新增
+        Result<String> result = sysGroupService.addGroup(saveDTO);
+
+        // 如果新增成功，记录日志
+        if (result != null && result.getCode() != null && result.getCode() == 200) {
+            String groupName = saveDTO.getGroupName() != null ? saveDTO.getGroupName() : "未命名小组";
+            LogManualUtil.saveAddLog(
+                    "用户管理-用户权限管理",
+                    "新增用户小组：" + groupName,
+                    saveDTO
+            );
+        }
+
+        return result;
     }
 
 //    @ButtonPermission("catEditUserEditGroupNameInfo")
@@ -81,12 +92,6 @@ public class GroupController {
 //    }
 
 //    @ButtonPermission("catEditUserEditGroupNameInfo")
-    @OperateLog(
-            module = "用户管理-用户权限管理",
-            description = "执行用户管理-用户权限管理-修改小组信息操作",
-            recordParams = true,
-            compare = true  // 开启对比
-    )
     @PutMapping("/updateGroup")
     @ApiOperation("修改小组")
     public Result<String> updateGroup(@RequestBody @Valid GroupSaveDTO saveDTO) {
@@ -97,9 +102,15 @@ public class GroupController {
         // 2. 执行修改
         Result<String> result = sysGroupService.updateGroup(saveDTO);
 
-        // 3. 放入日志上下文
-        LogContext.setOldData(oldGroup);
-        LogContext.setNewData(saveDTO);
+        // 3. 如果修改成功，记录日志
+        if (result != null && result.getCode() != null && result.getCode() == 200) {
+            LogManualUtil.saveUpdateLog(
+                    "用户管理-用户权限管理",
+                    oldGroup,
+                    saveDTO,
+                    saveDTO
+            );
+        }
 
         return result;
     }
@@ -111,10 +122,27 @@ public class GroupController {
     }
 
 //    @ButtonPermission("catEditUserDeleteGroup")
-    @OperateLog(module = "用户管理-用户权限管理", description = "执行用户管理-用户权限管理-修改小组信息操作", recordParams = true)
     @DeleteMapping("/{id}")
     @ApiOperation("根据ID删除单个小组")
     public Result<String> deleteById(@PathVariable String id) {
-        return sysGroupService.deleteById(id);
+        // 1. 查询要删除的小组数据（用于日志记录）
+        SysGroupPO oldGroup = sysGroupService.getById(id);
+
+        // 2. 执行删除
+        Result<String> result = sysGroupService.deleteById(id);
+
+        // 3. 如果删除成功，记录日志
+        if (result != null && result.getCode() != null && result.getCode() == 200){
+            String groupName = oldGroup.getGroupName() != null ? oldGroup.getGroupName() : "未命名小组";
+            String groupId = oldGroup.getId() != null ? oldGroup.getId() : id;
+            LogManualUtil.saveDeleteLog(
+                    "用户管理-用户权限管理",
+                    "删除用户小组：" + groupName,
+                    oldGroup,
+                    id
+            );
+        }
+
+        return result;
     }
 }

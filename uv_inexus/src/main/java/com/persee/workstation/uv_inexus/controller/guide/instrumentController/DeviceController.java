@@ -10,57 +10,30 @@
 package com.persee.workstation.uv_inexus.controller.guide.instrumentController;
 
 
-import java.util.List;
-import java.util.Map;
-
-import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationParamEnum;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.config.LogPoint;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DevConfigDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceCalibrationDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceHistoryTaskDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceInitDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceQueryDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceSoftCloseDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceStartDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceUsageCountDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationParamEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceAutoInjectorPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InjectionTrayParamPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceAutoInjectorService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMonitorService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceUsageLogService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceCalibrationVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceComponentMonitorVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceConfigVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceInfoVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceMonitorVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceUsageLogVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceUsageStatisticsVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.HistoryTaskVO;
-
+import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/dev/ins")
@@ -506,6 +479,14 @@ public class DeviceController {
     @ApiOperation("查询仪器校准信息")
     public Result<List<DeviceCalibrationVO>> getCalibrationInfo(@RequestParam(required = false) String deviceSerialNumber) {
         List<DeviceCalibrationVO> list = deviceManageService.newQueryCalibrationInfo(deviceSerialNumber);
+        return Result.ok(list);
+
+    }
+
+    @GetMapping("/queryMultiCalibration")
+    @ApiOperation("查询仪器校准信息")
+    public Result<List<DeviceCalibrationVO>> queryMultiCalibration(@RequestParam(required = false) String deviceSerialNumber) {
+        List<DeviceCalibrationVO> list = deviceManageService.queryMultiCalibration(deviceSerialNumber);
         return Result.ok(list);
 
     }

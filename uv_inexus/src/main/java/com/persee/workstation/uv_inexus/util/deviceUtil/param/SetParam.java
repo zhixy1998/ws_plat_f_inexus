@@ -70,4 +70,7 @@ import lombok.Data;
 
         @ApiModelProperty("暗电流")
         private Integer dark;
+
+        @ApiModelProperty("开关校正状态")
+        private Integer corrStatus;
     }

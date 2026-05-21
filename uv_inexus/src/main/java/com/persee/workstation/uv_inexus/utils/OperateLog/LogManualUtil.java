@@ -70,7 +70,7 @@ public class LogManualUtil {
             OperateLogPO log = new OperateLogPO();
             log.setModule(module);
             log.setDescription("新增操作");
-            log.setChangeContent("新增操作：" + content);
+            log.setChangeContent(content);
             log.setUsername(realUser); // ✅ 使用传入的用户名
             log.setCreateTime(new Date());
             log.setStatus(1);
