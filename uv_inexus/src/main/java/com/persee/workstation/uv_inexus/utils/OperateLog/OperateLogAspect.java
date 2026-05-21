@@ -47,24 +47,24 @@ public class OperateLogAspect {
         long startTime = System.currentTimeMillis();
         OperateLogPO logPO = null;
         Object result = null;
-        boolean hasPermission = false;
+        boolean hasPermission = true; // ✅【关键修改】默认有权限，不加按钮也能记录
 
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
         OperateLog operateLog = method.getAnnotation(OperateLog.class);
 
-        // 🔥 【关键】只要 ignore=true，直接跳过所有逻辑，不生成任何日志！
         if (operateLog != null && operateLog.ignore()) {
             return joinPoint.proceed();
         }
 
         try {
-            // 👇 下面不再重复定义 signature/method/operateLog
             ButtonPermission buttonPermission = method.getAnnotation(ButtonPermission.class);
             Map<String, String> operatePermissionMap = new HashMap<>();
             String currentOperateType = "";
             String actualPermission = null;
 
+            // ==================== 【修改点1】权限判断变成可选 ====================
+            // 权限校验逻辑
             if (buttonPermission != null) {
                 String permissionMapping = buttonPermission.permissionMapping();
                 String basePermission = buttonPermission.value();
@@ -95,67 +95,108 @@ public class OperateLogAspect {
                 }
                 log.info("权限校验结果：operateType={}, permission={}, hasPermission={}",
                         currentOperateType, actualPermission, hasPermission);
+            } else {
+                // 没有 @ButtonPermission 注解时，默认允许记录日志
+                hasPermission = true;
+            }
 
-                if (hasPermission) {
-                    logPO = new OperateLogPO();
-                    logPO.setCreateTime(new Date());
-                    logPO.setIp(LogUtils.getRealIp());
-                    logPO.setStatus(1);
-                    logPO.setModule(operateLog.module());
-                    logPO.setLogType(operateLog.logType());
+            // 日志构建逻辑（独立于权限检查）
+            if (hasPermission) {
+                logPO = new OperateLogPO();
+                logPO.setCreateTime(new Date());
+                logPO.setIp(LogUtils.getRealIp());
+                logPO.setStatus(1);
+                logPO.setLogType(operateLog.logType());
 
-                    String dynamicDesc = operateLog.description();
-                    String dynamicPermission = "";
-                    if (StringUtils.hasText(currentOperateType)) {
-                        Map<String, String> operateDescMap = new HashMap<>();
-                        operateDescMap.put("add", "设置");
-                        operateDescMap.put("edit", "修改");
-                        operateDescMap.put("delete", "删除");
-                        operateDescMap.put("lumne", "光度测量-测量");
-                        operateDescMap.put("quantity", "定量测定-测量");
-                        operateDescMap.put("spectralScan", "光谱扫描-扫描");
-                        operateDescMap.put("timeScan", "时间扫描-扫描");
-                        operateDescMap.put("spectralScanBaseline", "光谱扫描-基线");
-                        operateDescMap.put("timeScanBaseline", "时间扫描-校零");
-                        operateDescMap.put("lumnePreviewReport", "光度测量-预览报告");
-                        operateDescMap.put("quantityPreviewReport", "定量测定-预览报告");
-                        operateDescMap.put("spectralPreviewReport", "光谱扫描-预览报告");
-                        operateDescMap.put("timeScanPreviewReport", "时间扫描-预览报告");
-                        operateDescMap.put("wmlumneGenerationReport", "光度测量-生成报告");
-                        operateDescMap.put("wmquantityGenerationReport", "定量测定-生成报告");
-                        operateDescMap.put("wmspectralGenerationReport", "光谱扫描-生成报告");
-                        operateDescMap.put("wmtimeScanGenerationReport", "时间扫描-生成报告");
-                        operateDescMap.put("instrumentCalibrationWavelengthCorrection", "波长校正");
-                        operateDescMap.put("instrumentCalibrationDarkCurrentCorrection", "暗电流校正");
-
-                        String operateName = operateDescMap.getOrDefault(currentOperateType, currentOperateType);
-                        dynamicDesc = dynamicDesc.replace("{operateType}", operateName);
-
-                        String currentOperateTypeExt = getFieldValueFromArgs(joinPoint.getArgs(), "operateTypeExt");
-                        log.info("解析到纯占位操作类型：{}", currentOperateTypeExt);
-
-                        Map<String, String> operateExtDescMap = new HashMap<>();
-                        operateExtDescMap.put("classicMode", "经典模式");
-                        operateExtDescMap.put("guideMode", "向导模式");
-
-                        String operateExtName = StringUtils.hasText(currentOperateTypeExt)
-                                ? operateExtDescMap.getOrDefault(currentOperateTypeExt, currentOperateTypeExt)
-                                : "无";
-                        dynamicDesc = dynamicDesc.replace("{operateTypeExt}", operateExtName);
-
-                        dynamicPermission = actualPermission;
+                // 解析 module 中的占位符
+                String dynamicModule = operateLog.module();
+                if (dynamicModule.contains("{")) {
+                    java.util.regex.Pattern modulePattern = java.util.regex.Pattern.compile("\\{(\\w+)\\}");
+                    java.util.regex.Matcher moduleMatcher = modulePattern.matcher(dynamicModule);
+                    StringBuffer moduleSb = new StringBuffer();
+                    while (moduleMatcher.find()) {
+                        String fieldName = moduleMatcher.group(1);
+                        String fieldValue = getFieldValueFromArgs(joinPoint.getArgs(), fieldName);
+                        if (fieldValue == null || fieldValue.isEmpty()) {
+                            fieldValue = "";
+                        }
+                        moduleMatcher.appendReplacement(moduleSb, java.util.regex.Matcher.quoteReplacement(fieldValue));
                     }
+                    moduleMatcher.appendTail(moduleSb);
+                    dynamicModule = moduleSb.toString();
+                }
+                logPO.setModule(dynamicModule);
 
-                    logPO.setDescription(dynamicDesc);
-                    logPO.setPermission(dynamicPermission);
+                String dynamicDesc = operateLog.description();
+                String dynamicPermission = "";
 
-                    String className = joinPoint.getTarget().getClass().getName();
-                    String methodName = signature.getName();
-                    logPO.setMethod(className + "." + methodName);
+                // 解析 description 中的占位符
+                if (dynamicDesc.contains("{")) {
+                    // 使用正则表达式匹配 {字段名} 格式的占位符
+                    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\{(\\w+)\\}");
+                    java.util.regex.Matcher matcher = pattern.matcher(dynamicDesc);
+                    StringBuffer sb = new StringBuffer();
+                    while (matcher.find()) {
+                        String fieldName = matcher.group(1);
+                        String fieldValue = getFieldValueFromArgs(joinPoint.getArgs(), fieldName);
 
-                    if (operateLog.recordParams()) {
-                        logPO.setParams(buildParamsJson(joinPoint.getArgs()));
+                        // 如果是 operateType，进行映射转换
+                        if ("operateType".equals(fieldName)) {
+                            Map<String, String> operateDescMap = new HashMap<>();
+                            operateDescMap.put("add", "设置");
+                            operateDescMap.put("edit", "修改");
+                            operateDescMap.put("delete", "删除");
+                            operateDescMap.put("lumne", "光度测量-测量");
+                            operateDescMap.put("quantity", "定量测定-测量");
+                            operateDescMap.put("spectralScan", "光谱扫描-扫描");
+                            operateDescMap.put("timeScan", "时间扫描-扫描");
+                            operateDescMap.put("spectralScanBaseline", "光谱扫描-基线");
+                            operateDescMap.put("timeScanBaseline", "时间扫描-校零");
+                            operateDescMap.put("lumnePreviewReport", "光度测量-预览报告");
+                            operateDescMap.put("quantityPreviewReport", "定量测定-预览报告");
+                            operateDescMap.put("spectralPreviewReport", "光谱扫描-预览报告");
+                            operateDescMap.put("timeScanPreviewReport", "时间扫描-预览报告");
+                            operateDescMap.put("wmlumneGenerationReport", "光度测量-生成报告");
+                            operateDescMap.put("wmquantityGenerationReport", "定量测定-生成报告");
+                            operateDescMap.put("wmspectralGenerationReport", "光谱扫描-生成报告");
+                            operateDescMap.put("wmtimeScanGenerationReport", "时间扫描-生成报告");
+                            operateDescMap.put("instrumentCalibrationWavelengthCorrection", "波长校正");
+                            operateDescMap.put("instrumentCalibrationDarkCurrentCorrection", "暗电流校正");
+                            fieldValue = operateDescMap.getOrDefault(fieldValue, fieldValue);
+                        } else if ("operateTypeExt".equals(fieldName)) {
+                            // 如果是 operateTypeExt，进行映射转换
+                            Map<String, String> operateExtDescMap = new HashMap<>();
+                            operateExtDescMap.put("classicMode", "经典模式");
+                            operateExtDescMap.put("guideMode", "向导模式");
+                            fieldValue = StringUtils.hasText(fieldValue)
+                                    ? operateExtDescMap.getOrDefault(fieldValue, fieldValue)
+                                    : "无";
+                        }
+
+                        // 处理 null 值
+                        if (fieldValue == null || fieldValue.isEmpty()) {
+                            fieldValue = "";
+                        }
+
+                        matcher.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(fieldValue));
                     }
+                    matcher.appendTail(sb);
+                    dynamicDesc = sb.toString();
+                }
+
+                if (StringUtils.hasText(currentOperateType) && actualPermission != null) {
+                    dynamicPermission = actualPermission;
+                }
+
+                logPO.setDescription(dynamicDesc);
+                logPO.setPermission(dynamicPermission);
+
+                String className = joinPoint.getTarget().getClass().getName();
+                String methodName = signature.getName();
+                logPO.setMethod(className + "." + methodName);
+
+                if (operateLog.recordParams()) {
+                    logPO.setParams(buildParamsJson(joinPoint.getArgs()));
                 }
             }
 
@@ -195,6 +236,14 @@ public class OperateLogAspect {
             if (hasPermission && logPO != null) {
                 logPO.setStatus(0);
                 logPO.setErrorMsg(e.getMessage());
+                // 获取用户信息（异常情况下也要记录操作人）
+                LoginUserInfoVO currentUser = UserContext.getCurrentUser();
+                if (currentUser != null) {
+                    logPO.setUserId(currentUser.getId());
+                    logPO.setUsername(currentUser.getUsername());
+                } else {
+                    logPO.setUsername("anonymous");
+                }
                 log.error("操作日志记录异常：method={}", logPO.getMethod(), e);
             } else {
                 log.error("无权限，日志记录异常：{}", e.getMessage(), e);
@@ -203,6 +252,16 @@ public class OperateLogAspect {
 
         } finally {
             if (hasPermission && logPO != null) {
+                // 如果还没有设置用户信息，在这里补充设置
+                if (logPO.getUsername() == null || logPO.getUsername().isEmpty()) {
+                    LoginUserInfoVO currentUser = UserContext.getCurrentUser();
+                    if (currentUser != null) {
+                        logPO.setUserId(currentUser.getId());
+                        logPO.setUsername(currentUser.getUsername());
+                    } else {
+                        logPO.setUsername("anonymous");
+                    }
+                }
                 logPO.setOperateTime(System.currentTimeMillis() - startTime);
                 asyncSaveOperateLog(logPO);
                 log.info("权限通过，已保存操作日志");

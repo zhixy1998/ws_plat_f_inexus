@@ -48,4 +48,8 @@ public class WorkbookData implements Serializable {
     @TableField("workbook_data")
     //类型是longtext
     private byte[] workbookData;  // 修正数据类型
+
+    @TableField("yellow_highlighted_columns")
+    @ApiModelProperty(value = "黄色高亮列信息(JSON格式)，存储RGB(255,192,0)的列名")
+    private String yellowHighlightedColumns;
 }

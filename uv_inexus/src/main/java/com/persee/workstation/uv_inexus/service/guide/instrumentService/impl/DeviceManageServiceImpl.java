@@ -21,6 +21,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSave
 import com.persee.workstation.uv_inexus.dto.factory_inspection.DeviceTaskDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TaskAddDto;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.factoryInspection.OutFactoryCheckEnum;
 import com.persee.workstation.uv_inexus.enums.factoryInspection.TemplateTypeEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.*;
@@ -30,9 +31,11 @@ import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.*;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
@@ -41,19 +44,21 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceIn
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceUsageLogService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
-import com.persee.workstation.uv_inexus.util.changeUtil.Command;
-import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
-import com.persee.workstation.uv_inexus.util.changeUtil.FindDevEnum;
-import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
+import com.persee.workstation.uv_inexus.util.pythonUtil.PeakReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
@@ -73,6 +78,7 @@ import org.springframework.util.StringUtils;
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CACHE;
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.FACTORY_INSPECTION_TASK;
@@ -126,6 +132,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
     DeviceUsageLogService deviceUsageLogService;
+
+    @Autowired
+    RestUtil restUtil;
+
+    @Autowired
+    SystemAlgorithmConfService systemAlgorithmConfService;
 
 
 //    @Autowired
@@ -887,29 +899,97 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                     paramVO.setParam(param.getParam());
                     paramVO.setParamType(param.getParamType());
 
-                    List<DataNameValue> defaultValue = param.getDefaultValue();
-                    if (defaultValue != null && !defaultValue.isEmpty()) {
+                    if (param.getParam().equals(DeviceCalibrationParamEnum.Table.getType()) || param.getParam().equals(DeviceCalibrationParamEnum.Graph.getType())) {
+                        paramVO.setTableData(param.getTableData());
 
+                        wrapper.eq(CalibrationTempPO::getCalibrationType, type);
+                        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber);
+                        wrapper.eq(CalibrationTempPO::getParam, param.getParam());
+                        wrapper.orderByDesc(CalibrationTempPO::getUpdated).last("limit 1");
+                        CalibrationTempPO tempPO = tempDao.selectOne(wrapper);
+                        wrapper.clear();
+                        if (tempPO != null) {
+                            paramVO.setLastValue(tempPO.getParamValue());
 
-                        if (paramVO.getParam().equals(DeviceCalibrationParamEnum.Start.getType())) {
+                            if(param.getParam().equals(DeviceCalibrationParamEnum.Table.getType())) {
+                                tempPO.getTableData().setHead(param.getTableData().getHead());
 
-                            paramVO.setLastValue(typeInfoPO.getMaxWavelength());
+                                List<CalibrationTableHeadVO> headVOList = param.getTableData().getHead();
 
-                        } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.End.getType())) {
-                            paramVO.setLastValue(typeInfoPO.getMinWavelength());
-                        } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.ScanSpeed.getType())) {
-                            Object speed = MappingParamEnum.SCAN_SPEED.getDefaultValue();
-                            String jsonString = JSONObject.toJSONString(speed);
-                            List<DeviceConfParam> options = JSON.parseArray(jsonString, DeviceConfParam.class);
-                            DeviceConfParam deviceConfParam = options.get(0);
+                                for (CalibrationTableHeadVO headVO : headVOList) {
+                                    String key = headVO.getKey();
+                                    List<Integer> values = null;
+                                    MappingParamEnum paramEnum = null;
 
-                            paramVO.setLastValue(deviceConfParam.getParamValue());
+                                    if (key.equals(DeviceCalibrationParamEnum.Mode.getType())) {
+
+                                        values = typeInfoPO.getLuminosity();
+                                        if (values != null && !values.isEmpty()) {
+                                            values = values.stream()
+                                                    .map(v -> v + 1)
+                                                    .collect(Collectors.toList());
+                                        }
+                                        paramEnum = MappingParamEnum.LUMINOSITY;
+                                    } else if (key.equals(DeviceCalibrationParamEnum.Lamp.getType())) {
+                                        values = typeInfoPO.getLampType();
+                                        paramEnum = MappingParamEnum.LAMP_TYPE;
+                                        List<DataNameValue> result = new ArrayList<>();
+                                        for (Integer value : values) {
+                                            DataNameValue dataNameValue = new DataNameValue();
+                                            dataNameValue.setDataValue(String.valueOf(value));
+
+                                            String name = EnergyLampEnums.getName(String.valueOf(value));
+
+                                            dataNameValue.setDataKey(name != null ? name : String.valueOf(value));
+
+                                            result.add(dataNameValue);
+                                        }
+                                        headVO.setData(result);
+                                        continue;
+
+                                    } else if (key.equals(DeviceCalibrationParamEnum.Gain.getType())) {
+                                        values = typeInfoPO.getGain();
+                                    } else if (key.equals(DeviceCalibrationParamEnum.RealWavelength.getType()) || key.equals(DeviceCalibrationParamEnum.StandWavelength.getType())) {
+                                        List<DataNameValue> result = dealMaxAndMinLength(typeInfoPO);
+                                        headVO.setData(result);
+                                        continue;
+                                    }
+
+                                    if (values != null && !values.isEmpty()) {
+                                        List<DataNameValue> data = buildDataNameValues(values, paramEnum);
+                                        headVO.setData(data);
+                                    }
+                                }
+                                tempPO.getTableData().setHead(headVOList);
+                            }
+                            paramVO.setTableData(tempPO.getTableData());
                         }
 
-                        else {
-                            DataNameValue value = defaultValue.get(0);
-                            if (StringUtils.hasText(value.getDataValue())) {
-                                paramVO.setLastValue(value.getDataValue());
+                        params.add(paramVO);
+                        continue;
+                    } else {
+                        List<DataNameValue> defaultValue = param.getDefaultValue();
+                        if (defaultValue != null && !defaultValue.isEmpty()) {
+
+
+                            if (paramVO.getParam().equals(DeviceCalibrationParamEnum.Start.getType())) {
+
+                                paramVO.setLastValue(typeInfoPO.getMaxWavelength());
+
+                            } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.End.getType())) {
+                                paramVO.setLastValue(typeInfoPO.getMinWavelength());
+                            } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.ScanSpeed.getType())) {
+                                Object speed = MappingParamEnum.SCAN_SPEED.getDefaultValue();
+                                String jsonString = JSONObject.toJSONString(speed);
+                                List<DeviceConfParam> options = JSON.parseArray(jsonString, DeviceConfParam.class);
+                                DeviceConfParam deviceConfParam = options.get(0);
+
+                                paramVO.setLastValue(deviceConfParam.getParamValue());
+                            }else {
+                                DataNameValue value = defaultValue.get(0);
+                                if (StringUtils.hasText(value.getDataValue())) {
+                                    paramVO.setLastValue(value.getDataValue());
+                                }
                             }
                         }
                     }
@@ -936,6 +1016,68 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         return ans;
     }
+
+    private static List<DataNameValue> dealMaxAndMinLength(DeviceTypeInfoPO typeInfoPO) {
+        List<DataNameValue> result = new ArrayList<>();
+
+        String minWavelength = typeInfoPO.getMinWavelength();
+        String maxWavelength = typeInfoPO.getMaxWavelength();
+        DataNameValue min = new DataNameValue();
+        min.setDataKey("min");
+        min.setDataValue(minWavelength);
+        result.add(min);
+
+        DataNameValue max = new DataNameValue();
+        max.setDataKey("max");
+        max.setDataValue(maxWavelength);
+        result.add(max);
+        return result;
+    }
+
+    // ... existing code ...
+
+    /**
+     * 构建DataNameValue列表
+     * @param values 值列表
+     * @param paramEnum 参数枚举（可为null，表示直接使用值作为key）
+     * @return DataNameValue列表
+     */
+    private List<DataNameValue> buildDataNameValues(List<Integer> values, MappingParamEnum paramEnum) {
+        List<DataNameValue> result = new ArrayList<>();
+
+        Map<Integer, String> nameMap = new HashMap<>();
+        if (paramEnum != null) {
+            Object defaultValue = paramEnum.getDefaultValue();
+            String jsonString = JSONObject.toJSONString(defaultValue);
+            List<DeviceConfParam> options = JSON.parseArray(jsonString, DeviceConfParam.class);
+            for (DeviceConfParam option : options) {
+                try {
+                    Integer paramValue = Integer.valueOf(option.getParamValue());
+                    nameMap.put(paramValue, option.getParamName());
+                } catch (NumberFormatException e) {
+                    // 忽略无法转换的值
+                }
+            }
+        }
+
+        for (Integer value : values) {
+            DataNameValue dataNameValue = new DataNameValue();
+            dataNameValue.setDataValue(String.valueOf(value));
+
+            if (paramEnum != null) {
+                String name = nameMap.get(value);
+                dataNameValue.setDataKey(name != null ? name : String.valueOf(value));
+            } else {
+                dataNameValue.setDataKey(String.valueOf(value));
+            }
+
+            result.add(dataNameValue);
+        }
+
+        return result;
+    }
+
+
 
     public List<DataNameValue> dealData(DeviceCalibrationParamPO paramPO, DeviceTypeInfoPO po, DeviceModelInfoPO modelInfoPO) {
 
@@ -1100,9 +1242,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
 
-    @Autowired
-    RestUtil restUtil;
-
     @Override
     public void test() {
 
@@ -1206,6 +1345,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return R.fail(operation.getMessage());
         } else {
             OperationResultEntity data = operation.getData();
+            saveWlList(data.getDeviceSerialNumber(), data.getStepPoints(), param.getUpdateBy());
             FindDeviceVO vo = new FindDeviceVO();
 
             DeviceInfoPO info = infoService.getInfo(data.getDeviceSerialNumber());
@@ -1301,6 +1441,112 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             return R.ok(vo);
         }
+    }
+
+    private void saveWlList(String deviceSerialNumber, List<StepPoint> stepPoints, String updateBy) {
+
+        if(stepPoints ==null || stepPoints.isEmpty()) {
+            log.info("没有要保存的校正信息");
+            return;
+
+        }
+        // 1. 查询是否存在当前设备的校准记录
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber)
+                .eq(CalibrationTempPO::getCalibrationType, DeviceCalibrationInfoEnum.MultiWavelength.getType())
+                .eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+        CalibrationTempPO existingPo = tempDao.selectOne(wrapper);
+
+        // 2. 获取系数
+        Double coefficient = infoService.queryCoefficient(deviceSerialNumber);
+
+        if (existingPo == null) {
+            // 新增模式：从模板获取表结构并填充数据
+            LambdaQueryWrapper<DeviceCalibrationParamPO> paramWrapper = new LambdaQueryWrapper<>();
+            paramWrapper.eq(DeviceCalibrationParamPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+            DeviceCalibrationParamPO templateParam = calibrationParamDAO.selectOne(paramWrapper);
+            CalibrationTableVO tableVO = templateParam.getTableData();
+            List<CalibrationTableData> content = buildTableDataList(stepPoints, coefficient, 0);
+            tableVO.setContent(content);
+
+            CalibrationTempPO newPo = new CalibrationTempPO();
+            newPo.setDeviceSerialNumber(deviceSerialNumber);
+            newPo.setCreateBy(updateBy);
+            newPo.setCalibrationType(DeviceCalibrationInfoEnum.MultiWavelength.getType());
+            newPo.setParam(DeviceCalibrationParamEnum.Table.getType());
+            newPo.setTableData(tableVO);
+
+            tempDao.insert(newPo);
+        } else {
+            // 更新模式：在现有数据基础上追加新点
+            CalibrationTableVO existingTableVO = existingPo.getTableData();
+            List<CalibrationTableData> existingContent = existingTableVO.getContent();
+
+
+
+            // 构建需要新增的数据（过滤掉重复且目标条目标识缺失的）
+            List<CalibrationTableData> newContent = new ArrayList<>();
+            int currentNum = 0;
+            for (StepPoint point : stepPoints) {
+                String standLength = String.valueOf(point.getTheoryStep() / coefficient);
+                String realLength = String.valueOf(point.getActualStep() / coefficient);
+                //去掉过滤，直接使用仪器的覆盖
+//                // 检查是否与已有数据冲突且冲突记录的 name 或 identifier 为空
+//                boolean shouldSkip = existingContent.stream()
+//                        .filter(existing -> existing.getStandLength().equals(standLength) && existing.getRealLength() != null && existing.getRealLength().equals(realLength))
+//                        .anyMatch(existing -> isNullOrEmpty(existing.getName()) || isNullOrEmpty(existing.getIdentifier()));
+//
+//                if (shouldSkip) {
+//                    continue; // 不添加该项
+//                }
+
+                CalibrationTableData data = new CalibrationTableData();
+                data.setStandLength(standLength);
+                data.setRealLength(realLength);
+                data.setNum(String.valueOf(++currentNum));
+                newContent.add(data);
+            }
+
+//            existingContent.addAll(newContent);
+
+            existingTableVO.setContent(newContent);
+            // 更新实体
+            existingPo.setTableData(existingTableVO);
+            existingPo.setUpdateBy(updateBy);
+            tempDao.updateById(existingPo);
+        }
+
+        wrapper.clear();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber)
+                .eq(CalibrationTempPO::getCalibrationType, DeviceCalibrationInfoEnum.MultiWavelength.getType())
+                .eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Graph.getType());
+        tempDao.delete(wrapper);
+    }
+
+    private boolean isNullOrEmpty(String str) {
+        return str == null || str.trim().isEmpty();
+    }
+
+    /**
+     * 根据步进点列表构建校准表数据，自动分配序号
+     * @param stepPoints  步进点列表
+     * @param coefficient 系数
+     * @param startNum    起始序号（已存在的最大序号）
+     * @return 校准表数据列表
+     */
+    private List<CalibrationTableData> buildTableDataList(List<StepPoint> stepPoints, Double coefficient, int startNum) {
+        List<CalibrationTableData> list = new ArrayList<>();
+        int currentNum = startNum;
+        for (StepPoint point : stepPoints) {
+            CalibrationTableData data = new CalibrationTableData();
+            data.setStandLength(String.valueOf(point.getTheoryStep() / coefficient));
+            data.setRealLength(String.valueOf(point.getActualStep() / coefficient));
+            data.setNum(String.valueOf(++currentNum));
+            data.setIsOriginData(true);
+            list.add(data);
+        }
+        return list;
     }
 
     public R<FindDeviceVO> factoryConnectBatch(SearchInfo param) {
@@ -1880,6 +2126,1072 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok();
     }
 
+//    @Override
+//    public R<Boolean> deleteMultiCalibrationInfo(DeviceCalibrationDTO dto) {
+//        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
+//            return R.fail("请连接仪器！");
+//        }
+//
+//        List<CalibrationTableData> deleteData = dto.getCalibrationTableData();
+//
+//
+//
+//        if (deleteData == null || deleteData.isEmpty()) {
+//            return R.fail("没有需要删除的波长信息！");
+//        }
+//
+//        Map<String, List<String>> toDeleteInfo = new HashMap<>();
+//
+//        for (CalibrationTableData de : deleteData) {
+//            String identifier = de.getIdentifier();
+//            String num = de.getNum();
+//            toDeleteInfo.computeIfAbsent(identifier, k -> new ArrayList<>()).add(num);
+//        }
+//
+//        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+//        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+//                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+//        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+//
+//        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
+//        if (tablePo == null) {
+//            return R.ok();
+//        }
+//        CalibrationTableVO tableData = tablePo.getTableData();
+//
+//        List<CalibrationTableData> content = tableData.getContent();
+//        List<CalibrationTableData> newContent = new ArrayList<>();
+//        for (CalibrationTableData data : content) {
+//            if (toDeleteInfo.get(data.getIdentifier()) != null && toDeleteInfo.get(data.getIdentifier()).contains(data.getNum())) {
+//                continue;
+//            }
+//            newContent.add(data);
+//        }
+//        tableData.setContent(newContent);
+//        tablePo.setTableData(tableData);
+//        tempDao.update(tablePo, wrapper);
+//
+//        wrapper.clear();
+//        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+//                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+//        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Graph.getType());
+//
+//        CalibrationTempPO graphPo = tempDao.selectOne(wrapper);
+//        if (graphPo == null) {
+//            return R.ok();
+//        }
+//        CalibrationTableVO graphData = graphPo.getTableData();
+//        Map<String, CalibrationGraphDataVO> graph = graphData.getGraph();
+//        List<CalibrationTableHeadVO> graphHead = graphData.getHead();
+//        List<CalibrationTableHeadVO> newGraphHead = graphData.getHead();
+//        List<String> removeKeys = new ArrayList<>();
+//
+//
+//        toDeleteInfo.forEach((identifier, nums) -> {
+//            CalibrationGraphDataVO vo = graph.get(identifier);
+//            if (vo != null && nums != null && !nums.isEmpty()) {
+//
+//                Map<String, List<GraphData>> voData = vo.getData();
+//                Map<String, List<GraphData>> newVoData = vo.getData();
+//                voData.forEach((key, value) -> {
+//                    if (!nums.contains(key)) {
+//                        newVoData.put(key, value);
+//                    }
+//                });
+//                if (!newVoData.isEmpty()) {
+//                    removeKeys.add(identifier);
+//                    graph.remove(identifier);
+//                } else {
+//                    vo.setData(newVoData);
+//                    graph.put(identifier, vo);
+//                }
+//            }
+//        });
+//        for (CalibrationTableHeadVO headVO : graphHead) {
+//            if (!removeKeys.contains(headVO.getKey())) {
+//                newGraphHead.add(headVO);
+//            }
+//        }
+//
+//        graphData.setHead(newGraphHead);
+//        graphData.setGraph(graph);
+//        graphPo.setTableData(graphData);
+//        tempDao.update(graphPo, wrapper);
+//
+//        return R.ok();
+//    }
+
+    @Override
+    public R<Boolean> deleteMultiCalibrationInfo(DeviceCalibrationDTO dto) {
+        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            return R.fail("请连接仪器！");
+        }
+
+        List<CalibrationTableData> deleteData = dto.getCalibrationTableData();
+        if (deleteData == null || deleteData.isEmpty()) {
+            return R.fail("没有需要删除的波长信息！");
+        }
+
+        Map<String, List<String>> toDeleteInfo = new HashMap<>();
+        for (CalibrationTableData de : deleteData) {
+            String identifier = de.getIdentifier();
+            String num = de.getNum();
+            toDeleteInfo.computeIfAbsent(identifier, k -> new ArrayList<>()).add(num);
+        }
+
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType())
+                .eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
+        if (tablePo != null && tablePo.getTableData() != null) {
+            CalibrationTableVO tableData = tablePo.getTableData();
+            List<CalibrationTableData> content = tableData.getContent();
+            if (content != null) {
+                List<CalibrationTableData> newContent = content.stream()
+                        .filter(data -> {
+                            List<String> numsToDelete = toDeleteInfo.get(data.getIdentifier());
+                            return numsToDelete == null || !numsToDelete.contains(data.getNum());
+                        })
+                        .collect(Collectors.toList());
+                tableData.setContent(newContent);
+                tablePo.setTableData(tableData);
+                tempDao.update(tablePo, wrapper);
+            }
+        }
+
+        wrapper.clear();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType())
+                .eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Graph.getType());
+
+        CalibrationTempPO graphPo = tempDao.selectOne(wrapper);
+        if (graphPo == null || graphPo.getTableData() == null) {
+            return R.ok();
+        }
+
+        CalibrationTableVO graphData = graphPo.getTableData();
+        Map<String, CalibrationGraphDataVO> graph = graphData.getGraph();
+        List<CalibrationTableHeadVO> graphHead = graphData.getHead();
+
+        if (graph == null || graph.isEmpty()) {
+            return R.ok();
+        }
+
+        List<String> removeKeys = new ArrayList<>();
+        Set<String> processedIdentifiers = new HashSet<>();
+
+        toDeleteInfo.forEach((identifier, nums) -> {
+            if (nums == null || nums.isEmpty()) {
+                return;
+            }
+
+            CalibrationGraphDataVO vo = graph.get(identifier);
+            if (vo == null) {
+                return;
+            }
+
+            Map<String, List<GraphData>> voData = vo.getData();
+            if (voData == null || voData.isEmpty()) {
+                return;
+            }
+
+            Map<String, List<GraphData>> newData = new HashMap<>();
+            voData.forEach((key, value) -> {
+                if (!nums.contains(key)) {
+                    newData.put(key, value);
+                }
+            });
+
+            if (newData.isEmpty()) {
+                removeKeys.add(identifier);
+            } else {
+                vo.setData(newData);
+                graph.put(identifier, vo);
+            }
+
+            processedIdentifiers.add(identifier);
+        });
+
+        if (!removeKeys.isEmpty()) {
+            removeKeys.forEach(graph::remove);
+        }
+
+        if (graphHead != null) {
+            List<CalibrationTableHeadVO> newGraphHead = graphHead.stream()
+                    .filter(headVO -> !removeKeys.contains(headVO.getKey()))
+                    .collect(Collectors.toList());
+            graphData.setHead(newGraphHead);
+        }
+
+        graphData.setGraph(graph);
+        graphPo.setTableData(graphData);
+        tempDao.update(graphPo, wrapper);
+
+        return R.ok();
+    }
+
+    /**
+     *
+     * 下发所有的参数给仪器
+     */
+    @Override
+    public R<Boolean> sendMultiCalibrationToDevice(DeviceCalibrationDTO dto) {
+        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            return R.fail("请连接仪器！");
+        }
+
+        String deviceSerialNumber = dto.getDeviceSerialNumber();
+        List<CalibrationTableData> allTableData = dto.getAllTableData();
+
+        if (allTableData == null || allTableData.isEmpty()) {
+            return R.fail("没有可以下发给仪器的参数！");
+        }
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setOperationType(OperationTypeEnums.SetWlList.getType());
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+
+        List<StepPoint> setWlList = new ArrayList<>();
+
+        for (CalibrationTableData data : allTableData) {
+            if (StringUtils.hasText(data.getStandLength()) && StringUtils.hasText(data.getRealLength())) {
+                setWlList.add(new StepPoint(Double.parseDouble(data.getRealLength()), Double.parseDouble(data.getStandLength()), 1));
+            }
+        }
+
+        if (setWlList.isEmpty()) {
+            return R.fail("没有可以下发给仪器的参数！");
+        }
+        inputParam.setSetWlList(setWlList);
+
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        }
+
+        allTableData.forEach(data -> data.setIsSendToDevice(true));
+
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
+
+        LambdaQueryWrapper<DeviceCalibrationParamPO> paramWrapper = new LambdaQueryWrapper<>();
+        paramWrapper.eq(DeviceCalibrationParamPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        DeviceCalibrationParamPO paramPO = calibrationParamDAO.selectOne(paramWrapper);
+
+        CalibrationTableVO tableVO = paramPO.getTableData();
+
+        if (tablePo == null) {
+
+            CalibrationTempPO po = new CalibrationTempPO();
+            po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+            po.setCreateBy(dto.getUpdateBy());
+            po.setCalibrationType(dto.getCalibrationType());
+            po.setParam(DeviceCalibrationParamEnum.Table.getType());
+            tableVO.setContent(allTableData);
+            po.setTableData(tableVO);
+
+            tempDao.insert(po);
+        } else {
+
+            tablePo.setUpdateBy(dto.getUpdateBy());
+            CalibrationTableVO tableData = tablePo.getTableData();
+            if (tableData == null) {
+                tableData = new CalibrationTableVO();
+                tableData.setHead(tableVO.getHead());
+            }
+
+            tableData.setContent(allTableData);
+
+            tablePo.setTableData(tableData);
+            tempDao.update(tablePo, wrapper);
+        }
+
+
+        return R.ok();
+    }
+
+    @Override
+    public R<Boolean> multiCalibration(DeviceCalibrationDTO dto, String multiType) {
+
+        R<SetParam> r = multiCheckAndSendParam(dto, multiType);
+        if (!r.getSuccess()) {
+            return R.fail(r.getMessage());
+        }
+        SetParam param = r.getData();
+
+        if (param.getMlLamp() != null) {
+            DevOperationInputParam inputParam = new DevOperationInputParam();
+            inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+            inputParam.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+
+            SetParam closeParam = new SetParam();
+
+            closeParam.setLampPos(Integer.valueOf(EnergyLampEnums.Mercury.getIdentity()));
+
+            inputParam.setParam(closeParam);
+            R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+            if (!operation.getSuccess()) {
+                log.info("设置灯位置为汞灯失败：{}", operation.getMessage());
+                return R.fail(operation.getMessage());
+            }
+
+        }
+
+
+        //表格数据保存
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
+        LambdaQueryWrapper<DeviceCalibrationParamPO> paramWrapper = new LambdaQueryWrapper<>();
+        paramWrapper.eq(DeviceCalibrationParamPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        DeviceCalibrationParamPO paramPO = calibrationParamDAO.selectOne(paramWrapper);
+
+        CalibrationTableVO tableVO = paramPO.getTableData();
+
+        List<CalibrationTableData> allTableData = dto.getAllTableData();
+
+        if (allTableData == null) {
+            allTableData = dto.getCalibrationTableData();
+        }
+        tableVO.setContent(allTableData);
+        allTableData.forEach(data -> {
+            data.setIdentifier(data.getName());
+            data.setIsOriginData(true);
+        });
+
+        if (tablePo == null) {
+            CalibrationTempPO po = new CalibrationTempPO();
+            po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+            po.setCreateBy(dto.getUpdateBy());
+            po.setCalibrationType(dto.getCalibrationType());
+            po.setParam(DeviceCalibrationParamEnum.Table.getType());
+            po.setTableData(tableVO);
+
+            tempDao.insert(po);
+        } else {
+
+            tablePo.setUpdateBy(dto.getUpdateBy());
+            List<CalibrationTableData> content = tablePo.getTableData().getContent();
+            if (content == null) {
+                content = new ArrayList<>();
+            }
+
+            List<CalibrationTableData> ans = new ArrayList<>();
+            Map<String, CalibrationTableData> map = new HashMap<>();
+            for (CalibrationTableData a : content) {
+                map.put(a.getNum(), a);
+            }
+
+            for (CalibrationTableData cont : allTableData) {
+                map.put(cont.getNum(), cont);
+            }
+            ans = new ArrayList<>(map.values());
+            tableVO.setContent(ans);
+
+            tablePo.setTableData(tableVO);
+            tempDao.update(tablePo, wrapper);
+        }
+
+        baselineOrScan(dto, multiType, param);
+        return R.ok();
+    }
+
+    @Override
+    public R<Boolean> reFindPeak(String deviceSerialNumber, String updateBy) {
+
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        //图数据保存
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber)
+                .eq(CalibrationTempPO::getCalibrationType, DeviceCalibrationInfoEnum.MultiWavelength.getType());
+        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Graph.getType());
+
+        CalibrationTempPO originGraphPO = tempDao.selectOne(wrapper);
+
+        if (originGraphPO == null) {
+            return R.fail("没有数据可以寻峰！");
+        } else {
+            originGraphPO.setUpdateBy(updateBy);
+
+            CalibrationTableVO originTableData = originGraphPO.getTableData();
+            Map<String, CalibrationGraphDataVO> graph = originTableData.getGraph();
+            SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
+
+            double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+
+            for(String key : graph.keySet()) {
+
+                CalibrationGraphDataVO vo = graph.get(key);
+                Map<String, List<GraphData>> voData = vo.getData();
+                for(String key1 : voData.keySet()) {
+                    List<Double> xList = new ArrayList<>();
+                    List<Double> yList = new ArrayList<>();
+                    List<GraphData> list = voData.get(key1);
+                    for (GraphData graData : list) {
+                        xList.add(Double.valueOf(graData.getX()));
+                        yList.add(Double.valueOf(graData.getY()));
+                        graData.setFeng(null);
+                    }
+                    String s = restUtil.peakSearching(xList, yList, height, Double.parseDouble(confVO.getPeakInterval()));
+
+                    PeakReceiveInfo info = JSON.parseObject(s, PeakReceiveInfo.class);
+                    if (info != null && ResultCodeEnum.SUCCESS.getCode().equals(info.getCode()) && info.getPeakX() != null && !info.getPeakX().isEmpty()) {
+                        List<Double> peakX = info.getPeakX();
+
+                        for (GraphData gd : list) {
+                            Double x = Double.parseDouble(gd.getX());
+                            if (peakX.contains(x)) {
+                                gd.setFeng(DeviceCalibrationParamEnum.Peak.getType());
+                            }
+                        }
+                    }
+                    voData.put(key1, list);
+                }
+                vo.setData(voData);
+                graph.put(key, vo);
+            }
+            originGraphPO.setTableData(originTableData);
+            tempDao.update(originGraphPO, wrapper);
+
+        }
+        return R.ok();
+    }
+
+    private R<Boolean> baselineOrScan(DeviceCalibrationDTO dto, String multiType, SetParam setParam) {
+
+
+        String deviceSerialNumber = dto.getDeviceSerialNumber();
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.Calibration.getOperation(), Constants.DEVICE_STATUS_CALIBRATION);
+        ActionCmdEnum action = ActionCmdEnum.BaseLine;
+        String key;
+        if (multiType.equals(DeviceCalibrationParamEnum.Scan.getType())) {
+            action = ActionCmdEnum.Scan;
+            key = T600ComIdEnums.Scan.getComId();
+        } else {
+            key = T600ComIdEnums.BaseLine.getComId();
+        }
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        // 发送基线命令
+        inputParam.setAction(action);
+
+        R<OperationResultEntity> r = operationUtilService.operation(inputParam);
+        if (!r.getSuccess()) {
+            return R.fail(r.getMessage());
+        }
+        new Thread(()-> {
+            UnknowCountMessageQueue messageQueue = UnknowCountMessageQueue.getInstance();
+            List<SpectrumPoint> list = new ArrayList<>();
+            while (Constants.isRunning) {
+                Object result;
+
+                result = messageQueue.pollMessage(deviceSerialNumber, key);
+
+                // 如果队列为空（可选：根据你的 pollMessage 实现决定是否需要）
+                if (result == null) {
+                    // 可选：短暂休眠避免 CPU 空转
+                    try {
+                        Thread.sleep(10); // 比如 10ms
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    continue;
+                }
+                // 判断是否是结束标记
+                if (result instanceof EndMarker) {
+                    EndMarker endMarker = (EndMarker) result;
+                    // 可选：记录结束原因或打日志
+                    switch (endMarker.getReason()) {
+                        case TIMEOUT:
+                            log.warn("设备 {} 的测量超时", deviceSerialNumber);
+                            break;
+                        case UN_NORMAL:
+                            log.error("设备 {} 的测量异常结束", deviceSerialNumber);
+                            break;
+                        case NORMAL:
+                            log.info("设备 {} 的测量正常完成", deviceSerialNumber);
+                            break;
+                        case NORMAL_STOP:
+                            log.info("设备 {} 的测量已停止", deviceSerialNumber);
+                            break;
+                    }
+                    // 结束循环
+                    break;
+                }
+                SpectrumPoint message = (SpectrumPoint) result;
+                DeviceConnectionManager manager = DeviceConnectionManager.getInstance();
+                DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+                manager.setDarkWavelength(info.getDeviceId(), String.valueOf(message.getWavelength()));
+                list.add(message);
+            }
+
+            if (setParam.getMlLamp() != null) {
+                DevOperationInputParam param = new DevOperationInputParam();
+                param.setOperationType(OperationTypeEnums.SetParam.getType());
+                param.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+
+                SetParam closeParam = new SetParam();
+
+                closeParam.setMlLamp(0);
+                closeParam.setLampPos(0);
+
+                param.setParam(closeParam);
+                R<OperationResultEntity> operation = operationUtilService.operation(param);
+                if (!operation.getSuccess()) {
+                    log.error("关闭汞灯失败{}", operation.getMessage());
+                }
+            }
+
+            saveMultiValue(dto, list, multiType, setParam);
+
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+
+        }).start();
+
+
+        return R.ok();
+    }
+
+    private void saveMultiValue(DeviceCalibrationDTO dto, List<SpectrumPoint> data, String multiType, SetParam setParam)  {
+
+        CalibrationTableVO vo = new CalibrationTableVO();
+
+        Map<String, CalibrationGraphDataVO> graph = new HashMap<>();
+        List<CalibrationTableHeadVO> headList = new ArrayList<>();
+
+        LambdaQueryWrapper<DeviceCalibrationParamPO> paramWrapper = new LambdaQueryWrapper<>();
+        paramWrapper.eq(DeviceCalibrationParamPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        DeviceCalibrationParamPO param = calibrationParamDAO.selectOne(paramWrapper);
+
+        CalibrationTableVO tableVO = param.getTableData();
+
+        List<CalibrationTableHeadVO> h = tableVO.getHead();
+        Map<String, String> nameMap = new HashMap<>();
+        for (CalibrationTableHeadVO headVO : h) {
+            if (headVO.getKey().equals(DeviceCalibrationParamEnum.Name.getType())) {
+                for (DataNameValue value : headVO.getData()) {
+                    nameMap.put(value.getDataValue(), value.getDataKey());
+                }
+            }
+        }
+
+        if (multiType.equals(DeviceCalibrationParamEnum.Baseline.getType())) {
+
+
+            CalibrationGraphDataVO graphDataVO = new CalibrationGraphDataVO();
+            List<ChangeParam> originalData = new ArrayList<>();
+
+            for (SpectrumPoint point : data) {
+                originalData.add(point.getBaselineRsd());
+            }
+            CalibrationTableHeadVO head = new CalibrationTableHeadVO();
+
+            CalibrationTableData tableData = dto.getCalibrationTableData().get(0);
+            String identifier = tableData.getIdentifier();
+            String name = nameMap.get(identifier);
+
+            head.setName(name);
+            head.setKey(identifier);
+            headList.add(head);
+
+            String num = tableData.getNum();
+            Map<String, List<ChangeParam>> baseLine = new HashMap<>();
+            baseLine.put(num, originalData);
+
+            graphDataVO.setBaseLine(baseLine);
+            graph.put(identifier, graphDataVO);
+            vo.setGraph(graph);
+            vo.setContent(dto.getCalibrationTableData());
+            vo.setHead(headList);
+
+        } else if (multiType.equals(DeviceCalibrationParamEnum.Scan.getType())) {
+
+            List<Double> xList = new ArrayList<>();
+            List<Double> yList = new ArrayList<>();
+            List<GraphData> graphData = new ArrayList<>();
+
+            for (SpectrumPoint point : data) {
+
+                GraphData scanGraph = new GraphData();
+                scanGraph.setX(String.valueOf(point.getWavelength()));
+
+                scanGraph.setChangeParam(point.getScanRsd());
+
+                String y;
+
+                String photoMode = setParam.getPhotoMode().toString();
+                if (photoMode.equals(WaveLengthEnum.abs.getCode())) {
+                    y = point.getAbsResult().getAbs();
+                } else if (photoMode.equals(WaveLengthEnum.tPercent.getCode())) {
+                    y = point.getTResult().getTPercent();
+                } else if (photoMode.equals(WaveLengthEnum.er.getCode())) {
+                    y = point.getErResult().getEr();
+                } else if (photoMode.equals(WaveLengthEnum.es.getCode())) {
+                    y = point.getEsResult().getEs();
+                } else {
+                    log.error("光度模式出错");
+                    return;
+                }
+                scanGraph.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, y));
+                xList.add(point.getWavelength());
+                yList.add(Double.parseDouble(y));
+
+                graphData.add(scanGraph);
+            }
+
+            SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
+
+            double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+
+            String s = restUtil.peakSearching(xList, yList, height, Double.parseDouble(confVO.getPeakInterval()));
+
+            PeakReceiveInfo info = JSON.parseObject(s, PeakReceiveInfo.class);
+
+            List<CalibrationTableData> tableDataList = dto.getCalibrationTableData();
+            if (info != null && ResultCodeEnum.SUCCESS.getCode().equals(info.getCode()) && info.getPeakX() != null && !info.getPeakX().isEmpty()) {
+                List<Double> peakX = info.getPeakX();
+
+                for (GraphData gd : graphData) {
+                    Double x = Double.parseDouble(gd.getX());
+                    if (peakX.contains(x)) {
+                        gd.setFeng(DeviceCalibrationParamEnum.Peak.getType());
+                    }
+                }
+
+                for (CalibrationTableData datum : tableDataList) {
+
+                    double wavelength = Double.parseDouble(datum.getStandLength());
+
+                    double closestPeak = peakX.get(0);
+                    double minDiff = Math.abs(wavelength - closestPeak);
+
+                    for (int i = 1; i < peakX.size(); i++) {
+                        double currentDiff = Math.abs(wavelength - peakX.get(i));
+                        if (currentDiff < minDiff) {
+                            minDiff = currentDiff;
+                            closestPeak = peakX.get(i);
+                        }
+                    }
+                    datum.setRealLength(String.valueOf(closestPeak));
+                }
+            }
+
+
+            Map<String, List<GraphData>> scanData = new HashMap<>();
+
+            CalibrationGraphDataVO dataVO = new CalibrationGraphDataVO();
+
+            CalibrationTableData tableData = tableDataList.get(0);
+            String identifier = tableData.getIdentifier();
+            String name = nameMap.get(identifier);
+            String num = tableData.getNum();
+            scanData.put(num, graphData);
+            dataVO.setData(scanData);
+            String luminosity = tableData.getLuminosity();
+            dataVO.setYName(WaveLengthEnum.getName(luminosity));
+            dataVO.setXName(DeviceCalibrationParamEnum.XName.getType());
+
+            graph.put(identifier, dataVO);
+
+            CalibrationTableHeadVO head = new CalibrationTableHeadVO();
+            head.setName(name);
+            head.setKey(identifier);
+            headList.add(head);
+
+
+            vo.setGraph(graph);
+            vo.setContent(tableDataList);
+            vo.setHead(headList);
+        }
+        List<CalibrationTableData> allTableData = dto.getAllTableData();
+        if (allTableData == null) {
+            allTableData = vo.getContent();
+        }
+
+        for (CalibrationTableData content : vo.getContent()) {
+            content.setIsSendToDevice(false);
+            allTableData.removeIf(existing -> existing.getNum().equals(content.getNum()) && existing.getIdentifier().equals(content.getIdentifier()));
+            allTableData.add(content);
+        }
+        vo.setContent(allTableData);
+
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        //图数据保存
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Graph.getType());
+
+        CalibrationTempPO originGraphPO = tempDao.selectOne(wrapper);
+
+        if (originGraphPO == null) {
+            CalibrationTempPO po = new CalibrationTempPO();
+            po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+            po.setCreateBy(dto.getUpdateBy());
+            po.setCalibrationType(dto.getCalibrationType());
+            po.setParam(DeviceCalibrationParamEnum.Graph.getType());
+            po.setTableData(vo);
+
+            tempDao.insert(po);
+        } else {
+            originGraphPO.setUpdateBy(dto.getUpdateBy());
+
+            CalibrationTableVO originTableData = originGraphPO.getTableData();
+            List<CalibrationTableHeadVO> originHead = originTableData.getHead();
+            CalibrationTableVO currentTableData = new CalibrationTableVO();
+            BeanUtils.copyProperties(vo, currentTableData);
+
+            for (CalibrationTableHeadVO newHead : currentTableData.getHead()) {
+                originHead.removeIf(existing -> existing.getKey().equals(newHead.getKey()));
+                originHead.add(newHead);
+            }
+
+            Map<String, CalibrationGraphDataVO> origin = originTableData.getGraph() == null ? new HashMap<>() : originTableData.getGraph();
+
+            Map<String, CalibrationGraphDataVO> current = currentTableData.getGraph();
+
+            // 遍历current中的所有key，查找origin中相同的key
+            for (Map.Entry<String, CalibrationGraphDataVO> entry : current.entrySet()) {
+                String key = entry.getKey();
+                CalibrationGraphDataVO currentVO = entry.getValue();
+
+                // 检查origin中是否存在相同的key
+                if (!origin.isEmpty() && origin.containsKey(key)) {
+                    CalibrationGraphDataVO originVO = origin.get(key);
+
+                    // 处理data字段：key一致则替换，不一致则追加
+                    Map<String, List<GraphData>> originData = originVO.getData();
+                    Map<String, List<GraphData>> currentData = currentVO.getData();
+
+                    if (originData != null && currentData != null) {
+                        for (Map.Entry<String, List<GraphData>> dataEntry : currentData.entrySet()) {
+                            String dataKey = dataEntry.getKey();
+                            List<GraphData> newDataList = dataEntry.getValue();
+
+                            // key一致则替换，不一致则添加
+                            originData.put(dataKey, new ArrayList<>(newDataList));
+                        }
+                        originVO.setData(originData);
+                    } else if (currentData != null) {
+                        originVO.setData(new HashMap<>(currentData));
+                    }
+
+                    // 处理baseLine字段：key一致则替换，不一致则追加
+                    Map<String, List<ChangeParam>> originBaseLine = originVO.getBaseLine();
+                    Map<String, List<ChangeParam>> currentBaseLine = currentVO.getBaseLine();
+
+                    if (originBaseLine != null && currentBaseLine != null) {
+                        for (Map.Entry<String, List<ChangeParam>> baseLineEntry : currentBaseLine.entrySet()) {
+                            String baseLineKey = baseLineEntry.getKey();
+                            List<ChangeParam> newBaseLineList = baseLineEntry.getValue();
+
+                            // key一致则替换，不一致则添加
+                            originBaseLine.put(baseLineKey, new ArrayList<>(newBaseLineList));
+                        }
+                    } else if (currentBaseLine != null) {
+                        originVO.setBaseLine(new HashMap<>(currentBaseLine));
+                    }
+                } else {
+                    // 如果origin中没有这个key，直接添加
+                    origin.put(key, currentVO);
+                }
+            }
+
+            currentTableData.setGraph(origin);
+            currentTableData.setHead(originHead);
+
+            originGraphPO.setTableData(currentTableData);
+            tempDao.update(originGraphPO, wrapper);
+        }
+
+        //表格数据保存
+        wrapper.clear();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
+
+        tableVO.setContent(vo.getContent());
+
+        if (tablePo == null) {
+            CalibrationTempPO po = new CalibrationTempPO();
+            po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+            po.setCreateBy(dto.getUpdateBy());
+            po.setCalibrationType(dto.getCalibrationType());
+            po.setParam(DeviceCalibrationParamEnum.Table.getType());
+            po.setTableData(tableVO);
+
+            tempDao.insert(po);
+        } else {
+            tablePo.setUpdateBy(dto.getUpdateBy());
+
+            List<CalibrationTableData> originTable = tablePo.getTableData().getContent();
+
+            Map<String, CalibrationTableData> map = new HashMap<>();
+            for (CalibrationTableData a : originTable) {
+                map.put(a.getNum(), a);
+            }
+
+            for (CalibrationTableData cont : allTableData) {
+                map.put(cont.getNum(), cont);
+            }
+
+            vo.setContent(new ArrayList<>(map.values()));
+            tableVO.setContent(new ArrayList<>(map.values()));
+
+            tablePo.setTableData(tableVO);
+            tempDao.update(tablePo, wrapper);
+        }
+    }
+
+    //基线和扫描设置参数
+    private R<SetParam> multiCheckAndSendParam(DeviceCalibrationDTO dto, String operateType){
+
+        String identifier = null;
+        double end = Double.MAX_VALUE;
+        double start = Double.MIN_VALUE;
+
+        String lamp = null;
+        int gain = -1;
+        String mode = null;
+        //获取一组测试的样品,获取设置的起始波长和结束波长，以及是否需要基线
+
+        for (CalibrationTableData data : dto.getCalibrationTableData()) {
+            String num = data.getNum();
+
+            if (!StringUtils.hasText(data.getName())) {
+                return R.fail("第"+  num +"号请选择物质！");
+            }
+            if (!StringUtils.hasText(data.getLuminosity())) {
+                return R.fail("第"+  num +"号请选择光度模式！");
+            }
+            if (data.getLuminosity().equals(WaveLengthEnum.er.getCode()) || data.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
+                if (!StringUtils.hasText(data.getGain())) {
+                    return R.fail("第"+  num +"号请选择增益！");
+                }
+
+                if (!StringUtils.hasText(data.getLamp())) {
+                    return R.fail("第"+  num +"号请选择灯类型！");
+                }
+            }
+            if (!StringUtils.hasText(data.getStandLength())) {
+                return R.fail("第"+  num +"号请选择标准波长！");
+            }
+
+            if (identifier == null) {
+                identifier = data.getIdentifier();
+            } else if (!identifier.equals(data.getIdentifier())) {
+                return R.fail("请选择同一物质");
+            }
+
+            if (mode == null) {
+                mode = data.getLuminosity();
+            } else if (!mode.equals(data.getLuminosity())) {
+                return R.fail("请选择同一光度模式");
+            }
+            if (mode.equals(WaveLengthEnum.er.getCode()) || mode.equals(WaveLengthEnum.es.getCode())) {
+                int v = Integer.parseInt(data.getGain());
+                if (gain == -1) {
+                    gain = v;
+                } else if (gain != v) {
+                    return R.fail("请选择同一增益");
+                }
+
+                String object = data.getLamp();
+                if (lamp == null) {
+                    lamp = object;
+                } else if (!lamp.equals(object)) {
+                    return R.fail("请选择同一灯类型");
+                }
+            }
+
+            String standWavelength = data.getStandLength();
+
+            if (standWavelength != null && end > Double.parseDouble(standWavelength)) {
+                end = Double.parseDouble(standWavelength);
+            }
+            if (standWavelength != null && start < Double.parseDouble(standWavelength)) {
+                start = Double.parseDouble(standWavelength);
+            }
+
+        }
+
+        if (mode == null) {
+            log.error("光度模式缺失");
+            return R.fail("光度模式缺失");
+        }
+
+        if (Objects.equals(operateType, DeviceCalibrationParamEnum.Baseline.getType()) && (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode()))) {
+            log.error("基线不能选择光度模式为ES、ER");
+            return R.fail("基线不能选择光度模式为ES、ER");
+        }
+
+
+        start = start + 5;
+        end = end - 5;
+
+        R<DeviceMeasureVO> r = infoService.queryDeviceTypeInfo(dto.getDeviceSerialNumber());
+        if (!r.getSuccess()) {
+            log.error("未识别当前仪器");
+            return R.fail("未识别当前仪器");
+        }
+        DeviceMeasureVO measureVO = r.getData();
+        String maxWavelength = measureVO.getMaxWavelength();
+        String minWavelength = measureVO.getMinWavelength();
+
+        List<String> scanInterval = measureVO.getScanInterval();
+        double minInterval = scanInterval.stream()
+                .mapToDouble(Double::parseDouble)
+                .min()
+                .orElse(0.0);
+
+        if (start < Double.parseDouble(minWavelength) || end > Double.parseDouble(maxWavelength)) {
+            log.error("波段超出范围");
+            return R.fail("波段超出范围");
+        }
+
+        if (start > Double.parseDouble(maxWavelength)) {
+            start = Double.parseDouble(maxWavelength);
+        }
+        if (end < Double.parseDouble(minWavelength)) {
+            end = Double.parseDouble(minWavelength);
+        }
+
+        DevOperationInputParam param = new DevOperationInputParam();
+        param.setOperationType(OperationTypeEnums.SetParam.getType());
+        param.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+
+        SetParam setParam = new SetParam();
+        setParam.setPhotoMode(Integer.valueOf(mode));
+        setParam.setSlit1(2.0);
+        setParam.setScanWlInterval(minInterval);
+        if (mode.equals(WaveLengthEnum.er.getCode()) || mode.equals(WaveLengthEnum.es.getCode())) {
+
+            setParam.setGain(gain);
+
+
+            if (lamp.equals(EnergyLampEnums.Mercury.getIdentity())) {
+                setParam.setMlLamp(1);
+            } else {
+                setParam.setLampPos(Integer.valueOf(lamp));
+            }
+        }
+        setParam.setStartWl(start);
+        setParam.setEndWl(end);
+
+        param.setParam(setParam);
+        R<OperationResultEntity> operation = operationUtilService.operation(param);
+        if (!operation.getSuccess()) {
+            log.error("设置参数失败{}", operation.getMessage());
+            return R.fail(operation.getMessage());
+        }
+
+        if (lamp !=  null && lamp.equals(EnergyLampEnums.Mercury.getIdentity())) {
+            param.setOperationType(OperationTypeEnums.MercuryLocate.getType());
+            operation = operationUtilService.operation(param);
+            if (!operation.getSuccess()) {
+                log.error(" MercuryLocate失败{}", operation.getMessage());
+                return R.fail(operation.getMessage());
+            }
+        }
+
+        return R.ok(setParam);
+
+    }
+
+    //基线和扫描设置参数
+    private R<Boolean> checkAndSendParam(DeviceCalibrationDTO dto, String operateType){
+
+        List<CalibrationTableData> tableData = dto.getCalibrationTableData();
+        if (tableData == null || tableData.size() != 1) {
+            log.error("基线和扫描只能选择一个物质");
+            return R.fail("基线和扫描只能选择一个物质");
+        }
+        CalibrationTableData data = tableData.get(0);
+
+        String mode = data.getLuminosity();
+
+        if (mode == null) {
+            log.error("光度模式缺失");
+            return R.fail("光度模式缺失");
+        }
+
+        if (Objects.equals(operateType, DeviceCalibrationParamEnum.Baseline.getType()) && (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode()))) {
+            log.error("基线不能选择光度模式为ES、ER");
+            return R.fail("基线不能选择光度模式为ES、ER");
+        }
+
+        double standWavelength = Double.parseDouble(data.getStandLength());
+
+
+        double start = standWavelength + 5;
+        double end = standWavelength - 5;
+
+        R<DeviceMeasureVO> r = infoService.queryDeviceTypeInfo(dto.getOperateType());
+        if (!r.getSuccess()) {
+            log.error("未识别当前仪器");
+            return R.fail("未识别当前仪器");
+        }
+        DeviceMeasureVO measureVO = r.getData();
+        String maxWavelength = measureVO.getMaxWavelength();
+        String minWavelength = measureVO.getMinWavelength();
+
+        if (standWavelength < Double.parseDouble(minWavelength) || standWavelength > Double.parseDouble(maxWavelength)) {
+            log.error("波段超出范围");
+            return R.fail("波段超出范围");
+        }
+
+        if (start > Double.parseDouble(maxWavelength)) {
+            start = Double.parseDouble(maxWavelength);
+        }
+        if (end < Double.parseDouble(minWavelength)) {
+            end = Double.parseDouble(minWavelength);
+        }
+
+
+        DevOperationInputParam param = new DevOperationInputParam();
+        param.setOperationType(OperationTypeEnums.SetParam.getType());
+        param.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+
+        SetParam setParam = new SetParam();
+        setParam.setPhotoMode(Integer.valueOf(mode));
+
+        setParam.setStartWl(start);
+        setParam.setEndWl(end);
+
+        if (mode.equals(WaveLengthEnum.er.getCode()) || mode.equals(WaveLengthEnum.es.getCode())) {
+
+            int gain = Integer.parseInt(data.getGain());
+
+            String lamp = data.getLamp();
+
+            setParam.setGain(gain);
+            setParam.setLampPos(Integer.valueOf(lamp));
+        }
+
+        param.setParam(setParam);
+        R<OperationResultEntity> operation = operationUtilService.operation(param);
+        if (!operation.getSuccess()) {
+            log.error("设置参数失败{}", operation.getMessage());
+            return R.fail(operation.getMessage());
+        }
+        return R.ok();
+
+    }
+
     @Override
     public R<List<WorkTimeInfo>> queryLampLifeInfo(String deviceSerialNumber, Boolean isUpdate) {
 
@@ -2094,101 +3406,27 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public Result<DeviceTaskDto> createTaskAfterInstrumentInit(String deviceSerialNumber, String updateBy, String templateCode) throws BusinessException {
 
-
-
         R<Boolean> booleanR = startInitDevice(deviceSerialNumber, updateBy);
 
         DeviceInfoPO deviceInfoPO = infoService.getInfo(deviceSerialNumber);
         if (deviceInfoPO == null || deviceInfoPO.getId() == null) {
             log.info("未找到连接仪器信息！");
-            //未查找到仪器信息
             throw new BusinessException("未找到连接仪器信息！");
         }
 
-//        List<InitRecordPO> initList = initRecordService.searchInitStatus(deviceSerialNumber, deviceInfoPO.getId());
+        // 先将初始化中的状态添加到缓存
+        DeviceTaskDto initDto = new DeviceTaskDto();
+        initDto.setDeviceSerialNumber(deviceSerialNumber);
+        initDto.setStatus(OutFactoryCheckEnum.INIT_ING.getDesc());
+        addToCache(initDto);
 
-
-        //这里要异步执行操作，前面返回，这里开异步线程执行
         // 异步执行初始化监控和任务创建
         asyncExecuteInitMonitor(deviceSerialNumber, templateCode, updateBy);
 
         // 立即返回成功响应
-        DeviceTaskDto dto = new DeviceTaskDto();
-        dto.setDeviceSerialNumber(deviceSerialNumber);
-        dto.setStatus(OutFactoryCheckEnum.INIT_ING.getDesc());
-        return Result.ok(dto);
-//
-//        while (true) {
-//            //这里初始化之后还要创建新的任务，根据当前选定的模板创建任务，其实就是检定校准的任务
-//            if (deviceInfoPO.getIsInited() == 1) {
-//                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-//                wrapper.eq(TaskManagement::getOperationInstrument, deviceSerialNumber);
-//                List<TaskManagement> list = taskManagementService.list(wrapper);
-//                if (!CollectionUtils.isEmpty(list)) {
-//                    TaskManagement taskManagement = list.get(0);
-//                    DeviceTaskDto dto = new DeviceTaskDto();
-//                    dto.setTaskId(taskManagement.getId());
-//                    ExcelTemplate excelTemplate = templateService.getById(taskManagement.getUseTemplate());
-//                    if (ObjectUtils.isEmpty(excelTemplate)) {
-//                        log.info("未找到模板！");
-//                        throw new BusinessException("未找到模板！");
-//                    }
-//                    dto.setDeviceSerialNumber(deviceSerialNumber);
-//                    dto.setTemplateCode(excelTemplate.getTemplateCode());
-//                    dto.setStatus(OutFactoryCheckEnum.INIT_SUCCESS.getDesc());
-////                map.put("templateCode", );
-////                map.put("deviceSerialNumber",deviceSerialNumber);
-////                Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
-////
-////                List<DeviceTaskDto> dtoList;
-////                if (cachedObject instanceof List) {
-////                    @SuppressWarnings("unchecked")
-////                    List<DeviceTaskDto> checkedList = (List<DeviceTaskDto>) cachedObject;
-////                    dtoList = checkedList;
-////                } else {
-////                    dtoList = new ArrayList<DeviceTaskDto>();
-////                }
-////                dtoList.add(dto);
-////                ehcacheUtil.put(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), dtoList, String.class, Object.class);
-//                    updateInCache(deviceSerialNumber, dto);
-//                    return Result.ok(dto);
-//                }
-//                TaskAddDto taskAddDto = new TaskAddDto();
-//                String randomSuffix = generateRandomSuffix();
-//                taskAddDto.setDetectName(deviceSerialNumber + "_" + randomSuffix);
-//                taskAddDto.setUseTemplate(templateCode);
-//                taskAddDto.setCreateBy(updateBy);
-//                taskAddDto.setCreated(LocalDateTime.now());
-//                taskAddDto.setSerialNumber(deviceSerialNumber);
-//                Result<HashMap<String, String>> task = taskManagementService.newTask(taskAddDto);
-//                if (ObjectUtils.isEmpty(task)) {
-//                    throw new BusinessException("创建任务失败！");
-//                }
-//
-//                HashMap<String, String> map = task.getData();
-//                DeviceTaskDto dto = new DeviceTaskDto();
-//                dto.setTaskId(MapUtils.getString(map, "taskId"));
-//                dto.setDeviceSerialNumber(deviceSerialNumber);
-//                dto.setTemplateCode(MapUtils.getString(map, "templateCode"));
-//                dto.setStatus(OutFactoryCheckEnum.INIT_SUCCESS.getDesc());
-//                updateInCache(deviceSerialNumber, dto);
-//                return Result.ok(dto);
-//            } else if (deviceInfoPO.getIsInited() == 2) {
-//                DeviceTaskDto dto = new DeviceTaskDto();
-//                dto.setDeviceSerialNumber(deviceSerialNumber);
-//                dto.setStatus(OutFactoryCheckEnum.INIT_FAIL.getDesc());
-//                updateInCache(deviceSerialNumber, dto);
-//                return Result.ok(dto);
-//            }
-//            //在这里等待一秒
-//            try {
-//                Thread.sleep(1000);
-//            } catch (InterruptedException e) {
-//                throw new RuntimeException(e);
-//            }
-//
-//        }
+        return Result.ok(initDto);
     }
+
 
 
     /**
@@ -2314,7 +3552,6 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
     }
 }
 
-// ... existing code ...
 
     /**
      * 更新缓存中指定仪器的信息
@@ -2324,62 +3561,6 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
      */
     private void updateInCache(String deviceSerialNumber, DeviceTaskDto updatedData) {
         try {
-            // 获取缓存中的列表
-            Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(),
-                    OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
-
-            if (cachedObject instanceof List) {
-                @SuppressWarnings("unchecked")
-                List<DeviceTaskDto> dtoList = (List<DeviceTaskDto>) cachedObject;
-
-                if (org.apache.commons.collections4.CollectionUtils.isNotEmpty(dtoList)) {
-                    boolean found = false;
-                    // 找到并更新包含该设备序列号的项
-                    for (int i = 0; i < dtoList.size(); i++) {
-                        DeviceTaskDto item = dtoList.get(i);
-                        if (item != null && deviceSerialNumber.equals(item.getDeviceSerialNumber())) {
-                            // 更新该项的属性
-                            if (updatedData.getTaskId() != null) {
-                                item.setTaskId(updatedData.getTaskId());
-                            }
-                            if (updatedData.getTemplateCode() != null) {
-                                item.setTemplateCode(updatedData.getTemplateCode());
-                            }
-                            // 确保设备序列号不变
-                            item.setDeviceSerialNumber(deviceSerialNumber);
-                            item.setStatus(updatedData.getStatus());
-                            dtoList.set(i, item);
-                            found = true;
-                            log.info("已更新缓存中设备信息：deviceSerialNumber={}", deviceSerialNumber);
-                            break;
-                        }
-                    }
-
-                    // 如果未找到，可以选择添加新项（根据业务需求决定）
-                    if (!found) {
-                        log.warn("缓存中未找到设备信息，是否要添加？deviceSerialNumber={}", deviceSerialNumber);
-                        // 如果需要添加新项，取消下面这行的注释
-                        dtoList.add(updatedData);
-                    }
-
-                    // 更新缓存
-                    ehcacheUtil.put(DEFAULT_CACHE.getCacheName(),
-                            OUT_FACTORY_CHECK_LIST.getCode(), dtoList, String.class, Object.class);
-                }
-            }
-        } catch (Exception e) {
-            log.error("更新缓存中设备信息失败：deviceSerialNumber={}", deviceSerialNumber, e);
-        }
-    }
-
-    /**
-     * 将设备任务信息添加到缓存
-     *
-     * @param dto 设备任务 DTO
-     */
-    private void addToCache(DeviceTaskDto dto) {
-        try {
-            // 获取缓存中的列表
             Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(),
                     OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
 
@@ -2392,11 +3573,79 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
                 dtoList = new ArrayList<DeviceTaskDto>();
             }
 
-            dtoList.add(dto);
+            boolean found = false;
+            for (int i = 0; i < dtoList.size(); i++) {
+                DeviceTaskDto item = dtoList.get(i);
+                if (item != null && deviceSerialNumber.equals(item.getDeviceSerialNumber())) {
+                    // 创建新的 DTO 对象，避免引用问题
+                    DeviceTaskDto newItem = new DeviceTaskDto();
+                    newItem.setDeviceSerialNumber(item.getDeviceSerialNumber());
+                    newItem.setTaskId(updatedData.getTaskId() != null ? updatedData.getTaskId() : item.getTaskId());
+                    newItem.setTemplateCode(updatedData.getTemplateCode() != null ? updatedData.getTemplateCode() : item.getTemplateCode());
+                    newItem.setStatus(updatedData.getStatus());
+
+                    dtoList.set(i, newItem);
+                    found = true;
+                    log.info("已更新缓存中设备信息：deviceSerialNumber={}, status={}, taskId={}",
+                            deviceSerialNumber, updatedData.getStatus(), newItem.getTaskId());
+                    break;
+                }
+            }
+
+            if (!found) {
+                log.info("缓存中未找到设备信息，添加新项：deviceSerialNumber={}", deviceSerialNumber);
+                DeviceTaskDto newDto = new DeviceTaskDto();
+                newDto.setDeviceSerialNumber(deviceSerialNumber);
+                newDto.setTaskId(updatedData.getTaskId());
+                newDto.setTemplateCode(updatedData.getTemplateCode());
+                newDto.setStatus(updatedData.getStatus());
+                dtoList.add(newDto);
+            }
+
             ehcacheUtil.put(DEFAULT_CACHE.getCacheName(),
                     OUT_FACTORY_CHECK_LIST.getCode(), dtoList, String.class, Object.class);
+        } catch (Exception e) {
+            log.error("更新缓存中设备信息失败：deviceSerialNumber={}", deviceSerialNumber, e);
+        }
+    }
 
-            log.info("已添加设备到缓存：deviceSerialNumber={}", dto.getDeviceSerialNumber());
+
+
+    /**
+     * 将设备任务信息添加到缓存
+     *
+     * @param dto 设备任务 DTO
+     */
+    private void addToCache(DeviceTaskDto dto) {
+        try {
+            if (dto == null || dto.getDeviceSerialNumber() == null) {
+                log.warn("添加到缓存的 DTO 为空或缺少设备序列号");
+                return;
+            }
+
+            Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(),
+                    OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
+
+            List<DeviceTaskDto> dtoList;
+            if (cachedObject instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<DeviceTaskDto> checkedList = (List<DeviceTaskDto>) cachedObject;
+                dtoList = checkedList;
+            } else {
+                dtoList = new ArrayList<DeviceTaskDto>();
+            }
+
+            boolean exists = dtoList.stream()
+                    .anyMatch(item -> item != null && dto.getDeviceSerialNumber().equals(item.getDeviceSerialNumber()));
+
+            if (!exists) {
+                dtoList.add(dto);
+                ehcacheUtil.put(DEFAULT_CACHE.getCacheName(),
+                        OUT_FACTORY_CHECK_LIST.getCode(), dtoList, String.class, Object.class);
+                log.info("已添加设备到缓存：deviceSerialNumber={}", dto.getDeviceSerialNumber());
+            } else {
+                log.info("设备已存在于缓存中，跳过添加：deviceSerialNumber={}", dto.getDeviceSerialNumber());
+            }
         } catch (Exception e) {
             log.error("添加设备到缓存失败：deviceSerialNumber={}", dto.getDeviceSerialNumber(), e);
         }

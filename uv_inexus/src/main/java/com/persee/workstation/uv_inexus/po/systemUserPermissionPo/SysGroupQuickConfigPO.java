@@ -39,4 +39,8 @@ public class SysGroupQuickConfigPO extends BasePO {
     @TableField("quick_config_ids")
     @ApiModelProperty("快捷配置ID，关联权限表")
     private String quickConfigIds;
+
+    @TableField("perm_ids_have")
+    @ApiModelProperty("绑定权限ids拥有的回显（每个组各自拥有）")
+    private String permIdsHave;
 }

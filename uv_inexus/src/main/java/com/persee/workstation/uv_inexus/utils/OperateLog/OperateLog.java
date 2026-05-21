@@ -48,7 +48,7 @@ public @interface OperateLog {
      */
     int logType() default 2;
 
-    boolean compare() default false;
+    boolean compare() default false; // 是否对比请求参数和返回结果（默认不对比）
 
     boolean ignore() default false; // 关闭基本日志，走详情日志
 }

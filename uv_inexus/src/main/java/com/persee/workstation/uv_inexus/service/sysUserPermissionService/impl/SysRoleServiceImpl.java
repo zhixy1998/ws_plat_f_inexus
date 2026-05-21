@@ -347,7 +347,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
     }
 
     @Override
-    public Result<List<PermissionTreeDTO>> getPermissionTree(List<Integer> permTypeList, String roleId) {
+    public Result<List<PermissionTreeDTO>> getPermissionTree(List<Integer> permTypeList, String roleId, Integer quickConfigType) {
         try {
             SysRolePO rolePO = baseMapper.selectById(roleId);
             if (rolePO == null) {
@@ -367,6 +367,9 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             queryWrapper.orderByAsc("sort");
             if (permTypeList != null && !permTypeList.isEmpty()) {
                 queryWrapper.in("perm_type", permTypeList);
+            }
+            if (quickConfigType != null) {
+                queryWrapper.eq("quick_config_type", quickConfigType);
             }
             List<SysPermissionPO> permissions = sysPermissionMapper.selectList(queryWrapper);
             if (permissions == null || permissions.isEmpty()) {

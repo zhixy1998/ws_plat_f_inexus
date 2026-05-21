@@ -716,7 +716,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             taskSumListDto.setTaskId(task.getId());
             taskSumListDto.setMethodName(method.getMethodName());
             taskSumListDto.setProjectName(project.getProjectName());
-            taskSumListDto.setMeasureMode(task.getMeasureType());
+            taskSumListDto.setMeasureType(task.getMeasureType());
             taskSumListDto.setTaskStatus(TaskStatusEnum.UNTESTED.getCode().equals(task.getTaskStatus())?"未测":TaskStatusEnum.TESTED.getCode().equals(task.getTaskStatus())?"已测":"结束");
             if (specimen != null && !specimen.isEmpty()){
                 taskSumListDto.setSampleNum((long)specimen.size());
@@ -1193,6 +1193,13 @@ public class DataManagementServiceImpl implements DataManagementService {
         if (StringUtils.isNotBlank(taskQueryParam.getKeyword())) {
             queryWrapper.like(TMeasureTask::getTaskName, taskQueryParam.getKeyword());
         }
+
+        // 根据名称查询当前用户id
+        if (StringUtils.isNotBlank(taskQueryParam.getUpdateBy())){
+            SysUserPO user = userService.getOne(new QueryWrapper<SysUserPO>().eq("username", taskQueryParam.getUpdateBy()));
+            queryWrapper.eq(TMeasureTask::getUserId, user.getId());
+        }
+
 
         Page<TMeasureTask> result = taskManagementMapper.selectPage(page, queryWrapper);
         List<TMeasureTask> records = result.getRecords();

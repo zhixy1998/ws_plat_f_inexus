@@ -128,7 +128,7 @@ public class ConciseCommonController {
 //    )
     @OperateLog(
             module = "实验测试-经典模式",
-            description = "执行实验测试-经典模式-{operateType}-修改方法参数操作",
+            description = "执行实验测试-经典模式-{operateType}-设置样品操作",
             recordParams = true
     )
     @PostMapping("changeSampleAttachmentInfo")
@@ -249,31 +249,31 @@ public class ConciseCommonController {
         return conciseCommonService.setUpParametersPort(taskId,deviceSerialNumber,measureType);
     }
 
-    @ButtonPermission(
-            description = "通用websocket前置判断接口",
-            permissionMapping =
-                    "lumne=lumneMeasurement," +
-                    "quantity=quantityMeasurement," +
-                    "spectralScan=spectralScanScan," +
-                    "timeScan=timeScanScan," +
-                    "spectralScanBaseline=spectralScanBaseline," +
-                    "wmLumne=wizardModeLumneMeasurement," +
-                    "wmQuantity=wizardModeQuantityMeasurement," +
-                    "wmSpectralScan=wizardModeSpectralScanScan," +
-                    "wmTimeScan=wizardModeTimeScanScan," +
-                    "spectralScanBaseline=spectralScanBaseline," +
-                    "timeScanBaseline=timeScanBaseline," +
-                    "wmSpectralScanBaseline=wizardModeSpectralScanBaseline," +
-                    "wmTimeScanBaseline=wizardModeTimeScanBaseline," +
-                    "lumnePreviewReport=lumnePreviewReport," +
-                    "quantityPreviewReport=quantityPreviewReport," +
-                    "spectralPreviewReport=spectralPreviewReport," +
-                    "timeScanPreviewReport=timeScanPreviewReport," +
-                    "wmlumneGenerationReport=wmlumneGenerationReport," +
-                    "wmquantityGenerationReport=wmquantityGenerationReport," +
-                    "wmspectralGenerationReport=wmspectralGenerationReport," +
-                    "wmtimeScanGenerationReport=wmtimeScanGenerationReport,"
-    )
+//    @ButtonPermission(
+//            description = "通用websocket前置判断接口",
+//            permissionMapping =
+//                    "lumne=lumneMeasurement," +
+//                    "quantity=quantityMeasurement," +
+//                    "spectralScan=spectralScanScan," +
+//                    "timeScan=timeScanScan," +
+//                    "spectralScanBaseline=spectralScanBaseline," +
+//                    "wmLumne=wizardModeLumneMeasurement," +
+//                    "wmQuantity=wizardModeQuantityMeasurement," +
+//                    "wmSpectralScan=wizardModeSpectralScanScan," +
+//                    "wmTimeScan=wizardModeTimeScanScan," +
+//                    "spectralScanBaseline=spectralScanBaseline," +
+//                    "timeScanBaseline=timeScanBaseline," +
+//                    "wmSpectralScanBaseline=wizardModeSpectralScanBaseline," +
+//                    "wmTimeScanBaseline=wizardModeTimeScanBaseline," +
+//                    "lumnePreviewReport=lumnePreviewReport," +
+//                    "quantityPreviewReport=quantityPreviewReport," +
+//                    "spectralPreviewReport=spectralPreviewReport," +
+//                    "timeScanPreviewReport=timeScanPreviewReport," +
+//                    "wmlumneGenerationReport=wmlumneGenerationReport," +
+//                    "wmquantityGenerationReport=wmquantityGenerationReport," +
+//                    "wmspectralGenerationReport=wmspectralGenerationReport," +
+//                    "wmtimeScanGenerationReport=wmtimeScanGenerationReport,"
+//    )
     @OperateLog(
             module = "实验测试-经典模式或向导模式",
             description = "执行实验测试-{operateTypeExt}-{operateType}-操作",

@@ -32,19 +32,29 @@ public interface CalculationFormulaMapper {
     // 插入单条记录
     @Insert("INSERT INTO t_report_calculation_formulas " +
             "(detection_id, result_identity, result_name, unit, " +
-            "input_param1_name, input_param1_identity, input_param2_name, input_param2_identity, " +
-            "input_param3_name, input_param3_identity, input_param4_name, input_param4_identity, " +
-            "input_param5_name, input_param5_identity, input_param6_name, input_param6_identity, " +
-            "input_param7_name, input_param7_identity, input_param8_name, input_param8_identity, " +
-            "input_param9_name, input_param9_identity, input_param10_name, input_param10_identity, " +
+            "input_param1_name, input_param1_identity, is_sample_attribute1, curve_identifier1, " +
+            "input_param2_name, input_param2_identity, is_sample_attribute2, curve_identifier2, " +
+            "input_param3_name, input_param3_identity, is_sample_attribute3, curve_identifier3, " +
+            "input_param4_name, input_param4_identity, is_sample_attribute4, curve_identifier4, " +
+            "input_param5_name, input_param5_identity, is_sample_attribute5, curve_identifier5, " +
+            "input_param6_name, input_param6_identity, is_sample_attribute6, curve_identifier6, " +
+            "input_param7_name, input_param7_identity, is_sample_attribute7, curve_identifier7, " +
+            "input_param8_name, input_param8_identity, is_sample_attribute8, curve_identifier8, " +
+            "input_param9_name, input_param9_identity, is_sample_attribute9, curve_identifier9, " +
+            "input_param10_name, input_param10_identity, is_sample_attribute10, curve_identifier10, " +
             "formula_text, formula_image, detection_limit) " +
             "VALUES " +
             "(#{detectionId}, #{resultIdentity}, #{resultName}, #{unit}, " +
-            "#{inputParam1Name}, #{inputParam1Identity}, #{inputParam2Name}, #{inputParam2Identity}, " +
-            "#{inputParam3Name}, #{inputParam3Identity}, #{inputParam4Name}, #{inputParam4Identity}, " +
-            "#{inputParam5Name}, #{inputParam5Identity}, #{inputParam6Name}, #{inputParam6Identity}, " +
-            "#{inputParam7Name}, #{inputParam7Identity}, #{inputParam8Name}, #{inputParam8Identity}, " +
-            "#{inputParam9Name}, #{inputParam9Identity}, #{inputParam10Name}, #{inputParam10Identity}, " +
+            "#{inputParam1Name}, #{inputParam1Identity}, #{isSampleAttribute1}, #{curveIdentifier1}, " +
+            "#{inputParam2Name}, #{inputParam2Identity}, #{isSampleAttribute2}, #{curveIdentifier2}, " +
+            "#{inputParam3Name}, #{inputParam3Identity}, #{isSampleAttribute3}, #{curveIdentifier3}, " +
+            "#{inputParam4Name}, #{inputParam4Identity}, #{isSampleAttribute4}, #{curveIdentifier4}, " +
+            "#{inputParam5Name}, #{inputParam5Identity}, #{isSampleAttribute5}, #{curveIdentifier5}, " +
+            "#{inputParam6Name}, #{inputParam6Identity}, #{isSampleAttribute6}, #{curveIdentifier6}, " +
+            "#{inputParam7Name}, #{inputParam7Identity}, #{isSampleAttribute7}, #{curveIdentifier7}, " +
+            "#{inputParam8Name}, #{inputParam8Identity}, #{isSampleAttribute8}, #{curveIdentifier8}, " +
+            "#{inputParam9Name}, #{inputParam9Identity}, #{isSampleAttribute9}, #{curveIdentifier9}, " +
+            "#{inputParam10Name}, #{inputParam10Identity}, #{isSampleAttribute10}, #{curveIdentifier10}, " +
             "#{formulaText}, #{formulaImage}, #{detectionLimit})")
     void insert(CalculationFormula calculationFormula);
 
@@ -147,24 +157,44 @@ public interface CalculationFormulaMapper {
             "detection_limit = #{detectionLimit}, " +
             "input_param1_name = #{inputParam1Name}, " +
             "input_param1_identity = #{inputParam1Identity}, " +
+            "is_sample_attribute1 = #{isSampleAttribute1}, " +
+            "curve_identifier1 = #{curveIdentifier1}, " +
             "input_param2_name = #{inputParam2Name}, " +
             "input_param2_identity = #{inputParam2Identity}, " +
+            "is_sample_attribute2 = #{isSampleAttribute2}, " +
+            "curve_identifier2 = #{curveIdentifier2}, " +
             "input_param3_name = #{inputParam3Name}, " +
             "input_param3_identity = #{inputParam3Identity}, " +
+            "is_sample_attribute3 = #{isSampleAttribute3}, " +
+            "curve_identifier3 = #{curveIdentifier3}, " +
             "input_param4_name = #{inputParam4Name}, " +
             "input_param4_identity = #{inputParam4Identity}, " +
+            "is_sample_attribute4 = #{isSampleAttribute4}, " +
+            "curve_identifier4 = #{curveIdentifier4}, " +
             "input_param5_name = #{inputParam5Name}, " +
             "input_param5_identity = #{inputParam5Identity}, " +
+            "is_sample_attribute5 = #{isSampleAttribute5}, " +
+            "curve_identifier5 = #{curveIdentifier5}, " +
             "input_param6_name = #{inputParam6Name}, " +
             "input_param6_identity = #{inputParam6Identity}, " +
+            "is_sample_attribute6 = #{isSampleAttribute6}, " +
+            "curve_identifier6 = #{curveIdentifier6}, " +
             "input_param7_name = #{inputParam7Name}, " +
             "input_param7_identity = #{inputParam7Identity}, " +
+            "is_sample_attribute7 = #{isSampleAttribute7}, " +
+            "curve_identifier7 = #{curveIdentifier7}, " +
             "input_param8_name = #{inputParam8Name}, " +
             "input_param8_identity = #{inputParam8Identity}, " +
+            "is_sample_attribute8 = #{isSampleAttribute8}, " +
+            "curve_identifier8 = #{curveIdentifier8}, " +
             "input_param9_name = #{inputParam9Name}, " +
             "input_param9_identity = #{inputParam9Identity}, " +
+            "is_sample_attribute9 = #{isSampleAttribute9}, " +
+            "curve_identifier9 = #{curveIdentifier9}, " +
             "input_param10_name = #{inputParam10Name}, " +
-            "input_param10_identity = #{inputParam10Identity} " +
+            "input_param10_identity = #{inputParam10Identity}, " +
+            "is_sample_attribute10 = #{isSampleAttribute10}, " +
+            "curve_identifier10 = #{curveIdentifier10} " +
             "WHERE id = #{id}")
     void updateById(CalculationFormula formula);
 

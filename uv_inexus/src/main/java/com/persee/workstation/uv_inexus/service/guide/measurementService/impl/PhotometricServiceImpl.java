@@ -822,6 +822,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 task.setTaskName(methodDto.getNewTaskName());
             }
             tMeasureTaskService.updateById(task);
+            generateTableInfo(task.getId(), task.getMethodKey(),true);
             vo.setTaskId(task.getId());
             vo.setTaskName(task.getTaskName());
             vo.setTaskStatus(task.getTaskStatus());
@@ -1018,7 +1019,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 continue;
             }
 
-            if ("0".equals(param.getIsSampleAttribute())) {
+            if ("否".equals(param.getIsSampleAttribute())) {
 
                 String identifier = param.getCurveIdentifier();
                 if (identifier == null) {
@@ -1060,7 +1061,7 @@ public class PhotometricServiceImpl implements PhotometricService {
 //                        mapRelation.add(relation);
 //                    }
 //                }
-            } else if ("1".equals(param.getIsSampleAttribute())) {
+            } else if ("是".equals(param.getIsSampleAttribute())) {
                 String newHeadIdentity = randomString(8);
                 while (allHeadIdentity.contains(newHeadIdentity)) {
                     newHeadIdentity = randomString(8);

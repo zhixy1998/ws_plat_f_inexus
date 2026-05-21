@@ -13,6 +13,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceModelInfoDAO;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceTypeInfoDAO;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
+import com.persee.workstation.uv_inexus.enums.T800ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceAttachmentKindEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationInfoEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitPreCommandEnum;
@@ -56,7 +57,6 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-
 
 
 /**
@@ -214,7 +214,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 OperationResultEntity result = (OperationResultEntity) r.getData();
                 String sn = result.getDeviceSerialNumber();
 
-                if (!sn.equals(deviceSerialNumber)) {
+                if (sn == null || !sn.equals(deviceSerialNumber)) {
                     log.info("当前ip的序列号以改变！");
                     unConnectedDevice.add(deviceSerialNumber);
                 }
@@ -400,6 +400,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             case QueryLifeTime:
                 result = queryLifeTime(inputParam);
                 break;
+            case MercuryLocate:
+                result = mercuryLocate(inputParam);
+                break;
+            case SetWlList:
+                result = setWlList(inputParam);
+                break;
             default:
                 infoService.newReleaseDevice(deviceSerialNumber);
                 break;
@@ -409,6 +415,155 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             infoService.newReleaseDevice(deviceSerialNumber);
         }
         return result;
+    }
+
+    private R<OperationResultEntity> mercuryLocate(DevOperationInputParam inputParam) {
+        OperationResultEntity resultEntity = new OperationResultEntity();
+
+        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+
+        String deviceId = info.getDeviceId();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String xmlKey = device.getXmlKey();
+        Integer connectType = device.getConnectType();
+        Object[] param = new Object[]{};
+
+        String cmdId = T800ComIdEnums.GotoMLamp.getComId();
+        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+        Transition transition = xml.get(cmdId);
+        int replyNumber = transition.getReplyNumber();
+        int timeout = transition.getTimeout();
+        byte[] endBytes = null;
+        List<String> headReceiveBytes = transition.getHeadReceiveBytes();
+
+        byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
+
+        R<Object> calibration = new R<>();
+
+        boolean isDealOnTime = false;
+        if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
+
+        } else {
+
+            if (replyNumber < 0) {
+                String[] readBytes = transition.getReadBytes();
+                if (readBytes != null && readBytes.length > 0) {
+                    endBytes = new byte[4];
+                    String fullStr = readBytes[0];
+                    String[] parts = fullStr.split(":");
+
+                    for (int j = 0; j < 4 && j < parts.length; j++) {
+                        String part = parts[j].trim();
+                        // 跳过非数字部分（比如 "Check"）
+                        if (!part.matches("\\d+")) {
+                            break; // 或 continue，根据逻辑决定
+                        }
+                        // 解析为 int（支持 0~255）
+                        int intValue = Integer.parseInt(part);
+                        // 安全转为 byte（保留低8位）
+                        endBytes[j] = (byte) (intValue & 0xFF);
+                    }
+                }
+
+                calibration = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout, isDealOnTime, deviceSerialNumber, endBytes, headReceiveBytes);
+
+            } else {
+                calibration = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+            }
+
+            if (!calibration.getSuccess()) {
+                //TODO 国际化待定
+
+                return R.fail("汞灯定位失败");
+            }
+
+            resultEntity = (OperationResultEntity) calibration.getData();
+
+        }
+        return R.ok(resultEntity);
+    }
+
+    private R<OperationResultEntity> setWlList(DevOperationInputParam inputParam) {
+
+        OperationResultEntity resultEntity = new OperationResultEntity();
+
+        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+
+        String deviceId = info.getDeviceId();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String xmlKey = device.getXmlKey();
+        Integer connectType = device.getConnectType();
+        Object[] param = new Object[4];
+
+        String cmdId = T600ComIdEnums.SetWlList.getComId();
+        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+        Transition transition = xml.get(cmdId);
+        int replyNumber = transition.getReplyNumber();
+        int timeout = transition.getTimeout();
+        byte[] endBytes = null;
+        List<String> headReceiveBytes = transition.getHeadReceiveBytes();
+
+
+        int total = inputParam.getSetWlList().size();
+
+        for (int i = 0; i < total; i++) {
+            StepPoint point = inputParam.getSetWlList().get(i);
+
+            param[0] = i + 1;
+            param[1] = total;
+            param[2] = point.getTheoryStep();
+            param[3] = point.getActualStep();
+            if (device.getXmlKey().equals(DevXmlEnums.T800.getDevType())) {
+                param[2] = point.getActualStep();
+                param[3] = point.getTheoryStep();
+            }
+            byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
+
+            R<Object> calibration = new R<>();
+
+            boolean isDealOnTime = false;
+            if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
+
+            } else {
+
+                if (replyNumber < 0) {
+                    String[] readBytes = transition.getReadBytes();
+                    if (readBytes != null && readBytes.length > 0) {
+                        endBytes = new byte[4];
+                        String fullStr = readBytes[0];
+                        String[] parts = fullStr.split(":");
+
+                        for (int j = 0; j < 4 && i < parts.length; j++) {
+                            String part = parts[j].trim();
+                            // 跳过非数字部分（比如 "Check"）
+                            if (!part.matches("\\d+")) {
+                                break; // 或 continue，根据逻辑决定
+                            }
+                            // 解析为 int（支持 0~255）
+                            int intValue = Integer.parseInt(part);
+                            // 安全转为 byte（保留低8位）
+                            endBytes[i] = (byte) (intValue & 0xFF);
+                        }
+                    }
+
+                    calibration = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout, isDealOnTime, deviceSerialNumber, endBytes, headReceiveBytes);
+
+                } else {
+                    calibration = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+                }
+            }
+            if (!calibration.getSuccess()) {
+                //TODO 国际化待定
+
+                return R.fail("设置波长列表失败");
+            }
+
+            resultEntity = (OperationResultEntity) calibration.getData();
+
+        }
+        return R.ok(resultEntity);
     }
 
     private R<OperationResultEntity> queryLifeTime(DevOperationInputParam inputParam) {
@@ -484,7 +639,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         if (!r.getSuccess()) {
             return R.fail(r.getMessage());
         }
-        OperationResultEntity data = (OperationResultEntity)r.getData();
+        OperationResultEntity data = (OperationResultEntity) r.getData();
         return R.ok(data);
     }
 
@@ -1276,11 +1431,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 Object data = r.getData();
 
-                if (comId.equals(ConnectEnum.GetWlList.getComId())) {
+                if (comId.equals(ConnectEnum.GetWlList.getComId()) || comId.equals(ConnectEnum.T800GetWlList.getComId())) {
 
                     OperationResultEntity entity = (OperationResultEntity) data;
                     List<StepPoint> stepPoints = entity.getStepPoints();
                     String s = formulaUtil.addFormula(stepPoints, result.getDeviceSerialNumber());
+                    result.setStepPoints(stepPoints);
 
                     result.setLinearSegment(s);
                     continue;
@@ -1360,6 +1516,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
     /**
      * 根据 MAC 地址生成唯一的 IP 最后一位
+     *
      * @param macAddress 设备的 MAC 地址
      * @return IP 最后一位 (1-254)
      */
@@ -1655,7 +1812,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         Map<String, String> darkInfo = info.getDarkInfo();
         String z = "1";
-        if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
             z = "0.1";
         }
 //        if (darkInfo != null && StringUtils.hasText(darkInfo.get(device.getCurrentWavelength()))) {
@@ -1686,12 +1843,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 String s;
                 if (!Objects.isNull(zeroParam)) {
                     s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z));
-                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z));
                     }
                 } else {
                     s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z));
-                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z));
                     }
                 }
@@ -1712,12 +1869,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (!Objects.isNull(zeroParam)) {
                     s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z));
 
-                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z));
                     }
                 } else {
                     s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z));
-                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z));
                     }
                 }
@@ -2035,10 +2192,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                         measureResult.setValue(value);
 
-                    } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())){
+                    } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
                         Map<String, String> darkInfo = info.getDarkInfo();
                         String z = "1";
-                        if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                             z = "0.1";
                         }
 //                        if (darkInfo != null && StringUtils.hasText(darkInfo.get(s))) {
@@ -2050,7 +2207,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         }
                         String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
 
-                        if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                             tPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
                         }
 
@@ -2148,10 +2305,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                     measureResult.setValue(value);
 
-                } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())){
+                } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
                     Map<String, String> darkInfo = info.getDarkInfo();
                     String z = "1";
-                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         z = "0.1";
                     }
 //                    if (darkInfo != null && StringUtils.hasText(darkInfo.get(wavelength))) {
@@ -2164,7 +2321,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                     String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
 
-                    if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         tPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
                     }
                     String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);

@@ -52,7 +52,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
-import com.persee.workstation.uv_inexus.websocket.measure.concise.ConcisePhotometricNewWebSocket;
 @Controller
 @Slf4j
 @EnableWebSocketMessageBroker
@@ -75,7 +74,8 @@ public class LiveDetectionDevicesWebSocket {
 
     @Autowired
     ZeroCalibrationNewWebSocket zeroCalibrationNewWebSocket;
-
+    @Autowired
+    private org.ehcache.CacheManager cacheManager;
     @Autowired
     ConciseZeroCalibrationNewWebSocket conciseZeroCalibrationNewWebSocket;
 
@@ -477,6 +477,14 @@ public class LiveDetectionDevicesWebSocket {
                             if (StringUtils.hasText(device.getZeroWavelength())) {
                                 statusInfo.setX(device.getZeroWavelength() + "nm");
                                 statusInfo.setDevCurrentStatus(devCurrentStatus);
+                            }
+                        }
+
+                        if (Constants.DEVICE_STATUS_CALIBRATION.equals(deviceInfo.getDeviceCurrentStatus()) ) {
+                            if (StringUtils.hasText(deviceManager.getDarkWavelength(deviceId))) {
+                                statusInfo.setX(device.getDarkWavelength() + "nm");
+                                statusInfo.setDevCurrentStatus(deviceInfo.getDeviceCurrentStatus());
+                                System.err.println("calibrationWavelength: " + device.getDarkWavelength()+"nm");
                             }
                         }
                         statusInfo.setDevUseType(device.getUseType());
@@ -894,12 +902,43 @@ public class LiveDetectionDevicesWebSocket {
             String[] split = destination.split("/");
             String user = split[split.length - 1];
 
-            // 检查此会话是否已经订阅了此设备
             boolean isNewSubscription = addSubscription(sessionId, user);
-
             if (isNewSubscription) {
                 log.info("新增消息订阅: 会话={}", sessionId);
-//                sendMessage(user);
+                try {
+                    org.ehcache.Cache<String, Object> cache = cacheManager.getCache("defaultCache", String.class, Object.class);
+                    if (cache != null) {
+                        Object value = cache.get("message_subscribers");
+                        String existingUsers = value != null ? value.toString() : null;
+
+                        boolean alreadyExists = false;
+                        String subscribers;
+
+                        if (existingUsers == null || existingUsers.isEmpty()) {
+                            subscribers = user;
+                        } else {
+                            String[] users = existingUsers.split(",");
+                            for (String existingUser : users) {
+                                if (existingUser.trim().equals(user)) {
+                                    alreadyExists = true;
+                                    break;
+                                }
+                            }
+
+                            if (!alreadyExists) {
+                                subscribers = existingUsers + "," + user;
+                                log.debug("消息订阅用户已缓存: {}, 当前订阅用户: {}", user, subscribers);
+                            } else {
+                                subscribers = existingUsers;
+                                log.debug("用户已存在，无需重复添加: {}", user);
+                            }
+                        }
+
+                        cache.put("message_subscribers", subscribers);
+                    }
+                } catch (Exception e) {
+                    log.error("缓存消息订阅失败: 会话={}, 用户={}", sessionId, user, e);
+                }
             } else {
                 log.debug("重复消息订阅忽略: 会话={} ", sessionId);
             }
@@ -974,8 +1013,40 @@ public class LiveDetectionDevicesWebSocket {
         if (StringUtils.hasText(destination) && destination.startsWith(messageTopic)) {
 
             log.info("移除消息订阅: 会话={}", sessionId);
+
+            try {
+                org.ehcache.Cache<String, Object> cache = cacheManager.getCache("defaultCache", String.class, Object.class);
+                if (cache != null) {
+                    Object value = cache.get("message_subscribers");
+                    String existingUsers = value != null ? value.toString() : null;
+                    if (existingUsers != null && !existingUsers.isEmpty()) {
+                        String[] users = existingUsers.split(",");
+                        StringBuilder newSubscribers = new StringBuilder();
+                        for (String user : users) {
+                            if (!user.trim().equals(sessionId) && !user.trim().isEmpty()) {
+                                if (newSubscribers.length() > 0) {
+                                    newSubscribers.append(",");
+                                }
+                                newSubscribers.append(user.trim());
+                            }
+                        }
+
+                        String result = newSubscribers.toString();
+                        if (result.isEmpty()) {
+                            cache.remove("message_subscribers");
+                            log.debug("消息订阅缓存已清空");
+                        } else {
+                            cache.put("message_subscribers", result);
+                            log.debug("消息订阅用户已更新: {}", result);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.error("移除消息订阅缓存失败: 会话={}", sessionId, e);
+            }
         }
     }
+
 
     /**
      * 移除订阅关系，返回是否真正移除了订阅
