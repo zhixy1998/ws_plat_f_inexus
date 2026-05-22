@@ -420,7 +420,7 @@ public class GuidePhotometricWebSocket {
 
         if (!countedData.getSuccess()) {
             log.info(countedData.getMessage());
-            sendError(deviceSerialNumber, "请检查公式配置");
+            sendAndNoStopError(deviceSerialNumber, "请检查公式配置");
             return R.fail(countedData.getMessage());
         }
 
@@ -925,6 +925,12 @@ public class GuidePhotometricWebSocket {
         vo.setData(jsonObject);
         webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
    }
+
+    private void sendAndNoStopError(String deviceSerialNumber, String message) {
+
+        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConcisePhotoMetric.getOperation(), message);
+    }
+
     private static void initParams() {
      //初始化测量参数
      isAvg = false;

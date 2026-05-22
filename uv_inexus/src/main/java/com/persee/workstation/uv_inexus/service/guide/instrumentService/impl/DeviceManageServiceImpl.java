@@ -2419,6 +2419,62 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok();
     }
 
+    @Override
+    public R<Boolean> saveAllData(DeviceCalibrationDTO dto) {
+
+        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            return R.fail("请连接仪器！");
+        }
+        if (dto.getAllTableData() == null || dto.getAllTableData().isEmpty()) {
+            return R.fail("没有需要保存信息！");
+        }
+
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, DeviceCalibrationInfoEnum.MultiWavelength.getType());
+        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
+
+        LambdaQueryWrapper<DeviceCalibrationParamPO> paramWrapper = new LambdaQueryWrapper<>();
+        paramWrapper.eq(DeviceCalibrationParamPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        DeviceCalibrationParamPO paramPO = calibrationParamDAO.selectOne(paramWrapper);
+
+        CalibrationTableVO tableVO = paramPO.getTableData();
+
+        List<CalibrationTableData> allTableData = dto.getAllTableData();
+
+        if (tablePo == null) {
+
+            CalibrationTempPO po = new CalibrationTempPO();
+            po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+            po.setCreateBy(dto.getUpdateBy());
+            po.setCalibrationType(dto.getCalibrationType());
+            po.setParam(DeviceCalibrationParamEnum.Table.getType());
+            tableVO.setContent(allTableData);
+            po.setTableData(tableVO);
+
+            tempDao.insert(po);
+        } else {
+
+            tablePo.setUpdateBy(dto.getUpdateBy());
+            CalibrationTableVO tableData = tablePo.getTableData();
+            if (tableData == null) {
+                tableData = new CalibrationTableVO();
+                tableData.setHead(tableVO.getHead());
+            }
+
+            tableData.setContent(allTableData);
+
+            tablePo.setTableData(tableData);
+            tempDao.update(tablePo, wrapper);
+        }
+
+
+        return R.ok();
+    }
+
     /**
      *
      * 下发所有的参数给仪器

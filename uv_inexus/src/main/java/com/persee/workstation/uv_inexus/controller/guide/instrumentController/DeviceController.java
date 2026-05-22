@@ -534,6 +534,18 @@ public class DeviceController {
         }
     }
 
+    @PostMapping("/saveMultiCalibrationInfo")
+    @ApiOperation("多波长校正-保存用户填入的信息")
+    public Result<Boolean> saveMultiCalibrationInfo(@RequestBody DeviceCalibrationDTO dto) {
+        R<Boolean> r = deviceManageService.saveAllData(dto);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+
     @GetMapping("/reFindPeak")
     @ApiOperation("多波长校正-重新寻峰")
     public Result<Boolean> reFindPeak(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
