@@ -9,21 +9,38 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.*;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDTO;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
-import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.*;
-import com.persee.workstation.uv_inexus.service.sysUserPermissionService.UserPermissionService;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupPermissionMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPermissionPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysPermissionPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
+import com.persee.workstation.uv_inexus.service.sysUserPermissionService.UserPermissionService;
 
 @Service
 public class UserPermissionServiceImpl implements UserPermissionService {
@@ -79,10 +96,9 @@ public class UserPermissionServiceImpl implements UserPermissionService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        // 4. 查权限详情并排除"首页"
+        // 4. 查权限详情
         QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
         permQuery.in("id", permIds)
-                .ne("title", "首页")
                 .orderByAsc("sort");
         List<SysPermissionPO> permissionList = sysPermissionMapper.selectList(permQuery);
 
@@ -93,7 +109,6 @@ public class UserPermissionServiceImpl implements UserPermissionService {
                     BeanUtils.copyProperties(perm, dto);
                     return dto;
                 })
-                .filter(dto -> dto.getTitle() == null || !"首页".equals(dto.getTitle()))
                 .filter(dto -> {
                     // 过滤掉hidden=1的权限（注意处理null的情况，避免空指针）
                     Integer hidden = dto.getHidden();
@@ -255,7 +270,6 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
         permQuery.in("id", permIds)
                 .eq("parent_id", 0)
-                .ne("title", "首页")
                 .orderByAsc("sort")
                 .select("path");
         List<SysPermissionPO> permissionList = sysPermissionMapper.selectList(permQuery);
