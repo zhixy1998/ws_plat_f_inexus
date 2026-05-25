@@ -31,6 +31,9 @@ public class ReminderSwitchConfigDto {
     @ApiModelProperty(value = "排序号")
     private Integer sortOrder;
 
+    @ApiModelProperty(value = "通知模式：0-正常提醒，1-仅通知不提醒")
+    private Integer notificationMode;
+
     @ApiModelProperty(value = "描述说明")
     private String description;
     public void setEnabled(Integer enabled) {

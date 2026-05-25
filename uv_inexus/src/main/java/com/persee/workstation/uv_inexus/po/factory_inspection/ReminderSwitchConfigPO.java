@@ -26,6 +26,10 @@ public class ReminderSwitchConfigPO extends BasePO {
     @TableField("enabled")
     private Integer enabled;
 
+    @ApiModelProperty("通知模式：0-正常提醒，1-仅通知不提醒")
+    @TableField("notification_mode")
+    private Integer notificationMode;
+
     @ApiModelProperty("排序号")
     @TableField("sort_order")
     private Integer sortOrder;

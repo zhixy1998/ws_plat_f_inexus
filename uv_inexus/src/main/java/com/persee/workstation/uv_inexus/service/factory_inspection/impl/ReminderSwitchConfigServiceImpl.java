@@ -84,7 +84,18 @@ public class ReminderSwitchConfigServiceImpl extends ServiceImpl<ReminderSwitchC
             return Result.fail("获取提醒配置异常：" + e.getMessage());
         }
     }
+    @Override
+    public Integer getNotificationMode(Integer reminderType) {
+        LambdaQueryWrapper<ReminderSwitchConfigPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ReminderSwitchConfigPO::getReminderType, reminderType);
+        ReminderSwitchConfigPO config = this.getOne(wrapper);
 
+        if (config == null) {
+            return 0;
+        }
+
+        return config.getNotificationMode() != null ? config.getNotificationMode() : 0;
+    }
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Result<Boolean> updateConfig(ReminderSwitchConfigDto dto) {
