@@ -67,7 +67,7 @@ public class I18nController {
         Map<String, String> localeLabels = new LinkedHashMap<>();
         localeLabels.put("zh-CN", "中文");
         localeLabels.put("en-US", "English");
-        localeLabels.put("ja-JP", "日本語");
+//        localeLabels.put("ja-JP", "日本語");
         localeLabels.put("ru-RU", "Русский");
 
         // 构建返回结果

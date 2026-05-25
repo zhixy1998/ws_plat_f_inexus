@@ -2887,3 +2887,125 @@ messages:
     en-US: 'Version information imported and stored successfully'
     ja-JP: 'バージョン情報のインポートと保存に成功しました'
     ru-RU: 'Информация о версии успешно импортирована и сохранена'
+
+  # ========== 智能助手-标准物质效期提醒 (00610) ==========
+  '00610001':
+    zh-CN: '仪器无响应，请检查仪器状态和网线连接后，重新查找并联接仪器！'
+    en-US: 'Instrument not responding, please check instrument status and network cable connection, then reconnect!'
+    ja-JP: '機器が応答しません。機器の状態とネットワークケーブルの接続を確認し、再接続してください。'
+    ru-RU: 'Прибор не отвечает, пожалуйста, проверьте состояние прибора и подключение сетевого кабеля, затем переподключитесь!'
+
+  '00610002':
+    zh-CN: '系统消息'
+    en-US: 'System Message'
+    ja-JP: 'システムメッセージ'
+    ru-RU: 'Системное сообщение'
+
+  '00610003':
+    zh-CN: '【即将到期的标准物质】'
+    en-US: '[Standard Materials Expiring Soon]'
+    ja-JP: '【期限切れ間近の標準物質】'
+    ru-RU: '[Стандартные материалы с истекающим сроком]'
+
+  '00610004':
+    zh-CN: '🔴 {0} - 今天到期！'
+    en-US: '🔴 {0} - Expires today!'
+    ja-JP: '🔴 {0} - 今日期限切れ！'
+    ru-RU: '🔴 {0} - Истекает сегодня!'
+
+  '00610005':
+    zh-CN: '🟡 {0} - {1}天后到期 ({2})'
+    en-US: '🟡 {0} - Expires in {1} days ({2})'
+    ja-JP: '🟡 {0} - {1}日後期限切れ ({2})'
+    ru-RU: '🟡 {0} - Истекает через {1} дней ({2})'
+
+  '00610006':
+    zh-CN: '【已过期的标准物质】'
+    en-US: '[Expired Standard Materials]'
+    ja-JP: '【期限切れの標準物質】'
+    ru-RU: '[Истекшие стандартные материалы]'
+
+  '00610007':
+    zh-CN: '❌ {0} - 已过期{1}天 (应于{2}更换)'
+    en-US: '❌ {0} - Expired {1} days ago (should be replaced by {2})'
+    ja-JP: '❌ {0} - {1}日前期限切れ ({2}に交換必要)'
+    ru-RU: '❌ {0} - Истекло {1} дней назад (следовало заменить к {2})'
+
+  '00610008':
+    zh-CN: '请及时更换或重新标定标准物质，确保检测数据准确性！'
+    en-US: 'Please replace or recalibrate standard materials promptly to ensure data accuracy!'
+    ja-JP: '検出データの正確性を確保するため、標準物質を速やかに交換または再校正してください！'
+    ru-RU: 'Пожалуйста, своевременно замените или перекалибруйте стандартные материалы для обеспечения точности данных!'
+
+  '00610009':
+    zh-CN: '标准物质效期提醒'
+    en-US: 'Standard Material Expiry Reminder'
+    ja-JP: '標準物質有効期限アラート'
+    ru-RU: 'Напоминание об истечении срока стандартных материалов'
+
+  '00610010':
+    zh-CN: '提醒'
+    en-US: 'Reminder'
+    ja-JP: 'アラート'
+    ru-RU: 'Напоминание'
+
+  '00610011':
+    zh-CN: '通知'
+    en-US: 'Notification'
+    ja-JP: '通知'
+    ru-RU: 'Уведомление'
+
+  # ========== 设备操作错误消息 (00612) ==========
+  '00612001':
+    zh-CN: '缺少设备序列号或操作类型'
+    en-US: 'Missing device serial number or operation type'
+    ja-JP: 'デバイスシリアル番号または操作タイプがありません'
+    ru-RU: 'Отсутствует серийный номер устройства или тип операции'
+
+  '00612002':
+    zh-CN: '设备不存在'
+    en-US: 'Device not found'
+    ja-JP: 'デバイスが存在しません'
+    ru-RU: 'Устройство не найдено'
+
+  '00612003':
+    zh-CN: '当前仪器正在测量'
+    en-US: 'Instrument is currently measuring'
+    ja-JP: '現在測定中です'
+    ru-RU: 'Прибор正在进行измерение'
+
+  '00612004':
+    zh-CN: '设备正在执行其他操作'
+    en-US: 'Device is performing another operation'
+    ja-JP: 'デバイスは他の操作中です'
+    ru-RU: 'Устройство выполняет другую операцию'
+
+  '00612005':
+    zh-CN: '未知操作类型: {0}'
+    en-US: 'Unknown operation type: {0}'
+    ja-JP: '不明な操作タイプ: {0}'
+    ru-RU: 'Неизвестный тип операции: {0}'
+
+  '00612006':
+    zh-CN: '设备未连接'
+    en-US: 'Device not connected'
+    ja-JP: 'デバイスが接続されていません'
+    ru-RU: 'Устройство не подключено'
+
+  '00612007':
+    zh-CN: '设备未初始化'
+    en-US: 'Device not initialized'
+    ja-JP: 'デバイスが初期化されていません'
+    ru-RU: 'Устройство не инициализировано'
+
+  '00612008':
+    zh-CN: '启动测量失败: {0}'
+    en-US: 'Failed to start measurement: {0}'
+    ja-JP: '測定開始失敗: {0}'
+    ru-RU: 'Не удалось начать измерение: {0}'
+
+  '00612009':
+    zh-CN: '测量任务不存在'
+    en-US: 'Measurement task not found'
+    ja-JP: '測定タスクが存在しません'
+    ru-RU: 'Задача измерения не найдена'
