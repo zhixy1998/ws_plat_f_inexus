@@ -20,6 +20,7 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
+import static com.persee.workstation.uv_inexus.enums.messageEnums.MessageTypeEnum.TYPE_NOTICE_MESSAGE;
 import static com.persee.workstation.uv_inexus.enums.messageEnums.MessageTypeEnum.TYPE_REMIND_MESSAGE;
 
 /**
@@ -251,7 +252,6 @@ public class CalArtifactsExpiryReminderScheduler {
             return;
         }
 
-        // 分类：即将到期 vs 已过期
         List<ExpiryReminder> expiringReminders = new ArrayList<>();
         List<ExpiryReminder> expiredReminders = new ArrayList<>();
 
@@ -264,7 +264,6 @@ public class CalArtifactsExpiryReminderScheduler {
         }
 
         StringBuilder notification = new StringBuilder();
-//        notification.append("⚠️ 标准物质效期提醒<br>");
 
         if (!expiringReminders.isEmpty()) {
             notification.append("【即将到期的标准物质】<br>");
@@ -281,7 +280,6 @@ public class CalArtifactsExpiryReminderScheduler {
                             i + 1, reminder.artifact.getName(), days, expiryDateStr));
                 }
             }
-//            notification.append("<br>");
         }
 
         if (!expiredReminders.isEmpty()) {
@@ -294,16 +292,16 @@ public class CalArtifactsExpiryReminderScheduler {
                 notification.append(String.format("%d. ❌ %s - 已过期%d天 (应于%s更换)<br>",
                         i + 1, reminder.artifact.getName(), expiredDays, expiryDateStr));
             }
-//            notification.append("<br>");
         }
 
         notification.append("请及时更换或重新标定标准物质，确保检测数据准确性！");
 
         log.warn("发送标准物质效期提醒给用户 {}: <br>{}", updateUser, notification.toString());
 
-        // 创建消息记录
+        Integer messageType = getNotificationModeForExpiryReminder();
+
         MessageInfoPO messageInfoPO = new MessageInfoPO();
-        messageInfoPO.setMessageType(TYPE_REMIND_MESSAGE.getCode());
+        messageInfoPO.setMessageType(messageType);
         messageInfoPO.setMessageSummary("标准物质效期提醒");
         messageInfoPO.setMessageSource(Constants.MESSAGE_SOURCE_SYSTEM);
         messageInfoPO.setMessageContent(notification.toString());
@@ -312,11 +310,32 @@ public class CalArtifactsExpiryReminderScheduler {
 
         Boolean saved = messageInfoService.saveMessageInfo(messageInfoPO);
         if (saved) {
-            log.info("成功发送标准物质效期提醒给用户: {}", updateUser);
+            String typeDesc = messageType.equals(TYPE_REMIND_MESSAGE.getCode()) ? "提醒" : "通知";
+            log.info("成功发送标准物质效期{}给用户: {}", typeDesc, updateUser);
         } else {
             log.error("发送标准物质效期提醒失败，用户: {}", updateUser);
         }
     }
+
+    private Integer getNotificationModeForExpiryReminder() {
+        try {
+            Integer notificationMode = reminderSwitchConfigService.getNotificationMode(
+                    ReminderTypeEnum.EXPIRY_REMINDER.getCode()
+            );
+
+            if (notificationMode != null && notificationMode == 1) {
+                log.debug("标准物质效期提醒设置为'仅通知不提醒'模式");
+                return TYPE_NOTICE_MESSAGE.getCode();
+            }
+
+            return TYPE_REMIND_MESSAGE.getCode();
+        } catch (Exception e) {
+            log.error("获取提醒配置失败，使用默认提醒类型", e);
+            return TYPE_REMIND_MESSAGE.getCode();
+        }
+    }
+
+
 
     /**
      * 更新上次提醒日期
