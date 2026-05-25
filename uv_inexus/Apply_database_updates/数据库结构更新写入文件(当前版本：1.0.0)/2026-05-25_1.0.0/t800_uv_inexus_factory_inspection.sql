@@ -1,0 +1,1 @@
+UPDATE excel_template SET model = 'T600/T700';

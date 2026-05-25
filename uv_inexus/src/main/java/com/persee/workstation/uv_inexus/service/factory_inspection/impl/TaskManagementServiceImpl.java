@@ -206,6 +206,9 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             if (device.getData() != null) {
                 management.setOperationInstrument(device.getData());
             }
+            if (task.getSerialNumber()!=null) {
+                management.setOperationInstrument(task.getSerialNumber());
+            }
             if (StringUtils.isNotBlank(task.getTaskType())) {
                 management.setTaskType(task.getTaskType());
             }
