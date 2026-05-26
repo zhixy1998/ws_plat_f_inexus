@@ -28,7 +28,6 @@ import com.persee.workstation.uv_inexus.enums.instrumentEnums.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -2415,6 +2414,63 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         graphData.setGraph(graph);
         graphPo.setTableData(graphData);
         tempDao.update(graphPo, wrapper);
+
+        return R.ok();
+    }
+
+    @Override
+    public R<Boolean> saveAllData(DeviceCalibrationDTO dto) {
+
+        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            return R.fail("请连接仪器！");
+        }
+        if (dto.getAllTableData() == null || dto.getAllTableData().isEmpty()) {
+            return R.fail("没有需要保存信息！");
+        }
+
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, DeviceCalibrationInfoEnum.MultiWavelength.getType());
+        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
+
+        LambdaQueryWrapper<DeviceCalibrationParamPO> paramWrapper = new LambdaQueryWrapper<>();
+        paramWrapper.eq(DeviceCalibrationParamPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        DeviceCalibrationParamPO paramPO = calibrationParamDAO.selectOne(paramWrapper);
+
+        CalibrationTableVO tableVO = paramPO.getTableData();
+
+        List<CalibrationTableData> allTableData = dto.getAllTableData();
+        allTableData.forEach(data -> data.setIsOriginData(true));
+
+        if (tablePo == null) {
+
+            CalibrationTempPO po = new CalibrationTempPO();
+            po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+            po.setCreateBy(dto.getUpdateBy());
+            po.setCalibrationType(dto.getCalibrationType());
+            po.setParam(DeviceCalibrationParamEnum.Table.getType());
+            tableVO.setContent(allTableData);
+            po.setTableData(tableVO);
+
+            tempDao.insert(po);
+        } else {
+
+            tablePo.setUpdateBy(dto.getUpdateBy());
+            CalibrationTableVO tableData = tablePo.getTableData();
+            if (tableData == null) {
+                tableData = new CalibrationTableVO();
+                tableData.setHead(tableVO.getHead());
+            }
+
+            tableData.setContent(allTableData);
+
+            tablePo.setTableData(tableData);
+            tempDao.update(tablePo, wrapper);
+        }
+
 
         return R.ok();
     }

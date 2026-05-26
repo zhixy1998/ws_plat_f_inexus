@@ -151,6 +151,8 @@ public interface DeviceManageService {
 
     R<Boolean> deleteMultiCalibrationInfo(DeviceCalibrationDTO dto);
 
+    R<Boolean> saveAllData(DeviceCalibrationDTO dto);
+
     R<Boolean> sendMultiCalibrationToDevice(DeviceCalibrationDTO dto);
 
     R<Boolean> multiCalibration(DeviceCalibrationDTO dto, String multiType);
