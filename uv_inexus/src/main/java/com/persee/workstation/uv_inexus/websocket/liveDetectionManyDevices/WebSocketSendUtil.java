@@ -2,12 +2,10 @@ package com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices;
 
 
 import com.alibaba.fastjson.JSONObject;
-import com.baomidou.mybatisplus.core.toolkit.StringUtils;
-import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemManageDAO;
 import com.persee.workstation.uv_inexus.i18n.LocaleContext;
+import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
-import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemManagePO;
 import com.persee.workstation.uv_inexus.util.I18nMessageUtil;
 import com.persee.workstation.uv_inexus.vo.messageVo.MessageReport;
 import lombok.extern.slf4j.Slf4j;
@@ -29,10 +27,7 @@ public class WebSocketSendUtil {
     private I18nMessageUtil i18nMessageUtil;
 
     @Autowired
-    private SystemManageDAO systemManageDAO;
-
-    @Value("${sys-manage-default.defaultId}")
-    private String defaultId;
+    private LocaleProvider localeProvider;
 
     @Value("/topic/device")
     private String deviceTopic;
@@ -44,9 +39,6 @@ public class WebSocketSendUtil {
         return deviceTopic + "/" + deviceSerialNumber;
     }
 
-    /**
-     * 发送设备消息（不国际化，用于设备状态、测量数据等）
-     */
     public void sendMessage(String deviceSerialNumber, WebSocketResponseVO data) {
         try {
             data.setCurrentTime(LocalDateTime.now());
@@ -65,10 +57,6 @@ public class WebSocketSendUtil {
         sendMessage(deviceSerialNumber, result);
     }
 
-    /**
-     * 发送设备错误消息（已废弃，请使用 sendErrorMessageWithCode）
-     * @deprecated 使用 sendErrorMessageWithCode 代替
-     */
     @Deprecated
     public void sendErrorMessage(String deviceSerialNumber, String operation, String errorMessage) {
         try {
@@ -84,18 +72,9 @@ public class WebSocketSendUtil {
         }
     }
 
-    /**
-     * 发送国际化错误消息（推荐方式）
-     * 用于设备操作错误提示，自动使用系统默认语言翻译
-     *
-     * @param deviceSerialNumber 设备序列号
-     * @param operation 操作类型
-     * @param messageCode 消息码
-     * @param args 占位符参数
-     */
     public void sendErrorMessageWithCode(String deviceSerialNumber, String operation, String messageCode, Object... args) {
         try {
-            String locale = getSystemLocale();
+            String locale = localeProvider.getSystemLocale();
 
             LocaleContext.executeWithLocale(locale, () -> {
                 String localizedMessage = i18nMessageUtil.getMessage(messageCode, args);
@@ -115,13 +94,10 @@ public class WebSocketSendUtil {
         }
     }
 
-    /**
-     * 发送设备断开连接消息（使用系统默认语言）
-     */
     public void sendDeviceDisConnectMessage(String deviceSerialNumber) {
         JSONObject errorMsg = new JSONObject();
         try {
-            String locale = getSystemLocale();
+            String locale = localeProvider.getSystemLocale();
 
             LocaleContext.executeWithLocale(locale, () -> {
                 errorMsg.put("error", i18nMessageUtil.getMessage("00610001"));
@@ -136,10 +112,6 @@ public class WebSocketSendUtil {
         }
     }
 
-    /**
-     * 发送用户消息（已构建好的 MessageReport，不自动翻译）
-     * 适用场景：消息内容已经在调用方翻译好了
-     */
     public void newMessageReport(String updateBy, MessageReport message) {
         WebSocketResponseVO messageVO = new WebSocketResponseVO();
         messageVO.setOperation(WebSocketOperationEnum.Message.getOperation());
@@ -147,17 +119,9 @@ public class WebSocketSendUtil {
         messagingTemplate.convertAndSend(messageTopic + "/" + updateBy, messageVO);
     }
 
-    /**
-     * 发送国际化用户消息（推荐方式）
-     * 自动获取用户语言并翻译
-     *
-     * @param userId 用户ID
-     * @param messageCode 消息码
-     * @param args 占位符参数
-     */
     public void sendI18nMessage(String userId, String messageCode, Object... args) {
         try {
-            String locale = getUserLocale(userId);
+            String locale = localeProvider.getUserLocale(userId);
 
             LocaleContext.executeWithLocale(locale, () -> {
                 String localizedMessage = i18nMessageUtil.getMessage(messageCode, args);
@@ -180,19 +144,9 @@ public class WebSocketSendUtil {
         }
     }
 
-    /**
-     * 发送国际化用户消息（自定义消息类型和来源）
-     * 适用于需要自定义消息类型的场景
-     *
-     * @param userId 用户ID
-     * @param messageType 消息类型
-     * @param sourceCode 消息来源消息码
-     * @param summaryCode 消息摘要消息码
-     * @param args 占位符参数
-     */
     public void sendI18nMessageCustom(String userId, Integer messageType, String sourceCode, String summaryCode, Object... args) {
         try {
-            String locale = getUserLocale(userId);
+            String locale = localeProvider.getUserLocale(userId);
 
             LocaleContext.executeWithLocale(locale, () -> {
                 String source = i18nMessageUtil.getMessage(sourceCode);
@@ -213,44 +167,6 @@ public class WebSocketSendUtil {
             });
         } catch (Exception e) {
             log.error("发送国际化消息失败: user={}, sourceCode={}, summaryCode={}", userId, sourceCode, summaryCode, e);
-        }
-    }
-
-
-    /**
-     * 获取用户语言配置
-     */
-    private String getUserLocale(String userId) {
-        try {
-            SystemManagePO systemConfig = systemManageDAO.selectById(defaultId);
-            if (systemConfig != null && StringUtils.isNotBlank(systemConfig.getLanguage())) {
-                String language = systemConfig.getLanguage();
-                log.debug("使用系统配置的语言: {}", language);
-                return language;
-            }
-
-            log.debug("未找到语言配置，使用默认语言: zh-CN");
-            return "zh-CN";
-
-        } catch (Exception e) {
-            log.error("获取用户语言配置失败，使用默认语言", e);
-            return "zh-CN";
-        }
-    }
-
-    /**
-     * 获取系统默认语言（用于设备消息）
-     */
-    private String getSystemLocale() {
-        try {
-            SystemManagePO systemConfig = systemManageDAO.selectById(defaultId);
-            if (systemConfig != null && StringUtils.isNotBlank(systemConfig.getLanguage())) {
-                return systemConfig.getLanguage();
-            }
-            return "zh-CN";
-        } catch (Exception e) {
-            log.error("获取系统语言配置失败，使用默认语言", e);
-            return "zh-CN";
         }
     }
 }

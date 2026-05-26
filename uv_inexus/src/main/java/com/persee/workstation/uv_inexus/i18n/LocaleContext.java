@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class LocaleContext {
 
-    private static final ThreadLocal<String> LOCALE_HOLDER = new ThreadLocal<>();
+    private static final InheritableThreadLocal<String> LOCALE_HOLDER = new InheritableThreadLocal<>();
 
     private static final String DEFAULT_LOCALE = "zh-CN";
 
@@ -13,8 +13,8 @@ public class LocaleContext {
         if (locale == null || locale.isEmpty()) {
             locale = DEFAULT_LOCALE;
         }
-        LOCALE_HOLDER.set(locale);
-        log.debug("设置当前线程语言: {}", locale);
+        String normalized = locale.replace('_', '-');
+        LOCALE_HOLDER.set(normalized);
     }
 
     public static String getLocale() {
@@ -24,24 +24,33 @@ public class LocaleContext {
 
     public static void clear() {
         LOCALE_HOLDER.remove();
-        log.debug("清除当前线程语言上下文");
     }
 
     public static <T> T executeWithLocale(String locale, java.util.concurrent.Callable<T> task) throws Exception {
+        String previous = LOCALE_HOLDER.get();
         try {
             setLocale(locale);
             return task.call();
         } finally {
-            clear();
+            restoreLocale(previous);
         }
     }
 
     public static void executeWithLocale(String locale, Runnable task) {
+        String previous = LOCALE_HOLDER.get();
         try {
             setLocale(locale);
             task.run();
         } finally {
-            clear();
+            restoreLocale(previous);
+        }
+    }
+
+    private static void restoreLocale(String previous) {
+        if (previous != null) {
+            LOCALE_HOLDER.set(previous);
+        } else {
+            LOCALE_HOLDER.remove();
         }
     }
 }

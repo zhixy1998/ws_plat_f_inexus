@@ -140,14 +140,11 @@ public class TemplateController {
     @ApiOperation("创建新结构化模板")
     public Result<String> createNewTemplate(@RequestBody @Valid TemplateCreationRequest request) {
         try {
-            // 参数校验
             if (request == null) {
-                return Result.fail("请求参数不能为空");
+                return Result.fail("00613016");
             }
-            // 调用服务创建模板
             Result<String> result = templateService.createTemplate(request);
 
-            // 记录日志
             if (result.getCode() == 200) {
                 log.info("成功创建模板: {}", request.getTemplateCode());
             } else {
@@ -157,36 +154,31 @@ public class TemplateController {
             return result;
         } catch (Exception e) {
             log.error("创建模板时发生异常: {}", request.getTemplateCode(), e);
-            return Result.fail("创建模板失败: " + e.getMessage());
+            return Result.fail("00613017", e.getMessage());
         }
     }
 
-    //修改模板
     @PutMapping("/template/update")
     @ApiOperation("更新现有结构化模板")
     public Result updateTemplate(@RequestBody TemplateUpdateRequest request) {
         try {
-            // 参数校验
             if (request == null) {
-                return Result.fail("请求参数不能为空");
+                return Result.fail("00613016");
             }
             if (request.getTemplateCode() == null || request.getTemplateCode().trim().isEmpty()) {
-                return Result.fail("模板代码不能为空");
+                return Result.fail("00613018");
             }
             if (request.getSelectedFields() == null || request.getSelectedFields().isEmpty()) {
-                return Result.fail("选中字段不能为空");
+                return Result.fail("00613019");
             }
 
-            // 检查模板是否存在
             Result<List<String>> existingHeaders = templateService.getHeaders(request.getTemplateCode());
             if (existingHeaders.getCode() != 200) {
-                return Result.fail("模板不存在: " + request.getTemplateCode());
+                return Result.fail("0061301A", request.getTemplateCode());
             }
 
-            // 调用服务更新模板
             Result result = templateService.updateTemplate(request);
 
-            // 记录日志
             if (result.getCode() == 200) {
                 log.info("成功更新模板: {}", request.getTemplateCode());
             } else {
@@ -196,7 +188,7 @@ public class TemplateController {
             return result;
         } catch (Exception e) {
             log.error("更新模板时发生异常: {}", request.getTemplateCode(), e);
-            return Result.fail("更新模板失败: " + e.getMessage());
+            return Result.fail("0061301B", e.getMessage());
         }
     }
 
@@ -243,7 +235,7 @@ public class TemplateController {
     public Result<String> batchDeleteTemplate(@RequestBody BatchDelDto batchDelDto) {
         List<String> list = batchDelDto.getTemplateCodes();
         if (CollectionUtils.isEmpty(list)) {
-            return Result.fail("请选择要删除的模板");
+            return Result.fail("0061301C");
         }
         return templateService.batchDeleteTemplate(list);
     }

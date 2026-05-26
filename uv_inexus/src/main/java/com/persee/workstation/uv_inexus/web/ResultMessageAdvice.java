@@ -1,11 +1,11 @@
 package com.persee.workstation.uv_inexus.web;
 
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.i18n.LocaleContext;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.R;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.MessageSource;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -14,16 +14,12 @@ import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
-import java.util.Locale;
-
+@Slf4j
 @RestControllerAdvice(basePackages = "com.persee.workstation.uv_inexus")
 public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
 
     @Autowired
-    private MessageSource messageSource;
-
-    @Autowired
-    private YamlMessageSource yamlMessageSource;
+    private I18nMessageSource i18nMessageSource;
 
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
@@ -39,79 +35,68 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
             return null;
         }
 
-        // 从 LocaleContext 获取当前用户的语言设置
-        String localeStr = LocaleContext.getLocale();
-        System.out.println("🌍 [ResultMessageAdvice] 准备翻译消息，当前语言: " + localeStr);
-
-//        Locale locale = parseLocale(localeStr);
+        String locale = LocaleContext.getLocale();
 
         if (body instanceof Result) {
             Result<?> result = (Result<?>) body;
-            String messageCode = result.getMessageCode();
-
-            if (messageCode != null && !messageCode.trim().isEmpty()) {
-                System.out.println("🔍 [ResultMessageAdvice] 正在查找消息码: " + messageCode);
-                // 使用当前用户的语言进行翻译
-                String yamlMessage = yamlMessageSource.getMessage(messageCode, localeStr, result.getObj(), null);
-                System.out.println("📝 [ResultMessageAdvice] 翻译结果: " + yamlMessage);
-
-                if (!messageCode.equals(yamlMessage)) {
-                    result.setMessage(yamlMessage);
-                    return result;
-                }
-            }
+            translateResult(result, locale);
+            return result;
         }
-
 
         if (body instanceof R) {
             R<?> r = (R<?>) body;
-            String messageCode = r.getMessageCode();
-            Object[] obj = r.getObj();
-
-            if (messageCode != null && !messageCode.trim().isEmpty()) {
-                // 使用当前用户的语言进行翻译
-                String yamlMessage = yamlMessageSource.getMessage(messageCode, localeStr, obj, null);
-                if (!messageCode.equals(yamlMessage)) {
-                    r.setMessage(yamlMessage);
-                    return r;
-                }
-                System.out.println("DEBUG: Message code " + messageCode + " not found in YAML for locale " + localeStr + ", returned: " + yamlMessage);
-            }
-
-//            try {
-////                String message = messageSource.getMessage(r.getMessage(), obj, locale);
-//                r.setMessage(message);
-//            } catch (Exception e) {
-//                // 忽略异常，保留原始消息
-//            }
+            translateR(r, locale);
             return r;
         }
 
         return body;
     }
 
-    /**
-     * 解析语言字符串为 Locale 对象
-     *
-     * @param localeStr 语言字符串，如 "zh_CN", "en_US", "ja_JP"
-     * @return Locale 对象
-     */
-    private Locale parseLocale(String localeStr) {
-        if (localeStr == null || localeStr.isEmpty()) {
-            return Locale.SIMPLIFIED_CHINESE;
-        }
-
-        try {
-            String[] parts = localeStr.split("_");
-            if (parts.length == 2) {
-                return new Locale(parts[0], parts[1]);
-            } else if (parts.length == 3) {
-                return new Locale(parts[0], parts[1], parts[2]);
+    private void translateResult(Result<?> result, String locale) {
+        String messageCode = result.getMessageCode();
+        if (messageCode != null && !messageCode.trim().isEmpty()) {
+            String translated = i18nMessageSource.getMessage(messageCode, locale, result.getObj(), null);
+            if (translated != null && !messageCode.equals(translated)) {
+                result.setMessage(translated);
             }
-        } catch (Exception e) {
-            // 解析失败，使用默认语言
+            return;
         }
 
-        return Locale.SIMPLIFIED_CHINESE;
+        String message = result.getMessage();
+        if (message != null && containsChinese(message)) {
+            String translated = i18nMessageSource.getMessage(message, locale);
+            if (translated != null && !message.equals(translated)) {
+                result.setMessage(translated);
+            }
+        }
+    }
+
+    private void translateR(R<?> r, String locale) {
+        String messageCode = r.getMessageCode();
+        Object[] obj = r.getObj();
+
+        if (messageCode != null && !messageCode.trim().isEmpty()) {
+            String translated = i18nMessageSource.getMessage(messageCode, locale, obj, null);
+            if (translated != null && !messageCode.equals(translated)) {
+                r.setMessage(translated);
+            }
+            return;
+        }
+
+        String message = r.getMessage();
+        if (message != null && containsChinese(message)) {
+            String translated = i18nMessageSource.getMessage(message, locale);
+            if (translated != null && !message.equals(translated)) {
+                r.setMessage(translated);
+            }
+        }
+    }
+
+    private boolean containsChinese(String value) {
+        if (value == null) return false;
+        for (char c : value.toCharArray()) {
+            if (c >= '\u4e00' && c <= '\u9fff') return true;
+        }
+        return false;
     }
 }

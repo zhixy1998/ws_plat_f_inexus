@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *     ja_JP: 'ユーザーが存在しません'
  */
 @Component
+@Deprecated
 public class YamlMessageSource {
 
     private static final String DICT_FILE = "i18n/i18n-dictionary.yaml";

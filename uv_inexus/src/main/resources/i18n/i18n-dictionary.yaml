@@ -1,7 +1,18 @@
 # =====================================================
 # 国际化消息字典 - 中英日俄四语
-# 规则：模块(三位) + 子模块(两位) + 具体编号(三位十六进制)
-# 最后更新：2026-05-15
+#
+# 本文件: i18n-dictionary.yaml — API 消息码字典
+#   key 格式: 模块(3位) + 子模块(2位) + 编号(3位十六进制) = 8位
+#   例: 00613001 (出厂检测 006 + 13 + 001)
+#   用途: Result.fail("00613001") / R.fail("00613001") / BusinessException("00613001")
+#         通过 ResultMessageAdvice 自动翻译后返回给前端
+#
+# UI 文本翻译文件: i18n-ui-texts.yaml
+#   key 格式: 中文原文（供 OutputTranslator 在 WebSocket 推送时翻译）
+#
+# 新接口国际化步骤:
+#   1. API 错误/成功消息 → 在本文件添加消息码，代码中用 R.fail("码") / Result.fail("码")
+#   2. WebSocket 推送的中文文本 → 在 i18n-ui-texts.yaml 添加中文原文 key
 # =====================================================
 
 messages:
@@ -3009,3 +3020,365 @@ messages:
     en-US: 'Measurement task not found'
     ja-JP: '測定タスクが存在しません'
     ru-RU: 'Задача измерения не найдена'
+
+  # ========== 出厂检测模块 (00613) ==========
+  '00613001':
+    zh-CN: '当前任务与仪器序列号不匹配，请新建任务'
+    en-US: 'Task does not match instrument serial number, please create a new task'
+    ja-JP: 'タスクとシリアル番号が一致しません、新しいタスクを作成してください'
+    ru-RU: 'Задача не соответствует серийному номеру прибора, создайте новую задачу'
+
+  '00613002':
+    zh-CN: '请检查当前仪器是否连接'
+    en-US: 'Please check if the instrument is connected'
+    ja-JP: '機器が接続されているか確認してください'
+    ru-RU: 'Пожалуйста, проверьте подключение прибора'
+
+  '00613003':
+    zh-CN: '设备未激活'
+    en-US: 'Device not activated'
+    ja-JP: 'デバイスがアクティベートされていません'
+    ru-RU: 'Устройство не активировано'
+
+  '00613004':
+    zh-CN: '请检查当前仪器是否初始化'
+    en-US: 'Please check if the instrument is initialized'
+    ja-JP: '機器が初期化されているか確認してください'
+    ru-RU: 'Пожалуйста, проверьте инициализацию прибора'
+
+  '00613005':
+    zh-CN: '设备正在初始化'
+    en-US: 'Device is initializing'
+    ja-JP: 'デバイスを初期化しています'
+    ru-RU: 'Устройство инициализируется'
+
+  '00613006':
+    zh-CN: '暂停任务失败'
+    en-US: 'Failed to pause task'
+    ja-JP: 'タスクの一時停止に失敗しました'
+    ru-RU: 'Не удалось приостановить задачу'
+
+  '00613007':
+    zh-CN: '请检查是否连接仪器'
+    en-US: 'Please check instrument connection'
+    ja-JP: '機器の接続を確認してください'
+    ru-RU: 'Пожалуйста, проверьте подключение прибора'
+
+  '00613008':
+    zh-CN: '样品池中未找到：{0}'
+    en-US: 'Not found in sample pool: {0}'
+    ja-JP: 'サンプルプールに見つかりません: {0}'
+    ru-RU: 'Не найдено в пуле образцов: {0}'
+
+  '00613009':
+    zh-CN: '样品池中，未找到基线所需的空气'
+    en-US: 'Air required for baseline not found in sample pool'
+    ja-JP: 'サンプルプールにベースラインに必要な空気が見つかりません'
+    ru-RU: 'В пуле образцов не найден воздух, необходимый для базовой линии'
+
+  '0061300A':
+    zh-CN: '样品池为空'
+    en-US: 'Sample pool is empty'
+    ja-JP: 'サンプルプールが空です'
+    ru-RU: 'Пул образцов пуст'
+
+  '0061300B':
+    zh-CN: 'Python服务调用异常'
+    en-US: 'Python service call exception'
+    ja-JP: 'Pythonサービス呼び出し例外'
+    ru-RU: 'Исключение при вызове службы Python'
+
+  '0061300C':
+    zh-CN: '设备类型配置信息不存在'
+    en-US: 'Device type configuration does not exist'
+    ja-JP: 'デバイスタイプ設定情報が存在しません'
+    ru-RU: 'Конфигурация типа устройства не существует'
+
+  '0061300D':
+    zh-CN: '算法服务调用超时'
+    en-US: 'Algorithm service call timed out'
+    ja-JP: 'アルゴリズムサービス呼び出しがタイムアウトしました'
+    ru-RU: 'Тайм-аут вызова службы алгоритмов'
+
+  '0061300E':
+    zh-CN: '算法服务调用失败: {0}'
+    en-US: 'Algorithm service call failed: {0}'
+    ja-JP: 'アルゴリズムサービス呼び出しに失敗しました: {0}'
+    ru-RU: 'Вызов службы алгоритмов не удался: {0}'
+
+  '0061300F':
+    zh-CN: '算法服务调用被中断'
+    en-US: 'Algorithm service call interrupted'
+    ja-JP: 'アルゴリズムサービス呼び出しが中断されました'
+    ru-RU: 'Вызов службы алгоритмов прерван'
+
+  '00613010':
+    zh-CN: '算法服务异常,请重启服务'
+    en-US: 'Algorithm service error, please restart the service'
+    ja-JP: 'アルゴリズムサービスエラー、サービスを再起動してください'
+    ru-RU: 'Ошибка службы алгоритмов, перезапустите службу'
+
+  '00613011':
+    zh-CN: '未找到设备类型[{0}]的配置信息，请联系管理员'
+    en-US: 'Configuration for device type [{0}] not found, please contact administrator'
+    ja-JP: 'デバイスタイプ[{0}]の設定情報が見つかりません、管理者に連絡してください'
+    ru-RU: 'Конфигурация для типа устройства [{0}] не найдена, обратитесь к администратору'
+
+  '00613012':
+    zh-CN: '停止任务失败: {0}'
+    en-US: 'Failed to stop task: {0}'
+    ja-JP: 'タスクの停止に失敗しました: {0}'
+    ru-RU: 'Не удалось остановить задачу: {0}'
+
+  # ========== 仪器操作模块-补充 (00208) ==========
+  '00208001':
+    zh-CN: '灯类型出错'
+    en-US: 'Lamp type error'
+    ja-JP: 'ランプタイプエラー'
+    ru-RU: 'Ошибка типа лампы'
+
+  '00208002':
+    zh-CN: '波长校正失败，请检查仪器'
+    en-US: 'Wavelength calibration failed, please check instrument'
+    ja-JP: '波長校正に失敗しました、機器を確認してください'
+    ru-RU: 'Калибровка длины волны не удалась, проверьте прибор'
+
+  '00208003':
+    zh-CN: '暗电流校正失败，请检查仪器'
+    en-US: 'Dark current calibration failed, please check instrument'
+    ja-JP: '暗電流校正に失敗しました、機器を確認してください'
+    ru-RU: 'Калибровка темнового тока не удалась, проверьте прибор'
+
+  '00208004':
+    zh-CN: '未找到该设备'
+    en-US: 'Device not found'
+    ja-JP: 'デバイスが見つかりません'
+    ru-RU: 'Устройство не найдено'
+
+  '00208005':
+    zh-CN: '设备正在使用中，请等待'
+    en-US: 'Device is in use, please wait'
+    ja-JP: 'デバイスは使用中です、お待ちください'
+    ru-RU: 'Устройство занято, подождите'
+
+  '00208006':
+    zh-CN: '终止波长不能大于起始波长'
+    en-US: 'End wavelength cannot be greater than start wavelength'
+    ja-JP: '終了波長は開始波長より大きくできません'
+    ru-RU: 'Конечная длина волны не может быть больше начальной'
+
+  '00208007':
+    zh-CN: '当前仪器不支持该扫描速度'
+    en-US: 'Current instrument does not support this scan speed'
+    ja-JP: '現在の機器はこのスキャン速度をサポートしていません'
+    ru-RU: 'Текущий прибор не поддерживает эту скорость сканирования'
+
+  '00208008':
+    zh-CN: '请连接仪器'
+    en-US: 'Please connect the instrument'
+    ja-JP: '機器を接続してください'
+    ru-RU: 'Пожалуйста, подключите прибор'
+
+  '00208009':
+    zh-CN: '没有需要删除的波长信息'
+    en-US: 'No wavelength information to delete'
+    ja-JP: '削除する波長情報がありません'
+    ru-RU: 'Нет информации о длине волны для удаления'
+
+  '0020800A':
+    zh-CN: '没有可以下发给仪器的参数'
+    en-US: 'No parameters to send to instrument'
+    ja-JP: '機器に送信するパラメータがありません'
+    ru-RU: 'Нет параметров для отправки прибору'
+
+  '0020800B':
+    zh-CN: '没有数据可以寻峰'
+    en-US: 'No data available for peak finding'
+    ja-JP: 'ピーク検出できるデータがありません'
+    ru-RU: 'Нет данных для поиска пиков'
+
+  '0020800C':
+    zh-CN: '第{0}号请选择物质'
+    en-US: 'Please select material for position {0}'
+    ja-JP: '{0}番目の物質を選択してください'
+    ru-RU: 'Пожалуйста, выберите материал для позиции {0}'
+
+  '0020800D':
+    zh-CN: '第{0}号请选择光度模式'
+    en-US: 'Please select photometric mode for position {0}'
+    ja-JP: '{0}番目の光度モードを選択してください'
+    ru-RU: 'Пожалуйста, выберите фотометрический режим для позиции {0}'
+
+  '0020800E':
+    zh-CN: '第{0}号请选择增益'
+    en-US: 'Please select gain for position {0}'
+    ja-JP: '{0}番目のゲインを選択してください'
+    ru-RU: 'Пожалуйста, выберите усиление для позиции {0}'
+
+  '0020800F':
+    zh-CN: '第{0}号请选择灯类型'
+    en-US: 'Please select lamp type for position {0}'
+    ja-JP: '{0}番目のランプタイプを選択してください'
+    ru-RU: 'Пожалуйста, выберите тип лампы для позиции {0}'
+
+  '00208010':
+    zh-CN: '第{0}号请选择标准波长'
+    en-US: 'Please select standard wavelength for position {0}'
+    ja-JP: '{0}番目の標準波長を選択してください'
+    ru-RU: 'Пожалуйста, выберите стандартную длину волны для позиции {0}'
+
+  '00208011':
+    zh-CN: '请选择同一物质'
+    en-US: 'Please select the same material'
+    ja-JP: '同じ物質を選択してください'
+    ru-RU: 'Пожалуйста, выберите один и тот же материал'
+
+  '00208012':
+    zh-CN: '请选择同一光度模式'
+    en-US: 'Please select the same photometric mode'
+    ja-JP: '同じ光度モードを選択してください'
+    ru-RU: 'Пожалуйста, выберите один и тот же фотометрический режим'
+
+  '00208013':
+    zh-CN: '请选择同一增益'
+    en-US: 'Please select the same gain'
+    ja-JP: '同じゲインを選択してください'
+    ru-RU: 'Пожалуйста, выберите одинаковое усиление'
+
+  '00208014':
+    zh-CN: '请选择同一灯类型'
+    en-US: 'Please select the same lamp type'
+    ja-JP: '同じランプタイプを選択してください'
+    ru-RU: 'Пожалуйста, выберите один и тот же тип лампы'
+
+  '00208015':
+    zh-CN: '光度模式缺失'
+    en-US: 'Photometric mode missing'
+    ja-JP: '光度モードが不足しています'
+    ru-RU: 'Фотометрический режим отсутствует'
+
+  '00208016':
+    zh-CN: '基线不能选择光度模式为ES、ER'
+    en-US: 'Baseline cannot use ES or ER photometric mode'
+    ja-JP: 'ベースラインはES、ER光度モードを選択できません'
+    ru-RU: 'Базовая линия не может использовать фотометрический режим ES или ER'
+
+  '00208017':
+    zh-CN: '未识别当前仪器'
+    en-US: 'Current instrument not recognized'
+    ja-JP: '現在の機器が認識されていません'
+    ru-RU: 'Текущий прибор не распознан'
+
+  '00208018':
+    zh-CN: '波段超出范围'
+    en-US: 'Wavelength range out of bounds'
+    ja-JP: '波長範囲が上限を超えています'
+    ru-RU: 'Диапазон длин волн выходит за пределы'
+
+  '00208019':
+    zh-CN: '基线和扫描只能选择一个物质'
+    en-US: 'Only one material can be selected for baseline and scan'
+    ja-JP: 'ベースラインとスキャンでは1つの物質のみ選択できます'
+    ru-RU: 'Для базовой линии и сканирования можно выбрать только один материал'
+
+  '0020801A':
+    zh-CN: '该设备不支持查询使用寿命'
+    en-US: 'This device does not support lifespan query'
+    ja-JP: 'このデバイスは寿命照会をサポートしていません'
+    ru-RU: 'Это устройство не поддерживает запрос срока службы'
+
+  '0020801B':
+    zh-CN: '参数为空'
+    en-US: 'Parameters are empty'
+    ja-JP: 'パラメータが空です'
+    ru-RU: 'Параметры пусты'
+
+  '00613013':
+    zh-CN: '设备列表不能为空'
+    en-US: 'Device list cannot be empty'
+    ja-JP: 'デバイスリストは空にできません'
+    ru-RU: 'Список устройств не может быть пустым'
+
+  '00613014':
+    zh-CN: '所有设备连接失败'
+    en-US: 'All device connections failed'
+    ja-JP: 'すべてのデバイス接続に失敗しました'
+    ru-RU: 'Не удалось подключить все устройства'
+
+  '00613015':
+    zh-CN: '部分设备断开失败：{0}'
+    en-US: 'Some devices failed to disconnect: {0}'
+    ja-JP: '一部のデバイスの切断に失敗しました: {0}'
+    ru-RU: 'Не удалось отключить некоторые устройства: {0}'
+
+  '00613016':
+    zh-CN: '请求参数不能为空'
+    en-US: 'Request parameters cannot be empty'
+    ja-JP: 'リクエストパラメータは空にできません'
+    ru-RU: 'Параметры запроса не могут быть пустыми'
+
+  '00613017':
+    zh-CN: '创建模板失败: {0}'
+    en-US: 'Failed to create template: {0}'
+    ja-JP: 'テンプレートの作成に失敗しました: {0}'
+    ru-RU: 'Не удалось создать шаблон: {0}'
+
+  '00613018':
+    zh-CN: '模板代码不能为空'
+    en-US: 'Template code cannot be empty'
+    ja-JP: 'テンプレートコードは空にできません'
+    ru-RU: 'Код шаблона не может быть пустым'
+
+  '00613019':
+    zh-CN: '选中字段不能为空'
+    en-US: 'Selected fields cannot be empty'
+    ja-JP: '選択フィールドは空にできません'
+    ru-RU: 'Выбранные поля не могут быть пустыми'
+
+  '0061301A':
+    zh-CN: '模板不存在: {0}'
+    en-US: 'Template not found: {0}'
+    ja-JP: 'テンプレートが存在しません: {0}'
+    ru-RU: 'Шаблон не найден: {0}'
+
+  '0061301B':
+    zh-CN: '更新模板失败: {0}'
+    en-US: 'Failed to update template: {0}'
+    ja-JP: 'テンプレートの更新に失敗しました: {0}'
+    ru-RU: 'Не удалось обновить шаблон: {0}'
+
+  '0061301C':
+    zh-CN: '请选择要删除的模板'
+    en-US: 'Please select templates to delete'
+    ja-JP: '削除するテンプレートを選択してください'
+    ru-RU: 'Пожалуйста, выберите шаблоны для удаления'
+
+  '0061301D':
+    zh-CN: '未找到连接仪器信息'
+    en-US: 'Connected instrument information not found'
+    ja-JP: '接続機器情報が見つかりません'
+    ru-RU: 'Информация о подключенном приборе не найдена'
+
+  '0061301E':
+    zh-CN: '未找到出厂模板'
+    en-US: 'Factory template not found'
+    ja-JP: '出荷テンプレートが見つかりません'
+    ru-RU: 'Заводской шаблон не найден'
+
+  '0061301F':
+    zh-CN: '未找到该序列号对应的仪器型号'
+    en-US: 'No instrument model found for this serial number'
+    ja-JP: 'このシリアル番号に対応する機器モデルが見つかりません'
+    ru-RU: 'Не найдена модель прибора для этого серийного номера'
+
+  '00613020':
+    zh-CN: '未找到模板'
+    en-US: 'Template not found'
+    ja-JP: 'テンプレートが見つかりません'
+    ru-RU: 'Шаблон не найден'
+
+  '00613021':
+    zh-CN: '创建任务失败'
+    en-US: 'Failed to create task'
+    ja-JP: 'タスクの作成に失敗しました'
+    ru-RU: 'Не удалось создать задачу'
