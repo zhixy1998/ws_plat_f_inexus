@@ -1510,10 +1510,10 @@
 <string>样品池位置:AJ20:4</string>
 </OutputString>
 <SendBytes>
-<string>181:255:6:3:I20:0:0:0:0:0:0:Check</string>
+<string>181:255:6:3:I20-1:0:0:0:0:0:0:Check</string>
 </SendBytes>
 <ReadBytes>
-<string>254:181:6:3:AJ20:0:0:0:0:0:0:Check</string>
+<string>254:181:6:3:AJ20-1:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
     <HeadReceiveBytes>

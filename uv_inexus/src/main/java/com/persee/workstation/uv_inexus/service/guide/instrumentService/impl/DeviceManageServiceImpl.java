@@ -28,7 +28,6 @@ import com.persee.workstation.uv_inexus.enums.instrumentEnums.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -2444,6 +2443,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         CalibrationTableVO tableVO = paramPO.getTableData();
 
         List<CalibrationTableData> allTableData = dto.getAllTableData();
+        allTableData.forEach(data -> data.setIsOriginData(true));
 
         if (tablePo == null) {
 
