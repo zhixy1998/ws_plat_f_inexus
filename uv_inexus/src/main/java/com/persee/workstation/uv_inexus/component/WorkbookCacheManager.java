@@ -277,58 +277,54 @@ public class WorkbookCacheManager {
      * 为任务创建Workbook实例
      */
     public Workbook createTaskWorkbook(String taskId, String fileName) throws IOException {
-        // 先检查是否已有缓存的工作簿
+        log.info("开始为任务创建工作簿：taskId={}, fileName={}", taskId, fileName);
+
+        if (StringUtils.isBlank(fileName)) {
+            log.error("模板名称为空，无法创建工作簿：taskId={}", taskId);
+            return null;
+        }
+
         Workbook existingWorkbook = getTaskWorkbook(taskId);
         if (existingWorkbook != null) {
+            log.info("从缓存获取到已有工作簿：taskId={}", taskId);
             return existingWorkbook;
         }
 
-        // 检查数据库中是否存在持久化的工作簿数据
         Workbook workbook = getWorkbookFromDB(taskId);
         if (workbook != null) {
+            log.info("从数据库加载到任务工作簿：taskId={}", taskId);
             return workbook;
         }
+
+        log.info("尝试从模板创建工作簿：fileName={}", fileName);
+
         LambdaQueryWrapper<WorkbookData> wrapper = new LambdaQueryWrapper<>();
-        //这里传递的是模板的模板code值
         wrapper.eq(WorkbookData::getTaskId, fileName);
         List<WorkbookData> list = workbookDataService.list(wrapper);
+
         if (!CollectionUtils.isEmpty(list)) {
+            log.info("找到模板数据：fileName={}, 记录数={}", fileName, list.size());
             byte[] data = list.get(0).getWorkbookData();
             if (data != null) {
                 try (ByteArrayInputStream inputStream = new ByteArrayInputStream(data)) {
                     Workbook book = new XSSFWorkbook(inputStream);
                     saveWorkbookToCacheAndDB(taskId, book, fileName, "system");
-
+                    log.info("从模板数据成功创建工作簿并缓存：taskId={}, fileName={}", taskId, fileName);
+                    return book;
                 } catch (IOException e) {
-                    log.error("转换字节数组到Workbook失败", e);
+                    log.error("转换字节数组到Workbook失败：fileName={}", fileName, e);
                 }
+            } else {
+                log.warn("模板数据的workbookData字段为空：fileName={}", fileName);
             }
+        } else {
+            log.warn("未找到模板数据：fileName={}，请检查calibration_workbook_data表中是否有taskId='{}'的记录", fileName, fileName);
         }
 
-//        ClassPathResource resource = new ClassPathResource(excelSavePath + fileName + ".xlsx");
-//        //内置模板
-//        if (resource.exists()) {
-//            try (InputStream fis = resource.getInputStream()) {
-//                workbook = new XSSFWorkbook(fis);
-//
-//                // 保存到缓存和数据库
-//                saveWorkbookToCacheAndDB(taskId, workbook, fileName, "system");
-//
-//                return workbook;
-//            }
-//        }
-//        //自定义模板
-//        if (!resource.exists()){
-//            InputStream inputStream = Files.newInputStream(Paths.get(excelSavePath + fileName + ".xlsx"));
-//            workbook = new XSSFWorkbook(inputStream);
-//
-//            // 保存到缓存和数据库
-//            saveWorkbookToCacheAndDB(taskId, workbook, fileName, "system");
-//
-//            return workbook;
-//        }
+        log.error("所有创建工作簿的方式都失败了：taskId={}, fileName={}", taskId, fileName);
         return null;
     }
+
 
     /**
      * 获取任务专属Workbook实例
