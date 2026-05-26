@@ -28,7 +28,6 @@ import com.persee.workstation.uv_inexus.enums.instrumentEnums.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -2419,6 +2418,63 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok();
     }
 
+    @Override
+    public R<Boolean> saveAllData(DeviceCalibrationDTO dto) {
+
+        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            return R.fail("请连接仪器！");
+        }
+        if (dto.getAllTableData() == null || dto.getAllTableData().isEmpty()) {
+            return R.fail("没有需要保存信息！");
+        }
+
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, DeviceCalibrationInfoEnum.MultiWavelength.getType());
+        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
+
+        LambdaQueryWrapper<DeviceCalibrationParamPO> paramWrapper = new LambdaQueryWrapper<>();
+        paramWrapper.eq(DeviceCalibrationParamPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        DeviceCalibrationParamPO paramPO = calibrationParamDAO.selectOne(paramWrapper);
+
+        CalibrationTableVO tableVO = paramPO.getTableData();
+
+        List<CalibrationTableData> allTableData = dto.getAllTableData();
+        allTableData.forEach(data -> data.setIsOriginData(true));
+
+        if (tablePo == null) {
+
+            CalibrationTempPO po = new CalibrationTempPO();
+            po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+            po.setCreateBy(dto.getUpdateBy());
+            po.setCalibrationType(dto.getCalibrationType());
+            po.setParam(DeviceCalibrationParamEnum.Table.getType());
+            tableVO.setContent(allTableData);
+            po.setTableData(tableVO);
+
+            tempDao.insert(po);
+        } else {
+
+            tablePo.setUpdateBy(dto.getUpdateBy());
+            CalibrationTableVO tableData = tablePo.getTableData();
+            if (tableData == null) {
+                tableData = new CalibrationTableVO();
+                tableData.setHead(tableVO.getHead());
+            }
+
+            tableData.setContent(allTableData);
+
+            tablePo.setTableData(tableData);
+            tempDao.update(tablePo, wrapper);
+        }
+
+
+        return R.ok();
+    }
+
     /**
      *
      * 下发所有的参数给仪器
@@ -3579,11 +3635,35 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
                 queryWrapper.eq(ExcelTemplate::getStatus, TemplateTypeEnum.OUT_FACTORY_CHECK.getCode())
                         .like(ExcelTemplate::getModel, deviceType);
                 List<ExcelTemplate> list2 = templateService.list(queryWrapper);
+                
+                // 如果精确匹配失败，尝试查找通用模板（model为空或包含"通用"的模板）
+                if (CollectionUtils.isEmpty(list2)) {
+                    log.warn("未找到仪器型号 [{}] 的专用出厂模板，尝试查找通用模板", deviceType);
+                    LambdaQueryWrapper<ExcelTemplate> genericWrapper = new LambdaQueryWrapper<>();
+                    genericWrapper.eq(ExcelTemplate::getStatus, TemplateTypeEnum.OUT_FACTORY_CHECK.getCode());
+                    List<ExcelTemplate> genericTemplates = templateService.list(genericWrapper);
+                    
+                    // 查找通用模板（model为空、null或标记为"通用"）
+                    if (!CollectionUtils.isEmpty(genericTemplates)) {
+                        for (ExcelTemplate template : genericTemplates) {
+                            if (template.getModel() == null || template.getModel().trim().isEmpty() || 
+                                "通用".equals(template.getModel()) || "ALL".equalsIgnoreCase(template.getModel())) {
+                                list2 = new ArrayList<>();
+                                list2.add(template);
+                                log.info("找到通用出厂模板，templateCode={}", template.getTemplateCode());
+                                break;
+                            }
+                        }
+                    }
+                }
+                
                 if (!CollectionUtils.isEmpty(list2)){
                     templateCode=list2.get(0).getTemplateCode();
+                    log.info("成功找到出厂模板，deviceType={}, templateCode={}", deviceType, templateCode);
                 }else{
-                    log.info("未找到模板!");
-                    throw new BusinessException("未找到出厂模板!");
+                    String errorMsg = String.format("未找到仪器型号 [%s] 的出厂检验模板！请确认：\n1. 模板管理中已创建状态为'出厂检验模板'的记录\n2. 模板的model字段包含该仪器型号或设置为通用模板", deviceType);
+                    log.error(errorMsg);
+                    throw new BusinessException(errorMsg);
                 }
             }else {
                 log.info("未找到该序列号对应的仪器型号!");

@@ -354,6 +354,14 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.fail("0000000E");
         }
 
+        // 仪器下发参数校验
+        if (methodDto.getDeviceSerialNumber()!=null && !methodDto.getDeviceSerialNumber().isEmpty()) {
+            R rdata = IssueCheckParam(photometricParameter, methodDto.getDeviceSerialNumber());
+            if (!rdata.getSuccess()) {
+                return Result.fail(rdata.getMessage());
+            }
+        }
+
         // 创建测量方法表
         TMeasureMethod tMeasureMethod = new TMeasureMethod();
         tMeasureMethod.setProjectItemKey(methodDto.getProjectId());
@@ -391,9 +399,18 @@ public class PhotometricServiceImpl implements PhotometricService {
             //没有找到该方法
             return Result.fail("00000009");
         }
-        // 将前端传过来的值复制到SpectrumParameter类中
+        // 将前端传过来的值复制到参数类中类中
         PhotometricParameter parameter = new PhotometricParameter();
         BeanUtils.copyProperties(methodDto, parameter);
+
+        // 仪器下发参数校验
+        if (methodDto.getDeviceSerialNumber()!=null && !methodDto.getDeviceSerialNumber().isEmpty()) {
+            R rdata = IssueCheckParam(parameter, methodDto.getDeviceSerialNumber());
+            if (!rdata.getSuccess()) {
+                return Result.fail(rdata.getMessage());
+            }
+        }
+
         measureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
         measureMethod.setMethodName(methodDto.getMethodName());
         boolean update = tMeasureMethodService.updateById(measureMethod);
@@ -438,7 +455,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (deviceSerialNumber != null&& !deviceSerialNumber.isEmpty()){
             R booleanR = IssueCheckParam(parameter, deviceSerialNumber);
             if (!booleanR.getSuccess()) {
-                return Result.checkFail(booleanR.getData());
+                return Result.fail(booleanR.getMessage());
             }
         }
 
@@ -776,6 +793,13 @@ public class PhotometricServiceImpl implements PhotometricService {
         BeanUtils.copyProperties(methodDto, parameter);
         MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
         String clearDataRange = methodDto.getClearDataRange();
+        // 仪器下发参数校验
+        if (methodDto.getDeviceSerialNumber()!=null && !methodDto.getDeviceSerialNumber().isEmpty()) {
+            R rdata = IssueCheckParam(parameter, methodDto.getDeviceSerialNumber());
+            if (!rdata.getSuccess()) {
+                return Result.fail(rdata.getMessage());
+            }
+        }
         if (StringUtils.hasText(clearDataRange) && RationChangeMethodTypeEnums.noChange.getIdentity().equals(clearDataRange)) {
             //设置参数给仪器。。。待定
             return Result.ok(vo);
@@ -3527,8 +3551,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         boolean a = deviceMeasureVO.getLuminosity().stream()
                 .anyMatch(obj -> obj.getParamValue().equals(param.getLuminosity()));
         if (!a) {
-            result = result ? false : result;
-            errorMessages.add("当前仪器不支持该光度模式");
+            return R.fail("当前仪器不支持该光度模式");
         }
         // 2. 波长范围是否超出限制
         List<String> waveLengths = param.getWaveLength();
@@ -3537,27 +3560,23 @@ public class PhotometricServiceImpl implements PhotometricService {
         for (String waveLength : waveLengths) {
             Double wavelength = Double.parseDouble(waveLength);
             if (wavelength > maxWavelength || wavelength < minWavelength) {
-                result = result ? false : result;
-                errorMessages.add("波长"+ waveLength+"超出限制, 最大值: " + maxWavelength + "  最小值: " + minWavelength);
+                return R.fail("波长"+ waveLength+"超出限制, 最大值: " + maxWavelength + "  最小值: " + minWavelength);
             }
         }
         // 3. 光谱带宽是否存在
         if (!deviceMeasureVO.getBandWidth().contains(param.getSpectralBandwidth())) {
-            result = result ? false : result;
-            errorMessages.add("当前仪器不支持该光谱带宽");
+            return R.fail("当前仪器不支持该光谱带宽");
         }
         // 4. 响应时间是否存在
         if (!deviceMeasureVO.getResponseTime().contains(param.getResponseTime())) {
-            result = result ? false : result;
-            errorMessages.add("当前仪器不支持该响应时间");
+            return R.fail("当前仪器不支持该响应时间");
         }
         // 5. 换灯波长是否超出限制
         Double lampWaveLength = Double.parseDouble(param.getChangeLampWaveLength());
         Double maxLampWavelength =  Double.parseDouble(deviceMeasureVO.getMaxLampWavelength());
         Double minLampWavelength =  Double.parseDouble(deviceMeasureVO.getMinLampWavelength());
         if (lampWaveLength > maxLampWavelength || lampWaveLength < minLampWavelength) {
-            result = result ? false : result;
-            errorMessages.add("换灯波长超出限制, 最大值: "+maxLampWavelength+"  最小值: "+minLampWavelength);
+            return R.fail("换灯波长"+ lampWaveLength+"超出限制, 换灯最大值: " + maxLampWavelength + "  换灯最小值: " + minLampWavelength);
         }
         // 7. 在光度模式为Es/Er模式下的情况
         if (param.getLuminosity().equals(Constants.PARAM_THREE)|| param.getLuminosity().equals(Constants.PARAM_FOUR)) {
@@ -3565,14 +3584,12 @@ public class PhotometricServiceImpl implements PhotometricService {
             boolean b = deviceMeasureVO.getLampType().stream()
                     .anyMatch(obj -> obj.getParamValue().equals(param.getEnergyLamp()));
             if (!b) {
-                result = result ? false : result;
-                errorMessages.add("当前仪器不支持该能量灯");
+                return R.fail("当前仪器不支持该能量灯");
             }
 
             // 7.2 增益是否存在
             if (!deviceMeasureVO.getGain().contains(param.getGain())) {
-                result = result ? false : result;
-                errorMessages.add("当前仪器不支持该增益数值");
+                return R.fail("当前仪器不支持该增益");
             }
         }
 

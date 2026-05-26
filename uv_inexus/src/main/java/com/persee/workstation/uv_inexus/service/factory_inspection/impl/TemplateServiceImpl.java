@@ -1070,7 +1070,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 
             // 直接加载当前模板的WorkbookData（每个模板创建时都有完整的初始数据）
             LambdaQueryWrapper<WorkbookData> workbookQueryWrapper = new LambdaQueryWrapper<>();
-            workbookQueryWrapper.eq(WorkbookData::getTaskId, templateCode)
+            workbookQueryWrapper.eq(WorkbookData::getTaskId, template.getParentId())
                     .orderByDesc(WorkbookData::getCreateTime)
                     .last("LIMIT 1");
 
