@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
 import com.persee.workstation.uv_inexus.i18n.OutputTranslator;
-import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
@@ -16,6 +16,7 @@ import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -79,6 +80,9 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
 
     @SuppressWarnings("unchecked")
     private Object translateData(Object data) {
+        if (data instanceof CharSequence || data instanceof Number || data instanceof Boolean || data instanceof Date) {
+            return data;
+        }
         try {
             Object converted = objectMapper.convertValue(data, Object.class);
             if (converted instanceof Map) {
@@ -88,7 +92,7 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
             }
             return data;
         } catch (Exception e) {
-            log.warn("data 翻译跳过: {}", e.getMessage());
+            log.debug("data 翻译跳过: {}", e.getMessage());
             return data;
         }
     }

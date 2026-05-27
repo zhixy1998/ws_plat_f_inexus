@@ -23,6 +23,10 @@ public class LocaleProvider {
     @Autowired
     private SystemManageDAO systemManageDAO;
 
+    @Autowired
+    @org.springframework.context.annotation.Lazy
+    private InputTranslator inputTranslator;
+
     @Value("${sys-manage-default.defaultId}")
     private String defaultId;
 
@@ -55,7 +59,17 @@ public class LocaleProvider {
         try {
             SystemManagePO config = systemManageDAO.selectById(defaultId);
             if (config != null && StringUtils.isNotBlank(config.getLanguage())) {
-                cachedLocale.set(normalize(config.getLanguage()));
+                String newLocale = normalize(config.getLanguage());
+                String oldLocale = cachedLocale.get();
+                if (!newLocale.equals(oldLocale)) {
+                    cachedLocale.set(newLocale);
+                    log.info("系统语言切换: {} → {}", oldLocale, newLocale);
+                    try {
+                        inputTranslator.rebuildIndex();
+                    } catch (Exception e) {
+                        log.warn("InputTranslator 索引重建失败", e);
+                    }
+                }
             }
         } catch (Exception e) {
             log.error("获取系统语言配置失败", e);

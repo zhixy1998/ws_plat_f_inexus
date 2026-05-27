@@ -2153,3 +2153,52 @@ messages:
     en-US: 'Drift'
     ja-JP: 'ドリフト'
     ru-RU: 'Дрейф'
+
+  # ========== 仪器型号名称 ==========
+  'T600A紫外可见分光光度计':
+    zh-CN: 'T600A紫外可见分光光度计'
+    en-US: 'T600A UV-Vis Spectrophotometer'
+    ja-JP: 'T600A紫外可視分光光度計'
+    ru-RU: 'УФ-видимый спектрофотометр T600A'
+
+  'T600B紫外可见分光光度计':
+    zh-CN: 'T600B紫外可见分光光度计'
+    en-US: 'T600B UV-Vis Spectrophotometer'
+    ja-JP: 'T600B紫外可視分光光度計'
+    ru-RU: 'УФ-видимый спектрофотометр T600B'
+
+  'T600S紫外可见分光光度计':
+    zh-CN: 'T600S紫外可见分光光度计'
+    en-US: 'T600S UV-Vis Spectrophotometer'
+    ja-JP: 'T600S紫外可視分光光度計'
+    ru-RU: 'УФ-видимый спектрофотометр T600S'
+
+  'T600AS紫外可见分光光度计':
+    zh-CN: 'T600AS紫外可见分光光度计'
+    en-US: 'T600AS UV-Vis Spectrophotometer'
+    ja-JP: 'T600AS紫外可視分光光度計'
+    ru-RU: 'УФ-видимый спектрофотометр T600AS'
+
+  'T700B紫外可见分光光度计':
+    zh-CN: 'T700B紫外可见分光光度计'
+    en-US: 'T700B UV-Vis Spectrophotometer'
+    ja-JP: 'T700B紫外可視分光光度計'
+    ru-RU: 'УФ-видимый спектрофотометр T700B'
+
+  'T600八联池':
+    zh-CN: 'T600八联池'
+    en-US: 'T600 8-Position Cell Holder'
+    ja-JP: 'T600 8連セルホルダー'
+    ru-RU: 'T600 8-позиционный держатель кювет'
+
+  'T600五联100mm长样池':
+    zh-CN: 'T600五联100mm长样池'
+    en-US: 'T600 5-Position 100mm Long Path Cell Holder'
+    ja-JP: 'T600 5連100mmロングパスセルホルダー'
+    ru-RU: 'T600 5-позиционный держатель длинных кювет 100мм'
+
+  '未识别':
+    zh-CN: '未识别'
+    en-US: 'Unrecognized'
+    ja-JP: '未認識'
+    ru-RU: 'Не распознан'

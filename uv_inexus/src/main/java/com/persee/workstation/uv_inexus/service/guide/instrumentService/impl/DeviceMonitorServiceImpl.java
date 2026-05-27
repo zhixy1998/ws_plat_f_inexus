@@ -315,7 +315,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
         }
         if (queryDto.getStartDateTime() != null && queryDto.getEndDateTime() != null && queryDto.getStartDateTime().isAfter(queryDto.getEndDateTime())) {
             log.warn("查询历史任务失败：开始时间不能大于结束时间");
-            throw new BusinessException("00205008");
+            throw BusinessException.withCode("00205008");
         }
 
         IPage<HistoryTaskVO> resultPage = tMeasureTaskMapper.selectHistoryTaskPage(page, queryDto);

@@ -3507,7 +3507,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         DeviceInfoPO deviceInfoPO = infoService.getInfo(deviceSerialNumber);
         if (deviceInfoPO == null || deviceInfoPO.getId() == null) {
             log.info("未找到连接仪器信息！");
-            throw new BusinessException("0061301D");
+            throw BusinessException.withCode("0061301D");
         }
 
         // 先将初始化中的状态添加到缓存
@@ -3583,11 +3583,11 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
                     templateCode=list2.get(0).getTemplateCode();
                 }else{
                     log.info("未找到模板!");
-                    throw new BusinessException("0061301E");
+                    throw BusinessException.withCode("0061301E");
                 }
             }else {
                 log.info("未找到该序列号对应的仪器型号!");
-                throw new BusinessException("0061301F");
+                throw BusinessException.withCode("0061301F");
             }
 
             LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
@@ -3601,7 +3601,7 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
                 ExcelTemplate excelTemplate = templateService.getById(taskManagement.getUseTemplate());
                 if (ObjectUtils.isEmpty(excelTemplate)) {
                     log.info("未找到模板!");
-                    throw new BusinessException("00613020");
+                    throw BusinessException.withCode("00613020");
                 }
                 dto.setDeviceSerialNumber(deviceSerialNumber);
                 dto.setTemplateCode(excelTemplate.getTemplateCode());
@@ -3619,7 +3619,7 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
             taskAddDto.setTaskType(FACTORY_INSPECTION_TASK.getCode());
             Result<HashMap<String, String>> task = taskManagementService.newTask(taskAddDto);
             if (ObjectUtils.isEmpty(task)) {
-                throw new BusinessException("00613021");
+                throw BusinessException.withCode("00613021");
             }
 
             HashMap<String, String> map = task.getData();

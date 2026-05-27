@@ -19,7 +19,7 @@ public class I18nMessageSource {
     private static final String UI_TEXT_FILE = "i18n/i18n-ui-texts.yaml";
     private static final String DEFAULT_LOCALE = "zh-CN";
     private static final Set<String> SUPPORTED_LOCALES = new LinkedHashSet<>(Arrays.asList(
-            "zh-CN", "en-US", "ja-JP", "ru-RU"
+            "zh-CN", "en-US", "ru-RU"
     ));
 
     private final Map<String, Map<String, String>> dictionary = new ConcurrentHashMap<>();
@@ -73,6 +73,7 @@ public class I18nMessageSource {
                     Map<String, Object> langMap = (Map<String, Object>) value;
 
                     for (Map.Entry<String, Object> langEntry : langMap.entrySet()) {
+                        if ("ja-JP".equals(langEntry.getKey())) continue;
                         translations.put(langEntry.getKey(), String.valueOf(langEntry.getValue()));
                     }
 

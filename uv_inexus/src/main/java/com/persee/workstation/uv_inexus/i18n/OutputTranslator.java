@@ -16,10 +16,7 @@ public class OutputTranslator {
     private static final Pattern CJK_PATTERN = Pattern.compile("[\\u4e00-\\u9fff]");
     private static final Set<String> SKIP_KEYS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             "taskId", "sessionId", "type", "action", "command",
-            "code", "id", "itemId", "deviceSerialNumber", "templateCode",
-            "sheetName", "sheetData", "firstRowNum", "lastRowNum",
-            "mergedRegions", "rows", "firstRow", "lastRow", "firstCol", "lastCol",
-            "value", "row", "col"
+            "code", "id", "itemId", "deviceSerialNumber", "templateCode"
     )));
 
     @Autowired
@@ -177,7 +174,35 @@ public class OutputTranslator {
         if (value instanceof JSONArray) {
             return translateFastJsonArray((JSONArray) value, locale);
         }
+        if (value instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) value;
+            JSONObject jsonObj = new JSONObject(map);
+            return translateFastJsonObject(jsonObj, locale);
+        }
+        if (value instanceof List) {
+            JSONArray jsonArr = new JSONArray((List<?>) value);
+            return translateFastJsonArray(jsonArr, locale);
+        }
+        if (isComplexObject(value)) {
+            try {
+                Object converted = com.alibaba.fastjson2.JSON.toJSON(value);
+                if (converted instanceof JSONObject) {
+                    return translateFastJsonObject((JSONObject) converted, locale);
+                }
+                if (converted instanceof JSONArray) {
+                    return translateFastJsonArray((JSONArray) converted, locale);
+                }
+            } catch (Exception e) {
+                log.debug("对象转换跳过: {}", e.getMessage());
+            }
+        }
         return value;
+    }
+
+    private boolean isComplexObject(Object value) {
+        return !(value instanceof Number || value instanceof Boolean || value instanceof Date
+                || value instanceof java.time.temporal.Temporal || value.getClass().isPrimitive());
     }
 
     private JSONArray translateFastJsonArray(JSONArray array, String locale) {
@@ -196,6 +221,25 @@ public class OutputTranslator {
                 }
             } else if (item instanceof JSONArray) {
                 result.add(translateFastJsonArray((JSONArray) item, locale));
+            } else if (item instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> map = (Map<String, Object>) item;
+                result.add(translateFastJsonObject(new JSONObject(map), locale));
+            } else if (item instanceof List) {
+                result.add(translateFastJsonArray(new JSONArray((List<?>) item), locale));
+            } else if (item != null && isComplexObject(item)) {
+                try {
+                    Object converted = com.alibaba.fastjson2.JSON.toJSON(item);
+                    if (converted instanceof JSONObject) {
+                        result.add(translateFastJsonObject((JSONObject) converted, locale));
+                    } else if (converted instanceof JSONArray) {
+                        result.add(translateFastJsonArray((JSONArray) converted, locale));
+                    } else {
+                        result.add(item);
+                    }
+                } catch (Exception e) {
+                    result.add(item);
+                }
             } else {
                 result.add(item);
             }
