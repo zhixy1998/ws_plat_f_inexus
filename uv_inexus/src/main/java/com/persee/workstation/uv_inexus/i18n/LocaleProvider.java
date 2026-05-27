@@ -38,6 +38,10 @@ public class LocaleProvider {
         refreshCache();
     }
 
+    public void evictCache() {
+        lastRefreshTime = 0;
+    }
+
     public String getSystemLocale() {
         long now = System.currentTimeMillis();
         if (now - lastRefreshTime > CACHE_REFRESH_INTERVAL_MS) {
