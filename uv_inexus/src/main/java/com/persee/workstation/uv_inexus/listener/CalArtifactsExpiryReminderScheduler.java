@@ -8,6 +8,7 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.MessageInfoPO;
 import com.persee.workstation.uv_inexus.service.factory_inspection.CalArtifactsService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.ReminderSwitchConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.MessageInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.UserReminderMuteService;
 import lombok.extern.slf4j.Slf4j;
 import org.ehcache.CacheManager;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,12 +45,14 @@ public class CalArtifactsExpiryReminderScheduler {
     private ReminderSwitchConfigService reminderSwitchConfigService;
     @Autowired
     private CacheManager cacheManager;
-    /**
-     * 应用启动时检查错过的提醒
-     */
+    @Autowired
+    private UserReminderMuteService userReminderMuteService;
+
     @PostConstruct
     public void checkMissedRemindersOnStartup() {
         log.info(">>> 开始检查启动时错过的标准物质效期提醒...");
+
+        userReminderMuteService.clearRebootMutes();
 
         // 检查提醒功能总开关
         if (!reminderSwitchConfigService.isReminderEnabled()) {
@@ -308,7 +311,7 @@ public class CalArtifactsExpiryReminderScheduler {
         messageInfoPO.setCreateBy(updateUser);
         messageInfoPO.setUpdateBy(updateUser);
 
-        Boolean saved = messageInfoService.saveMessageInfo(messageInfoPO);
+        Boolean saved = messageInfoService.saveMessageInfo(messageInfoPO, ReminderTypeEnum.EXPIRY_REMINDER.getCode());
         if (saved) {
             String typeDesc = messageType.equals(TYPE_REMIND_MESSAGE.getCode()) ? "提醒" : "通知";
             log.info("成功发送标准物质效期{}给用户: {}", typeDesc, updateUser);

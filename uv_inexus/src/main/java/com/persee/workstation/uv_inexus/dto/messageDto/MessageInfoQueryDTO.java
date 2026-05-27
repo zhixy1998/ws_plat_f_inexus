@@ -30,6 +30,8 @@ public class MessageInfoQueryDTO {
     private Integer messageStatus;
     @ApiModelProperty(value = "消息来源")
     private String messageSource;
+    @ApiModelProperty(value = "用户名（开启用户隔离后生效）")
+    private String userName;
 
     @ApiModelProperty("查询条件")
     private String query;

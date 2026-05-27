@@ -17,6 +17,7 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.MessageInfoPO;
 import com.persee.workstation.uv_inexus.service.factory_inspection.ReminderSwitchConfigService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.MessageInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.UserReminderMuteService;
 import lombok.extern.slf4j.Slf4j;
 import org.ehcache.CacheManager;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,11 +43,13 @@ public class TaskReminderScheduler {
     private ReminderSwitchConfigService reminderSwitchConfigService;
     @Autowired
     private CacheManager cacheManager;
-    /**
-     * 应用启动时检查错过的提醒
-     */
+    @Autowired
+    private UserReminderMuteService userReminderMuteService;
+
     public void checkMissedRemindersOnStartup() {
         log.info(">>> 开始检查启动时错过的提醒...");
+
+        userReminderMuteService.clearRebootMutes();
         // 检查提醒功能总开关
         if (!reminderSwitchConfigService.isReminderEnabled()) {
             log.info("提醒功能已关闭，跳过检查");
@@ -353,7 +356,7 @@ public class TaskReminderScheduler {
         messageInfoPO.setMessageSummary("期间核查提醒");
         messageInfoPO.setMessageSource(Constants.MESSAGE_SOURCE_SYSTEM);
         messageInfoPO.setMessageContent(notification.toString());
-        Boolean b = messageInfoService.saveMessageInfo(messageInfoPO);
+        Boolean b = messageInfoService.saveMessageInfo(messageInfoPO, ReminderTypeEnum.PERIODIC_INSPECTION.getCode());
     }
 
 }
