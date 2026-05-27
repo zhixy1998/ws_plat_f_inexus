@@ -2120,6 +2120,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             JSONObject jsonObject = new JSONObject();
                             jsonObject.put("warn", "检测项：[" + projectName + "] 出现问题:" + e.getMessage() + "跳过");
                             sendToActiveSession(null, taskId, jsonObject);
+                            setTaskMeasuring(taskId, false);
 //                            saveAndSendJudgeResult(taskId, itemId, projectName, sheet, MEASUREMENT_STATUS_FAILED.getCode());
                         }
                         return false;
@@ -2327,7 +2328,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
                             String id = dtoList.get(i).getStandard().getStandardId();
-                            if (id == null) return;
+                            if (id == null) continue;
 
                             // 检查 CalStdCats
                             CalStdCats cats = calStdCatsService.getById(id);
