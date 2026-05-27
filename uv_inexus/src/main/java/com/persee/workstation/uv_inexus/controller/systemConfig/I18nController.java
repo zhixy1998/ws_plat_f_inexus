@@ -66,9 +66,9 @@ public class I18nController {
         // 定义语言列表
         Map<String, String> localeLabels = new LinkedHashMap<>();
         localeLabels.put("zh-CN", "中文");
-        localeLabels.put("en-US", "English");
-        localeLabels.put("ja-JP", "日本語");
-        localeLabels.put("ru-RU", "Русский");
+//        localeLabels.put("en-US", "English");
+//        localeLabels.put("ja-JP", "日本語");
+//        localeLabels.put("ru-RU", "Русский");
 
         // 构建返回结果
         for (Map.Entry<String, String> entry : localeLabels.entrySet()) {
