@@ -685,30 +685,40 @@ public class RationServiceImpl implements RationService {
 
         RationTaskHeadSnapShot snapShot = new RationTaskHeadSnapShot();
 
-        TaskHeadSnapshot taskHeadSnapshot = new TaskHeadSnapshot();
+        TaskHeadSnapshot unknownHeadSnapshot = new TaskHeadSnapshot();
+        TaskHeadSnapshot standHeadSnapshot = new TaskHeadSnapshot();
         if (StringUtils.hasText(task.getTableInfo()) && !clearOld) {
             snapShot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
             if (snapShot == null) {
                 snapShot = new RationTaskHeadSnapShot();
-                taskHeadSnapshot = new TaskHeadSnapshot();
+                unknownHeadSnapshot = new TaskHeadSnapshot();
+                standHeadSnapshot = new TaskHeadSnapshot();
             } else {
-                taskHeadSnapshot = snapShot.getUnknownHead();
+                unknownHeadSnapshot = snapShot.getUnknownHead();
+                standHeadSnapshot = snapShot.getStandHead();
             }
 
         }
-        List<HeadVO> heads = taskHeadSnapshot.getSampleHeads();
-        if (heads == null || heads.isEmpty()) {
+        List<HeadVO> unknownHeads = unknownHeadSnapshot.getSampleHeads();
+        if (unknownHeads == null || unknownHeads.isEmpty()) {
             List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_unknown.getIdentity());
-            heads = new ArrayList<>(preHead);
+            unknownHeads = new ArrayList<>(preHead);
+        }
+
+        List<HeadVO> standHeads = standHeadSnapshot.getSampleHeads();
+        if (standHeads == null || standHeads.isEmpty()) {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
+            standHeads = new ArrayList<>(preHead);
+            standHeadSnapshot.setSampleHeads(standHeads);
         }
 
         Set<String> allHeadIdentity = new HashSet<>();
 
-        for (HeadVO head : heads) {
+        for (HeadVO head : unknownHeads) {
             allHeadIdentity.add(head.getIdentity());
         }
 
-        List<InputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
+        List<InputParamMapTableHead> mapRelation = unknownHeadSnapshot.getMapRelation();
         Map<String, String> map = new HashMap<>();
         for (InputParamMapTableHead relation : mapRelation) {
             map.put(relation.getParamIdentity(), relation.getHeadIdentity());
@@ -739,7 +749,7 @@ public class RationServiceImpl implements RationService {
             relation.setParamName(param.getParamName());
             relation.setParamIdentity(resultIdentity);
 
-            if ("0".equals(param.getIsSampleAttribute())) {
+            if ("否".equals(param.getIsSampleAttribute())) {
 
                 String identifier = param.getCurveIdentifier();
                 if (identifier == null) {
@@ -755,7 +765,7 @@ public class RationServiceImpl implements RationService {
                         relation.setHeadIdentity(split[0] + "-" + luminosity);
                     }
                 }
-            } else if ("1".equals(param.getIsSampleAttribute())) {
+            } else if ("是".equals(param.getIsSampleAttribute())) {
                 String newHeadIdentity = randomString(8);
                 while (allHeadIdentity.contains(newHeadIdentity)) {
                     newHeadIdentity = randomString(8);
@@ -769,26 +779,19 @@ public class RationServiceImpl implements RationService {
                 newHead.setUnit(param.getUnit());
                 newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
 
-                heads.add(newHead);
+                unknownHeads.add(newHead);
                 relation.setHeadIdentity(newHeadIdentity);
                 allHeadIdentity.add(newHeadIdentity);
 
             }
             mapRelation.add(relation);
         }
-        taskHeadSnapshot.setSampleHeads(heads);
-        taskHeadSnapshot.setMapRelation(mapRelation);
+        unknownHeadSnapshot.setSampleHeads(unknownHeads);
+        unknownHeadSnapshot.setMapRelation(mapRelation);
 
-        if (snapShot.getStandHead() == null || snapShot.getStandHead().getSampleHeads() == null || snapShot.getStandHead().getSampleHeads().isEmpty()) {
-            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
-            TaskHeadSnapshot standHead = new TaskHeadSnapshot();
-            standHead.setSampleHeads(preHead);
-            standHead.setMapRelation(new ArrayList<>());
+        snapShot.setStandHead(standHeadSnapshot);
 
-            snapShot.setStandHead(standHead);
-        }
-
-        snapShot.setUnknownHead(taskHeadSnapshot);
+        snapShot.setUnknownHead(unknownHeadSnapshot);
         task.setTableInfo(JSON.toJSONString(snapShot));
 
         boolean update = tMeasureTaskService.updateById(task);
@@ -4567,7 +4570,7 @@ public class RationServiceImpl implements RationService {
 
 
     @Override
-    public R<List<RationCountDataInfo>> formula(List<RationCountDataInfo> countData, List<RationWavelengthDataInfo> wavelengthData, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Double minuend, Integer digit) {
+    public R<List<RationCountDataInfo>> formula(List<RationCountDataInfo> countData, List<RationWavelengthDataInfo> wavelengthData, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Double minuend, Integer digit, String emptyFitCon) {
         if (!StringUtils.hasText(task.getTableInfo())) {
             //缺少分析参数，无法计算分析
             return R.fail("00300003");
@@ -4591,6 +4594,11 @@ public class RationServiceImpl implements RationService {
             allData.put(RationCurveParamEnums.blank_abs.getIdentity(), minuend);
         }
 
+        if (StringUtils.hasText(emptyFitCon)) {
+            allData.put(RationCurveParamEnums.blank_fit.getIdentity(), emptyFitCon);
+        }
+
+
         for (RationCountDataInfo dataInfo : countData) {
 
             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity()) && minuend == null) {
@@ -4600,9 +4608,10 @@ public class RationServiceImpl implements RationService {
                 allData.put(RationCurveParamEnums.abs_blank_difference.getIdentity(), dataInfo.getColValue());
             } else if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
                 allData.put(RationCurveParamEnums.fit_concentration.getIdentity(), dataInfo.getColValue());
-
+                allData.put(RationCurveParamEnums.sample_fit.getIdentity(), dataInfo.getColValue());
             }
         }
+
 
         if (StringUtils.hasText(task.getFittingParam())) {
             FittingReceiveInfo fittingReceiveInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
@@ -5083,6 +5092,8 @@ public class RationServiceImpl implements RationService {
                 );
 
         ParallelData parallelData = new ParallelData();
+
+        String emptyFitCon = null;
         for (TaskSpecimen specimen : taskSpecimen) {
 
             if (specimen.getDeleteType().equals(deleteType)) {
@@ -5203,6 +5214,28 @@ public class RationServiceImpl implements RationService {
                     emptyDataList.add(dealData);
 
                 }
+
+
+                FittingReceiveInfo fitInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+
+
+                if (fitInfo != null && fitInfo.getRoundCoefficient() != null) {
+                    String ans = valueCalculate(fitInfo, minuend, parameter.getEquationType(), digit);
+
+                    if (ans != null) {
+                        RationCountDataInfo valueData = new RationCountDataInfo();
+                        valueData.setOriginalValue(ans);
+                        String s = fitDataRounding(ans, parameter);
+                        emptyFitCon = s;
+
+                        valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                        valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+                        valueData.setColValue(s);
+                        currentList.add(valueData);
+
+                    }
+                }
+
                 saveEmptySampleData(emptyDataList);
                 handleParallelGroup(sample, parallelData, taskId, data.getId(), minuend, digit, true);
 
@@ -5260,7 +5293,7 @@ public class RationServiceImpl implements RationService {
                 }
 
                 //公式计算，待做
-                R<List<RationCountDataInfo>> formula = formula(currentList, list, sample, task, parameter, emptyValue, digit);
+                R<List<RationCountDataInfo>> formula = formula(currentList, list, sample, task, parameter, emptyValue, digit, emptyFitCon);
                 if (formula.getData() != null) {
                     currentList.addAll(formula.getData());
                 }
@@ -5623,6 +5656,9 @@ public class RationServiceImpl implements RationService {
             }
         }
 
+        result.add(new HeadVO(RationCurveParamEnums.sample_fit.getName(),
+                RationCurveParamEnums.sample_fit.getIdentity(), TableHeadILocateEnums.curve.getIdentity()));
+
         if(StringUtils.hasText(task.getSampleKey())) {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             if (taskSpecimen != null) {
@@ -5632,6 +5668,8 @@ public class RationServiceImpl implements RationService {
                                 RationCurveParamEnums.blank_abs.getIdentity(), TableHeadILocateEnums.curve.getIdentity()));
                         result.add(new HeadVO(RationCurveParamEnums.abs_blank_difference.getName(),
                                 RationCurveParamEnums.abs_blank_difference.getIdentity(), TableHeadILocateEnums.curve.getIdentity()));
+                        result.add(new HeadVO(RationCurveParamEnums.blank_fit.getName(),
+                                RationCurveParamEnums.blank_fit.getIdentity(), TableHeadILocateEnums.curve.getIdentity()));
                         break;
                     }
                 }
