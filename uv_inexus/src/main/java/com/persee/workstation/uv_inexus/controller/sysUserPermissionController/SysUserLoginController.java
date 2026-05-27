@@ -56,7 +56,7 @@ public class SysUserLoginController {
         if (loginDTO.getIsFastLogin() != null && loginDTO.getIsFastLogin() == 1) {
             log.info("触发快捷登录，使用默认用户");
 
-            loginDTO.setUserName("kh-admin");
+            loginDTO.setUserName("admin");
             loginDTO.setPassword("123456");
         }
 
