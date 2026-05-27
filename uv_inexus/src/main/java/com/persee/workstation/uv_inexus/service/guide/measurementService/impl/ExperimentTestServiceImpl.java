@@ -27,7 +27,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConf
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNumConfig;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.MappingParamEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;

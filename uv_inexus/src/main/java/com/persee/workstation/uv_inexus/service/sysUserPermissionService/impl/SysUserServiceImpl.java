@@ -35,7 +35,7 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PasswordUpdateD
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;

@@ -15,7 +15,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureSampleHeadMapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SampleHeadTemplateDTO;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSampleHead;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleHeadService;

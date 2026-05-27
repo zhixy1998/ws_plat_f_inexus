@@ -1,0 +1,2155 @@
+# =====================================================
+# UI 文本翻译字典 - 中英日俄四语
+#
+# 本文件: i18n-ui-texts.yaml — WebSocket 推送 / 前端展示的中文文本翻译
+#   key 格式: 中文原文（OutputTranslator 自动匹配翻译）
+#   用途: 后端逻辑保持中文不变，仅在 WebSocket 推送出口处翻译
+#
+# API 消息码文件: i18n-dictionary.yaml
+#   key 格式: 8位十六进制消息码
+#
+# 新增翻译:
+#   如果后端推送到前端的 JSON 中包含新的中文文本，
+#   在此文件中以中文原文为 key 添加四语翻译即可
+# =====================================================
+
+messages:
+  # ========== 判定结果 ==========
+  '合格':
+    zh-CN: '合格'
+    en-US: 'Pass'
+    ja-JP: '合格'
+    ru-RU: 'Годен'
+
+  '不合格':
+    zh-CN: '不合格'
+    en-US: 'Fail'
+    ja-JP: '不合格'
+    ru-RU: 'Не годен'
+
+  '未检测':
+    zh-CN: '未检测'
+    en-US: 'Not tested'
+    ja-JP: '未検査'
+    ru-RU: 'Не проверено'
+
+  '检测成功':
+    zh-CN: '检测成功'
+    en-US: 'Test passed'
+    ja-JP: '検査成功'
+    ru-RU: 'Проверка пройдена'
+
+  '检测失败':
+    zh-CN: '检测失败'
+    en-US: 'Test failed'
+    ja-JP: '検査失敗'
+    ru-RU: 'Проверка не пройдена'
+
+  # ========== 标准物质 ==========
+  '黑挡块':
+    zh-CN: '黑挡块'
+    en-US: 'Black block'
+    ja-JP: 'ブラックブロック'
+    ru-RU: 'Чёрный блок'
+
+  '空气':
+    zh-CN: '空气'
+    en-US: 'Air'
+    ja-JP: '空気'
+    ru-RU: 'Воздух'
+
+  '内置物':
+    zh-CN: '内置物'
+    en-US: 'Built-in material'
+    ja-JP: '内蔵物質'
+    ru-RU: 'Встроенный материал'
+
+  '初始固定不可删除物质':
+    zh-CN: '初始固定不可删除物质'
+    en-US: 'Fixed material (non-deletable)'
+    ja-JP: '初期固定物質'
+    ru-RU: 'Фиксированный материал'
+
+  '外部参考物':
+    zh-CN: '外部参考物'
+    en-US: 'External reference'
+    ja-JP: '外部参照物'
+    ru-RU: 'Внешний эталон'
+
+  # ========== 通用布尔 ==========
+  '是':
+    zh-CN: '是'
+    en-US: 'Yes'
+    ja-JP: 'はい'
+    ru-RU: 'Да'
+
+  '否':
+    zh-CN: '否'
+    en-US: 'No'
+    ja-JP: 'いいえ'
+    ru-RU: 'Нет'
+
+  # ========== 删除状态 ==========
+  '未删除':
+    zh-CN: '未删除'
+    en-US: 'Not deleted'
+    ja-JP: '未削除'
+    ru-RU: 'Не удалено'
+
+  '已删除':
+    zh-CN: '已删除'
+    en-US: 'Deleted'
+    ja-JP: '削除済み'
+    ru-RU: 'Удалено'
+
+  # ========== 检测模式 ==========
+  '单项检测':
+    zh-CN: '单项检测'
+    en-US: 'Single item test'
+    ja-JP: '単項目検査'
+    ru-RU: 'Одиночная проверка'
+
+  '自动检测':
+    zh-CN: '自动检测'
+    en-US: 'Auto test'
+    ja-JP: '自動検査'
+    ru-RU: 'Автоматическая проверка'
+
+  '设置标准物':
+    zh-CN: '设置标准物'
+    en-US: 'Set standard material'
+    ja-JP: '標準物質設定'
+    ru-RU: 'Установить стандартный материал'
+
+  # ========== 任务状态 ==========
+  '未开始':
+    zh-CN: '未开始'
+    en-US: 'Not started'
+    ja-JP: '未開始'
+    ru-RU: 'Не начато'
+
+  '未完成':
+    zh-CN: '未完成'
+    en-US: 'In progress'
+    ja-JP: '未完了'
+    ru-RU: 'В процессе'
+
+  '已完成':
+    zh-CN: '已完成'
+    en-US: 'Completed'
+    ja-JP: '完了'
+    ru-RU: 'Завершено'
+
+  # ========== 检测类型 ==========
+  '光谱扫描':
+    zh-CN: '光谱扫描'
+    en-US: 'Spectral scan'
+    ja-JP: 'スペクトルスキャン'
+    ru-RU: 'Спектральное сканирование'
+
+  '时间扫描':
+    zh-CN: '时间扫描'
+    en-US: 'Time scan'
+    ja-JP: 'タイムスキャン'
+    ru-RU: 'Сканирование по времени'
+
+  '光度扫描':
+    zh-CN: '光度扫描'
+    en-US: 'Photometric scan'
+    ja-JP: '光度スキャン'
+    ru-RU: 'Фотометрическое сканирование'
+
+  # ========== 任务类型 ==========
+  '默认任务':
+    zh-CN: '默认任务'
+    en-US: 'Default task'
+    ja-JP: 'デフォルトタスク'
+    ru-RU: 'Задача по умолчанию'
+
+  '校准任务':
+    zh-CN: '校准任务'
+    en-US: 'Calibration task'
+    ja-JP: 'キャリブレーションタスク'
+    ru-RU: 'Задача калибровки'
+
+  '期间核查':
+    zh-CN: '期间核查'
+    en-US: 'Periodic inspection'
+    ja-JP: '期間核查'
+    ru-RU: 'Периодическая проверка'
+
+  '开箱检验':
+    zh-CN: '开箱检验'
+    en-US: 'Installation acceptance'
+    ja-JP: '開箱検査'
+    ru-RU: 'Входной контроль'
+
+  '出厂检验':
+    zh-CN: '出厂检验'
+    en-US: 'Factory inspection'
+    ja-JP: '出荷検査'
+    ru-RU: 'Заводской контроль'
+
+  '检定任务':
+    zh-CN: '检定任务'
+    en-US: 'Verification task'
+    ja-JP: '検定タスク'
+    ru-RU: 'Задача поверки'
+
+  '出厂检验任务':
+    zh-CN: '出厂检验任务'
+    en-US: 'Factory inspection task'
+    ja-JP: '出荷検査タスク'
+    ru-RU: 'Задача заводского контроля'
+
+  '开箱检验任务':
+    zh-CN: '开箱检验任务'
+    en-US: 'Installation acceptance task'
+    ja-JP: '開箱検査タスク'
+    ru-RU: 'Задача входного контроля'
+
+  '期间核查任务':
+    zh-CN: '期间核查任务'
+    en-US: 'Periodic inspection task'
+    ja-JP: '期間核查タスク'
+    ru-RU: 'Задача периодической проверки'
+
+  '校准':
+    zh-CN: '校准'
+    en-US: 'Calibration'
+    ja-JP: 'キャリブレーション'
+    ru-RU: 'Калибровка'
+
+  # ========== 模板类型 ==========
+  '内置模板':
+    zh-CN: '内置模板'
+    en-US: 'Built-in template'
+    ja-JP: '内蔵テンプレート'
+    ru-RU: 'Встроенный шаблон'
+
+  '用户模板':
+    zh-CN: '用户模板'
+    en-US: 'User template'
+    ja-JP: 'ユーザーテンプレート'
+    ru-RU: 'Пользовательский шаблон'
+
+  '检定校准模板':
+    zh-CN: '检定校准模板'
+    en-US: 'Verification & calibration template'
+    ja-JP: '検定キャリブレーションテンプレート'
+    ru-RU: 'Шаблон поверки и калибровки'
+
+  '出厂检验模板':
+    zh-CN: '出厂检验模板'
+    en-US: 'Factory inspection template'
+    ja-JP: '出荷検査テンプレート'
+    ru-RU: 'Шаблон заводского контроля'
+
+  '开箱验证模板':
+    zh-CN: '开箱验证模板'
+    en-US: 'Installation acceptance template'
+    ja-JP: '開箱検査テンプレート'
+    ru-RU: 'Шаблон входного контроля'
+
+  '开箱检验模板':
+    zh-CN: '开箱检验模板'
+    en-US: 'Installation acceptance template'
+    ja-JP: '開箱検査テンプレート'
+    ru-RU: 'Шаблон входного контроля'
+
+  '从源模板-新建模板':
+    zh-CN: '从源模板-新建模板'
+    en-US: 'Create from source template'
+    ja-JP: 'ソーステンプレートから新規作成'
+    ru-RU: 'Создать из исходного шаблона'
+
+  '修改原模板':
+    zh-CN: '修改原模板'
+    en-US: 'Modify original template'
+    ja-JP: '元テンプレートを修正'
+    ru-RU: 'Изменить исходный шаблон'
+
+  '检定校准':
+    zh-CN: '检定校准'
+    en-US: 'Verification & calibration'
+    ja-JP: '検定キャリブレーション'
+    ru-RU: 'Поверка и калибровка'
+
+  # ========== Excel 工作表名称 ==========
+  '波长示值误差与重复性校验':
+    zh-CN: '波长示值误差与重复性校验'
+    en-US: 'Wavelength accuracy & repeatability'
+    ja-JP: '波長指示誤差と繰り返し性検査'
+    ru-RU: 'Погрешность и повторяемость длины волны'
+
+  '透射比示值误差与重复性校验':
+    zh-CN: '透射比示值误差与重复性校验'
+    en-US: 'Transmittance accuracy & repeatability'
+    ja-JP: '透過率指示誤差と繰り返し性検査'
+    ru-RU: 'Погрешность и повторяемость пропускания'
+
+  '杂散光校验':
+    zh-CN: '杂散光校验'
+    en-US: 'Stray light verification'
+    ja-JP: '迷光検査'
+    ru-RU: 'Проверка рассеянного света'
+
+  '基线平直度检验':
+    zh-CN: '基线平直度检验'
+    en-US: 'Baseline flatness test'
+    ja-JP: 'ベースライン平直度検査'
+    ru-RU: 'Проверка прямолинейности базовой линии'
+
+  '基线暗噪声检验':
+    zh-CN: '基线暗噪声检验'
+    en-US: 'Baseline dark noise test'
+    ja-JP: 'ベースライン暗ノイズ検査'
+    ru-RU: 'Проверка тёмного шума базовой линии'
+
+  '光谱带宽与仪器最小光谱带宽':
+    zh-CN: '光谱带宽与仪器最小光谱带宽'
+    en-US: 'Spectral bandwidth & minimum bandwidth'
+    ja-JP: 'スペクトル帯域幅と最小帯域幅'
+    ru-RU: 'Спектральная полоса и минимальная полоса пропускания'
+
+  '噪声检验':
+    zh-CN: '噪声检验'
+    en-US: 'Noise test'
+    ja-JP: 'ノイズ検査'
+    ru-RU: 'Проверка шума'
+
+  '漂移检验':
+    zh-CN: '漂移检验'
+    en-US: 'Drift test'
+    ja-JP: 'ドリフト検査'
+    ru-RU: 'Проверка дрейфа'
+
+  '波长边缘噪声':
+    zh-CN: '波长边缘噪声'
+    en-US: 'Wavelength edge noise'
+    ja-JP: '波長エッジノイズ'
+    ru-RU: 'Шум на краях длины волны'
+
+  # ========== Excel 指标名称 ==========
+  '波长示值误差':
+    zh-CN: '波长示值误差'
+    en-US: 'Wavelength error'
+    ja-JP: '波長指示誤差'
+    ru-RU: 'Погрешность длины волны'
+
+  '波长重复性':
+    zh-CN: '波长重复性'
+    en-US: 'Wavelength repeatability'
+    ja-JP: '波長繰り返し性'
+    ru-RU: 'Повторяемость длины волны'
+
+  '透射比示值误差':
+    zh-CN: '透射比示值误差'
+    en-US: 'Transmittance error'
+    ja-JP: '透過率指示誤差'
+    ru-RU: 'Погрешность пропускания'
+
+  '判定结果':
+    zh-CN: '判定结果'
+    en-US: 'Judgment result'
+    ja-JP: '判定結果'
+    ru-RU: 'Результат оценки'
+
+  # ========== 其他 ==========
+  '导出成功':
+    zh-CN: '导出成功'
+    en-US: 'Export successful'
+    ja-JP: 'エクスポート成功'
+    ru-RU: 'Экспорт завершён'
+
+  '关闭':
+    zh-CN: '关闭'
+    en-US: 'Close'
+    ja-JP: '閉じる'
+    ru-RU: 'Закрыть'
+
+  '期间核查提醒':
+    zh-CN: '期间核查提醒'
+    en-US: 'Periodic inspection reminder'
+    ja-JP: '期間核查リマインダー'
+    ru-RU: 'Напоминание о периодической проверке'
+
+  '标准物到期提醒':
+    zh-CN: '标准物到期提醒'
+    en-US: 'Standard material expiry reminder'
+    ja-JP: '標準物質有効期限リマインダー'
+    ru-RU: 'Напоминание об истечении срока материала'
+
+  # ========== API 消息中文翻译 (自动生成) ==========
+  'Excel文件中没有数据':
+    zh-CN: 'Excel文件中没有数据'
+    en-US: 'No data in Excel file'
+    ja-JP: 'Excelファイルにデータがありません'
+    ru-RU: 'Нет данных в файле Excel'
+
+  'Excel文件没有表头信息':
+    zh-CN: 'Excel文件没有表头信息'
+    en-US: 'Excel file has no header information'
+    ja-JP: 'Excelファイルにヘッダー情報がありません'
+    ru-RU: 'Файл Excel не содержит информации заголовка'
+
+  'Python服务调用异常':
+    zh-CN: 'Python服务调用异常'
+    en-US: 'Python service call exception'
+    ja-JP: 'Pythonサービス呼び出し異常'
+    ru-RU: 'Исключение при вызове сервиса Python'
+
+  'T600xml文件加载失败':
+    zh-CN: 'T600xml文件加载失败'
+    en-US: 'T600 XML file loading failed'
+    ja-JP: 'T600 XMLファイルの読み込みに失敗しました'
+    ru-RU: 'Не удалось загрузить файл T600 XML'
+
+  'T800 xml 加载失败':
+    zh-CN: 'T800 xml 加载失败'
+    en-US: 'T800 XML loading failed'
+    ja-JP: 'T800 XMLの読み込みに失敗しました'
+    ru-RU: 'Не удалось загрузить T800 XML'
+
+  'T800xml文件加载失败':
+    zh-CN: 'T800xml文件加载失败'
+    en-US: 'T800 XML file loading failed'
+    ja-JP: 'T800 XMLファイルの読み込みに失敗しました'
+    ru-RU: 'Не удалось загрузить файл T800 XML'
+
+  'T800发送命令失败':
+    zh-CN: 'T800发送命令失败'
+    en-US: 'T800 command sending failed'
+    ja-JP: 'T800コマンド送信に失敗しました'
+    ru-RU: 'Не удалось отправить команду T800'
+
+  'TimeMeasure 启动成功':
+    zh-CN: 'TimeMeasure 启动成功'
+    en-US: 'TimeMeasure started successfully'
+    ja-JP: 'TimeMeasureが正常に起動しました'
+    ru-RU: 'TimeMeasure успешно запущен'
+
+  'xml文件加载失败':
+    zh-CN: 'xml文件加载失败'
+    en-US: 'XML file loading failed'
+    ja-JP: 'XMLファイルの読み込みに失敗しました'
+    ru-RU: 'Не удалось загрузить файл XML'
+
+  '不存在':
+    zh-CN: '不存在'
+    en-US: 'Does not exist'
+    ja-JP: '存在しません'
+    ru-RU: 'Не существует'
+
+  '不能删除当前登录用户':
+    zh-CN: '不能删除当前登录用户'
+    en-US: 'Cannot delete current logged-in user'
+    ja-JP: '現在ログイン中のユーザーは削除できません'
+    ru-RU: 'Невозможно удалить текущего пользователя'
+
+  '串口连接暂不支持！':
+    zh-CN: '串口连接暂不支持！'
+    en-US: 'Serial connection not supported yet'
+    ja-JP: 'シリアル接続は現在サポートされていません'
+    ru-RU: 'Последовательное подключение пока не поддерживается'
+
+  '串口连接暂未实现！':
+    zh-CN: '串口连接暂未实现！'
+    en-US: 'Serial connection not implemented yet'
+    ja-JP: 'シリアル接続は未実装です'
+    ru-RU: 'Последовательное подключение еще не реализовано'
+
+  '仪器未连接':
+    zh-CN: '仪器未连接'
+    en-US: 'Instrument not connected'
+    ja-JP: '機器が接続されていません'
+    ru-RU: 'Прибор не подключен'
+
+  '仪器连接失败，请检查仪器！':
+    zh-CN: '仪器连接失败，请检查仪器！'
+    en-US: 'Instrument connection failed, please check the instrument'
+    ja-JP: '機器接続に失敗しました、機器を確認してください'
+    ru-RU: 'Не удалось подключить прибор, проверьте прибор'
+
+  '仪器连接超数量！':
+    zh-CN: '仪器连接超数量！'
+    en-US: 'Instrument connection limit exceeded'
+    ja-JP: '機器接続数の上限を超えています'
+    ru-RU: 'Превышен лимит подключений приборов'
+
+  '任务ID不能为空':
+    zh-CN: '任务ID不能为空'
+    en-US: 'Task ID cannot be empty'
+    ja-JP: 'タスクIDは空にできません'
+    ru-RU: 'ID задачи не может быть пустым'
+
+  '任务不存在':
+    zh-CN: '任务不存在'
+    en-US: 'Task does not exist'
+    ja-JP: 'タスクが存在しません'
+    ru-RU: 'Задача не существует'
+
+  '任务名称不可为空':
+    zh-CN: '任务名称不可为空'
+    en-US: 'Task name cannot be empty'
+    ja-JP: 'タスク名は空にできません'
+    ru-RU: 'Имя задачи не может быть пустым'
+
+  '任务名称已存在':
+    zh-CN: '任务名称已存在'
+    en-US: 'Task name already exists'
+    ja-JP: 'タスク名は既に存在します'
+    ru-RU: 'Имя задачи уже существует'
+
+  '任务名称未改变':
+    zh-CN: '任务名称未改变'
+    en-US: 'Task name unchanged'
+    ja-JP: 'タスク名は変更されていません'
+    ru-RU: 'Имя задачи не изменено'
+
+  '任务已删除':
+    zh-CN: '任务已删除'
+    en-US: 'Task deleted'
+    ja-JP: 'タスクは削除されました'
+    ru-RU: 'Задача удалена'
+
+  '任务已结束,无法测量':
+    zh-CN: '任务已结束,无法测量'
+    en-US: 'Task has ended, cannot measure'
+    ja-JP: 'タスクは終了しました、測定できません'
+    ru-RU: 'Задача завершена, невозможно измерить'
+
+  '任务结束失败':
+    zh-CN: '任务结束失败'
+    en-US: 'Failed to end task'
+    ja-JP: 'タスク終了に失敗しました'
+    ru-RU: 'Не удалось завершить задачу'
+
+  '保存成功':
+    zh-CN: '保存成功'
+    en-US: 'Saved successfully'
+    ja-JP: '保存に成功しました'
+    ru-RU: 'Успешно сохранено'
+
+  '修改任务名称失败':
+    zh-CN: '修改任务名称失败'
+    en-US: 'Failed to rename task'
+    ja-JP: 'タスク名の変更に失敗しました'
+    ru-RU: 'Не удалось переименовать задачу'
+
+  '修改失败':
+    zh-CN: '修改失败'
+    en-US: 'Modification failed'
+    ja-JP: '変更に失敗しました'
+    ru-RU: 'Ошибка изменения'
+
+  '修改成功':
+    zh-CN: '修改成功'
+    en-US: 'Modified successfully'
+    ja-JP: '変更に成功しました'
+    ru-RU: 'Успешно изменено'
+
+  '停止失败！':
+    zh-CN: '停止失败！'
+    en-US: 'Stop failed'
+    ja-JP: '停止に失敗しました'
+    ru-RU: 'Ошибка остановки'
+
+  '光度模式不能为空':
+    zh-CN: '光度模式不能为空'
+    en-US: 'Photometric mode cannot be empty'
+    ja-JP: '光度モードは空にできません'
+    ru-RU: 'Фотометрический режим не может быть пустым'
+
+  '光度模式缺失':
+    zh-CN: '光度模式缺失'
+    en-US: 'Photometric mode missing'
+    ja-JP: '光度モードが欠落しています'
+    ru-RU: 'Фотометрический режим отсутствует'
+
+  '光谱带宽不能为空':
+    zh-CN: '光谱带宽不能为空'
+    en-US: 'Spectral bandwidth cannot be empty'
+    ja-JP: 'スペクトル帯域幅は空にできません'
+    ru-RU: 'Спектральная полоса не может быть пустой'
+
+  '光谱带宽格式错误，必须为数字':
+    zh-CN: '光谱带宽格式错误，必须为数字'
+    en-US: 'Invalid spectral bandwidth format, must be a number'
+    ja-JP: 'スペクトル帯域幅の形式エラー、数値である必要があります'
+    ru-RU: 'Неверный формат спектральной полосы, должно быть число'
+
+  '内置模板不允许编辑':
+    zh-CN: '内置模板不允许编辑'
+    en-US: 'Built-in templates cannot be edited'
+    ja-JP: '内蔵テンプレートは編集できません'
+    ru-RU: 'Встроенные шаблоны нельзя редактировать'
+
+  '内置模板，不可删除':
+    zh-CN: '内置模板，不可删除'
+    en-US: 'Built-in template, cannot be deleted'
+    ja-JP: '内蔵テンプレート、削除不可'
+    ru-RU: 'Встроенный шаблон, нельзя удалить'
+
+  '创建任务失败!':
+    zh-CN: '创建任务失败!'
+    en-US: 'Failed to create task'
+    ja-JP: 'タスクの作成に失敗しました'
+    ru-RU: 'Не удалось создать задачу'
+
+  '创建失败':
+    zh-CN: '创建失败'
+    en-US: 'Creation failed'
+    ja-JP: '作成に失敗しました'
+    ru-RU: 'Ошибка создания'
+
+  '创建成功':
+    zh-CN: '创建成功'
+    en-US: 'Created successfully'
+    ja-JP: '作成に成功しました'
+    ru-RU: 'Успешно создано'
+
+  '删除任务失败':
+    zh-CN: '删除任务失败'
+    en-US: 'Failed to delete task'
+    ja-JP: 'タスクの削除に失敗しました'
+    ru-RU: 'Не удалось удалить задачу'
+
+  '删除失败':
+    zh-CN: '删除失败'
+    en-US: 'Deletion failed'
+    ja-JP: '削除に失敗しました'
+    ru-RU: 'Ошибка удаления'
+
+  '删除失败，消息可能不存在':
+    zh-CN: '删除失败，消息可能不存在'
+    en-US: 'Deletion failed, message may not exist'
+    ja-JP: '削除に失敗しました、メッセージが存在しない可能性があります'
+    ru-RU: 'Ошибка удаления, сообщение может не существовать'
+
+  '删除成功':
+    zh-CN: '删除成功'
+    en-US: 'Deleted successfully'
+    ja-JP: '削除に成功しました'
+    ru-RU: 'Успешно удалено'
+
+  '删除权限成功':
+    zh-CN: '删除权限成功'
+    en-US: 'Permission deleted successfully'
+    ja-JP: '権限の削除に成功しました'
+    ru-RU: 'Разрешение успешно удалено'
+
+  '前端组件路径已存在':
+    zh-CN: '前端组件路径已存在'
+    en-US: 'Frontend component path already exists'
+    ja-JP: 'フロントエンドコンポーネントパスは既に存在します'
+    ru-RU: 'Путь компонента фронтенда уже существует'
+
+  '单池重复模式下，扫描间隔不能为空':
+    zh-CN: '单池重复模式下，扫描间隔不能为空'
+    en-US: 'Scan interval cannot be empty in single-pool repeat mode'
+    ja-JP: '単一プール繰り返しモードではスキャン間隔は空にできません'
+    ru-RU: 'Интервал сканирования не может быть пустым в режиме повторения одного пула'
+
+  '单池重复模式下，重复次数不能为空':
+    zh-CN: '单池重复模式下，重复次数不能为空'
+    en-US: 'Repeat count cannot be empty in single-pool repeat mode'
+    ja-JP: '単一プール繰り返しモードでは繰り返し回数は空にできません'
+    ru-RU: 'Количество повторений не может быть пустым в режиме повторения одного пула'
+
+  '原始数据为空':
+    zh-CN: '原始数据为空'
+    en-US: 'Raw data is empty'
+    ja-JP: '生データが空です'
+    ru-RU: 'Необработанные данные пусты'
+
+  '参数不能为空':
+    zh-CN: '参数不能为空'
+    en-US: 'Parameters cannot be empty'
+    ja-JP: 'パラメータは空にできません'
+    ru-RU: 'Параметры не могут быть пустыми'
+
+  '参数为空':
+    zh-CN: '参数为空'
+    en-US: 'Parameters are empty'
+    ja-JP: 'パラメータが空です'
+    ru-RU: 'Параметры пусты'
+
+  '参数解析失败':
+    zh-CN: '参数解析失败'
+    en-US: 'Parameter parsing failed'
+    ja-JP: 'パラメータの解析に失敗しました'
+    ru-RU: 'Ошибка анализа параметров'
+
+  '参数设置出错！':
+    zh-CN: '参数设置出错！'
+    en-US: 'Parameter setting error'
+    ja-JP: 'パラメータ設定エラー'
+    ru-RU: 'Ошибка настройки параметров'
+
+  '参考标准不能为空':
+    zh-CN: '参考标准不能为空'
+    en-US: 'Reference standard cannot be empty'
+    ja-JP: '参考標準は空にできません'
+    ru-RU: 'Эталон не может быть пустым'
+
+  '参考标准名称长度不能超过100字符':
+    zh-CN: '参考标准名称长度不能超过100字符'
+    en-US: 'Reference standard name cannot exceed 100 characters'
+    ja-JP: '参考標準名は100文字以内にしてください'
+    ru-RU: 'Название эталона не должно превышать 100 символов'
+
+  '发送失败':
+    zh-CN: '发送失败'
+    en-US: 'Send failed'
+    ja-JP: '送信に失敗しました'
+    ru-RU: 'Ошибка отправки'
+
+  '发送成功':
+    zh-CN: '发送成功'
+    en-US: 'Sent successfully'
+    ja-JP: '送信に成功しました'
+    ru-RU: 'Успешно отправлено'
+
+  '启用消除尖刺功能时，尖刺数组不能为空':
+    zh-CN: '启用消除尖刺功能时，尖刺数组不能为空'
+    en-US: 'Spike array cannot be empty when spike removal is enabled'
+    ja-JP: 'スパイク除去機能有効時、スパイク配列は空にできません'
+    ru-RU: 'Массив пиков не может быть пустым при включенном удалении пиков'
+
+  '响应时间必须小于等于时间间隔':
+    zh-CN: '响应时间必须小于等于时间间隔'
+    en-US: 'Response time must be less than or equal to time interval'
+    ja-JP: '応答時間は時間間隔以下である必要があります'
+    ru-RU: 'Время отклика должно быть меньше или равно интервалу'
+
+  '回应报文字节数大于 1 ！':
+    zh-CN: '回应报文字节数大于 1 ！'
+    en-US: 'Response message bytes greater than 1'
+    ja-JP: '応答メッセージのバイト数が1より大きい'
+    ru-RU: 'Количество байт ответа больше 1'
+
+  '基线不能选择光度模式为ES、ER':
+    zh-CN: '基线不能选择光度模式为ES、ER'
+    en-US: 'Baseline cannot use ES or ER photometric mode'
+    ja-JP: 'ベースラインでES、ER光度モードは選択できません'
+    ru-RU: 'Базовая линия не может использовать фотометрический режим ES, ER'
+
+  '基线和扫描只能选择一个物质':
+    zh-CN: '基线和扫描只能选择一个物质'
+    en-US: 'Only one material can be selected for baseline and scan'
+    ja-JP: 'ベースラインとスキャンで選択できる物質は1つだけです'
+    ru-RU: 'Для базовой линии и сканирования можно выбрать только одно вещество'
+
+  '基线失败':
+    zh-CN: '基线失败'
+    en-US: 'Baseline failed'
+    ja-JP: 'ベースライン失敗'
+    ru-RU: 'Ошибка базовой линии'
+
+  '增益不能为空':
+    zh-CN: '增益不能为空'
+    en-US: 'Gain cannot be empty'
+    ja-JP: 'ゲインは空にできません'
+    ru-RU: 'Усиление не может быть пустым'
+
+  '处理失败！':
+    zh-CN: '处理失败！'
+    en-US: 'Processing failed'
+    ja-JP: '処理に失敗しました'
+    ru-RU: 'Ошибка обработки'
+
+  '处理消息出错！':
+    zh-CN: '处理消息出错！'
+    en-US: 'Message processing error'
+    ja-JP: 'メッセージ処理エラー'
+    ru-RU: 'Ошибка обработки сообщения'
+
+  '多联池模式不能为空':
+    zh-CN: '多联池模式不能为空'
+    en-US: 'Multi-cuvette mode cannot be empty'
+    ja-JP: 'マルチキュベットモードは空にできません'
+    ru-RU: 'Режим мульти-кювет не может быть пустым'
+
+  '存在子级，无法删除':
+    zh-CN: '存在子级，无法删除'
+    en-US: 'Has child items, cannot delete'
+    ja-JP: '子項目があるため削除できません'
+    ru-RU: 'Есть дочерние элементы, удаление невозможно'
+
+  '导入文件不能为空':
+    zh-CN: '导入文件不能为空'
+    en-US: 'Import file cannot be empty'
+    ja-JP: 'インポートファイルは空にできません'
+    ru-RU: 'Файл импорта не может быть пустым'
+
+  '导入负责人不能为空':
+    zh-CN: '导入负责人不能为空'
+    en-US: 'Import owner cannot be empty'
+    ja-JP: 'インポート担当者は空にできません'
+    ru-RU: 'Владелец импорта не может быть пустым'
+
+  '小组ID不能为空':
+    zh-CN: '小组ID不能为空'
+    en-US: 'Group ID cannot be empty'
+    ja-JP: 'グループIDは空にできません'
+    ru-RU: 'ID группы не может быть пустым'
+
+  '尖刺数组中存在重复的尖刺点，请检查':
+    zh-CN: '尖刺数组中存在重复的尖刺点，请检查'
+    en-US: 'Duplicate spike points in spike array, please check'
+    ja-JP: 'スパイク配列に重複するスパイクポイントがあります、確認してください'
+    ru-RU: 'Дублирующиеся пики в массиве, проверьте'
+
+  '幻灯波长在330~390之间':
+    zh-CN: '幻灯波长在330~390之间'
+    en-US: 'Lamp change wavelength must be between 330 and 390'
+    ja-JP: 'ランプ切替波長は330~390の間にしてください'
+    ru-RU: 'Длина волны смены лампы должна быть между 330 и 390'
+
+  '开始波长不能为空':
+    zh-CN: '开始波长不能为空'
+    en-US: 'Start wavelength cannot be empty'
+    ja-JP: '開始波長は空にできません'
+    ru-RU: 'Начальная длина волны не может быть пустой'
+
+  '当前仪器不支持该扫描速度':
+    zh-CN: '当前仪器不支持该扫描速度'
+    en-US: 'Current instrument does not support this scan speed'
+    ja-JP: '現在の機器はこのスキャン速度をサポートしていません'
+    ru-RU: 'Текущий прибор не поддерживает эту скорость сканирования'
+
+  '当前仪器已被连接！':
+    zh-CN: '当前仪器已被连接！'
+    en-US: 'Current instrument is already connected'
+    ja-JP: '現在の機器は既に接続されています'
+    ru-RU: 'Текущий прибор уже подключен'
+
+  '当前仪器无法统计时间！':
+    zh-CN: '当前仪器无法统计时间！'
+    en-US: 'Current instrument cannot count time'
+    ja-JP: '現在の機器は時間集計ができません'
+    ru-RU: 'Текущий прибор не может считать время'
+
+  '当前仪器无法连接！':
+    zh-CN: '当前仪器无法连接！'
+    en-US: 'Current instrument cannot connect'
+    ja-JP: '現在の機器は接続できません'
+    ru-RU: 'Текущий прибор не может подключиться'
+
+  '当前任务与仪器序列号不匹配，请新建任务！！！':
+    zh-CN: '当前任务与仪器序列号不匹配，请新建任务！！！'
+    en-US: 'Current task does not match instrument serial number, please create a new task'
+    ja-JP: '現在のタスクと機器シリアル番号が一致しません、新しいタスクを作成してください'
+    ru-RU: 'Текущая задача не соответствует серийному номеру прибора, создайте новую задачу'
+
+  '当前波长未设置，请先校零':
+    zh-CN: '当前波长未设置，请先校零'
+    en-US: 'Current wavelength not set, please zero first'
+    ja-JP: '現在の波長が未設定です、先にゼロ校正してください'
+    ru-RU: 'Текущая длина волны не задана, сначала выполните калибровку нуля'
+
+  '当前设备与任务测量设备不匹配':
+    zh-CN: '当前设备与任务测量设备不匹配'
+    en-US: 'Current device does not match task measurement device'
+    ja-JP: '現在のデバイスとタスク測定デバイスが一致しません'
+    ru-RU: 'Текущее устройство не соответствует измерительному устройству задачи'
+
+  '快捷导航添加失败':
+    zh-CN: '快捷导航添加失败'
+    en-US: 'Quick navigation addition failed'
+    ja-JP: 'クイックナビゲーションの追加に失敗しました'
+    ru-RU: 'Не удалось добавить быструю навигацию'
+
+  '快捷导航添加成功':
+    zh-CN: '快捷导航添加成功'
+    en-US: 'Quick navigation added successfully'
+    ja-JP: 'クイックナビゲーションの追加に成功しました'
+    ru-RU: 'Быстрая навигация успешно добавлена'
+
+  '所有设备连接失败':
+    zh-CN: '所有设备连接失败'
+    en-US: 'All device connections failed'
+    ja-JP: 'すべてのデバイス接続に失敗しました'
+    ru-RU: 'Не удалось подключить все устройства'
+
+  '扫描单位不能为空':
+    zh-CN: '扫描单位不能为空'
+    en-US: 'Scan unit cannot be empty'
+    ja-JP: 'スキャン単位は空にできません'
+    ru-RU: 'Единица сканирования не может быть пустой'
+
+  '扫描总个数不能为空':
+    zh-CN: '扫描总个数不能为空'
+    en-US: 'Total scan count cannot be empty'
+    ja-JP: 'スキャン総数は空にできません'
+    ru-RU: 'Общее количество сканирований не может быть пустым'
+
+  '扫描总时长不能为空':
+    zh-CN: '扫描总时长不能为空'
+    en-US: 'Total scan duration cannot be empty'
+    ja-JP: 'スキャン総時間は空にできません'
+    ru-RU: 'Общая длительность сканирования не может быть пустой'
+
+  '扫描速度不能为空':
+    zh-CN: '扫描速度不能为空'
+    en-US: 'Scan speed cannot be empty'
+    ja-JP: 'スキャン速度は空にできません'
+    ru-RU: 'Скорость сканирования не может быть пустой'
+
+  '扫描速度参数错误':
+    zh-CN: '扫描速度参数错误'
+    en-US: 'Scan speed parameter error'
+    ja-JP: 'スキャン速度パラメータエラー'
+    ru-RU: 'Ошибка параметра скорости сканирования'
+
+  '批量删除失败，请检查ID列表':
+    zh-CN: '批量删除失败，请检查ID列表'
+    en-US: 'Batch deletion failed, please check ID list'
+    ja-JP: '一括削除に失敗しました、IDリストを確認してください'
+    ru-RU: 'Ошибка пакетного удаления, проверьте список ID'
+
+  '批量删除成功':
+    zh-CN: '批量删除成功'
+    en-US: 'Batch deletion successful'
+    ja-JP: '一括削除に成功しました'
+    ru-RU: 'Пакетное удаление выполнено'
+
+  '找不到对应的测量方法':
+    zh-CN: '找不到对应的测量方法'
+    en-US: 'Corresponding measurement method not found'
+    ja-JP: '対応する測定方法が見つかりません'
+    ru-RU: 'Соответствующий метод измерения не найден'
+
+  '报文不足!':
+    zh-CN: '报文不足!'
+    en-US: 'Insufficient message data'
+    ja-JP: 'メッセージデータ不足'
+    ru-RU: 'Недостаточно данных сообщения'
+
+  '报文接收不足！':
+    zh-CN: '报文接收不足！'
+    en-US: 'Insufficient message received'
+    ja-JP: '受信メッセージ不足'
+    ru-RU: 'Получено недостаточно данных сообщения'
+
+  '换灯波长不能为空':
+    zh-CN: '换灯波长不能为空'
+    en-US: 'Lamp change wavelength cannot be empty'
+    ja-JP: 'ランプ切替波長は空にできません'
+    ru-RU: 'Длина волны смены лампы не может быть пустой'
+
+  '换灯波长格式错误':
+    zh-CN: '换灯波长格式错误'
+    en-US: 'Invalid lamp change wavelength format'
+    ja-JP: 'ランプ切替波長の形式エラー'
+    ru-RU: 'Неверный формат длины волны смены лампы'
+
+  '接收报文解析异常':
+    zh-CN: '接收报文解析异常'
+    en-US: 'Received message parsing exception'
+    ja-JP: '受信メッセージの解析異常'
+    ru-RU: 'Исключение при разборе полученного сообщения'
+
+  '操作失败':
+    zh-CN: '操作失败'
+    en-US: 'Operation failed'
+    ja-JP: '操作に失敗しました'
+    ru-RU: 'Ошибка операции'
+
+  '数据转换错误':
+    zh-CN: '数据转换错误'
+    en-US: 'Data conversion error'
+    ja-JP: 'データ変換エラー'
+    ru-RU: 'Ошибка преобразования данных'
+
+  '文件处理失败':
+    zh-CN: '文件处理失败'
+    en-US: 'File processing failed'
+    ja-JP: 'ファイル処理に失敗しました'
+    ru-RU: 'Ошибка обработки файла'
+
+  '断开失败！':
+    zh-CN: '断开失败！'
+    en-US: 'Disconnect failed'
+    ja-JP: '切断に失敗しました'
+    ru-RU: 'Ошибка отключения'
+
+  '新增成功':
+    zh-CN: '新增成功'
+    en-US: 'Added successfully'
+    ja-JP: '追加に成功しました'
+    ru-RU: 'Успешно добавлено'
+
+  '新增未知样品名称超出限制':
+    zh-CN: '新增未知样品名称超出限制'
+    en-US: 'New unknown sample name exceeds limit'
+    ja-JP: '新規不明サンプル名が制限を超えています'
+    ru-RU: 'Имя нового неизвестного образца превышает лимит'
+
+  '新增未知样品编号超出限制':
+    zh-CN: '新增未知样品编号超出限制'
+    en-US: 'New unknown sample number exceeds limit'
+    ja-JP: '新規不明サンプル番号が制限を超えています'
+    ru-RU: 'Номер нового неизвестного образца превышает лимит'
+
+  '新增权限成功':
+    zh-CN: '新增权限成功'
+    en-US: 'Permission added successfully'
+    ja-JP: '権限の追加に成功しました'
+    ru-RU: 'Разрешение успешно добавлено'
+
+  '新增标准样品名称超出限制':
+    zh-CN: '新增标准样品名称超出限制'
+    en-US: 'New standard sample name exceeds limit'
+    ja-JP: '新規標準サンプル名が制限を超えています'
+    ru-RU: 'Имя нового стандартного образца превышает лимит'
+
+  '新增标准样品编号超出限制':
+    zh-CN: '新增标准样品编号超出限制'
+    en-US: 'New standard sample number exceeds limit'
+    ja-JP: '新規標準サンプル番号が制限を超えています'
+    ru-RU: 'Номер нового стандартного образца превышает лимит'
+
+  '新增样品名称超出限制':
+    zh-CN: '新增样品名称超出限制'
+    en-US: 'New sample name exceeds limit'
+    ja-JP: '新規サンプル名が制限を超えています'
+    ru-RU: 'Имя нового образца превышает лимит'
+
+  '新增样品编号超出限制':
+    zh-CN: '新增样品编号超出限制'
+    en-US: 'New sample number exceeds limit'
+    ja-JP: '新規サンプル番号が制限を超えています'
+    ru-RU: 'Номер нового образца превышает лимит'
+
+  '方法ID不能为空':
+    zh-CN: '方法ID不能为空'
+    en-US: 'Method ID cannot be empty'
+    ja-JP: 'メソッドIDは空にできません'
+    ru-RU: 'ID метода не может быть пустым'
+
+  '方法不存在':
+    zh-CN: '方法不存在'
+    en-US: 'Method does not exist'
+    ja-JP: 'メソッドが存在しません'
+    ru-RU: 'Метод не существует'
+
+  '方法修改失败':
+    zh-CN: '方法修改失败'
+    en-US: 'Method modification failed'
+    ja-JP: 'メソッドの変更に失敗しました'
+    ru-RU: 'Не удалось изменить метод'
+
+  '方法名称不能为空':
+    zh-CN: '方法名称不能为空'
+    en-US: 'Method name cannot be empty'
+    ja-JP: 'メソッド名は空にできません'
+    ru-RU: 'Имя метода не может быть пустым'
+
+  '方法名称重复':
+    zh-CN: '方法名称重复'
+    en-US: 'Method name already exists'
+    ja-JP: 'メソッド名が重複しています'
+    ru-RU: 'Имя метода уже существует'
+
+  '时间参数格式错误，必须为数字':
+    zh-CN: '时间参数格式错误，必须为数字'
+    en-US: 'Invalid time parameter format, must be a number'
+    ja-JP: '時間パラメータの形式エラー、数値である必要があります'
+    ru-RU: 'Неверный формат параметра времени, должно быть число'
+
+  '时间必须大于 0':
+    zh-CN: '时间必须大于 0'
+    en-US: 'Time must be greater than 0'
+    ja-JP: '時間は0より大きくする必要があります'
+    ru-RU: 'Время должно быть больше 0'
+
+  '时间间隔不能为空':
+    zh-CN: '时间间隔不能为空'
+    en-US: 'Time interval cannot be empty'
+    ja-JP: '時間間隔は空にできません'
+    ru-RU: 'Интервал времени не может быть пустым'
+
+  '时间间隔必须大于 0':
+    zh-CN: '时间间隔必须大于 0'
+    en-US: 'Time interval must be greater than 0'
+    ja-JP: '時間間隔は0より大きくする必要があります'
+    ru-RU: 'Интервал времени должен быть больше 0'
+
+  '暂不支持双组份定量分析':
+    zh-CN: '暂不支持双组份定量分析'
+    en-US: 'Two-component quantitative analysis not supported yet'
+    ja-JP: '二成分定量分析はまだサポートされていません'
+    ru-RU: 'Двухкомпонентный количественный анализ пока не поддерживается'
+
+  '暂未开放':
+    zh-CN: '暂未开放'
+    en-US: 'Not yet available'
+    ja-JP: 'まだ公開されていません'
+    ru-RU: 'Пока недоступно'
+
+  '暗电流校正失败，请检查仪器!':
+    zh-CN: '暗电流校正失败，请检查仪器!'
+    en-US: 'Dark current calibration failed, please check the instrument'
+    ja-JP: '暗電流校正に失敗しました、機器を確認してください'
+    ru-RU: 'Ошибка калибровки темнового тока, проверьте прибор'
+
+  '曲线拟合失败':
+    zh-CN: '曲线拟合失败'
+    en-US: 'Curve fitting failed'
+    ja-JP: '曲線フィッティングに失敗しました'
+    ru-RU: 'Ошибка аппроксимации кривой'
+
+  '曲线拟合失败！':
+    zh-CN: '曲线拟合失败！'
+    en-US: 'Curve fitting failed'
+    ja-JP: '曲線フィッティングに失敗しました'
+    ru-RU: 'Ошибка аппроксимации кривой'
+
+  '更新失败':
+    zh-CN: '更新失败'
+    en-US: 'Update failed'
+    ja-JP: '更新に失敗しました'
+    ru-RU: 'Ошибка обновления'
+
+  '更新提醒配置失败':
+    zh-CN: '更新提醒配置失败'
+    en-US: 'Failed to update reminder configuration'
+    ja-JP: 'リマインダー設定の更新に失敗しました'
+    ru-RU: 'Не удалось обновить конфигурацию напоминаний'
+
+  '更新权限成功':
+    zh-CN: '更新权限成功'
+    en-US: 'Permission updated successfully'
+    ja-JP: '権限の更新に成功しました'
+    ru-RU: 'Разрешение успешно обновлено'
+
+  '有任务正在使用该标准物!!!':
+    zh-CN: '有任务正在使用该标准物!!!'
+    en-US: 'A task is currently using this standard material'
+    ja-JP: 'この標準物質を使用中のタスクがあります'
+    ru-RU: 'Задача использует этот стандартный материал'
+
+  '有任务正在使用该标准物，无法删除!':
+    zh-CN: '有任务正在使用该标准物，无法删除!'
+    en-US: 'Cannot delete: a task is using this standard material'
+    ja-JP: '削除不可：この標準物質を使用中のタスクがあります'
+    ru-RU: 'Нельзя удалить: задача использует этот стандартный материал'
+
+  '未传入任何可设置参数':
+    zh-CN: '未传入任何可设置参数'
+    en-US: 'No settable parameters provided'
+    ja-JP: '設定可能なパラメータが入力されていません'
+    ru-RU: 'Не предоставлено настраиваемых параметров'
+
+  '未传入任何可读取参数':
+    zh-CN: '未传入任何可读取参数'
+    en-US: 'No readable parameters provided'
+    ja-JP: '読み取り可能なパラメータが入力されていません'
+    ru-RU: 'Не предоставлено читаемых параметров'
+
+  '未找到可用的IP':
+    zh-CN: '未找到可用的IP'
+    en-US: 'No available IP found'
+    ja-JP: '利用可能なIPが見つかりません'
+    ru-RU: 'Доступный IP не найден'
+
+  '未找到对应的测量方法':
+    zh-CN: '未找到对应的测量方法'
+    en-US: 'Corresponding measurement method not found'
+    ja-JP: '対応する測定方法が見つかりません'
+    ru-RU: 'Соответствующий метод измерения не найден'
+
+  '未找到模板':
+    zh-CN: '未找到模板'
+    en-US: 'Template not found'
+    ja-JP: 'テンプレートが見つかりません'
+    ru-RU: 'Шаблон не найден'
+
+  '未找到模板!':
+    zh-CN: '未找到模板!'
+    en-US: 'Template not found'
+    ja-JP: 'テンプレートが見つかりません'
+    ru-RU: 'Шаблон не найден'
+
+  '未找到要编辑的模板':
+    zh-CN: '未找到要编辑的模板'
+    en-US: 'Template to edit not found'
+    ja-JP: '編集対象のテンプレートが見つかりません'
+    ru-RU: 'Шаблон для редактирования не найден'
+
+  '未找到该序列号对应的仪器型号!':
+    zh-CN: '未找到该序列号对应的仪器型号!'
+    en-US: 'No instrument model found for this serial number'
+    ja-JP: 'このシリアル番号に対応する機器モデルが見つかりません'
+    ru-RU: 'Не найдена модель прибора для этого серийного номера'
+
+  '未找到该操作！':
+    zh-CN: '未找到该操作！'
+    en-US: 'Operation not found'
+    ja-JP: '操作が見つかりません'
+    ru-RU: 'Операция не найдена'
+
+  '未找到该类型的提醒配置':
+    zh-CN: '未找到该类型的提醒配置'
+    en-US: 'Reminder configuration of this type not found'
+    ja-JP: 'このタイプのリマインダー設定が見つかりません'
+    ru-RU: 'Конфигурация напоминаний данного типа не найдена'
+
+  '未找到该设备':
+    zh-CN: '未找到该设备'
+    en-US: 'Device not found'
+    ja-JP: 'デバイスが見つかりません'
+    ru-RU: 'Устройство не найдено'
+
+  '未找到连接仪器信息！':
+    zh-CN: '未找到连接仪器信息！'
+    en-US: 'Connected instrument information not found'
+    ja-JP: '接続機器情報が見つかりません'
+    ru-RU: 'Информация о подключенном приборе не найдена'
+
+  '未指定要删除的方法':
+    zh-CN: '未指定要删除的方法'
+    en-US: 'No method specified for deletion'
+    ja-JP: '削除するメソッドが指定されていません'
+    ru-RU: 'Не указан метод для удаления'
+
+  '未知错误':
+    zh-CN: '未知错误'
+    en-US: 'Unknown error'
+    ja-JP: '不明なエラー'
+    ru-RU: 'Неизвестная ошибка'
+
+  '未识别当前仪器':
+    zh-CN: '未识别当前仪器'
+    en-US: 'Current instrument not recognized'
+    ja-JP: '現在の機器が認識されていません'
+    ru-RU: 'Текущий прибор не распознан'
+
+  '权限名称已存在':
+    zh-CN: '权限名称已存在'
+    en-US: 'Permission name already exists'
+    ja-JP: '権限名は既に存在します'
+    ru-RU: 'Имя разрешения уже существует'
+
+  '权限编码已存在':
+    zh-CN: '权限编码已存在'
+    en-US: 'Permission code already exists'
+    ja-JP: '権限コードは既に存在します'
+    ru-RU: 'Код разрешения уже существует'
+
+  '权限记录不存在':
+    zh-CN: '权限记录不存在'
+    en-US: 'Permission record does not exist'
+    ja-JP: '権限レコードが存在しません'
+    ru-RU: 'Запись разрешения не существует'
+
+  '极快扫描速度时,扫描间隔不能小于1秒':
+    zh-CN: '极快扫描速度时,扫描间隔不能小于1秒'
+    en-US: 'At ultra-fast scan speed, scan interval cannot be less than 1 second'
+    ja-JP: '超高速スキャン時、スキャン間隔は1秒未満にできません'
+    ru-RU: 'При сверхбыстрой скорости сканирования интервал не может быть менее 1 секунды'
+
+  '极快扫描速度时,波长区间应在1100.0~380.0':
+    zh-CN: '极快扫描速度时,波长区间应在1100.0~380.0'
+    en-US: 'At ultra-fast scan speed, wavelength range should be 1100.0~380.0'
+    ja-JP: '超高速スキャン時、波長範囲は1100.0~380.0にしてください'
+    ru-RU: 'При сверхбыстрой скорости диапазон длин волн должен быть 1100.0~380.0'
+
+  '查询任务模板失败':
+    zh-CN: '查询任务模板失败'
+    en-US: 'Failed to query task template'
+    ja-JP: 'タスクテンプレートの照会に失敗しました'
+    ru-RU: 'Не удалось запросить шаблон задачи'
+
+  '查询任务管理列表失败':
+    zh-CN: '查询任务管理列表失败'
+    en-US: 'Failed to query task management list'
+    ja-JP: 'タスク管理リストの照会に失敗しました'
+    ru-RU: 'Не удалось запросить список управления задачами'
+
+  '查询失败':
+    zh-CN: '查询失败'
+    en-US: 'Query failed'
+    ja-JP: '照会に失敗しました'
+    ru-RU: 'Ошибка запроса'
+
+  '校正失败':
+    zh-CN: '校正失败'
+    en-US: 'Calibration failed'
+    ja-JP: '校正に失敗しました'
+    ru-RU: 'Ошибка калибровки'
+
+  '校零失败':
+    zh-CN: '校零失败'
+    en-US: 'Zero calibration failed'
+    ja-JP: 'ゼロ校正に失敗しました'
+    ru-RU: 'Ошибка калибровки нуля'
+
+  '样品池中，未找到基线所需的空气':
+    zh-CN: '样品池中，未找到基线所需的空气'
+    en-US: 'Air required for baseline not found in sample pool'
+    ja-JP: 'サンプルプールにベースラインに必要な空気が見つかりません'
+    ru-RU: 'В пуле образцов не найден воздух, необходимый для базовой линии'
+
+  '样品池为空':
+    zh-CN: '样品池为空'
+    en-US: 'Sample pool is empty'
+    ja-JP: 'サンプルプールが空です'
+    ru-RU: 'Пул образцов пуст'
+
+  '模板ID不能为空':
+    zh-CN: '模板ID不能为空'
+    en-US: 'Template ID cannot be empty'
+    ja-JP: 'テンプレートIDは空にできません'
+    ru-RU: 'ID шаблона не может быть пустым'
+
+  '模板不存在':
+    zh-CN: '模板不存在'
+    en-US: 'Template does not exist'
+    ja-JP: 'テンプレートが存在しません'
+    ru-RU: 'Шаблон не существует'
+
+  '模板代码不能为空':
+    zh-CN: '模板代码不能为空'
+    en-US: 'Template code cannot be empty'
+    ja-JP: 'テンプレートコードは空にできません'
+    ru-RU: 'Код шаблона не может быть пустым'
+
+  '模板列配置为空':
+    zh-CN: '模板列配置为空'
+    en-US: 'Template column configuration is empty'
+    ja-JP: 'テンプレート列設定が空です'
+    ru-RU: 'Конфигурация столбцов шаблона пуста'
+
+  '模板创建失败':
+    zh-CN: '模板创建失败'
+    en-US: 'Template creation failed'
+    ja-JP: 'テンプレートの作成に失敗しました'
+    ru-RU: 'Не удалось создать шаблон'
+
+  '模板创建成功':
+    zh-CN: '模板创建成功'
+    en-US: 'Template created successfully'
+    ja-JP: 'テンプレートの作成に成功しました'
+    ru-RU: 'Шаблон успешно создан'
+
+  '模板名称重复！！':
+    zh-CN: '模板名称重复！！'
+    en-US: 'Template name already exists'
+    ja-JP: 'テンプレート名が重複しています'
+    ru-RU: 'Имя шаблона уже существует'
+
+  '模板字段配置为空':
+    zh-CN: '模板字段配置为空'
+    en-US: 'Template field configuration is empty'
+    ja-JP: 'テンプレートフィールド設定が空です'
+    ru-RU: 'Конфигурация полей шаблона пуста'
+
+  '模板数据不存在':
+    zh-CN: '模板数据不存在'
+    en-US: 'Template data does not exist'
+    ja-JP: 'テンプレートデータが存在しません'
+    ru-RU: 'Данные шаблона не существуют'
+
+  '模板数据解析失败':
+    zh-CN: '模板数据解析失败'
+    en-US: 'Template data parsing failed'
+    ja-JP: 'テンプレートデータの解析に失敗しました'
+    ru-RU: 'Ошибка анализа данных шаблона'
+
+  '模板更新失败':
+    zh-CN: '模板更新失败'
+    en-US: 'Template update failed'
+    ja-JP: 'テンプレートの更新に失敗しました'
+    ru-RU: 'Не удалось обновить шаблон'
+
+  '模板更新成功':
+    zh-CN: '模板更新成功'
+    en-US: 'Template updated successfully'
+    ja-JP: 'テンプレートの更新に成功しました'
+    ru-RU: 'Шаблон успешно обновлен'
+
+  '模板编码不能为空':
+    zh-CN: '模板编码不能为空'
+    en-US: 'Template code cannot be empty'
+    ja-JP: 'テンプレートコードは空にできません'
+    ru-RU: 'Код шаблона не может быть пустым'
+
+  '模板编辑失败':
+    zh-CN: '模板编辑失败'
+    en-US: 'Template editing failed'
+    ja-JP: 'テンプレートの編集に失敗しました'
+    ru-RU: 'Не удалось редактировать шаблон'
+
+  '模板编辑成功':
+    zh-CN: '模板编辑成功'
+    en-US: 'Template edited successfully'
+    ja-JP: 'テンプレートの編集に成功しました'
+    ru-RU: 'Шаблон успешно отредактирован'
+
+  '此模板正在使用中，请先删除任务！！！':
+    zh-CN: '此模板正在使用中，请先删除任务！！！'
+    en-US: 'This template is in use, please delete related tasks first'
+    ja-JP: 'このテンプレートは使用中です、先に関連タスクを削除してください'
+    ru-RU: 'Этот шаблон используется, сначала удалите связанные задачи'
+
+  '汞灯定位失败':
+    zh-CN: '汞灯定位失败'
+    en-US: 'Mercury lamp positioning failed'
+    ja-JP: '水銀ランプの位置決めに失敗しました'
+    ru-RU: 'Ошибка позиционирования ртутной лампы'
+
+  '没有仪器响应，请检查仪器连接状态！':
+    zh-CN: '没有仪器响应，请检查仪器连接状态！'
+    en-US: 'No instrument response, please check connection status'
+    ja-JP: '機器からの応答がありません、接続状態を確認してください'
+    ru-RU: 'Нет ответа от прибора, проверьте состояние подключения'
+
+  '没有可以下发给仪器的参数！':
+    zh-CN: '没有可以下发给仪器的参数！'
+    en-US: 'No parameters available to send to instrument'
+    ja-JP: '機器に送信できるパラメータがありません'
+    ru-RU: 'Нет параметров для отправки прибору'
+
+  '没有数据可以寻峰！':
+    zh-CN: '没有数据可以寻峰！'
+    en-US: 'No data available for peak finding'
+    ja-JP: 'ピーク検出可能なデータがありません'
+    ru-RU: 'Нет данных для поиска пиков'
+
+  '没有数据可以导出':
+    zh-CN: '没有数据可以导出'
+    en-US: 'No data to export'
+    ja-JP: 'エクスポートするデータがありません'
+    ru-RU: 'Нет данных для экспорта'
+
+  '没有需要删除的波长信息！':
+    zh-CN: '没有需要删除的波长信息！'
+    en-US: 'No wavelength information to delete'
+    ja-JP: '削除する波長情報がありません'
+    ru-RU: 'Нет информации о длинах волн для удаления'
+
+  '波段超出范围':
+    zh-CN: '波段超出范围'
+    en-US: 'Wavelength range out of bounds'
+    ja-JP: '波長範囲外です'
+    ru-RU: 'Диапазон длин волн выходит за пределы'
+
+  '波长值不能为空':
+    zh-CN: '波长值不能为空'
+    en-US: 'Wavelength value cannot be empty'
+    ja-JP: '波長値は空にできません'
+    ru-RU: 'Значение длины волны не может быть пустым'
+
+  '波长值格式错误，必须为数字':
+    zh-CN: '波长值格式错误，必须为数字'
+    en-US: 'Invalid wavelength format, must be a number'
+    ja-JP: '波長値の形式エラー、数値である必要があります'
+    ru-RU: 'Неверный формат длины волны, должно быть число'
+
+  '波长参数格式错误，必须为数字':
+    zh-CN: '波长参数格式错误，必须为数字'
+    en-US: 'Invalid wavelength parameter format, must be a number'
+    ja-JP: '波長パラメータの形式エラー、数値である必要があります'
+    ru-RU: 'Неверный формат параметра длины волны, должно быть число'
+
+  '波长校正失败，请检查仪器!':
+    zh-CN: '波长校正失败，请检查仪器!'
+    en-US: 'Wavelength calibration failed, please check the instrument'
+    ja-JP: '波長校正に失敗しました、機器を確認してください'
+    ru-RU: 'Ошибка калибровки длины волны, проверьте прибор'
+
+  '波长间隔不能为空':
+    zh-CN: '波长间隔不能为空'
+    en-US: 'Wavelength interval cannot be empty'
+    ja-JP: '波長間隔は空にできません'
+    ru-RU: 'Интервал длин волн не может быть пустым'
+
+  '注册成功':
+    zh-CN: '注册成功'
+    en-US: 'Registration successful'
+    ja-JP: '登録に成功しました'
+    ru-RU: 'Регистрация успешна'
+
+  '注销失败，未找到对应生产者':
+    zh-CN: '注销失败，未找到对应生产者'
+    en-US: 'Deregistration failed, producer not found'
+    ja-JP: '登録解除に失敗しました、プロデューサーが見つかりません'
+    ru-RU: 'Ошибка отмены регистрации, продюсер не найден'
+
+  '注销成功':
+    zh-CN: '注销成功'
+    en-US: 'Deregistration successful'
+    ja-JP: '登録解除に成功しました'
+    ru-RU: 'Отмена регистрации успешна'
+
+  '测试成功':
+    zh-CN: '测试成功'
+    en-US: 'Test successful'
+    ja-JP: 'テスト成功'
+    ru-RU: 'Тест успешен'
+
+  '测量出错':
+    zh-CN: '测量出错'
+    en-US: 'Measurement error'
+    ja-JP: '測定エラー'
+    ru-RU: 'Ошибка измерения'
+
+  '测量出错！':
+    zh-CN: '测量出错！'
+    en-US: 'Measurement error'
+    ja-JP: '測定エラー'
+    ru-RU: 'Ошибка измерения'
+
+  '测量失败':
+    zh-CN: '测量失败'
+    en-US: 'Measurement failed'
+    ja-JP: '測定に失敗しました'
+    ru-RU: 'Измерение не удалось'
+
+  '测量类型不存在':
+    zh-CN: '测量类型不存在'
+    en-US: 'Measurement type does not exist'
+    ja-JP: '測定タイプが存在しません'
+    ru-RU: 'Тип измерения не существует'
+
+  '测量类型不能为空':
+    zh-CN: '测量类型不能为空'
+    en-US: 'Measurement type cannot be empty'
+    ja-JP: '測定タイプは空にできません'
+    ru-RU: 'Тип измерения не может быть пустым'
+
+  '测量类型暂不支持数据比较':
+    zh-CN: '测量类型暂不支持数据比较'
+    en-US: 'Data comparison not supported for this measurement type'
+    ja-JP: 'この測定タイプではデータ比較をサポートしていません'
+    ru-RU: 'Сравнение данных не поддерживается для этого типа измерений'
+
+  '消息不存在':
+    zh-CN: '消息不存在'
+    en-US: 'Message does not exist'
+    ja-JP: 'メッセージが存在しません'
+    ru-RU: 'Сообщение не существует'
+
+  '灯类型出错！':
+    zh-CN: '灯类型出错！'
+    en-US: 'Lamp type error'
+    ja-JP: 'ランプタイプエラー'
+    ru-RU: 'Ошибка типа лампы'
+
+  '父级配置不存在':
+    zh-CN: '父级配置不存在'
+    en-US: 'Parent configuration does not exist'
+    ja-JP: '親設定が存在しません'
+    ru-RU: 'Родительская конфигурация не существует'
+
+  '用户不存在':
+    zh-CN: '用户不存在'
+    en-US: 'User does not exist'
+    ja-JP: 'ユーザーが存在しません'
+    ru-RU: 'Пользователь не существует'
+
+  '用户未加入任何组':
+    zh-CN: '用户未加入任何组'
+    en-US: 'User is not in any group'
+    ja-JP: 'ユーザーはどのグループにも参加していません'
+    ru-RU: 'Пользователь не состоит ни в одной группе'
+
+  '用户未登录':
+    zh-CN: '用户未登录'
+    en-US: 'User not logged in'
+    ja-JP: 'ユーザーがログインしていません'
+    ru-RU: 'Пользователь не вошел в систему'
+
+  '简体中文':
+    zh-CN: '简体中文'
+    en-US: 'Simplified Chinese'
+    ja-JP: '簡体字中国語'
+    ru-RU: 'Упрощенный китайский'
+
+  '算法服务异常,请重启服务':
+    zh-CN: '算法服务异常,请重启服务'
+    en-US: 'Algorithm service exception, please restart the service'
+    ja-JP: 'アルゴリズムサービス異常、サービスを再起動してください'
+    ru-RU: 'Исключение сервиса алгоритмов, перезапустите сервис'
+
+  '算法服务调用被中断':
+    zh-CN: '算法服务调用被中断'
+    en-US: 'Algorithm service call interrupted'
+    ja-JP: 'アルゴリズムサービス呼び出しが中断されました'
+    ru-RU: 'Вызов сервиса алгоритмов прерван'
+
+  '算法服务调用超时':
+    zh-CN: '算法服务调用超时'
+    en-US: 'Algorithm service call timed out'
+    ja-JP: 'アルゴリズムサービス呼び出しがタイムアウトしました'
+    ru-RU: 'Тайм-аут вызова сервиса алгоритмов'
+
+  '算法调用失败,请联系管理员':
+    zh-CN: '算法调用失败,请联系管理员'
+    en-US: 'Algorithm call failed, please contact administrator'
+    ja-JP: 'アルゴリズム呼び出しに失敗しました、管理者に連絡してください'
+    ru-RU: 'Ошибка вызова алгоритма, обратитесь к администратору'
+
+  '终止波长不能大于起始波长':
+    zh-CN: '终止波长不能大于起始波长'
+    en-US: 'End wavelength cannot be greater than start wavelength'
+    ja-JP: '終了波長は開始波長より大きくできません'
+    ru-RU: 'Конечная длина волны не может быть больше начальной'
+
+  '结束波长不能为空':
+    zh-CN: '结束波长不能为空'
+    en-US: 'End wavelength cannot be empty'
+    ja-JP: '終了波長は空にできません'
+    ru-RU: 'Конечная длина волны не может быть пустой'
+
+  '缺少入参！':
+    zh-CN: '缺少入参！'
+    en-US: 'Missing input parameters'
+    ja-JP: '入力パラメータが不足しています'
+    ru-RU: 'Отсутствуют входные параметры'
+
+  '缺少操作类型！':
+    zh-CN: '缺少操作类型！'
+    en-US: 'Missing operation type'
+    ja-JP: '操作タイプが不足しています'
+    ru-RU: 'Отсутствует тип операции'
+
+  '缺少样品id':
+    zh-CN: '缺少样品id'
+    en-US: 'Missing sample ID'
+    ja-JP: 'サンプルIDが不足しています'
+    ru-RU: 'Отсутствует ID образца'
+
+  '能量灯不能为空':
+    zh-CN: '能量灯不能为空'
+    en-US: 'Energy lamp cannot be empty'
+    ja-JP: 'エネルギーランプは空にできません'
+    ru-RU: 'Энергетическая лампа не может быть пустой'
+
+  '获取任务数据失败':
+    zh-CN: '获取任务数据失败'
+    en-US: 'Failed to get task data'
+    ja-JP: 'タスクデータの取得に失敗しました'
+    ru-RU: 'Не удалось получить данные задачи'
+
+  '解析失败！':
+    zh-CN: '解析失败！'
+    en-US: 'Parsing failed'
+    ja-JP: '解析に失敗しました'
+    ru-RU: 'Ошибка анализа'
+
+  '解析报文出错':
+    zh-CN: '解析报文出错'
+    en-US: 'Message parsing error'
+    ja-JP: 'メッセージ解析エラー'
+    ru-RU: 'Ошибка анализа сообщения'
+
+  '解析测量参数失败':
+    zh-CN: '解析测量参数失败'
+    en-US: 'Measurement parameter parsing failed'
+    ja-JP: '測定パラメータの解析に失敗しました'
+    ru-RU: 'Ошибка анализа параметров измерения'
+
+  '计算出错':
+    zh-CN: '计算出错'
+    en-US: 'Calculation error'
+    ja-JP: '計算エラー'
+    ru-RU: 'Ошибка вычисления'
+
+  '设备列表不能为空':
+    zh-CN: '设备列表不能为空'
+    en-US: 'Device list cannot be empty'
+    ja-JP: 'デバイスリストは空にできません'
+    ru-RU: 'Список устройств не может быть пустым'
+
+  '设备序列号不能为空':
+    zh-CN: '设备序列号不能为空'
+    en-US: 'Device serial number cannot be empty'
+    ja-JP: 'デバイスシリアル番号は空にできません'
+    ru-RU: 'Серийный номер устройства не может быть пустым'
+
+  '设备未激活！！！':
+    zh-CN: '设备未激活！！！'
+    en-US: 'Device not activated'
+    ja-JP: 'デバイスがアクティベートされていません'
+    ru-RU: 'Устройство не активировано'
+
+  '设备未连接,无需下发参数':
+    zh-CN: '设备未连接,无需下发参数'
+    en-US: 'Device not connected, no need to send parameters'
+    ja-JP: 'デバイス未接続、パラメータ送信不要'
+    ru-RU: 'Устройство не подключено, отправка параметров не требуется'
+
+  '设备正在使用中，请等待！':
+    zh-CN: '设备正在使用中，请等待！'
+    en-US: 'Device is in use, please wait'
+    ja-JP: 'デバイス使用中、お待ちください'
+    ru-RU: 'Устройство занято, подождите'
+
+  '设备正在停止中':
+    zh-CN: '设备正在停止中'
+    en-US: 'Device is stopping'
+    ja-JP: 'デバイス停止中'
+    ru-RU: 'Устройство останавливается'
+
+  '设备正在初始化！！！':
+    zh-CN: '设备正在初始化！！！'
+    en-US: 'Device is initializing'
+    ja-JP: 'デバイス初期化中'
+    ru-RU: 'Устройство инициализируется'
+
+  '设备类型配置信息不存在':
+    zh-CN: '设备类型配置信息不存在'
+    en-US: 'Device type configuration does not exist'
+    ja-JP: 'デバイスタイプ設定情報が存在しません'
+    ru-RU: 'Конфигурация типа устройства не существует'
+
+  '设置任务定时提醒属性失败':
+    zh-CN: '设置任务定时提醒属性失败'
+    en-US: 'Failed to set task reminder properties'
+    ja-JP: 'タスクリマインダー設定に失敗しました'
+    ru-RU: 'Не удалось установить свойства напоминания задачи'
+
+  '设置参数失败':
+    zh-CN: '设置参数失败'
+    en-US: 'Parameter setting failed'
+    ja-JP: 'パラメータ設定に失敗しました'
+    ru-RU: 'Ошибка настройки параметров'
+
+  '设置参数成功':
+    zh-CN: '设置参数成功'
+    en-US: 'Parameters set successfully'
+    ja-JP: 'パラメータ設定に成功しました'
+    ru-RU: 'Параметры успешно настроены'
+
+  '设置样品池位置出错！':
+    zh-CN: '设置样品池位置出错！'
+    en-US: 'Error setting sample pool position'
+    ja-JP: 'サンプルプール位置設定エラー'
+    ru-RU: 'Ошибка установки позиции пула образцов'
+
+  '设置波长列表失败':
+    zh-CN: '设置波长列表失败'
+    en-US: 'Failed to set wavelength list'
+    ja-JP: '波長リストの設定に失敗しました'
+    ru-RU: 'Не удалось установить список длин волн'
+
+  '访问被拒绝：IP未授权':
+    zh-CN: '访问被拒绝：IP未授权'
+    en-US: 'Access denied: IP not authorized'
+    ja-JP: 'アクセス拒否：IP未認証'
+    ru-RU: 'Доступ запрещен: IP не авторизован'
+
+  '该方法正在被使用，是否要新建方法':
+    zh-CN: '该方法正在被使用，是否要新建方法'
+    en-US: 'This method is in use, do you want to create a new method'
+    ja-JP: 'このメソッドは使用中です、新しいメソッドを作成しますか'
+    ru-RU: 'Этот метод используется, создать новый метод'
+
+  '该标准物质类型为内置，不可删除!':
+    zh-CN: '该标准物质类型为内置，不可删除!'
+    en-US: 'This standard material type is built-in and cannot be deleted'
+    ja-JP: 'この標準物質タイプは内蔵のため削除できません'
+    ru-RU: 'Этот тип стандартного материала встроенный, удаление невозможно'
+
+  '该设备不支持查询使用寿命':
+    zh-CN: '该设备不支持查询使用寿命'
+    en-US: 'This device does not support lifetime query'
+    ja-JP: 'このデバイスは使用寿命の照会をサポートしていません'
+    ru-RU: 'Это устройство не поддерживает запрос срока службы'
+
+  '请先删除该标准物下的所有标准实体物!':
+    zh-CN: '请先删除该标准物下的所有标准实体物!'
+    en-US: 'Please delete all standard entities under this standard material first'
+    ja-JP: '先にこの標準物の下のすべての標準实体物を削除してください'
+    ru-RU: 'Сначала удалите все стандартные сущности под этим стандартным материалом'
+
+  '请先新建任务':
+    zh-CN: '请先新建任务'
+    en-US: 'Please create a task first'
+    ja-JP: '先に新しいタスクを作成してください'
+    ru-RU: 'Сначала создайте задачу'
+
+  '请先查找仪器！':
+    zh-CN: '请先查找仪器！'
+    en-US: 'Please search for the instrument first'
+    ja-JP: '先に機器を検索してください'
+    ru-RU: 'Сначала найдите прибор'
+
+  '请先连接仪器':
+    zh-CN: '请先连接仪器'
+    en-US: 'Please connect the instrument first'
+    ja-JP: '先に機器を接続してください'
+    ru-RU: 'Сначала подключите прибор'
+
+  '请先连接仪器！':
+    zh-CN: '请先连接仪器！'
+    en-US: 'Please connect the instrument first'
+    ja-JP: '先に機器を接続してください'
+    ru-RU: 'Сначала подключите прибор'
+
+  '请先选择测量类型':
+    zh-CN: '请先选择测量类型'
+    en-US: 'Please select a measurement type first'
+    ja-JP: '先に測定タイプを選択してください'
+    ru-RU: 'Сначала выберите тип измерения'
+
+  '请创建任务':
+    zh-CN: '请创建任务'
+    en-US: 'Please create a task'
+    ja-JP: 'タスクを作成してください'
+    ru-RU: 'Пожалуйста, создайте задачу'
+
+  '请检查 WIFI 连接！':
+    zh-CN: '请检查 WIFI 连接！'
+    en-US: 'Please check WIFI connection'
+    ja-JP: 'WIFI接続を確認してください'
+    ru-RU: 'Проверьте подключение WIFI'
+
+  '请检查wifi连接和仪器电源是否开启！':
+    zh-CN: '请检查wifi连接和仪器电源是否开启！'
+    en-US: 'Please check WiFi connection and instrument power'
+    ja-JP: 'WiFi接続と機器の電源を確認してください'
+    ru-RU: 'Проверьте WiFi подключение и питание прибора'
+
+  '请检查wifi连接！':
+    zh-CN: '请检查wifi连接！'
+    en-US: 'Please check WiFi connection'
+    ja-JP: 'WiFi接続を確認してください'
+    ru-RU: 'Проверьте WiFi подключение'
+
+  '请检查仪器！':
+    zh-CN: '请检查仪器！'
+    en-US: 'Please check the instrument'
+    ja-JP: '機器を確認してください'
+    ru-RU: 'Проверьте прибор'
+
+  '请检查当前仪器是否初始化！！！':
+    zh-CN: '请检查当前仪器是否初始化！！！'
+    en-US: 'Please check if the current instrument is initialized'
+    ja-JP: '現在の機器が初期化されているか確認してください'
+    ru-RU: 'Проверьте, инициализирован ли текущий прибор'
+
+  '请检查当前仪器是否连接！！！':
+    zh-CN: '请检查当前仪器是否连接！！！'
+    en-US: 'Please check if the current instrument is connected'
+    ja-JP: '現在の機器が接続されているか確認してください'
+    ru-RU: 'Проверьте, подключен ли текущий прибор'
+
+  '请检查是否连接仪器！！！':
+    zh-CN: '请检查是否连接仪器！！！'
+    en-US: 'Please check if the instrument is connected'
+    ja-JP: '機器が接続されているか確認してください'
+    ru-RU: 'Проверьте, подключен ли прибор'
+
+  '请检查网线连接和仪器电源是否开启！':
+    zh-CN: '请检查网线连接和仪器电源是否开启！'
+    en-US: 'Please check Ethernet connection and instrument power'
+    ja-JP: '有線LAN接続と機器の電源を確認してください'
+    ru-RU: 'Проверьте Ethernet подключение и питание прибора'
+
+  '请检查网线连接！':
+    zh-CN: '请检查网线连接！'
+    en-US: 'Please check Ethernet connection'
+    ja-JP: '有線LAN接続を確認してください'
+    ru-RU: 'Проверьте Ethernet подключение'
+
+  '请求参数不能为空':
+    zh-CN: '请求参数不能为空'
+    en-US: 'Request parameters cannot be empty'
+    ja-JP: 'リクエストパラメータは空にできません'
+    ru-RU: 'Параметры запроса не могут быть пустыми'
+
+  '请设置参数！':
+    zh-CN: '请设置参数！'
+    en-US: 'Please set parameters'
+    ja-JP: 'パラメータを設定してください'
+    ru-RU: 'Пожалуйста, установите параметры'
+
+  '请连接仪器！':
+    zh-CN: '请连接仪器！'
+    en-US: 'Please connect the instrument'
+    ja-JP: '機器を接続してください'
+    ru-RU: 'Подключите прибор'
+
+  '请选择同一光度模式':
+    zh-CN: '请选择同一光度模式'
+    en-US: 'Please select the same photometric mode'
+    ja-JP: '同じ光度モードを選択してください'
+    ru-RU: 'Выберите одинаковый фотометрический режим'
+
+  '请选择同一增益':
+    zh-CN: '请选择同一增益'
+    en-US: 'Please select the same gain'
+    ja-JP: '同じゲインを選択してください'
+    ru-RU: 'Выберите одинаковое усиление'
+
+  '请选择同一灯类型':
+    zh-CN: '请选择同一灯类型'
+    en-US: 'Please select the same lamp type'
+    ja-JP: '同じランプタイプを選択してください'
+    ru-RU: 'Выберите одинаковый тип лампы'
+
+  '请选择同一物质':
+    zh-CN: '请选择同一物质'
+    en-US: 'Please select the same material'
+    ja-JP: '同じ物質を選択してください'
+    ru-RU: 'Выберите одно и то же вещество'
+
+  '请选择数据':
+    zh-CN: '请选择数据'
+    en-US: 'Please select data'
+    ja-JP: 'データを選択してください'
+    ru-RU: 'Пожалуйста, выберите данные'
+
+  '请选择测量的波长':
+    zh-CN: '请选择测量的波长'
+    en-US: 'Please select measurement wavelength'
+    ja-JP: '測定波長を選択してください'
+    ru-RU: 'Выберите длину волны для измерения'
+
+  '请选择测量类型':
+    zh-CN: '请选择测量类型'
+    en-US: 'Please select measurement type'
+    ja-JP: '測定タイプを選択してください'
+    ru-RU: 'Выберите тип измерения'
+
+  '请选择测量间隔时间和测量总时间！':
+    zh-CN: '请选择测量间隔时间和测量总时间！'
+    en-US: 'Please select measurement interval and total time'
+    ja-JP: '測定間隔時間と総測定時間を選択してください'
+    ru-RU: 'Выберите интервал и общее время измерения'
+
+  '请选择要删除的任务':
+    zh-CN: '请选择要删除的任务'
+    en-US: 'Please select tasks to delete'
+    ja-JP: '削除するタスクを選択してください'
+    ru-RU: 'Выберите задачи для удаления'
+
+  '请选择要删除的模板':
+    zh-CN: '请选择要删除的模板'
+    en-US: 'Please select templates to delete'
+    ja-JP: '削除するテンプレートを選択してください'
+    ru-RU: 'Выберите шаблоны для удаления'
+
+  '请选选择任务':
+    zh-CN: '请选选择任务'
+    en-US: 'Please select a task'
+    ja-JP: 'タスクを選択してください'
+    ru-RU: 'Пожалуйста, выберите задачу'
+
+  '路由路径已存在':
+    zh-CN: '路由路径已存在'
+    en-US: 'Route path already exists'
+    ja-JP: 'ルートパスは既に存在します'
+    ru-RU: 'Путь маршрута уже существует'
+
+  '转换xml出错':
+    zh-CN: '转换xml出错'
+    en-US: 'XML conversion error'
+    ja-JP: 'XML変換エラー'
+    ru-RU: 'Ошибка преобразования XML'
+
+  '选中字段不能为空':
+    zh-CN: '选中字段不能为空'
+    en-US: 'Selected field cannot be empty'
+    ja-JP: '選択フィールドは空にできません'
+    ru-RU: 'Выбранное поле не может быть пустым'
+
+  '部分任务不存在请查看':
+    zh-CN: '部分任务不存在请查看'
+    en-US: 'Some tasks do not exist, please check'
+    ja-JP: '一部のタスクが存在しません、確認してください'
+    ru-RU: 'Некоторые задачи не существуют, проверьте'
+
+  '配置不存在':
+    zh-CN: '配置不存在'
+    en-US: 'Configuration does not exist'
+    ja-JP: '設定が存在しません'
+    ru-RU: 'Конфигурация не существует'
+
+  '配置列表不能为空':
+    zh-CN: '配置列表不能为空'
+    en-US: 'Configuration list cannot be empty'
+    ja-JP: '設定リストは空にできません'
+    ru-RU: 'Список конфигураций не может быть пустым'
+
+  '重复模式不能为空':
+    zh-CN: '重复模式不能为空'
+    en-US: 'Repeat mode cannot be empty'
+    ja-JP: '繰り返しモードは空にできません'
+    ru-RU: 'Режим повторения не может быть пустым'
+
+  '零点失败':
+    zh-CN: '零点失败'
+    en-US: 'Zeroing failed'
+    ja-JP: 'ゼロ点失敗'
+    ru-RU: 'Ошибка обнуления'
+
+  '项目不存在':
+    zh-CN: '项目不存在'
+    en-US: 'Project does not exist'
+    ja-JP: 'プロジェクトが存在しません'
+    ru-RU: 'Проект не существует'
+
+  '项目不能为空':
+    zh-CN: '项目不能为空'
+    en-US: 'Project cannot be empty'
+    ja-JP: 'プロジェクトは空にできません'
+    ru-RU: 'Проект не может быть пустым'
+
+  # ========== Excel 表头 / 指标列名 ==========
+  '项目名称':
+    zh-CN: '项目名称'
+    en-US: 'Item Name'
+    ja-JP: '項目名'
+    ru-RU: 'Название пункта'
+
+  '特征值（nm）':
+    zh-CN: '特征值（nm）'
+    en-US: 'Characteristic Value (nm)'
+    ja-JP: '特性値（nm）'
+    ru-RU: 'Характеристическое значение (нм)'
+
+  '测量值（nm）':
+    zh-CN: '测量值（nm）'
+    en-US: 'Measured Value (nm)'
+    ja-JP: '測定値（nm）'
+    ru-RU: 'Измеренное значение (нм)'
+
+  '平均值（nm）':
+    zh-CN: '平均值（nm）'
+    en-US: 'Average Value (nm)'
+    ja-JP: '平均値（nm）'
+    ru-RU: 'Среднее значение (нм)'
+
+  '误差值（nm）':
+    zh-CN: '误差值（nm）'
+    en-US: 'Error Value (nm)'
+    ja-JP: '誤差値（nm）'
+    ru-RU: 'Погрешность (нм)'
+
+  '重复性（nm）':
+    zh-CN: '重复性（nm）'
+    en-US: 'Repeatability (nm)'
+    ja-JP: '繰り返し性（nm）'
+    ru-RU: 'Повторяемость (нм)'
+
+  '波长示值误差(nm)':
+    zh-CN: '波长示值误差(nm)'
+    en-US: 'Wavelength Error (nm)'
+    ja-JP: '波長指示誤差(nm)'
+    ru-RU: 'Погрешность длины волны (нм)'
+
+  '氘灯(656.1)':
+    zh-CN: '氘灯(656.1)'
+    en-US: 'Deuterium Lamp (656.1)'
+    ja-JP: '重水素ランプ(656.1)'
+    ru-RU: 'Дейтериевая лампа (656.1)'
+
+  '氘灯(486.0)':
+    zh-CN: '氘灯(486.0)'
+    en-US: 'Deuterium Lamp (486.0)'
+    ja-JP: '重水素ランプ(486.0)'
+    ru-RU: 'Дейтериевая лампа (486.0)'
+
+  '镨钕滤光片':
+    zh-CN: '镨钕滤光片'
+    en-US: 'Pr-Nd Filter'
+    ja-JP: 'プラセオジム・ネオジムフィルター'
+    ru-RU: 'Фильтр Pr-Nd'
+
+  '钬溶液':
+    zh-CN: '钬溶液'
+    en-US: 'Holmium Solution'
+    ja-JP: 'ホルミウム溶液'
+    ru-RU: 'Раствор гольмия'
+
+  '氧化钬':
+    zh-CN: '氧化钬'
+    en-US: 'Holmium Oxide'
+    ja-JP: '酸化ホルミウム'
+    ru-RU: 'Оксид гольмия'
+
+
+  '透射比重复性':
+    zh-CN: '透射比重复性'
+    en-US: 'Transmittance Repeatability'
+    ja-JP: '透過率繰り返し性'
+    ru-RU: 'Повторяемость пропускания'
+
+  # ========== Excel 下拉选项 ==========
+  '极慢':
+    zh-CN: '极慢'
+    en-US: 'Ultra Slow'
+    ja-JP: '超低速'
+    ru-RU: 'Очень медленно'
+
+  '慢速':
+    zh-CN: '慢速'
+    en-US: 'Slow'
+    ja-JP: '低速'
+    ru-RU: 'Медленно'
+
+  '中速':
+    zh-CN: '中速'
+    en-US: 'Medium'
+    ja-JP: '中速'
+    ru-RU: 'Средне'
+
+  '快速':
+    zh-CN: '快速'
+    en-US: 'Fast'
+    ja-JP: '高速'
+    ru-RU: 'Быстро'
+
+  '极快':
+    zh-CN: '极快'
+    en-US: 'Ultra Fast'
+    ja-JP: '超高速'
+    ru-RU: 'Очень быстро'
+
+  '寻峰':
+    zh-CN: '寻峰'
+    en-US: 'Peak Finding'
+    ja-JP: 'ピーク検出'
+    ru-RU: 'Поиск пика'
+
+  '求平均':
+    zh-CN: '求平均'
+    en-US: 'Average'
+    ja-JP: '平均'
+    ru-RU: 'Усреднение'
+
+  '多次测量':
+    zh-CN: '多次测量'
+    en-US: 'Multiple Measurements'
+    ja-JP: '複数回測定'
+    ru-RU: 'Многократные измерения'
+
+  '最大最小值差':
+    zh-CN: '最大最小值差'
+    en-US: 'Max-Min Difference'
+    ja-JP: '最大最小値差'
+    ru-RU: 'Разность макс-мин'
+
+  '求半峰宽':
+    zh-CN: '求半峰宽'
+    en-US: 'Half-Peak Width'
+    ja-JP: '半値幅'
+    ru-RU: 'Полуширина пика'
+
+  '求最大偏移量':
+    zh-CN: '求最大偏移量'
+    en-US: 'Max Offset'
+    ja-JP: '最大オフセット'
+    ru-RU: 'Максимальное смещение'
+
+  '求漂移':
+    zh-CN: '求漂移'
+    en-US: 'Drift'
+    ja-JP: 'ドリフト'
+    ru-RU: 'Дрейф'

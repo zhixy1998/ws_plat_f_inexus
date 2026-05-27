@@ -15,7 +15,7 @@ import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionParametersDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.MultiTableDataDTO;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.Detection;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.DetectionService;

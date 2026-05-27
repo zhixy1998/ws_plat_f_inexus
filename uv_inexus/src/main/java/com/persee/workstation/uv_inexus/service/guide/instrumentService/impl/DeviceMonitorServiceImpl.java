@@ -20,7 +20,7 @@ import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceUsageCountDTO;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceMonitorEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceTaskStatusEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;

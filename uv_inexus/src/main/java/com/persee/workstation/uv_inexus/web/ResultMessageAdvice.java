@@ -1,7 +1,9 @@
 package com.persee.workstation.uv_inexus.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
-import com.persee.workstation.uv_inexus.i18n.LocaleContext;
+import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
+import com.persee.workstation.uv_inexus.i18n.OutputTranslator;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.R;
 import lombok.extern.slf4j.Slf4j;
@@ -14,12 +16,24 @@ import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
+import java.util.List;
+import java.util.Map;
+
 @Slf4j
 @RestControllerAdvice(basePackages = "com.persee.workstation.uv_inexus")
 public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
 
     @Autowired
     private I18nMessageSource i18nMessageSource;
+
+    @Autowired
+    private LocaleProvider localeProvider;
+
+    @Autowired
+    private OutputTranslator outputTranslator;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
@@ -35,24 +49,51 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
             return null;
         }
 
-        String locale = LocaleContext.getLocale();
+        String locale = localeProvider.getSystemLocale();
+        boolean needTranslate = !"zh-CN".equals(locale) && !"zh_CN".equals(locale) && locale != null;
 
         if (body instanceof Result) {
             Result<?> result = (Result<?>) body;
-            translateResult(result, locale);
+            translateMessage(result, locale);
+            if (needTranslate && result.getData() != null) {
+                Object translatedData = translateData(result.getData());
+                Result rawResult = result;
+                rawResult.setData(translatedData);
+            }
             return result;
         }
 
         if (body instanceof R) {
             R<?> r = (R<?>) body;
-            translateR(r, locale);
+            translateMessageR(r, locale);
+            if (needTranslate && r.getData() != null) {
+                Object translatedData = translateData(r.getData());
+                R rawR = r;
+                rawR.setData(translatedData);
+            }
             return r;
         }
 
         return body;
     }
 
-    private void translateResult(Result<?> result, String locale) {
+    @SuppressWarnings("unchecked")
+    private Object translateData(Object data) {
+        try {
+            Object converted = objectMapper.convertValue(data, Object.class);
+            if (converted instanceof Map) {
+                return outputTranslator.translate((Map<String, Object>) converted);
+            } else if (converted instanceof List) {
+                return outputTranslator.translate((List<Object>) converted);
+            }
+            return data;
+        } catch (Exception e) {
+            log.warn("data 翻译跳过: {}", e.getMessage());
+            return data;
+        }
+    }
+
+    private void translateMessage(Result<?> result, String locale) {
         String messageCode = result.getMessageCode();
         if (messageCode != null && !messageCode.trim().isEmpty()) {
             String translated = i18nMessageSource.getMessage(messageCode, locale, result.getObj(), null);
@@ -71,7 +112,7 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
         }
     }
 
-    private void translateR(R<?> r, String locale) {
+    private void translateMessageR(R<?> r, String locale) {
         String messageCode = r.getMessageCode();
         Object[] obj = r.getObj();
 

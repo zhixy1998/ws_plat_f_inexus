@@ -6004,7 +6004,7 @@ public class RationServiceImpl implements RationService {
         // 3. 校验标准样品数据是否为空
 //        if (data == null || data.isEmpty()) {
 //            //没有可导出的标准样品数据
-//            throw new BusinessException(YamlMessageSource.getMessageStatic("00303016"));
+//            throw new BusinessException(I18nMessageSource.getMessageStatic("00303016"));
 ////            return R.fail("00303016");
 //        }
         // 给数据加序号（与序号列对应）
