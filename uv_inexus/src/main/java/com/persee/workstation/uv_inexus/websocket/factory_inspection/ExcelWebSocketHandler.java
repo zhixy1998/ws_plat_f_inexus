@@ -3652,6 +3652,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         //扫描间隔
         Double scanInterval = MapUtils.getDouble(dataMap, SCAN_INTERVAL.getDescription());
         Double scanCount = MapUtils.getDouble(dataMap, SCAN_COUNT.getDescription());
+        Double timeInterval = MapUtils.getDouble(dataMap, TIME_INTERVAL.getDescription());
+        int actualTotalPoints = (timeInterval != null && scanCount != null && timeInterval > 0)
+                ? (int) (timeInterval * (scanCount + 1)) : scanCount.intValue();
         if (anEnum == abs) {
             if (ObjectUtils.isNotEmpty(p)) {
                 JSONObject payload = new JSONObject();
@@ -3857,7 +3860,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             .orElse(p.getTimestamp());
                     double relativeTimeInSeconds = Math.round((p.getTimestamp() - firstTimestamp) / 1000.0 * 10) / 10.0;
                     payload.put("timestamp", p.getTimestamp());
-                    payload.put("totalPoints", scanCount);
+                    payload.put("totalPoints", actualTotalPoints);
                     point.put("yType", "Er");
                     point.put("xType", "秒(s)");
 //                    double wavelength = p.getTResult().getWavelength();
@@ -4641,18 +4644,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         int i = 0;
         waveformCache.clear();
 
-        // 在循环开始前发送总点数给前端（时间扫描）
-//        int totalPoints = calculateTimeScanPoints(totalTime, timeInterval);
-//        JSONObject jsonObject = new JSONObject();
-//        jsonObject.put("xCount", totalPoints);
-//        sendToActiveSession(null, taskId, jsonObject);
-//        log.info("时间扫描总点数：{}, 总时间：{}秒，时间间隔：{}秒", totalPoints, totalTime, timeInterval);
-//
+        int totalPoints = totalTime.intValue();
+        log.info("时间扫描总点数：{}, 总时间：{}秒，时间间隔：{}秒", totalPoints, totalTime, timeInterval);
 
         HashMap<String, String> map1 = new HashMap<>();
         map1.put("type", "timeScan");
         map1.put("totalTime", totalTime.toString());
         map1.put("timeInterval", timeInterval.toString());
+        map1.put("totalPoints", String.valueOf(totalPoints));
         JSONObject horizontalAxis = new JSONObject();
         horizontalAxis.put("horizontalAxis", map1);
         sendToActiveSession(null, taskId, horizontalAxis);

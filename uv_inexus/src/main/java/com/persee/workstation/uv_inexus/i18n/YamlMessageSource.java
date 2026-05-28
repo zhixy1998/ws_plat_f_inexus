@@ -19,23 +19,23 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * YAML 消息源，支持多语言（zh_CN / en_US / ja_JP）。
- *
+* YAML 消息源，支持多语言（zh-CN / en-US / ja-JP）。
+
  * 加载 classpath 下的：
  * - i18n/messages.yaml
  *
  * YAML 结构示例：
  * messages:
  *   '00000001':
- *     zh_CN: '用户不存在'
- *     en_US: 'User does not exist'
- *     ja_JP: 'ユーザーが存在しません'
+ *     zh-CN: '用户不存在'
+ *     en-US: 'User does not exist'
+ *     ja-JP: 'ユーザーが存在しません'
  */
 @Component
 public class YamlMessageSource {
 
     private static final String DICT_FILE = "i18n/i18n-dictionary.yaml";
-    private static final String DEFAULT_LOCALE = "zh_CN";
+    private static final String DEFAULT_LOCALE = "zh-CN";
 
     // 缓存：key -> {locale -> text}
     private Map<String, Map<String, String>> dictionary = new ConcurrentHashMap<>();
@@ -130,7 +130,7 @@ public class YamlMessageSource {
     /**
      * 根据消息码和语言获取消息
      * @param code 消息码
-     * @param locale 语言（zh_CN / en_US / ja_JP）
+     * @param locale 语言（zh-CN / en-US / ja-JP）
      * @param args 占位符参数
      * @param defaultMessage 默认消息
      */

@@ -42,13 +42,13 @@ public class LocaleInterceptor implements HandlerInterceptor {
 //        if (StringUtils.isBlank(locale)) {
 //            String headerLocale = request.getHeader("Accept-Language");
 //            if (StringUtils.isNotBlank(headerLocale)) {
-//                locale = headerLocale.split(",")[0].replace('-', '_');
+//                locale = headerLocale.split(",")[0].replace('_', '-');
 //            }
 //        }
 
         // 4. 兜底默认中文
         if (StringUtils.isBlank(locale)) {
-            locale = "zh_CN";
+            locale = "zh-CN";
         }
 
         LocaleContext.setLocale(locale);
@@ -56,12 +56,12 @@ public class LocaleInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * 简易转换方法：en_US -> 英文
+     * 简易转换方法：en-US -> 英文
      */
     private String convertToName(String code) {
-        if ("English".equals(code)) return "en_US";
-        if ("日语".equals(code)) return "ja_JP";
-        return "zh_CN"; // 默认返回中文
+        if ("English".equals(code)) return "en-US";
+        if ("日语".equals(code)) return "ja-JP";
+        return "zh-CN"; // 默认返回中文
     }
 
     @Override

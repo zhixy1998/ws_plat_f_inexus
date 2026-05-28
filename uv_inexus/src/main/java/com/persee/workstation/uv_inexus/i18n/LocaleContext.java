@@ -7,7 +7,7 @@ public class LocaleContext {
 
     private static final ThreadLocal<String> LOCALE_HOLDER = new ThreadLocal<>();
 
-    private static final String DEFAULT_LOCALE = "zh_CN";
+    private static final String DEFAULT_LOCALE = "zh-CN";
 
     /**
      * 设置当前语言
