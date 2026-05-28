@@ -49,13 +49,13 @@ public class Result<T> {
         return result;
     }
 
-    // 通过消息码与参数构建
-    private static <T> Result<T> build(Integer code, String messageCode, Object... obj) {
+    // 核心构建：通过消息码与参数构建
+    private static <T> Result<T> buildWithCode(Integer code, String messageCode, Object... obj) {
         Result<T> result = new Result<T>();
         result.setCode(code);
         result.setMessageCode(messageCode);
         result.setObj(obj);
-        // 消息的解析与格式化完全交由 ResultMessageAdvice 处理
+        // 暂存 messageCode 到 message，实际解析在响应拦截器中完成
         result.setMessage(messageCode);
         return result;
     }
@@ -80,18 +80,24 @@ public class Result<T> {
 
     /**
      * 操作成功
-     * @param data  baseCategory1List
-     * @param <T>
-     * @return
      */
     public static<T> Result<T> ok(T data){
         Result<T> result = build(data);
         return build(data, ResultCodeEnum.SUCCESS);
     }
 
-    // 避免与 ok(T data) 发生重载冲突的便捷别名（直接通过 YAML 解析构建）
+    // 操作成功（通过消息码字符串 - 自动识别）
+    public static<T> Result<T> ok(String messageCode, Object... obj){
+        if (isMessageCode(messageCode)) {
+            return buildWithCode(ResultCodeEnum.SUCCESS.getCode(), messageCode, obj);
+        } else {
+            return build(ResultCodeEnum.SUCCESS.getCode(), messageCode);
+        }
+    }
+
+    // 避免与 ok(T data) 发生重载冲突的便捷别名
     public static<T> Result<T> okCode(String messageCode, Object... obj){
-        return build(ResultCodeEnum.SUCCESS.getCode(), messageCode, obj);
+        return buildWithCode(ResultCodeEnum.SUCCESS.getCode(), messageCode, obj);
     }
 
     public static<T> Result<T> okCode(T data, String messageCode, Object... obj){
@@ -99,10 +105,10 @@ public class Result<T> {
         result.setCode(ResultCodeEnum.SUCCESS.getCode());
         result.setMessageCode(messageCode);
         result.setObj(obj);
-        // 消息的解析与格式化完全交由 ResultMessageAdvice 处理
         result.setMessage(messageCode);
         return result;
     }
+
     public static<T> Result<T> warn(){
         return Result.warn(null);
     }
@@ -112,14 +118,17 @@ public class Result<T> {
         return build(data, ResultCodeEnum.WARN);
     }
 
-    // 警告（通过消息码与参数）
+    // 警告（通过消息码字符串 - 自动识别）
     public static<T> Result<T> warn(String messageCode, Object... obj){
-        return build(ResultCodeEnum.WARN.getCode(), messageCode, obj);
+        if (isMessageCode(messageCode)) {
+            return buildWithCode(ResultCodeEnum.WARN.getCode(), messageCode, obj);
+        } else {
+            return build(ResultCodeEnum.WARN.getCode(), messageCode);
+        }
     }
 
-    // 警告便捷别名，统一调用风格
     public static<T> Result<T> warnCode(String messageCode, Object... obj){
-        return warn(messageCode, obj);
+        return buildWithCode(ResultCodeEnum.WARN.getCode(), messageCode, obj);
     }
 
     public static<T> Result<T> warn(String message){
@@ -130,29 +139,34 @@ public class Result<T> {
         Result<T> result = build(code, message);
         return result;
     }
+
     public static<T> Result<T> fail(){
         return Result.fail(null);
     }
 
     public static<T> Result<T> fail(String message){
-        return Result.fail(ResultCodeEnum.FAIL.getCode(), message);
+        if (isMessageCode(message)) {
+            return buildWithCode(ResultCodeEnum.FAIL.getCode(), message);
+        } else {
+            return Result.fail(ResultCodeEnum.FAIL.getCode(), message);
+        }
     }
 
-    // 操作失败（通过消息码与参数）
+    // 操作失败（通过消息码字符串 - 自动识别）
     public static<T> Result<T> fail(String messageCode, Object... obj){
-        return build(ResultCodeEnum.FAIL.getCode(), messageCode, obj);
+        if (isMessageCode(messageCode)) {
+            return buildWithCode(ResultCodeEnum.FAIL.getCode(), messageCode, obj);
+        } else {
+            return build(ResultCodeEnum.FAIL.getCode(), messageCode);
+        }
     }
 
-    // 失败便捷别名，统一调用风格
     public static<T> Result<T> failCode(String messageCode, Object... obj){
-        return fail(messageCode, obj);
+        return buildWithCode(ResultCodeEnum.FAIL.getCode(), messageCode, obj);
     }
 
     /**
      * 操作失败
-     * @param data
-     * @param <T>
-     * @return
      */
     public static<T> Result<T> fail(T data){
         Result<T> result = build(data);
@@ -164,12 +178,8 @@ public class Result<T> {
         return result;
     }
 
-
     /**
      * 参数校验失败（带数据）
-     * @param data 返回数据
-     * @param <T>
-     * @return
      */
     public static<T> Result<T> checkFail(T data){
         Result<T> result = build(data);
@@ -178,59 +188,42 @@ public class Result<T> {
 
     /**
      * 参数校验失败（不带数据）
-     * @param <T>
-     * @return
      */
     public static<T> Result<T> checkFail(){
         return checkFail(null);
     }
 
     /**
-     * 参数校验失败（通过消息码与参数）
-     * @param messageCode 消息码
-     * @param obj 占位符参数
-     * @param <T>
-     * @return
+     * 参数校验失败（通过消息码字符串 - 自动识别）
      */
     public static<T> Result<T> checkFail(String messageCode, Object... obj){
-        return build(ResultCodeEnum.ARGUMENT_VALID_ERROR.getCode(), messageCode, obj);
+        if (isMessageCode(messageCode)) {
+            return buildWithCode(ResultCodeEnum.ARGUMENT_VALID_ERROR.getCode(), messageCode, obj);
+        } else {
+            return build(ResultCodeEnum.ARGUMENT_VALID_ERROR.getCode(), messageCode);
+        }
     }
 
-    /**
-     * 参数校验失败（通过状态码和消息）
-     * @param code 状态码
-     * @param message 消息
-     * @param <T>
-     * @return
-     */
     public static<T> Result<T> checkFail(Integer code, String message) {
         Result<T> result = build(code, message);
         return result;
     }
 
-    /**
-     * 参数校验失败（通过消息）
-     * @param message 消息
-     * @param <T>
-     * @return
-     */
     public static<T> Result<T> checkFail(String message){
         return checkFail(ResultCodeEnum.ARGUMENT_VALID_ERROR.getCode(), message);
     }
 
-    /**
-     * 参数校验失败便捷别名，统一调用风格
-     * @param messageCode 消息码
-     * @param obj 占位符参数
-     * @param <T>
-     * @return
-     */
     public static<T> Result<T> checkFailCode(String messageCode, Object... obj){
-        return checkFail(messageCode, obj);
+        return buildWithCode(ResultCodeEnum.ARGUMENT_VALID_ERROR.getCode(), messageCode, obj);
     }
 
     public Result<T> message(String msg){
-        this.setMessage(msg);
+        if (isMessageCode(msg)) {
+            this.setMessageCode(msg);
+            this.setMessage(msg);
+        } else {
+            this.setMessage(msg);
+        }
         return this;
     }
 
@@ -247,5 +240,15 @@ public class Result<T> {
     public Result<T> obj(Object... obj){
         this.setObj(obj);
         return this;
+    }
+
+    /**
+     * 判断是否为消息码（8位十六进制）
+     */
+    private static boolean isMessageCode(String code) {
+        if (code == null || code.isEmpty()) {
+            return false;
+        }
+        return code.matches("^[0-9a-fA-F]{8}$");
     }
 }

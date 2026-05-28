@@ -4,3 +4,25 @@ UPDATE `t800_uv_inexus`.`t_sys_permission` SET `perm_name` = 'taskManagement', `
 
 INSERT INTO `t800_uv_inexus`.`t_sys_permission` (`id`, `perm_name`, `perm_code`, `title`, `perm_type`, `parent_id`, `path`, `component`, `icon`, `sort`, `status`, `create_time`, `update_time`, `create_user`, `update_user`, `hidden`, `no_auth`, `redirect`, `router`, `quick_config_type`) VALUES (5083, 'taskManagementClassic', 'taskManagementClassic', '经典文件管理', 1, 102, 'taskManagementClassic', '@/views/experiment/taskManagement/index.vue', 'icon-jiliangguan', 0, 1, '2026-04-29 11:10:46', '2026-04-29 11:15:48', 'admin', 'admin', 1, 0, '', '/experiment/dataManagement/taskManagementClassic', 0);
 UPDATE `t800_uv_inexus`.`t_sys_role` SET `role_name` = '系统用户管理', `role_code` = 'SUPER_ADMIN', `perm_ids` = '27,29,117,30,118,119,120,31,121,122,32,33,35,123,125,126,36,44,38,552,127,129,130,387,132,133,136,140,141,142,143,145,146,147,148,149,150,151,152,153,434,436,438,439,441,442,443,444,445,5059,458,459,5067,460,461,462,5075,545,39,553,388,158,160,161,162,163,166,168,169,170,171,173,174,175,176,177,178,179,180,181,446,448,450,451,5060,453,454,455,456,457,5068,463,464,465,466,5076,547,40,554,389,410,412,414,415,416,417,418,419,420,421,186,188,189,190,191,195,197,5061,198,199,200,202,203,204,205,5069,206,207,208,209,210,467,468,469,5077,474,41,555,390,422,424,426,427,428,429,430,431,432,433,5062,5070,470,5078,215,471,472,217,473,218,219,220,224,226,227,228,229,231,232,233,234,235,236,237,238,239,100,108,256,257,259,260,261,262,265,266,267,556,560,391,5063,5071,5079,475,476,244,246,247,248,249,252,253,254,255,546,564,109,272,274,275,276,280,281,282,283,284,285,287,288,289,290,293,294,295,557,561,392,5064,5072,5080,477,478,548,565,110,300,302,558,303,304,562,309,310,311,312,313,314,316,317,318,319,322,323,324,393,5065,5073,5081,479,480,543,111,559,563,329,331,332,333,338,339,340,341,342,343,345,346,347,348,351,352,353,394,5066,5074,5082,481,482,544,102,549,404,536,537,538,539,540,541,542,103,504,505,506,507,508,509,510,104,512,513,514,516,517,511,45,47,494,495,48,49,50,51,53,374,54,55,56,57,375,58,376,59,377,483,484,485,486,487,61,395,403,5058,67,551,378,379,380,381,382,383,384,71,73,74,75,5055,77,502,503,78,518,519,520,80,82,83,84,85,87,521,523,524,525,359,488,113,367,368,369,370,493,114,550,364,365,366,115,358,362,363,490,491,492,88,89,90,496,497,498,499,92,94,95,96,97,98,99,396,5083', `description` = '系统最高权限角色', `status` = 1, `create_time` = '2025-08-17 22:25:35', `update_time` = '2026-04-28 11:19:08', `create_user` = 'amdin', `update_user` = 'admin' WHERE `id` = 1;
+-- 提醒功能开关配置表（支持扩展）
+CREATE TABLE IF NOT EXISTS `t_reminder_switch_config` (
+  `id` VARCHAR(64) NOT NULL PRIMARY KEY COMMENT '主键ID',
+  `reminder_type` INT NOT NULL COMMENT '提醒类型：0-总开关，1-检定提醒，2-校准提醒，3-期间核查提醒，4-标准物质效期提醒',
+  `reminder_name` VARCHAR(100) NOT NULL COMMENT '提醒名称',
+  `enabled` TINYINT(1) DEFAULT 1 COMMENT '是否启用：0-关闭，1-开启',
+  `sort_order` INT DEFAULT 0 COMMENT '排序号',
+  `description` VARCHAR(500) DEFAULT NULL COMMENT '描述说明',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `create_user` VARCHAR(50) DEFAULT NULL COMMENT '创建人',
+  `update_user` VARCHAR(50) DEFAULT NULL COMMENT '更新人',
+  UNIQUE KEY `uk_reminder_type` (`reminder_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='提醒功能开关配置表';
+
+-- 插入默认配置
+INSERT INTO `t_reminder_switch_config`
+(`id`, `reminder_type`, `reminder_name`, `enabled`, `sort_order`, `description`, `create_user`, `update_user`)
+VALUES
+('1', 0, '总开关', 1, 0, '提醒功能总开关，关闭后所有提醒将停止', 'system', 'system'),
+('4', 1, '期间核查提醒', 1, 3, '期间核查任务提醒', 'system', 'system'),
+('5', 2, '标准物质效期提醒', 1, 4, '标准物质有效期到期提醒', 'system', 'system');

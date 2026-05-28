@@ -408,6 +408,7 @@ public class MessageOnTimeDeal {
 
                                     if (isDark) {
                                         handleDarkRsd(temp, deviceSerialNumber, sp);
+                                        deviceManager.setDarkWavelength(deviceId, String.valueOf(sp.getWavelength()));
                                         tempMap.remove(deviceSerialNumber);
                                     }
 
@@ -439,6 +440,8 @@ public class MessageOnTimeDeal {
                                         if (Constants.firstDataTime != null && Constants.secondDataTime != null){
                                             Constants.pushInterval = (Constants.secondDataTime - Constants.firstDataTime) / 1000.0;
                                             log.info("计算得到推送间隔: {} 秒", Constants.pushInterval);
+                                            Constants.firstDataTime= null;
+                                            Constants.secondDataTime= null;
                                         }
 
                                         if (Constants.firstDataTime != null && Constants.secondDataTime == null){
@@ -472,6 +475,7 @@ public class MessageOnTimeDeal {
 
                                 if (isDark) {
                                     handleDarkRsdT1960(temp, deviceSerialNumber, sp);
+                                    deviceManager.setDarkWavelength(deviceId, String.valueOf(sp.getWavelength()));
                                     tempMap.remove(deviceSerialNumber);
                                 } else if (isScan) {
                                     sp.setScanRsd(temp);
@@ -501,6 +505,8 @@ public class MessageOnTimeDeal {
                                 if (Constants.firstDataTime != null && Constants.secondDataTime != null){
                                     Constants.pushInterval = (Constants.secondDataTime - Constants.firstDataTime) / 1000.0;
                                     log.info("计算得到推送间隔: {} 秒", Constants.pushInterval);
+                                    Constants.firstDataTime= null;
+                                    Constants.secondDataTime= null;
                                 }
 
                                 if (Constants.firstDataTime != null && Constants.secondDataTime == null){
@@ -692,7 +698,11 @@ public class MessageOnTimeDeal {
 
         DeviceInfoPO po = infoService.getInfo(deviceSerialNumber);
         if (po != null) {
-            po.setDarkInfo(map); // 保存整个Map
+            Map<String, String> darkInfo = po.getDarkInfo() == null ? new HashMap<>() : po.getDarkInfo();
+            darkInfo.putAll(map);
+            po.setDarkInfo(darkInfo);
+
+//            po.setDarkInfo(map); // 保存整个Map
             Boolean b = infoService.saveOrUpdateInfo(po);
             if (b){
                 log.info("[Dark] device={} darkInfo写入数据库成功", deviceSerialNumber);

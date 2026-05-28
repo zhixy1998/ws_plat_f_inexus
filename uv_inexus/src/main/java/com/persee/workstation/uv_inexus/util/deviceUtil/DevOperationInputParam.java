@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.GetParam;
@@ -74,5 +75,8 @@ public class DevOperationInputParam {
 
     @ApiModelProperty("获取仪器、灯工作时长，指令")
     private List<WorkTimeInfo> workTimeInfo;
+
+    @ApiModelProperty("设置波长列表")
+    private List<StepPoint> setWlList;
 
 }

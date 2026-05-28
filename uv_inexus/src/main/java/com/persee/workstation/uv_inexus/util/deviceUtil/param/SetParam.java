@@ -29,6 +29,9 @@ import lombok.Data;
         @ApiModelProperty("灯位置")
         private Integer lampPos;
 
+        @ApiModelProperty("汞灯开关, 0-关， 1-开")
+        private Integer mlLamp;
+
         @ApiModelProperty("扫描间隔")
         private Double ScanWlInterval;
 
@@ -67,4 +70,7 @@ import lombok.Data;
 
         @ApiModelProperty("暗电流")
         private Integer dark;
+
+        @ApiModelProperty("开关校正状态")
+        private Integer corrStatus;
     }

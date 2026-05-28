@@ -134,4 +134,50 @@ public class RestUtil {
             return null;
         }
     }
+
+    /**
+     * 峰搜索
+     * @param x x坐标
+     * @param y y坐标
+     * @param height 峰最小高度
+     * @param distance 峰间距
+     */
+    public String peakSearching(List<Double> x, List<Double> y, Double height, Double distance){
+        // 创建带有超时设置的 RestTemplate
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+
+        // 设置连接超时（单位：毫秒） // 5秒连接超时
+        factory.setConnectTimeout(3000);
+        // 10秒读取超时
+        factory.setReadTimeout(5000);
+
+
+        RestTemplate restTemplate = new RestTemplate(factory);
+        String url = baseUrl + "get_peak";
+
+
+
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("x_data", x);
+        jsonObject.put("y_data", y);
+        jsonObject.put("height", height);
+        jsonObject.put("distance", distance);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<String> entity = new HttpEntity<>(jsonObject.toJSONString(), headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            return response.getBody();
+        } catch (Exception e) {
+            log.info("寻峰异常：{}", e.getMessage());
+            JSONObject error = new JSONObject();
+            error.put("code", "404");
+
+            return error.toJSONString();
+        }
+
+    }
 }

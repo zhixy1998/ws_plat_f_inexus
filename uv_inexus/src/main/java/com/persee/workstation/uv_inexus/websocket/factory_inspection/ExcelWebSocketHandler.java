@@ -25,7 +25,6 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.factory_inspection.*;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
@@ -150,6 +149,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     @Qualifier("measurementTaskExecutor")
     private ThreadPoolTaskExecutor taskExecutor;
+    @Autowired
+    private WorkbookDataService workbookDataService;
     @Autowired
     private EhcacheUtil ehcacheUtil;
     //波形图持久化机制
@@ -836,6 +837,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         sendToActiveSession(null, taskId, jsonObject);
     }
 
+
     private void pushEntireWorkbook(WebSocketSession session, String taskId, String fileName) throws IOException {
         if (!isSessionValid(session)) {
             log.warn("尝试向无效的session发送数据: taskId={}", taskId);
@@ -843,16 +845,149 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         }
 
         Workbook workbook = workbookCacheManager.getTaskWorkbook(taskId);
+        if (workbook == null) {
+            log.error("无法获取任务{}的工作簿缓存，fileName={}, taskId={}", fileName, taskId);
+            return;
+        }
+
+        // 【修改】直接传入taskId，让getYellowColumnsFromDatabase内部处理任务/模板的查询逻辑
+        Map<String, List<String>> yellowColumnsMap = getYellowColumnsFromDatabase(taskId);
+
+        log.info("推送工作簿到前端，taskId: {}, fileName: {}, 黄色列信息: {}个sheet",
+                taskId, fileName, yellowColumnsMap.size());
 
         WorkbookDto workbookDto = new WorkbookDto();
         workbookDto.setWorkbookName(fileName);
-        workbookDto.setSheets(extractAllSheetsData(workbook));
+        workbookDto.setSheets(extractAllSheetsData(workbook, yellowColumnsMap));
 
         ObjectMapper mapper = new ObjectMapper();
         String jsonData = mapper.writeValueAsString(workbookDto);
         JSONObject jsonObject = JSONObject.parseObject(jsonData);
         sendToActiveSession(null, taskId, jsonObject);
-//        session.sendMessage(new TextMessage(jsonData));
+    }
+
+
+    /**
+     * 从数据库获取黄色高亮列信息,入参可能是模板的id，也可能是任务的id
+     */
+    private Map<String, List<String>> getYellowColumnsFromDatabase(String templateCode) {
+        if (templateCode == null || templateCode.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        try {
+            // 查询calibration_workbook_data表获取黄色列信息
+            LambdaQueryWrapper<WorkbookData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(WorkbookData::getTaskId, templateCode)
+//                    .eq(WorkbookData::getIsActive, true)
+                    .orderByDesc(WorkbookData::getCreateTime)
+                    .last("LIMIT 1");
+
+            WorkbookData workbookData = workbookDataService.getOne(queryWrapper);
+
+            if (workbookData != null && workbookData.getYellowHighlightedColumns() != null) {
+                // 解析JSON格式的黄色列信息
+                String jsonStr = workbookData.getYellowHighlightedColumns();
+                // 直接使用ObjectMapper解析（Jackson）
+                ObjectMapper objectMapper = new ObjectMapper();
+                return objectMapper.readValue(jsonStr, new TypeReference<Map<String, List<String>>>() {});
+            }
+        } catch (Exception e) {
+            log.error("获取模板{}的黄色高亮列信息失败", templateCode, e);
+        }
+
+        return new HashMap<>();
+    }
+
+
+
+
+    private List<SheetDto> extractAllSheetsData(Workbook workbook, Map<String, List<String>> yellowColumnsMap) {
+        List<SheetDto> sheets = new ArrayList<>();
+        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+            Sheet sheet = workbook.getSheetAt(i);
+            String sheetName = sheet.getSheetName();
+            List<String> yellowColumns = yellowColumnsMap != null ? yellowColumnsMap.get(sheetName) : null;
+            SheetDto sheetDto = extractSheetData(sheet, workbook, yellowColumns);
+            sheets.add(sheetDto);
+        }
+        return sheets;
+    }
+
+
+    private SheetDto extractSheetData(Sheet sheet, Workbook workbook, List<String> yellowColumns) {
+        SheetDto sheetDto = new SheetDto();
+        sheetDto.setSheetName(sheet.getSheetName());
+        sheetDto.setFirstRowNum(sheet.getFirstRowNum());
+        sheetDto.setLastRowNum(sheet.getLastRowNum());
+
+        // 【新增】设置黄色高亮列
+        sheetDto.setYellowColumns(yellowColumns);
+
+        // 为每次提取数据创建新的公式评估器
+        FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+        evaluator.clearAllCachedResultValues();
+
+        // 提取合并区域
+        List<MergedRegionDto> mergedRegions = new ArrayList<>();
+
+        for (CellRangeAddress region : sheet.getMergedRegions()) {
+            MergedRegionDto merged = new MergedRegionDto();
+            merged.setFirstRow(region.getFirstRow());
+            merged.setLastRow(region.getLastRow());
+            merged.setFirstCol(region.getFirstColumn());
+            merged.setLastCol(region.getLastColumn());
+
+            // 获取左上角单元格的值
+            Row row = sheet.getRow(region.getFirstRow());
+            if (row != null) {
+                Cell cell = row.getCell(region.getFirstColumn());
+                if (cell != null) {
+                    merged.setValue(String.valueOf(getCellValue(cell, evaluator)));
+                }
+            }
+            mergedRegions.add(merged);
+        }
+        sheetDto.setMergedRegions(mergedRegions);
+
+        // 提取普通单元格数据
+        Map<String, Map<String, Object>> rowData = new HashMap<>();
+        for (int rowNum = sheet.getFirstRowNum(); rowNum <= sheet.getLastRowNum(); rowNum++) {
+            Row row = sheet.getRow(rowNum);
+            if (row != null) {
+                Map<String, Object> cellData = new HashMap<>();
+                boolean hasValidContent = false;
+                for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
+                    Cell cell = row.getCell(cellNum);
+                    if (cell != null) {
+                        Object value = getCellValue(cell, evaluator);
+                        if (value != null && !"".equals(value)) {
+                            cellData.put(String.valueOf(cellNum), value);
+                            hasValidContent = true;
+                        }
+                    }
+                }
+                if (hasValidContent && !cellData.isEmpty()) {
+                    rowData.put(String.valueOf(rowNum), cellData);
+                }
+            }
+        }
+        sheetDto.setRows(rowData);
+
+        return sheetDto;
+    }
+
+    /**
+     * 根据任务ID获取模板编码
+     */
+    private String getTemplateCodeByTaskId(String taskId) {
+        try {
+            TaskManagement task = taskService.getById(taskId);
+            return task != null ? task.getTemplateCode() : null;
+        } catch (Exception e) {
+            log.error("获取任务{}的模板编码失败", taskId, e);
+            return null;
+        }
     }
 
 
@@ -1107,6 +1242,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 taskService.update(updateWrapper);
                 // 记录任务 - 设备绑定关系
                 taskDeviceBindingMap.put(taskId, deviceSerialNumber);
+                // 重新查询获取最新的任务信息
+                management1 = taskService.getById(taskId);
             }
 
             if (StringUtils.isNotBlank(management1 != null ? management1.getOperationInstrument() : null)) {
@@ -1380,8 +1517,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         //获取序列号
         String string = taskManagement.getOperationInstrument();
         DeviceInfoPO info = deviceInfoService.getInfo(string);
-//        R<String> device = deviceManageService.getConnectDevice(updateBy);
+        R<String> device = deviceManageService.getConnectDevice(updateBy);
 
+        if(!string.equals(device.getData())){
+            throw new BusinessException("当前任务与仪器序列号不匹配，请新建任务！！！");
+        }
         if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
 //            JSONObject jsonObject = new JSONObject();
 //            jsonObject.put("error", "请检查当前仪器是否连接");
@@ -1680,7 +1820,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             if (StringUtils.isBlank(string)) {
                                 throw new BusinessException("请检查是否连接仪器！！！");
                             }
-//                            R<String> device = deviceManageService.getConnectDevice(updateBy);
+                            R<String> device = deviceManageService.getConnectDevice(updateBy);
+
+                            if(!string.equals(device.getData())){
+                                throw new BusinessException("当前任务与仪器序列号不匹配，请新建任务！！！");
+                            }
                             DeviceInfoPO info = deviceInfoService.getInfo(string);
 
                             if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
@@ -1760,12 +1904,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                         if (d == 0) {
                                             JSONObject json1 = new JSONObject();
                                             json1.put("itemName", category + "--" + projectName);
-                                            sendToActiveSession(null, taskId, json1);
+//                                            sendToActiveSession(null, taskId, json1);
 
 
                                             JSONObject jsonObject1 = new JSONObject();
                                             jsonObject1.put("itemId", itemId);
-                                            sendToActiveSession(null, taskId, jsonObject1);
+//                                            sendToActiveSession(null, taskId, jsonObject1);
                                         }
                                         map = sendBatchDataPoints(session, taskId, itemId, dataMap, updateBy, operationInstrument, list, samplePoolNum, d);
                                     }
@@ -1976,6 +2120,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             JSONObject jsonObject = new JSONObject();
                             jsonObject.put("warn", "检测项：[" + projectName + "] 出现问题:" + e.getMessage() + "跳过");
                             sendToActiveSession(null, taskId, jsonObject);
+                            setTaskMeasuring(taskId, false);
 //                            saveAndSendJudgeResult(taskId, itemId, projectName, sheet, MEASUREMENT_STATUS_FAILED.getCode());
                         }
                         return false;
@@ -2183,7 +2328,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
                             String id = dtoList.get(i).getStandard().getStandardId();
-                            if (id == null) return;
+                            if (id == null) continue;
 
                             // 检查 CalStdCats
                             CalStdCats cats = calStdCatsService.getById(id);
@@ -2825,6 +2970,18 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             List<DeviceTypeInfoPO> pos = deviceTypeInfoDAO.selectByMap(devType);
             if (CollectionUtils.isNotEmpty(pos)) {
                 DeviceTypeInfoPO deviceTypeInfoPO = pos.get(0);
+
+                // 【新增】参数校验
+                validateSpectrumScanParams(
+                        deviceTypeInfoPO,
+                        startWavelength,
+                        endWavelength,
+                        scanInterval,
+                        gain,
+                        scanSpeed,
+                        luminosityMode
+                );
+
                 com.alibaba.fastjson.JSONObject speedJson = deviceTypeInfoPO.getScanSpeed();
                 if (speedJson != null && !speedJson.isEmpty()) {
                     // 遍历 JSON 对象，找到值为 "medium" 的 key
@@ -3312,6 +3469,130 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
     /**
+     * 校验光谱扫描参数是否在设备支持范围内
+     *
+     * @param deviceTypeInfo 设备类型配置信息
+     * @param startWavelength 起始波长
+     * @param endWavelength 终止波长
+     * @param scanInterval 扫描间隔
+     * @param gain 增益
+     * @param scanSpeed 扫描速度
+     * @param luminosityMode 光度模式
+     * @throws BusinessException 参数校验失败时抛出
+     */
+    private void validateSpectrumScanParams(DeviceTypeInfoPO deviceTypeInfo,
+                                            Double startWavelength,
+                                            Double endWavelength,
+                                            Double scanInterval,
+                                            Integer gain,
+                                            String scanSpeed,
+                                            String luminosityMode) throws BusinessException {
+        if (deviceTypeInfo == null) {
+            log.error("设备类型配置信息为空，无法校验参数");
+            throw new BusinessException("设备类型配置信息不存在");
+        }
+
+        String devType = deviceTypeInfo.getDevType();
+        List<String> errorMessages = new ArrayList<>();
+
+        // 1. 校验波长范围
+        try {
+            double minWavelength = Double.parseDouble(deviceTypeInfo.getMinWavelength());
+            double maxWavelength = Double.parseDouble(deviceTypeInfo.getMaxWavelength());
+
+            if (startWavelength == null || startWavelength < minWavelength || startWavelength > maxWavelength) {
+                errorMessages.add(String.format("起始波长 %s 超出设备支持范围 [%s, %s]nm",
+                        startWavelength, deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength()));
+            }
+            if (endWavelength == null || endWavelength < minWavelength || endWavelength > maxWavelength) {
+                errorMessages.add(String.format("终止波长 %s 超出设备支持范围 [%s, %s]nm",
+                        endWavelength, deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength()));
+            }
+//            if (startWavelength != null && endWavelength != null && startWavelength > endWavelength) {
+//                errorMessages.add(String.format("起始波长(%.1fnm)不能大于终止波长(%.1fnm)", startWavelength, endWavelength));
+//            }
+        } catch (NumberFormatException e) {
+            log.error("波长范围配置格式错误: min={}, max={}",
+                    deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength());
+            errorMessages.add("设备波长范围配置格式错误，请联系管理员");
+        }
+
+        // 2. 校验扫描间隔
+        if (deviceTypeInfo.getScanInterval() != null && !deviceTypeInfo.getScanInterval().isEmpty()) {
+            String intervalStr = String.valueOf(scanInterval);
+            if (!deviceTypeInfo.getScanInterval().contains(intervalStr)) {
+                errorMessages.add(String.format("扫描间隔 %s 不在设备支持范围内: %s",
+                        scanInterval, deviceTypeInfo.getScanInterval()));
+            }
+        }
+
+        // 3. 校验增益
+        if (deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
+            if (gain == null || !deviceTypeInfo.getGain().contains(gain)) {
+                errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
+                        gain, deviceTypeInfo.getGain()));
+            }
+        }
+
+        // 4. 校验扫描速度
+        if (deviceTypeInfo.getScanSpeed() != null && !deviceTypeInfo.getScanSpeed().isEmpty()) {
+//            String speedCode = ScanSpeedEnum.getCodeByName(scanSpeed);
+
+            // 4. 校验扫描速度
+                String speedCode = ScanSpeedEnum.getCodeByName(scanSpeed);
+                if (speedCode == null) {
+                    errorMessages.add(String.format("扫描速度 %s 无法转换为设备识别码", scanSpeed));
+                } else {
+                    // 【修复】应该判断 value 是否包含 speedCode，而不是判断 key
+                    boolean speedSupported = false;
+                    for (Object value : deviceTypeInfo.getScanSpeed().values()) {
+                        if (value != null && speedCode.equals(value.toString())) {
+                            speedSupported = true;
+                            break;
+                        }
+                    }
+
+                    if (!speedSupported) {
+                        errorMessages.add(String.format("扫描速度 %s(code:%s) 不在设备支持范围内: %s",
+                                scanSpeed, speedCode, deviceTypeInfo.getScanSpeed()));
+                    }
+
+            }
+
+
+        }
+
+//        // 5. 校验光度模式
+//        if (deviceTypeInfo.getLuminosity() != null && !deviceTypeInfo.getLuminosity().isEmpty()) {
+//            String code = WaveLengthEnum.getCode(luminosityMode);
+//            if (code == null) {
+//                errorMessages.add(String.format("不支持的光度模式: %s", luminosityMode));
+//            } else {
+//                try {
+//                    int luminosityValue = Integer.parseInt(code);
+//                    if (!deviceTypeInfo.getLuminosity().contains(luminosityValue)) {
+//                        errorMessages.add(String.format("光度模式 %s(code:%s) 不在设备支持范围内: %s",
+//                                luminosityMode, luminosityValue, deviceTypeInfo.getLuminosity()));
+//                    }
+//                } catch (NumberFormatException e) {
+//                    log.error("光度模式转换失败: code={}", code);
+//                }
+//            }
+//        }
+
+        // 如果有任何校验错误，抛出异常
+        if (!errorMessages.isEmpty()) {
+            String errorMsg = String.format("[%s] 参数校验失败：\n%s", devType, String.join("\n", errorMessages));
+            log.error(errorMsg);
+            throw new BusinessException(errorMsg);
+        }
+
+        log.info("设备 [{}] 光谱扫描参数校验通过: 波长[{}-{}]nm, 间隔={}nm, 增益={}, 速度={}, 光度模式={}",
+                devType, startWavelength, endWavelength, scanInterval, gain, scanSpeed, luminosityMode);
+    }
+
+
+    /**
      * 计算光谱扫描的总点数
      * 公式：总点数 = |终止波长 - 起始波长| / 扫描间隔 + 1
      *
@@ -3692,7 +3973,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
             // 检查响应体是否为空
             if (responseBody == null) {
-                throw new BusinessException(YamlMessageSource.getMessageStatic("00000032")); // "算法服务返回异常"
+                throw new BusinessException("00000032"); // "算法服务返回异常"
             }
 
             Integer code = (Integer) responseBody.get("code");
@@ -3792,6 +4073,116 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
     /**
+     * 校验时间扫描参数是否在设备支持范围内
+     *
+     * @param deviceTypeInfo 设备类型配置信息
+     * @param gain 增益
+     * @param narrow 狭缝/光谱带宽
+     * @param responseTime 响应时间
+     * @param luminosityMode 光度模式
+     * @param lampStatusName 灯状态名称
+     * @throws BusinessException 参数校验失败时抛出
+     */
+    private void validateTimeScanParams(DeviceTypeInfoPO deviceTypeInfo,
+                                        Integer gain,
+                                        Double narrow,
+                                        Double responseTime,
+                                        String luminosityMode,
+                                        String lampStatusName) throws BusinessException {
+        if (deviceTypeInfo == null) {
+            log.error("设备类型配置信息为空，无法校验参数");
+            throw new BusinessException("设备类型配置信息不存在");
+        }
+
+        String devType = deviceTypeInfo.getDevType();
+        List<String> errorMessages = new ArrayList<>();
+
+        // 1. 校验增益
+        if (deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
+            if (gain != null && !deviceTypeInfo.getGain().contains(gain)) {
+                errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
+                        gain, deviceTypeInfo.getGain()));
+            }
+        }
+
+        // 2. 校验狭缝/光谱带宽（如果配置了该字段）
+        // 注意：DeviceTypeInfoPO 中可能没有 scanInterval 字段用于狭缝校验
+        // 如果有专门的 slit 字段，可以在这里添加校验
+
+
+        // 3. 校验响应时间
+        if (deviceTypeInfo.getResponseTime() != null && !deviceTypeInfo.getResponseTime().isEmpty()) {
+            if (responseTime != null) {
+                boolean timeSupported = false;
+                for (String configVal : deviceTypeInfo.getResponseTime()) {
+                    try {
+                        // 【修复】使用 Double.valueOf 进行装箱，然后使用 equals 比较
+                        // 或者直接使用 Double.parseDouble(configVal) == responseTime.doubleValue()
+                        if (Double.parseDouble(configVal) == responseTime) {
+                            timeSupported = true;
+                            break;
+                        }
+                    } catch (NumberFormatException e) {
+                        log.warn("解析响应时间配置失败: {}", configVal);
+                    }
+                }
+                if (!timeSupported) {
+                    errorMessages.add(String.format("响应时间 %s 不在设备支持范围内: %s",
+                            responseTime, deviceTypeInfo.getResponseTime()));
+                }
+            }
+        }
+
+
+
+        // 4. 校验光度模式
+        if (deviceTypeInfo.getLuminosity() != null && !deviceTypeInfo.getLuminosity().isEmpty()) {
+            String code = WaveLengthEnum.getCode(luminosityMode);
+            if (code == null) {
+                errorMessages.add(String.format("不支持的光度模式: %s", luminosityMode));
+            } else {
+                try {
+                    int luminosityValue = Integer.parseInt(code);
+                    if (!deviceTypeInfo.getLuminosity().contains(luminosityValue)) {
+                        errorMessages.add(String.format("光度模式 %s(code:%s) 不在设备支持范围内: %s",
+                                luminosityMode, luminosityValue, deviceTypeInfo.getLuminosity()));
+                    }
+                } catch (NumberFormatException e) {
+                    log.error("光度模式转换失败: code={}", code);
+                }
+            }
+        }
+
+        if (StringUtils.isNotBlank(lampStatusName)) {
+            String lampIdentity = EnergyLampEnums.getIdentityByName(lampStatusName);
+            if (lampIdentity == null) {
+                errorMessages.add(String.format("不支持的灯状态: %s", lampStatusName));
+            } else if (deviceTypeInfo.getLampType() != null && !deviceTypeInfo.getLampType().isEmpty()) {
+                try {
+                    int lampValue = Integer.parseInt(lampIdentity);
+                    if (!deviceTypeInfo.getLampType().contains(lampValue)) {
+                        errorMessages.add(String.format("灯状态 %s(code:%s) 不在设备支持范围内: %s",
+                                lampStatusName, lampValue, deviceTypeInfo.getLampType()));
+                    }
+                } catch (NumberFormatException e) {
+                    log.error("灯状态转换失败: identity={}", lampIdentity);
+                }
+            }
+        }
+
+        // 如果有任何校验错误，抛出异常
+        if (!errorMessages.isEmpty()) {
+            String errorMsg = String.format("[%s] 时间扫描参数校验失败：\n%s", devType, String.join("\n", errorMessages));
+            log.error(errorMsg);
+            throw new BusinessException(errorMsg);
+        }
+
+        log.info("设备 [{}] 时间扫描参数校验通过: 增益={}, 狭缝={}, 响应时间={}, 光度模式={}, 灯状态={}",
+                devType, gain, narrow, responseTime, luminosityMode, lampStatusName);
+    }
+
+
+    /**
      * 使用高精度计时器实现完美准确的时间扫描
      * 改进：边测量边推送数据，让前端时间显示更准确
      */
@@ -3818,7 +4209,28 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         Double timeInterval = MapUtils.getDouble(dataMap, TIME_INTERVAL.getDescription());
         //总时长
         Double totalTime = timeInterval * (scanCount + 1);
+        // 【新增】获取设备类型信息并进行参数校验
+        String s = taskAndVersionMap.get(taskId);
+        Map<String, Object> devType11 = new HashMap<>();
+        devType11.put("dev_type", s);
+        List<DeviceTypeInfoPO> pos = deviceTypeInfoDAO.selectByMap(devType11);
+        if (CollectionUtils.isEmpty(pos)) {
+            log.error("时间扫描-未找到设备类型配置: devType={}", s);
+            throw new BusinessException("未找到设备类型[" + s + "]的配置信息，请联系管理员");
+        }
 
+        DeviceTypeInfoPO deviceTypeInfoPO = pos.get(0);
+
+        // 【新增】时间扫描参数校验
+        String lampStatusName = MapUtils.getString(dataMap, LAMP_STATUS.getDescription());
+        validateTimeScanParams(
+                deviceTypeInfoPO,
+                gain,
+                narrow,
+                responseTime,
+                luminosityMode,
+                lampStatusName
+        );
         // 设置参数
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
@@ -4376,6 +4788,101 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         return totalPoints;
     }
+// ... existing code ...
+
+    /**
+     * 校验光度扫描参数是否在设备支持范围内
+     *
+     * @param deviceTypeInfo 设备类型配置信息
+     * @param gain 增益
+     * @param narrow 狭缝/光谱带宽
+     * @param responseTime 响应时间
+     * @param luminosityMode 光度模式
+//     * @param lampStatusName 灯状态名称
+     * @throws BusinessException 参数校验失败时抛出
+     */
+    private void validateIntensityScanParams(DeviceTypeInfoPO deviceTypeInfo,
+                                             Integer gain,
+                                             Double narrow,
+                                             Double responseTime,
+                                             String luminosityMode/*,
+                                             String lampStatusName*/) throws BusinessException {
+        if (deviceTypeInfo == null) {
+            log.error("光度扫描-设备类型配置信息为空，无法校验参数");
+            throw new BusinessException("设备类型配置信息不存在");
+        }
+
+        String devType = deviceTypeInfo.getDevType();
+        List<String> errorMessages = new ArrayList<>();
+
+        // 1. 校验增益
+        if (deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
+            if (gain != null && !deviceTypeInfo.getGain().contains(gain)) {
+                errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
+                        gain, deviceTypeInfo.getGain()));
+            }
+        }
+
+        // 2. 校验狭缝/光谱带宽（如果配置了该字段）
+        // 注意：DeviceTypeInfoPO 中可能没有专门的 slit 字段
+        // 如果有专门的配置，可以在这里添加校验
+
+        // 3. 校验响应时间
+        if (responseTime!=null&&deviceTypeInfo.getResponseTime() != null && !deviceTypeInfo.getResponseTime().isEmpty()) {
+            String responseTimeStr = String.valueOf(responseTime);
+            if (responseTimeStr!=null&&!deviceTypeInfo.getResponseTime().contains(responseTimeStr)) {
+                errorMessages.add(String.format("响应时间 %s 不在设备支持范围内: %s",
+                        responseTime, deviceTypeInfo.getResponseTime()));
+            }
+        }
+
+        // 4. 校验光度模式
+        if (deviceTypeInfo.getLuminosity() != null && !deviceTypeInfo.getLuminosity().isEmpty()) {
+            String code = WaveLengthEnum.getCode(luminosityMode);
+            if (code == null) {
+                errorMessages.add(String.format("不支持的光度模式: %s", luminosityMode));
+            } else {
+                try {
+                    int luminosityValue = Integer.parseInt(code);
+                    if (!deviceTypeInfo.getLuminosity().contains(luminosityValue)) {
+                        errorMessages.add(String.format("光度模式 %s(code:%s) 不在设备支持范围内: %s",
+                                luminosityMode, luminosityValue, deviceTypeInfo.getLuminosity()));
+                    }
+                } catch (NumberFormatException e) {
+                    log.error("光度模式转换失败: code={}", code);
+                }
+            }
+        }
+
+//        // 5. 校验灯状态
+//        if (StringUtils.isNotBlank(lampStatusName)) {
+//            String lampIdentity = EnergyLampEnums.getIdentityByName(lampStatusName);
+//            if (lampIdentity == null) {
+//                errorMessages.add(String.format("不支持的灯状态: %s", lampStatusName));
+//            } else if (deviceTypeInfo.getLampType() != null && !deviceTypeInfo.getLampType().isEmpty()) {
+//                try {
+//                    int lampValue = Integer.parseInt(lampIdentity);
+//                    if (!deviceTypeInfo.getLampType().contains(lampValue)) {
+//                        errorMessages.add(String.format("灯状态 %s(code:%s) 不在设备支持范围内: %s",
+//                                lampStatusName, lampValue, deviceTypeInfo.getLampType()));
+//                    }
+//                } catch (NumberFormatException e) {
+//                    log.error("灯状态转换失败: identity={}", lampIdentity);
+//                }
+//            }
+//        }
+
+        // 如果有任何校验错误，抛出异常
+        if (!errorMessages.isEmpty()) {
+            String errorMsg = String.format("光度扫描参数校验失败：\n%s",  String.join("\n", errorMessages));
+            log.error(errorMsg);
+            throw new BusinessException(errorMsg);
+        }
+
+        log.info("设备光度扫描参数校验通过: 增益={}, 狭缝={}, 响应时间={}, 光度模式={}, 灯状态={}",
+                devType, gain, narrow, responseTime, luminosityMode);
+    }
+
 
     private R<Map<String, List<JSONObject>>> intensityScan(String taskId, Map<String, Object> dataMap, String deviceSerialNumber, boolean isMultiProductPool, String itemId, Integer d) throws BusinessException {
         //光度模式
@@ -4390,6 +4897,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         String characteristic = MapUtils.getString(dataMap, CHARACTERISTIC.getDescription());
         //灯状态，灯位置
         Integer lampStatus = null;
+        // 【修复】在此处提前声明灯状态名称变量，确保作用域覆盖后续的校验和参数设置
+//        String lampStatusName = MapUtils.getString(dataMap, LAMP_STATUS.getDescription());
+
         try {
             lampStatus = Integer.valueOf(Objects.requireNonNull(EnergyLampEnums.getIdentityByName(MapUtils.getString(dataMap, LAMP_STATUS.getDescription()))));
         } catch (Exception e) {
@@ -4404,6 +4914,29 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             log.warn("光度模式为空！");
         }
+
+
+        // 【新增】获取设备类型信息并进行参数校验
+        String s = taskAndVersionMap.get(taskId);
+        Map<String, Object> devType111 = new HashMap<>();
+        devType111.put("dev_type", s);
+        List<DeviceTypeInfoPO> pos = deviceTypeInfoDAO.selectByMap(devType111);
+        if (CollectionUtils.isEmpty(pos)) {
+            log.error("光度扫描-未找到设备类型配置: devType={}", s);
+            throw new BusinessException("未找到设备类型[" + s + "]的配置信息，请联系管理员");
+        }
+
+        DeviceTypeInfoPO deviceTypeInfoPO = pos.get(0);
+
+        // 【新增】光度扫描参数校验
+        validateIntensityScanParams(
+                deviceTypeInfoPO,
+                gain,
+                narrow,
+                responseTime,
+                luminosityMode
+        );
+
         R<OperationResultEntity> operation3 = new R<>();
         if (d == 0) {
             WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);

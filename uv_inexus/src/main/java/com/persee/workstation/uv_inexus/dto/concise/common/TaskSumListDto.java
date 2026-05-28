@@ -14,7 +14,7 @@ public class TaskSumListDto {
     // 所在项目
     private String projectName;
     // 测量模式
-    private String measureMode;
+    private String measureType;
     // 任务状态
     private String taskStatus;
     // 样品个数

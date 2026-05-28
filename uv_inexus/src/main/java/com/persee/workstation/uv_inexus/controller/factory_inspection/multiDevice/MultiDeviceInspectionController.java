@@ -11,8 +11,10 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
@@ -51,6 +53,8 @@ public class MultiDeviceInspectionController {
     EhcacheUtil ehcacheUtil;
     @Autowired
     private TaskManagementService taskManagementService;
+    @Autowired
+    DeviceInfoService infoService;
 
     /*
      * 查找设备
@@ -217,6 +221,23 @@ public class MultiDeviceInspectionController {
         }
         return Result.ok(dtos);
     }
+//    @GetMapping("/listConnectedDevice")
+//    @ApiOperation("列出所有已连接的仪器和任务")
+//    public Result<List<DeviceTaskDto>> listConnectedDevice() {
+//        Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), OUT_FACTORY_CHECK_LIST.getCode(), String.class, Object.class);
+//
+//        List<DeviceTaskDto> dtoList;
+//        if (cachedObject instanceof List) {
+//            @SuppressWarnings("unchecked")
+//            List<DeviceTaskDto> checkedList = (List<DeviceTaskDto>) cachedObject;
+//            dtoList = checkedList;
+//        } else {
+//            dtoList = new ArrayList<DeviceTaskDto>();
+//        }
+//
+//        log.info("返回缓存中的设备列表，共 {} 个设备", dtoList.size());
+//        return Result.ok(dtoList);
+//    }
 
     /**
      * 列出所有已连接的仪器和任务
@@ -235,14 +256,19 @@ public class MultiDeviceInspectionController {
 
             if (CollectionUtils.isNotEmpty(dtoList)){
                 for (DeviceTaskDto dto : dtoList) {
-                    if (dto != null) {
-                        LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-                        wrapper.eq(TaskManagement::getOperationInstrument, dto.getDeviceSerialNumber())
-                                        .eq(TaskManagement::getTaskType, "3");
-                        List<TaskManagement> list = taskManagementService.list(wrapper);
-                        if (CollectionUtils.isNotEmpty(list)) {
-                            dto.setTaskId(list.get(0).getId());
-                            dto.setTemplateCode(list.get(0).getTemplateCode());
+                    if (dto != null && dto.getTaskId() == null) {
+                        DeviceInfoPO deviceInfoPO = infoService.getInfo(dto.getDeviceSerialNumber());
+                        //如果初始化成功了，那可以给到任务id
+                        if (deviceInfoPO.getIsInited()==1) {
+                            LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+                            //筛选出厂检验的任务
+                            wrapper.eq(TaskManagement::getOperationInstrument, dto.getDeviceSerialNumber())
+                                    .eq(TaskManagement::getTaskType, "3");
+                            List<TaskManagement> list = taskManagementService.list(wrapper);
+                            if (CollectionUtils.isNotEmpty(list)) {
+                                dto.setTaskId(list.get(0).getId());
+                                dto.setTemplateCode(list.get(0).getTemplateCode());
+                            }
                         }
                     }
                 }

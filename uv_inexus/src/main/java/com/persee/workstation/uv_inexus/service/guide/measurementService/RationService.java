@@ -158,7 +158,7 @@ public interface RationService {
     String fitDataRounding(String fitConcentration, RationParameter parameter);
 
 
-    R<List<RationCountDataInfo>> formula(List<RationCountDataInfo> countData, List<RationWavelengthDataInfo> wavelengthData,  TMeasureSample sample, TMeasureTask task, RationParameter parameter, Double minuend,Integer digit);
+    R<List<RationCountDataInfo>> formula(List<RationCountDataInfo> countData, List<RationWavelengthDataInfo> wavelengthData,  TMeasureSample sample, TMeasureTask task, RationParameter parameter, Double minuend,Integer digit, String emptyFitCon);
 
     R<Boolean> changeStandSampleDataDigit(String taskId, Integer digit);
 

@@ -5,6 +5,7 @@ import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
 
+import javax.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,4 +50,6 @@ public interface TaskManagementService extends IService<TaskManagement> {
     Result<List<SetSamplePoolDto>> getStandardMaterial(String taskId);
 
     Result<Boolean> clearSamplePool(String taskId);
+
+    Result<Boolean> setTaskReminder(@Valid TaskReminderDto dto);
 }

@@ -76,7 +76,7 @@ public class Constants {
     public final static Integer CONNECT_DEVICE_STOP = 4;
 
     /**
-     * 仪器当前状态 0-空闲，1-初始化中，2-测量中，3-回显线程占用中，4其他指令-占用, 5-零点校准中
+     * 仪器当前状态 0-空闲，1-初始化中，2-测量中，3-回显线程占用中，4其他指令-占用, 5-零点校准中,6-断开连接中,7-校准中
      */
     public final static Integer DEVICE_STATUS_IDLE = 0;
     public final static Integer DEVICE_STATUS_INIT = 1;
@@ -208,6 +208,11 @@ public class Constants {
     握手报文超时时间
      */
     public static final Integer HANDSHAKE_TIMEOUT = 3000;
+
+    //多波长校正寻峰参数--峰间距
+    public static final Double CALIBRATION_PARAM_PEAK_INTERVAL = 1.0;
+    //多波长校正寻峰参数--峰谷差
+    public static final Double CALIBRATION_PARAM_PEAK_VALLEY_DIFF = 2.0;
 
 
 }

@@ -30,6 +30,7 @@ public enum ConnectEnum {
     GetInitStatus("GetInitStatus"),
     // 获取当前样品池位置
     GetCellPos("GetCellPos"),
+    T800GetWlList("T800GetWlList"),
     // 获取波长信息
     GetWlList("GetWlList");
 

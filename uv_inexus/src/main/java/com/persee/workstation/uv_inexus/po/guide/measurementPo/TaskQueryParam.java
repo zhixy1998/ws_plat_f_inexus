@@ -26,4 +26,7 @@ public class TaskQueryParam {
 
     @ApiModelProperty("模糊查询字段")
     private String keyword;
+
+    @ApiModelProperty("当前用户")
+    private String updateBy;
 }

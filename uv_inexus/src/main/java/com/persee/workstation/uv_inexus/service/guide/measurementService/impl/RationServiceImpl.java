@@ -27,7 +27,6 @@ import com.persee.workstation.uv_inexus.dto.guide.SampleCreateHeadConf;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -167,28 +166,28 @@ public class RationServiceImpl implements RationService {
     public Result updateMethodParameter(MethodParamsDto methodDto) {
         if (!StringUtils.hasText(methodDto.getCurrentMethodId())) {
             //方法id不能为空,请创建方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000021"));
+            return Result.fail("00000021");
         }
         // 通用参数：方法名称
         if (methodDto.getMethodName() != null && methodDto.getMethodName().length() > 256) {
             //方法名格式错误
-            return Result.fail(YamlMessageSource.getMessageStatic("00300002"));
+            return Result.fail("00300002");
         }
         // 通用参数：参考标准方法长度（≤256）
         if (methodDto.getReferenceStandardName() != null && methodDto.getReferenceStandardName().length() > 256) {
             //参考标准方法长度超限
-            return Result.fail(YamlMessageSource.getMessageStatic("00303001"));
+            return Result.fail("00303001");
         }
         // 通用参数：前处理参数 每个成员≤500字符，最多10个
         if (methodDto.getPreProcessParameters() != null) {
             if (methodDto.getPreProcessParameters().size() > 10) {
                 //前处理参数个数超限
-                return Result.fail(YamlMessageSource.getMessageStatic("00303002"));
+                return Result.fail("00303002");
             }
             for (String p : methodDto.getPreProcessParameters()) {
                 if (p != null && p.length() > 500) {
                     //前处理参数长度超限
-                    return Result.fail(YamlMessageSource.getMessageStatic("00303003"));
+                    return Result.fail("00303003");
                 }
             }
         }
@@ -203,17 +202,17 @@ public class RationServiceImpl implements RationService {
 //        if (methodDto.getWaveLength() != null) {
 //            if (methodDto.getWaveLength().isEmpty() || methodDto.getWaveLength().size() > 3) {
 //                //波长个数需在1-3之间
-//                return Result.fail(YamlMessageSource.getMessageStatic("00303004"));
+//                return Result.fail("00303004");
 //            }
 //            for (String wl : methodDto.getWaveLength()) {
 //                //波长超出范围(190-900)
-//                try { double v = Double.parseDouble(wl); if (v < 190.0 || v > 900.0) return Result.fail(YamlMessageSource.getMessageStatic("00303005"));
+//                try { double v = Double.parseDouble(wl); if (v < 190.0 || v > 900.0) return Result.fail("00303005");
 //                    String s = String.format(java.util.Locale.ROOT, "%.1f", v);
 //                    //波长需保留1位小数
-//                    if (!s.equals(String.valueOf(v)) && !String.valueOf(v).matches("^\\d+\\.\\d$")) return Result.fail(YamlMessageSource.getMessageStatic("00303006"));
+//                    if (!s.equals(String.valueOf(v)) && !String.valueOf(v).matches("^\\d+\\.\\d$")) return Result.fail("00303006");
 //                } catch (Exception e) {
 //                    //波长格式错误
-//                    return Result.fail(YamlMessageSource.getMessageStatic("00303007")); }
+//                    return Result.fail("00303007"); }
 //            }
 //        }
 //        // 波长系数：1-3个成员
@@ -221,13 +220,13 @@ public class RationServiceImpl implements RationService {
 //            if (methodDto.getCoefficientParams() != null) {
 //                if (methodDto.getCoefficientParams().isEmpty() || methodDto.getCoefficientParams().size() > 3) {
 //                    //波长系数个数需在1-3之间
-//                    return Result.fail(YamlMessageSource.getMessageStatic("00303018"));
+//                    return Result.fail("00303018");
 //                }
 //            }
 //            // 曲线次数：1-4
 //            if (org.springframework.util.StringUtils.hasText(methodDto.getCurveType())) {
 //                //曲线次数范围应为1-4
-//                try { int n = Integer.parseInt(methodDto.getCurveType()); if (n < 1 || n > 4) return Result.fail(YamlMessageSource.getMessageStatic("00303008"));
+//                try { int n = Integer.parseInt(methodDto.getCurveType()); if (n < 1 || n > 4) return Result.fail("00303008");
 //                } catch (Exception ignored) {}
 //            }
 //            // 方程类型：枚举
@@ -245,7 +244,7 @@ public class RationServiceImpl implements RationService {
 //            // 曲线系数数据：1-10 个成员
 //            if (methodDto.getCoefficientParams() == null || methodDto.getCoefficientParams().isEmpty() || methodDto.getCoefficientParams().size() > 10) {
 //                //曲线系数数据个数需在1-10之间
-//                return Result.fail(YamlMessageSource.getMessageStatic("00303009"));
+//                return Result.fail("00303009");
 //            }
 //        }
 //
@@ -257,7 +256,7 @@ public class RationServiceImpl implements RationService {
 //                System.out.println(r.getUnit().length());
 //                if (r.getUnit() == null || r.getUnit().isEmpty() || r.getUnit().length() > 10) {
 //                    //结果单位长度应为1-10
-//                    return Result.fail(YamlMessageSource.getMessageStatic("0030300A"));
+//                    return Result.fail("0030300A");
 //                }
 //            }
 //        }
@@ -266,7 +265,7 @@ public class RationServiceImpl implements RationService {
         TMeasureMethod method = tMeasureMethodService.getById(methodDto.getCurrentMethodId());
         if (method == null) {
             //没有找到该方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            return Result.fail("00000009");
         }
         RationParameter parameter = new RationParameter();
         BeanUtils.copyProperties(methodDto, parameter);
@@ -307,7 +306,7 @@ public class RationServiceImpl implements RationService {
         }
         if (rationParameter.getWaveLength() == null || rationParameter.getWaveLength().isEmpty()) {
             //请填写波长参数
-            return Result.fail(YamlMessageSource.getMessageStatic("00000022"));
+            return Result.fail("00000022");
         }
 
         // 创建测量方法表
@@ -323,10 +322,10 @@ public class RationServiceImpl implements RationService {
         boolean save = tMeasureMethodService.save(tMeasureMethod);
         if (save) {
             //创建成功
-            return Result.ok(YamlMessageSource.getMessageStatic("0000000F"));
+            return Result.ok("0000000F");
         } else {
             //创建失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000010"));
+            return Result.fail("00000010");
         }
     }
 
@@ -339,12 +338,12 @@ public class RationServiceImpl implements RationService {
 
         if (po == null) {
             //用户不存在
-            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+            return Result.fail("00000001");
         }
         MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
         if (measureTypeEnum == null) {
             //暂不支持
-            return Result.fail(YamlMessageSource.getMessageStatic("0000002B"));
+            return Result.fail("0000002B");
         }
 
         String id = po.getId();
@@ -415,18 +414,18 @@ public class RationServiceImpl implements RationService {
         task = tMeasureTaskService.getOne(wrapper);
         if (task == null) {
             //请创建方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00101006"));
+            return Result.fail("00101006");
         }
         vo.setTaskId(task.getId());
         vo.setTaskName(task.getTaskName());
         vo.setTaskStatus(task.getTaskStatus());
         method = tMeasureMethodService.getById(task.getMethodKey());
         if (method == null) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00301010"));
+            return Result.fail("00301010");
         }
         TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
         if (project == null) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
+            return Result.fail("00000011");
         }
         vo.setMethodId(method.getId());
         vo.setMethodName(method.getMethodName());
@@ -462,7 +461,7 @@ public class RationServiceImpl implements RationService {
         boolean save = tMeasureMethodService.save(newMethod);
         if (!save) {
             //创建失败
-            return Result.fail(YamlMessageSource.getMessageStatic("方法修改失败"));
+            return Result.fail("方法修改失败");
         }
 
         vo.setMethodId(newMethod.getId());
@@ -670,12 +669,12 @@ public class RationServiceImpl implements RationService {
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null || !StringUtils.hasText(method.getMeasurementParamInfo())) {
             //方法不存在
-            return R.fail(YamlMessageSource.getMessageStatic("00000009"));
+            return R.fail("00000009");
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             //任务不存在
-            return R.fail(YamlMessageSource.getMessageStatic("00000008"));
+            return R.fail("00000008");
         }
         RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
         if (parameter == null || parameter.getSampleInputParams() == null || parameter.getSampleInputParams().size() <= parameter.getWaveLength().size()) {
@@ -686,30 +685,40 @@ public class RationServiceImpl implements RationService {
 
         RationTaskHeadSnapShot snapShot = new RationTaskHeadSnapShot();
 
-        TaskHeadSnapshot taskHeadSnapshot = new TaskHeadSnapshot();
+        TaskHeadSnapshot unknownHeadSnapshot = new TaskHeadSnapshot();
+        TaskHeadSnapshot standHeadSnapshot = new TaskHeadSnapshot();
         if (StringUtils.hasText(task.getTableInfo()) && !clearOld) {
             snapShot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
             if (snapShot == null) {
                 snapShot = new RationTaskHeadSnapShot();
-                taskHeadSnapshot = new TaskHeadSnapshot();
+                unknownHeadSnapshot = new TaskHeadSnapshot();
+                standHeadSnapshot = new TaskHeadSnapshot();
             } else {
-                taskHeadSnapshot = snapShot.getUnknownHead();
+                unknownHeadSnapshot = snapShot.getUnknownHead();
+                standHeadSnapshot = snapShot.getStandHead();
             }
 
         }
-        List<HeadVO> heads = taskHeadSnapshot.getSampleHeads();
-        if (heads == null || heads.isEmpty()) {
+        List<HeadVO> unknownHeads = unknownHeadSnapshot.getSampleHeads();
+        if (unknownHeads == null || unknownHeads.isEmpty()) {
             List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_unknown.getIdentity());
-            heads = new ArrayList<>(preHead);
+            unknownHeads = new ArrayList<>(preHead);
+        }
+
+        List<HeadVO> standHeads = standHeadSnapshot.getSampleHeads();
+        if (standHeads == null || standHeads.isEmpty()) {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
+            standHeads = new ArrayList<>(preHead);
+            standHeadSnapshot.setSampleHeads(standHeads);
         }
 
         Set<String> allHeadIdentity = new HashSet<>();
 
-        for (HeadVO head : heads) {
+        for (HeadVO head : unknownHeads) {
             allHeadIdentity.add(head.getIdentity());
         }
 
-        List<InputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
+        List<InputParamMapTableHead> mapRelation = unknownHeadSnapshot.getMapRelation();
         Map<String, String> map = new HashMap<>();
         for (InputParamMapTableHead relation : mapRelation) {
             map.put(relation.getParamIdentity(), relation.getHeadIdentity());
@@ -740,7 +749,7 @@ public class RationServiceImpl implements RationService {
             relation.setParamName(param.getParamName());
             relation.setParamIdentity(resultIdentity);
 
-            if ("0".equals(param.getIsSampleAttribute())) {
+            if ("否".equals(param.getIsSampleAttribute())) {
 
                 String identifier = param.getCurveIdentifier();
                 if (identifier == null) {
@@ -756,7 +765,7 @@ public class RationServiceImpl implements RationService {
                         relation.setHeadIdentity(split[0] + "-" + luminosity);
                     }
                 }
-            } else if ("1".equals(param.getIsSampleAttribute())) {
+            } else if ("是".equals(param.getIsSampleAttribute())) {
                 String newHeadIdentity = randomString(8);
                 while (allHeadIdentity.contains(newHeadIdentity)) {
                     newHeadIdentity = randomString(8);
@@ -770,31 +779,24 @@ public class RationServiceImpl implements RationService {
                 newHead.setUnit(param.getUnit());
                 newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
 
-                heads.add(newHead);
+                unknownHeads.add(newHead);
                 relation.setHeadIdentity(newHeadIdentity);
                 allHeadIdentity.add(newHeadIdentity);
 
             }
             mapRelation.add(relation);
         }
-        taskHeadSnapshot.setSampleHeads(heads);
-        taskHeadSnapshot.setMapRelation(mapRelation);
+        unknownHeadSnapshot.setSampleHeads(unknownHeads);
+        unknownHeadSnapshot.setMapRelation(mapRelation);
 
-        if (snapShot.getStandHead() == null || snapShot.getStandHead().getSampleHeads() == null || snapShot.getStandHead().getSampleHeads().isEmpty()) {
-            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
-            TaskHeadSnapshot standHead = new TaskHeadSnapshot();
-            standHead.setSampleHeads(preHead);
-            standHead.setMapRelation(new ArrayList<>());
+        snapShot.setStandHead(standHeadSnapshot);
 
-            snapShot.setStandHead(standHead);
-        }
-
-        snapShot.setUnknownHead(taskHeadSnapshot);
+        snapShot.setUnknownHead(unknownHeadSnapshot);
         task.setTableInfo(JSON.toJSONString(snapShot));
 
         boolean update = tMeasureTaskService.updateById(task);
 
-        return update ? R.ok(true) : R.fail(YamlMessageSource.getMessageStatic("00000010"));
+        return update ? R.ok(true) : R.fail("00000010");
 
 
     }
@@ -818,7 +820,7 @@ public class RationServiceImpl implements RationService {
 
         if (!StringUtils.hasText(checkDTO.getCurrentMethodId())) {
             //请选择当前方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000023"));
+            return Result.fail("00000023");
         }
 
         RationParameter newMethodParam = new RationParameter();
@@ -848,22 +850,22 @@ public class RationServiceImpl implements RationService {
             String waveStr = waveLengths.get(i);
             if (isBlank(waveStr)) {
                 //"第" + (i + 1) + "个波长值不能为空字符串"
-                return Result.fail(YamlMessageSource.getMessageStatic("00102005", (i + 1)));
+                return Result.fail("00102005",(i + 1));
             }
             try {
                 double waveVal = Double.parseDouble(waveStr);
                 if (waveVal < minWaveLength || waveVal > maxWaveLength) {
                     //"第" + (i + 1) + "个波长值超出范围（190-900），当前值：" + waveVal
-                    return Result.fail(YamlMessageSource.getMessageStatic("00102006", (i + 1), waveVal, minWaveLength, maxWaveLength));
+                    return Result.fail("00102006", (i + 1), waveVal, minWaveLength, maxWaveLength);
                 }
                 // 校验小数点后最多1位
                 String[] parts = waveStr.split("\\.");
                 if (parts.length > 1 && parts[1].length() > 1) {
                     //"波长值" + waveStr + "小数点后最多保留1位"
-                    return Result.fail(YamlMessageSource.getMessageStatic("00105005", waveStr));
+                    return Result.fail("00105005",waveStr);
                 }
             } catch (NumberFormatException e) {
-                return Result.fail(YamlMessageSource.getMessageStatic("00102007", (i + 1), waveStr));
+                return Result.fail("00102007", (i + 1), waveStr);
             }
         }
 
@@ -996,7 +998,7 @@ public class RationServiceImpl implements RationService {
         // 1. 根对象非空校验
         if (parameter == null) {
             //定量测定参数对象不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("00102003"));
+            return R.fail("00102003");
         }
 
         // 2. 波长相关参数校验
@@ -1004,11 +1006,11 @@ public class RationServiceImpl implements RationService {
         List<String> waveLengths = parameter.getWaveLength();
         if (waveLengths == null || waveLengths.isEmpty()) {
             //波长值不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("00105003"));
+            return R.fail("00105003");
         }
         if (waveLengths.size() > 3) {
             //"波长值最多支持3个，当前数量：" + waveLengths.size()
-            return R.fail(YamlMessageSource.getMessageStatic("00102004", waveLengths.size()));
+            return R.fail("00102004",waveLengths.size());
         }
         if (!StringUtils.hasText(parameter.getChangeLampWaveLength())) {
             return R.fail("换灯波长不能为空");
@@ -1018,12 +1020,12 @@ public class RationServiceImpl implements RationService {
             double v = Double.parseDouble(parameter.getChangeLampWaveLength());
             if (v < 330 || v > 390) {
                 //"换灯波长要在（330-390）之间，当前值：" + v
-                return R.fail(YamlMessageSource.getMessageStatic("0010202A", v));
+                return R.fail("0010202A",v);
             }
 
             if (waveLengths.contains(parameter.getChangeLampWaveLength())) {
                 //换灯波长不能和测量波长一样。
-                return R.fail(YamlMessageSource.getMessageStatic("0010202B"));
+                return R.fail("0010202B");
             }
         }
 
@@ -1031,15 +1033,15 @@ public class RationServiceImpl implements RationService {
         List<String> waveLengthParams = parameter.getWaveLengthParams();
         if (waveLengthParams == null) {
             //波长参数不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("00102008"));
+            return R.fail("00102008");
         }
         if (waveLengthParams.size() != waveLengths.size()) {
             //"波长参数数量需与波长值一致（当前参数数：" + waveLengthParams.size() + "，波长数：" + waveLengths.size() + "）"
-            return R.fail(YamlMessageSource.getMessageStatic("00102009", waveLengthParams.size(), waveLengths.size()));
+            return R.fail("00102009", waveLengthParams.size(), waveLengths.size());
         }
         for (int i = 0; i < waveLengthParams.size(); i++) {
             if (isBlank(waveLengthParams.get(i))) {
-                return R.fail(YamlMessageSource.getMessageStatic("0010200A", (i + 1)));
+                return R.fail("0010200A", (i + 1));
             }
         }
 
@@ -1060,14 +1062,14 @@ public class RationServiceImpl implements RationService {
         // 3.1 曲线类型校验
         if (isBlank(parameter.getCurveType())) {
             //曲线类型不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("0010200B"));
+            return R.fail("0010200B");
         }
 
         // 3.2 方程类型校验（枚举值：qtCFA/qtAFC）
         String equationType = parameter.getEquationType();
         if (isBlank(equationType)) {
             //方程类型不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("0010200C"));
+            return R.fail("0010200C");
         }
 //        if (!Arrays.asList("qtCFA", "qtAFC").contains(equationType)) {
 //            return R.fail("方程类型不合法（可选值：qtCFA、qtAFC），当前值：" + equationType);
@@ -1077,45 +1079,45 @@ public class RationServiceImpl implements RationService {
         String coefficientMode = parameter.getCoefficientMode();
         if (isBlank(coefficientMode)) {
             //系数方式不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("0010200D"));
+            return R.fail("0010200D");
         }
         if (RationCurveParamEnums.getName(coefficientMode) == null) {
             //系数方式不合法（可选值：直接系数法、标准曲线法）
-            return R.fail(YamlMessageSource.getMessageStatic("0010200E"));
+            return R.fail("0010200E");
         }
         if (RationCurveParamEnums.direct_coefficient.getIdentity().equals(coefficientMode)) {
             // 3.4 系数参数校验（1-10个，数字且最多3位小数）
             List<String> coefficientParams = parameter.getCoefficientParams();
             if (coefficientParams == null || coefficientParams.isEmpty()) {
                 //系数参数不能为空
-                return R.fail(YamlMessageSource.getMessageStatic("0010200F"));
+                return R.fail("0010200F");
             }
             if (coefficientParams.size() > 10) {
                 //"系数参数最多支持10个，当前数量：" + coefficientParams.size()
-                return R.fail(YamlMessageSource.getMessageStatic("00102010", coefficientParams.size()));
+                return R.fail("00102010",coefficientParams.size());
             }
 
             int curveType = Integer.parseInt(parameter.getCurveType());
             if (coefficientParams.size() < curveType + 1) {
                 //"系数参数数量不足，当前数量：" + coefficientParams.size() + "，所需数量：" + (curveType + 1)
-                return R.fail(YamlMessageSource.getMessageStatic("00102011", coefficientParams.size(), (curveType + 1)));
+                return R.fail("00102011", coefficientParams.size(), (curveType + 1));
             }
 
             for (int i = 0; i < coefficientParams.size(); i++) {
                 String coeffStr = coefficientParams.get(i);
                 if (isBlank(coeffStr)) {
                     //"第" + (i + 1) + "个系数参数不能为空字符串"
-                    return R.fail(YamlMessageSource.getMessageStatic("00102012", (i + 1)));
+                    return R.fail("00102012",(i + 1));
                 }
                 try {
                     Double.parseDouble(coeffStr);
                     if (coeffStr.contains(".") && coeffStr.split("\\.")[1].length() > 10) {
                         //"第" + (i + 1) + "个系数参数小数位数不能超过10位，当前值：" + coeffStr
-                        return R.fail(YamlMessageSource.getMessageStatic("00102013", (i + 1), coeffStr));
+                        return R.fail("00102013", (i + 1), coeffStr);
                     }
                 } catch (NumberFormatException e) {
                     //"第" + (i + 1) + "个系数参数格式错误（需为数字），当前值：" + coeffStr
-                    return R.fail(YamlMessageSource.getMessageStatic("00102014", (i + 1), coeffStr));
+                    return R.fail("00102014", (i + 1), coeffStr);
                 }
             }
         }
@@ -1129,7 +1131,7 @@ public class RationServiceImpl implements RationService {
             for (String zm : zeroMethod) {
                 if (RationCurveParamEnums.getName(zm) == null) {
                     //零点方式不合法（可选值：过零点、插入零点）
-                    return R.fail(YamlMessageSource.getMessageStatic("00102015"));
+                    return R.fail("00102015");
                 }
             }
         }
@@ -1140,12 +1142,12 @@ public class RationServiceImpl implements RationService {
         String repeatMode = parameter.getRepeatMode();
         if (isBlank(repeatMode)) {
             //重复模式不能为空
-            return R.fail(YamlMessageSource.getMessageStatic("00103007"));
+            return R.fail("00103007");
         }
 
         if (RationCurveParamEnums.getName(repeatMode) == null) {
             //重复模式不合法
-            return R.fail(YamlMessageSource.getMessageStatic("00102016"));
+            return R.fail("00102016");
         }
 
         // 4.2 单池重复（rmCR）时的关联校验
@@ -1154,38 +1156,38 @@ public class RationServiceImpl implements RationService {
             String repeatCountStr = parameter.getRepeatCount();
             if (isBlank(repeatCountStr)) {
                 //单池重复模式下，重复次数不能为空
-                return R.fail(YamlMessageSource.getMessageStatic("00102017"));
+                return R.fail("00102017");
             }
             try {
                 int repeatCount = Integer.parseInt(repeatCountStr);
                 if (repeatCount < 2 || repeatCount > 10) {
                     //重复次数需在2-10范围内，当前值：repeatCount
-                    return R.fail(YamlMessageSource.getMessageStatic("00102018", repeatCount));
+                    return R.fail("00102018",repeatCount);
                 }
             } catch (NumberFormatException e) {
                 //"重复次数格式错误（需为整数），当前值：" + repeatCountStr
-                return R.fail(YamlMessageSource.getMessageStatic("00102019", repeatCountStr));
+                return R.fail("00102019",repeatCountStr);
             }
 
             // 时间间隔：0-60秒，保留1位小数
             String timeIntervalStr = parameter.getTimeInterval();
             if (isBlank(timeIntervalStr)) {
                 //单池重复模式下，时间间隔不能为空
-                return R.fail(YamlMessageSource.getMessageStatic("0010201A"));
+                return R.fail("0010201A");
             }
             try {
                 double timeInterval = Double.parseDouble(timeIntervalStr);
                 if (timeInterval < 0 || timeInterval > 60) {
                     //"时间间隔需在0-60秒范围内，当前值：" + timeInterval
-                    return R.fail(YamlMessageSource.getMessageStatic("0010201B", timeInterval));
+                    return R.fail("0010201B",timeInterval);
                 }
                 if (timeIntervalStr.contains(".") && timeIntervalStr.split("\\.")[1].length() > 1) {
                     //"时间间隔小数位数不能超过1位，当前值：" + timeIntervalStr
-                    return R.fail(YamlMessageSource.getMessageStatic("0010201C", timeIntervalStr));
+                    return R.fail("0010201C",timeIntervalStr);
                 }
             } catch (NumberFormatException e) {
                 //"时间间隔格式错误（需为数字），当前值：" + timeIntervalStr
-                return R.fail(YamlMessageSource.getMessageStatic("0010201D", timeIntervalStr));
+                return R.fail("0010201D",timeIntervalStr);
             }
         }
 
@@ -1196,13 +1198,13 @@ public class RationServiceImpl implements RationService {
         if (sampleInputParams != null && !sampleInputParams.isEmpty()) {
             if (sampleInputParams.size() > 20) {
                 //"样品输入参数最多支持10个，当前数量：" + sampleInputParams.size()
-                return R.fail(YamlMessageSource.getMessageStatic("0010201E", sampleInputParams.size()));
+                return R.fail("0010201E",sampleInputParams.size());
             }
             for (int i = 0; i < sampleInputParams.size(); i++) {
                 InputParam inputParam = sampleInputParams.get(i);
                 if (inputParam == null || isBlank(inputParam.getParamName())) {
                     //"第" + (i + 1) + "个样品输入参数标题不能为空"
-                    return R.fail(YamlMessageSource.getMessageStatic("0010201F", (i + 1)));
+                    return R.fail("0010201F",(i + 1));
                 }
             }
         }
@@ -1211,13 +1213,13 @@ public class RationServiceImpl implements RationService {
         List<PreCountResultParam> resultParams = parameter.getResultParams();
         if (resultParams != null && !resultParams.isEmpty()) {
             if (resultParams.size() > 5) {
-                return R.fail(YamlMessageSource.getMessageStatic("00102020", resultParams.size()));
+                return R.fail("00102020",resultParams.size());
             }
             for (int i = 0; i < resultParams.size(); i++) {
                 PreCountResultParam resultParam = resultParams.get(i);
                 if (resultParam == null || isBlank(resultParam.getResultName()) || isBlank(resultParam.getFormulaText())) {
                     //"第" + (i + 1) + "个待计算结果参数标题或公式不能为空"
-                    return R.fail(YamlMessageSource.getMessageStatic("00102021", (i + 1)));
+                    return R.fail("00102021",(i + 1));
                 }
             }
         }
@@ -1228,17 +1230,17 @@ public class RationServiceImpl implements RationService {
 
             if (approxParams.size() > 10) {
                 //"最多支持修约10个变量" + approxParams.size()
-                return R.fail(YamlMessageSource.getMessageStatic("00103010", approxParams.size()));
+                return R.fail("00103010",approxParams.size());
             }
             for (RoundingVO approxParam : approxParams) {
 
                 if (approxParam.getRoundingParams() == null || approxParam.getRoundingParams().isEmpty()) {
                     //"修约设置" + approxParam.getResultIdentity() + "的修约条件不能为空"
-                    return R.fail(YamlMessageSource.getMessageStatic("00103011", approxParam.getResultIdentity()));
+                    return R.fail("00103011",approxParam.getResultIdentity());
                 }
                 if (approxParam.getRoundingParams().size() > 10) {
                     //"修约设置" + approxParam.getResultIdentity() + "的修约条件数量不能超过10个"
-                    return R.fail(YamlMessageSource.getMessageStatic("00103012", approxParam.getResultIdentity()));
+                    return R.fail("00103012",approxParam.getResultIdentity());
                 }
 
                 R<Boolean> r = guidePublicUtilService.checkApproximateRange(approxParam);
@@ -1253,13 +1255,13 @@ public class RationServiceImpl implements RationService {
         List<QualityConfVO> qcParams = parameter.getQcParams();
         if (qcParams != null && !qcParams.isEmpty() && qcParams.size() > 10) {
             //"质控设置最多支持10个规则，当前数量：" + qcParams.size()
-            return R.fail(YamlMessageSource.getMessageStatic("00102022", qcParams.size()));
+            return R.fail("00102022",qcParams.size());
         }
 
         // 7. 继承参数校验（方法名称等长度限制）
         if (parameter.getEquationTypeName() != null && parameter.getEquationTypeName().length() > 256) {
             //方法名称长度不能超过256字符
-            return R.fail(YamlMessageSource.getMessageStatic("00102023"));
+            return R.fail("00102023");
         }
 
         return R.ok(true);
@@ -1280,7 +1282,7 @@ public class RationServiceImpl implements RationService {
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+            return Result.fail("00000004");
         }
 
         if (StringUtils.hasText(task.getSampleKey())) {
@@ -1328,7 +1330,7 @@ public class RationServiceImpl implements RationService {
         if (!StringUtils.hasText(sampleKind)) {
             log.info("缺少样品种类");
             //缺少样品种类
-            return Result.fail(YamlMessageSource.getMessageStatic("00000023"));
+            return Result.fail("00000023");
         }
 
         if (!StringUtils.hasText(taskId)) {
@@ -1339,7 +1341,7 @@ public class RationServiceImpl implements RationService {
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+            return Result.fail("00000004");
         }
         boolean isWeight = false;
 
@@ -1395,7 +1397,7 @@ public class RationServiceImpl implements RationService {
                 }
             } else {
                 //样品种类出错
-                return Result.fail(YamlMessageSource.getMessageStatic("00000024"));
+                return Result.fail("00000024");
             }
             if (isWeight) {
                 for (HeadVO vo : ans) {
@@ -1420,23 +1422,23 @@ public class RationServiceImpl implements RationService {
 
         if (!StringUtils.hasText(dto.getMethodId())) {
             //没有方法！
-            return Result.fail(YamlMessageSource.getMessageStatic("00000025"));
+            return Result.fail("00000025");
         }
 
         TMeasureMethod method = tMeasureMethodService.getById(dto.getMethodId());
         if (method == null) {
             //没有方法！
-            return Result.fail(YamlMessageSource.getMessageStatic("00000025"));
+            return Result.fail("00000025");
         }
 
         if (dto.getStandHeads().size() > 10) {
             //标准样品表格新增列数不能超过10列
-            return Result.fail(YamlMessageSource.getMessageStatic("00000028"));
+            return Result.fail("00000028");
         }
 
         if (dto.getUnknowHeads().size() > 10) {
             //未知样品表格新增列数不能超过10列
-            return Result.fail(YamlMessageSource.getMessageStatic("00000028"));
+            return Result.fail("00000028");
         }
         if (dto.getNewStandSamples() != null) {
             for (Map<String, String> map : dto.getNewStandSamples()) {
@@ -1471,12 +1473,12 @@ public class RationServiceImpl implements RationService {
             standHas = true;
             if (dto.getStandHeads() == null || dto.getStandHeads().isEmpty()) {
                 //标准样品表头为空
-                return Result.fail(YamlMessageSource.getMessageStatic("00000026"));
+                return Result.fail("00000026");
             }
 
             if (dto.getStandHeads().size() > 10) {
                 //标准样品表格新增列数不能超过10列
-                return Result.fail(YamlMessageSource.getMessageStatic("00000028"));
+                return Result.fail("00000028");
             }
             /// 校验是否有重复的样品编号
             // 取出所有样品编号
@@ -1487,7 +1489,7 @@ public class RationServiceImpl implements RationService {
                     .collect(Collectors.toList());
 
             if (sampleNos.size() < dto.getNewStandSamples().size()) {
-                return Result.fail(YamlMessageSource.getMessageStatic("0000004E"));
+                return Result.fail("0000004E");
             }
 
             // 查重：找到重复的样品编号
@@ -1497,7 +1499,7 @@ public class RationServiceImpl implements RationService {
             // 判断如果isTested为true，
             if (!duplicates.isEmpty()) {
                 //标准样品编号重复
-                return Result.fail(YamlMessageSource.getMessageStatic("00102001"));
+                return Result.fail("00102001");
             }
         }
 
@@ -1508,7 +1510,7 @@ public class RationServiceImpl implements RationService {
                 .collect(Collectors.toList());
 
         if (unknownSampleNos.size() < dto.getNewUnknowSamples().size()) {
-            return Result.fail(YamlMessageSource.getMessageStatic("0000004E"));
+            return Result.fail("0000004E");
         }
         // 查重：找到重复的样品编号
         Set<String> isDuplicates = unknownSampleNos.stream()
@@ -1517,7 +1519,7 @@ public class RationServiceImpl implements RationService {
         // 判断如果isTested为true，
         if (!isDuplicates.isEmpty()) {
             //未知样品编号重复
-            return Result.fail(YamlMessageSource.getMessageStatic("00102002"));
+            return Result.fail("00102002");
         }
 
 
@@ -1547,7 +1549,7 @@ public class RationServiceImpl implements RationService {
             }
             if (!save) {
                 //系统出错
-                return Result.fail(YamlMessageSource.getMessageStatic("00000014"));
+                return Result.fail("00000014");
             }
             dto.setTaskId(newTask.getId());
         }
@@ -1556,7 +1558,7 @@ public class RationServiceImpl implements RationService {
 
         if (task == null) {
             //没有找到该任务
-            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+            return Result.fail("00000004");
         }
 
         List<TaskSpecimen> taskSpecimen = new ArrayList<>();
@@ -1774,7 +1776,7 @@ public class RationServiceImpl implements RationService {
 
         if (!b) {
             //任务保存样品信息出错
-            return Result.fail(YamlMessageSource.getMessageStatic("00100003"));
+            return Result.fail("00100003");
         }
         //重新分析
         if (standHas) {
@@ -1803,16 +1805,16 @@ public class RationServiceImpl implements RationService {
 
         if (!StringUtils.hasText(taskId) || !StringUtils.hasText(sampleId)) {
             //请选择需要删除的任务和样品
-            return Result.fail(YamlMessageSource.getMessageStatic("00000015"));
+            return Result.fail("00000015");
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+            return Result.fail("00000004");
         }
         if (!StringUtils.hasText(task.getSampleKey())) {
             //任务无样品
-            return Result.fail(YamlMessageSource.getMessageStatic("00000016"));
+            return Result.fail("00000016");
         }
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         for (TaskSpecimen specimen : taskSpecimen) {
@@ -1835,7 +1837,7 @@ public class RationServiceImpl implements RationService {
         boolean b = tMeasureTaskService.updateById(task);
         if (!b) {
             //删除失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00100008"));
+            return Result.fail("00100008");
         }
 
         TMeasureSample measureSample = tMeasureSampleService.getById(sampleId);
@@ -1865,7 +1867,7 @@ public class RationServiceImpl implements RationService {
         Boolean b = revokeDelSampleNumRepeat(taskSpecimen, newSample);
         if (!b) {
             //要恢复的样品编号重复，请处理重复编号后再恢复！
-            return Result.fail(YamlMessageSource.getMessageStatic("00100004"));
+            return Result.fail("00100004");
         }
 
 
@@ -1950,22 +1952,22 @@ public class RationServiceImpl implements RationService {
     public Result<RationMethodParam> queryMethodParam(String methodId) {
         if (!StringUtils.hasText(methodId)) {
             //方法id不能为空,请创建方法或选择方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000021"));
+            return Result.fail("00000021");
         }
         if (methodId.length() != 32) {
             //方法ID格式应为32位
-            return Result.fail(YamlMessageSource.getMessageStatic("0030300B"));
+            return Result.fail("0030300B");
         }
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             //没有找到该方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            return Result.fail("00000009");
         }
 
         if (!StringUtils.hasText(method.getMeasurementParamInfo())) {
             //未查询到该方法参数
-            return Result.fail(YamlMessageSource.getMessageStatic("00000017"));
+            return Result.fail("00000017");
         }
         RationParameter rationParameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
 
@@ -1984,17 +1986,17 @@ public class RationServiceImpl implements RationService {
 
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
-            return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
+            return Result.fail("00000006");
         }
         if (!StringUtils.hasText(methodId)) {
             //请选择方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000002"));
+            return Result.fail("00000002");
         }
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             //没有找到该方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            return Result.fail("00000009");
         }
         LinkedHashSet<HeadVO> ans = new LinkedHashSet<>();
 
@@ -2251,17 +2253,17 @@ public class RationServiceImpl implements RationService {
 
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
-            return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
+            return Result.fail("00000006");
         }
         if (!StringUtils.hasText(methodId)) {
             //请选择方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000002"));
+            return Result.fail("00000002");
         }
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             //没有找到该方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            return Result.fail("00000009");
         }
         LinkedHashSet<HeadVO> ans = new LinkedHashSet<>();
         //根据任务中记录的样品id判断是否存在空白样品
@@ -2584,7 +2586,7 @@ public class RationServiceImpl implements RationService {
             }
             if (value == Double.MIN_VALUE) {
                 //未找到对应波长数据
-                return R.fail(YamlMessageSource.getMessageStatic("0030300E"));
+                return R.fail("0030300E");
             }
             if (i < lengthParams.size()) {
                 value = value * Double.parseDouble(lengthParams.get(i));
@@ -2617,7 +2619,7 @@ public class RationServiceImpl implements RationService {
             }
             if (value == Double.MIN_VALUE) {
                 //未找到对应波长数据
-                return R.fail(YamlMessageSource.getMessageStatic("0030300E"));
+                return R.fail("0030300E");
             }
             if (i < lengthParams.size()) {
                 value = value * Double.parseDouble(lengthParams.get(i));
@@ -2638,7 +2640,7 @@ public class RationServiceImpl implements RationService {
     public Result<List<Map<String, Object>>> queryStandSampleData(String taskId, Boolean allDisplay) {
         if (!StringUtils.hasText(taskId) || allDisplay == null) {
             //未选择任务
-            return Result.fail(YamlMessageSource.getMessageStatic("0000001B"));
+            return Result.fail("0000001B");
         }
         List<Map<String, Object>> ans = new ArrayList<>();
         TMeasureTask task = tMeasureTaskService.getById(taskId);
@@ -2781,14 +2783,14 @@ public class RationServiceImpl implements RationService {
 
         if (!StringUtils.hasText(taskId)) {
             //未选择任务
-            return Result.fail(YamlMessageSource.getMessageStatic("0000001B"));
+            return Result.fail("0000001B");
         }
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             log.info("未查询到任务信息");
             //没有找到该任务
-            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+            return Result.fail("00000004");
         }
 
         if (digit == null || digit < 0) {
@@ -3244,7 +3246,7 @@ public class RationServiceImpl implements RationService {
     public Result<List<Map<String, Object>>> queryUnknowSampleData(String taskId, Boolean allDisplay) {
         if (!StringUtils.hasText(taskId) || allDisplay == null) {
             //未选择任务
-            return Result.fail(YamlMessageSource.getMessageStatic("0000001B"));
+            return Result.fail("0000001B");
         }
         List<Map<String, Object>> ans = new ArrayList<>();
         TMeasureTask task = tMeasureTaskService.getById(taskId);
@@ -3387,7 +3389,7 @@ public class RationServiceImpl implements RationService {
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
+            return R.fail("00000004");
         }
         if (!StringUtils.hasText(task.getSampleKey())) {
             return R.ok(true);
@@ -3427,24 +3429,24 @@ public class RationServiceImpl implements RationService {
 
             if (!StringUtils.hasText(normalConcentration)) {
                 //请输入标准浓度
-                return R.fail(YamlMessageSource.getMessageStatic("00102024"));
+                return R.fail("00102024");
             }
             try {
                 double v = Double.parseDouble(normalConcentration);
 
                 if (v < 0) {
                     // 输入提示：标准浓度必须是非负数
-                    return R.fail(YamlMessageSource.getMessageStatic("0010202D"));
+                    return R.fail("0010202D");
                 }
             } catch (Exception e) {
                 //请输入正确的标准浓度
-                return R.fail(YamlMessageSource.getMessageStatic("0010202D"));
+                return R.fail("0010202D");
             }
         }
 
         if (task == null) {
             //没有找到该任务
-            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
+            return R.fail("00000004");
         }
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
@@ -3530,7 +3532,7 @@ public class RationServiceImpl implements RationService {
             boolean save = tMeasureSampleService.save(newSample);
             if (!save) {
                 //保存失败
-                return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+                return R.fail("00300008");
             }
 
             taskSpecimen.add(new TaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), sampleKind));
@@ -3639,7 +3641,7 @@ public class RationServiceImpl implements RationService {
             boolean save = tMeasureSampleService.save(newSample);
             if (!save) {
                 //保存失败
-                return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+                return R.fail("00300008");
             }
             taskSpecimen.add(new TaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), sampleKind));
 
@@ -3671,7 +3673,7 @@ public class RationServiceImpl implements RationService {
                     save = tMeasureSampleService.save(newSample);
                     if (!save) {
                         //保存失败
-                        return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+                        return R.fail("00300008");
                     }
                     taskSpecimen.add(new TaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), sampleKind));
                 }
@@ -3683,7 +3685,7 @@ public class RationServiceImpl implements RationService {
         boolean update = tMeasureTaskService.updateById(task);
         if (!update) {
             //更新失败
-            return R.fail(YamlMessageSource.getMessageStatic("00000048"));
+            return R.fail("00000048");
         }
 
         if (isAutoChangePool) {
@@ -3706,14 +3708,14 @@ public class RationServiceImpl implements RationService {
 
         if (!StringUtils.hasText(parameter.getCurveType())) {
             //请选择曲线类型
-            return R.fail(YamlMessageSource.getMessageStatic("00102025"));
+            return R.fail("00102025");
         }
         int minPointNum = getMinPointNum(parameter);
 
         if (inputParam.size() < minPointNum) {
             log.info("数据点数不足，不进行曲线拟合");
             //数据点数不足，不进行曲线拟合
-            return R.fail(YamlMessageSource.getMessageStatic("00102026"));
+            return R.fail("00102026");
         }
 
         if (empty) {
@@ -3898,18 +3900,18 @@ public class RationServiceImpl implements RationService {
         if (!StringUtils.hasText(taskId)) {
             log.info("缺少任务id");
             //未选择任务
-            return Result.fail(YamlMessageSource.getMessageStatic("0000001B"));
+            return Result.fail("0000001B");
         }
         if (!StringUtils.hasText(methodId)) {
             log.info("缺少方法id");
             //未选择方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000008"));
+            return Result.fail("00000008");
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             log.info("任务不存在");
             //没有找到该任务
-            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+            return Result.fail("00000004");
         }
 
         int digit = Constants.DEFAULT_DECIMAL_NUM;
@@ -4568,15 +4570,15 @@ public class RationServiceImpl implements RationService {
 
 
     @Override
-    public R<List<RationCountDataInfo>> formula(List<RationCountDataInfo> countData, List<RationWavelengthDataInfo> wavelengthData, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Double minuend, Integer digit) {
+    public R<List<RationCountDataInfo>> formula(List<RationCountDataInfo> countData, List<RationWavelengthDataInfo> wavelengthData, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Double minuend, Integer digit, String emptyFitCon) {
         if (!StringUtils.hasText(task.getTableInfo())) {
             //缺少分析参数，无法计算分析
-            return R.fail(YamlMessageSource.getMessageStatic("00300003"));
+            return R.fail("00300003");
         }
         RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
 
         if (shot == null || shot.getUnknownHead() == null || shot.getUnknownHead().getMapRelation() == null || shot.getUnknownHead().getMapRelation().isEmpty()) {
-            return R.fail(YamlMessageSource.getMessageStatic("00300004"));
+            return R.fail("00300004");
         }
         TaskHeadSnapshot snapshot = shot.getUnknownHead();
 
@@ -4592,6 +4594,11 @@ public class RationServiceImpl implements RationService {
             allData.put(RationCurveParamEnums.blank_abs.getIdentity(), minuend);
         }
 
+        if (StringUtils.hasText(emptyFitCon)) {
+            allData.put(RationCurveParamEnums.blank_fit.getIdentity(), emptyFitCon);
+        }
+
+
         for (RationCountDataInfo dataInfo : countData) {
 
             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity()) && minuend == null) {
@@ -4601,9 +4608,10 @@ public class RationServiceImpl implements RationService {
                 allData.put(RationCurveParamEnums.abs_blank_difference.getIdentity(), dataInfo.getColValue());
             } else if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
                 allData.put(RationCurveParamEnums.fit_concentration.getIdentity(), dataInfo.getColValue());
-
+                allData.put(RationCurveParamEnums.sample_fit.getIdentity(), dataInfo.getColValue());
             }
         }
+
 
         if (StringUtils.hasText(task.getFittingParam())) {
             FittingReceiveInfo fittingReceiveInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
@@ -4674,7 +4682,7 @@ public class RationServiceImpl implements RationService {
             String s = allData.getString(relation.getHeadIdentity());
             if (!StringUtils.hasText(s)) {
                 //缺少数据！
-                return R.fail(YamlMessageSource.getMessageStatic("00300006"));
+                return R.fail("00300006");
             }
             identity.append(relation.getParamIdentity()).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
@@ -4701,7 +4709,7 @@ public class RationServiceImpl implements RationService {
 
             if (!resultJson.get("code").equals("200") && !resultJson.get("code").equals(200)) {
                 //"公式计算出错！" + resultJson.get("message")
-                return R.fail(YamlMessageSource.getMessageStatic("00300007", resultJson.get("message")));
+                return R.fail("00300007",resultJson.get("message"));
             }
             String object = resultJson.get("result").toString();
             String s = DataCountUtil.formatValueWithBigDecimal(digit, object);
@@ -4733,7 +4741,7 @@ public class RationServiceImpl implements RationService {
         if (!StringUtils.hasText(task.getSampleKey())) {
             log.info("没有样品");
             //没有样品
-            return R.fail(YamlMessageSource.getMessageStatic("00303010"));
+            return R.fail("00303010");
         }
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
@@ -4824,7 +4832,7 @@ public class RationServiceImpl implements RationService {
                     RationCountDataInfo value = getAbsValue(taskId, sample.getId(), data.getId(), empty);
                     if (value == null) {
                         //数据处理出错且没有找到旧数据，处理失败
-                        return R.fail(YamlMessageSource.getMessageStatic("00303011"));
+                        return R.fail("00303011");
                     }
                     fitCurveData.add(value);
                     fitCurveParams.add(sample.getNormalConcentration());
@@ -4841,7 +4849,7 @@ public class RationServiceImpl implements RationService {
                     RationCountDataInfo value = getAbsValue(taskId, sample.getId(), data.getId(), empty);
                     if (value == null) {
                         //数据处理出错且没有找到旧数据，处理失败
-                        return R.fail(YamlMessageSource.getMessageStatic("00303011"));
+                        return R.fail("00303011");
                     }
                     fitCurveData.add(value);
                     fitCurveParams.add(sample.getNormalConcentration());
@@ -5060,7 +5068,7 @@ public class RationServiceImpl implements RationService {
         if (!StringUtils.hasText(task.getSampleKey())) {
             log.info("没有样品");
             //没有样品
-            return R.fail(YamlMessageSource.getMessageStatic("00303010"));
+            return R.fail("00303010");
         }
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
@@ -5084,6 +5092,8 @@ public class RationServiceImpl implements RationService {
                 );
 
         ParallelData parallelData = new ParallelData();
+
+        String emptyFitCon = null;
         for (TaskSpecimen specimen : taskSpecimen) {
 
             if (specimen.getDeleteType().equals(deleteType)) {
@@ -5204,6 +5214,28 @@ public class RationServiceImpl implements RationService {
                     emptyDataList.add(dealData);
 
                 }
+
+
+                FittingReceiveInfo fitInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+
+
+                if (fitInfo != null && fitInfo.getRoundCoefficient() != null) {
+                    String ans = valueCalculate(fitInfo, minuend, parameter.getEquationType(), digit);
+
+                    if (ans != null) {
+                        RationCountDataInfo valueData = new RationCountDataInfo();
+                        valueData.setOriginalValue(ans);
+                        String s = fitDataRounding(ans, parameter);
+                        emptyFitCon = s;
+
+                        valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                        valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+                        valueData.setColValue(s);
+                        currentList.add(valueData);
+
+                    }
+                }
+
                 saveEmptySampleData(emptyDataList);
                 handleParallelGroup(sample, parallelData, taskId, data.getId(), minuend, digit, true);
 
@@ -5261,7 +5293,7 @@ public class RationServiceImpl implements RationService {
                 }
 
                 //公式计算，待做
-                R<List<RationCountDataInfo>> formula = formula(currentList, list, sample, task, parameter, emptyValue, digit);
+                R<List<RationCountDataInfo>> formula = formula(currentList, list, sample, task, parameter, emptyValue, digit, emptyFitCon);
                 if (formula.getData() != null) {
                     currentList.addAll(formula.getData());
                 }
@@ -5370,13 +5402,13 @@ public class RationServiceImpl implements RationService {
     public Result zero(String deviceSerialNumber, String methodId, String taskId, String updateBy) {
         if (!StringUtils.hasText(deviceSerialNumber)) {
             //未连接仪器
-            return Result.fail(YamlMessageSource.getMessageStatic("0000001D"));
+            return Result.fail("0000001D");
         }
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             //没有找到该方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            return Result.fail("00000009");
         }
 
         if (!StringUtils.hasText(taskId)) {
@@ -5406,7 +5438,7 @@ public class RationServiceImpl implements RationService {
             }
             if (!save) {
                 //系统出错
-                return Result.fail(YamlMessageSource.getMessageStatic("00000014"));
+                return Result.fail("00000014");
             }
             taskId = newTask.getId();
         }
@@ -5415,7 +5447,7 @@ public class RationServiceImpl implements RationService {
         RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
         if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
             //缺少波长
-            return Result.fail(YamlMessageSource.getMessageStatic("0000001E"));
+            return Result.fail("0000001E");
         }
         List<String> waveLength = parameter.getWaveLength();
 
@@ -5475,13 +5507,13 @@ public class RationServiceImpl implements RationService {
     public Result zero2(String deviceSerialNumber, String methodId, String taskId, String updateBy) {
         if (!StringUtils.hasText(deviceSerialNumber)) {
             //未连接仪器
-            return Result.fail(YamlMessageSource.getMessageStatic("0000001D"));
+            return Result.fail("0000001D");
         }
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             //没有找到该方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            return Result.fail("00000009");
         }
 
         if (!StringUtils.hasText(taskId)) {
@@ -5511,7 +5543,7 @@ public class RationServiceImpl implements RationService {
             }
             if (!save) {
                 //系统出错
-                return Result.fail(YamlMessageSource.getMessageStatic("00000014"));
+                return Result.fail("00000014");
             }
             taskId = newTask.getId();
         }
@@ -5520,7 +5552,7 @@ public class RationServiceImpl implements RationService {
         RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
         if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
             //缺少波长
-            return Result.fail(YamlMessageSource.getMessageStatic("0000001E"));
+            return Result.fail("0000001E");
         }
         List<String> waveLength = parameter.getWaveLength();
         // 通过序列号获取ip
@@ -5624,6 +5656,9 @@ public class RationServiceImpl implements RationService {
             }
         }
 
+        result.add(new HeadVO(RationCurveParamEnums.sample_fit.getName(),
+                RationCurveParamEnums.sample_fit.getIdentity(), TableHeadILocateEnums.curve.getIdentity()));
+
         if(StringUtils.hasText(task.getSampleKey())) {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             if (taskSpecimen != null) {
@@ -5633,6 +5668,8 @@ public class RationServiceImpl implements RationService {
                                 RationCurveParamEnums.blank_abs.getIdentity(), TableHeadILocateEnums.curve.getIdentity()));
                         result.add(new HeadVO(RationCurveParamEnums.abs_blank_difference.getName(),
                                 RationCurveParamEnums.abs_blank_difference.getIdentity(), TableHeadILocateEnums.curve.getIdentity()));
+                        result.add(new HeadVO(RationCurveParamEnums.blank_fit.getName(),
+                                RationCurveParamEnums.blank_fit.getIdentity(), TableHeadILocateEnums.curve.getIdentity()));
                         break;
                     }
                 }
@@ -5825,12 +5862,12 @@ public class RationServiceImpl implements RationService {
     public R<List<InputParam>> queryInputParam(String methodId) {
         if (!StringUtils.hasText(methodId)) {
             //未选择方法
-            return R.fail(YamlMessageSource.getMessageStatic("00000008"));
+            return R.fail("00000008");
         }
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             //没有找到该任务
-            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
+            return R.fail("00000004");
         }
         RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
         List<InputParam> inputParams = parameter.getSampleInputParams();
@@ -5843,17 +5880,17 @@ public class RationServiceImpl implements RationService {
 
         if (!StringUtils.hasText(taskId)) {
             //未选择任务
-            return R.fail(YamlMessageSource.getMessageStatic("0000001B"));
+            return R.fail("0000001B");
         }
         if (!StringUtils.hasText(sampleKind)) {
             //未选择样品种类
-            return R.fail(YamlMessageSource.getMessageStatic("00303012"));
+            return R.fail("00303012");
         }
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
+            return R.fail("00000004");
         }
         List<InputParamMapTableHead> ans = new ArrayList<>();
         if (!StringUtils.hasText(task.getTableInfo())) {
@@ -5881,17 +5918,17 @@ public class RationServiceImpl implements RationService {
 
         if (!StringUtils.hasText(snapshotDTO.getTaskId())) {
             //未选择任务
-            return R.fail(YamlMessageSource.getMessageStatic("0000001B"));
+            return R.fail("0000001B");
         }
         if (!StringUtils.hasText(snapshotDTO.getSampleKind())) {
             //未选择样品种类
-            return R.fail(YamlMessageSource.getMessageStatic("00303012"));
+            return R.fail("00303012");
         }
 
         TMeasureTask task = tMeasureTaskService.getById(snapshotDTO.getTaskId());
         if (task == null) {
             //没有找到该任务
-            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
+            return R.fail("00000004");
         }
         TaskHeadSnapshot taskHeadSnapshot = new TaskHeadSnapshot();
         List<HeadVO> taskHeads = new ArrayList<>();
@@ -5923,12 +5960,12 @@ public class RationServiceImpl implements RationService {
         } else {
             log.info("样品种类有误");
             //样品种类有误
-            return R.fail(YamlMessageSource.getMessageStatic("00303013"));
+            return R.fail("00303013");
         }
 
         task.setTableInfo(JSON.toJSONString(shot));
 
-        return tMeasureTaskService.updateById(task) ? R.ok(true) : R.fail(YamlMessageSource.getMessageStatic("00300008"));//保存失败
+        return tMeasureTaskService.updateById(task) ? R.ok(true) : R.fail("00300008");//保存失败
     }
 
     /**
@@ -5944,13 +5981,13 @@ public class RationServiceImpl implements RationService {
         // 1. 基础参数校验（复用原逻辑）
         if (!StringUtils.hasText(taskId)) {
             //缺少任务id
-            return R.fail(YamlMessageSource.getMessageStatic("00000019"));
+            return R.fail("00000019");
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             // log.error("导出失败：任务不存在，taskId: {}", taskId);
             //没有找到该任务
-            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
+            return R.fail("00000004");
         }
         // 处理fileType默认值和合法性
         if (!StringUtils.hasText(fileType)) {
@@ -5960,7 +5997,7 @@ public class RationServiceImpl implements RationService {
         }
         if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
             //不支持的导出格式，仅支持word/txt/xlsx
-            return R.fail(YamlMessageSource.getMessageStatic("00300001"));
+            return R.fail("00300001");
         }
         // 处理allDisplay默认值
         if (allDisplay == null) {
@@ -5972,7 +6009,7 @@ public class RationServiceImpl implements RationService {
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             //测量方法不存在
-            return R.fail(YamlMessageSource.getMessageStatic("00300009"));
+            return R.fail("00300009");
         }
 
         // 构建表头（与原逻辑一致）
@@ -5993,12 +6030,12 @@ public class RationServiceImpl implements RationService {
         Result<RationSampleDataVO> sampleDataResult = querySampleData(queryDataDTO);
         if (!sampleDataResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) { // 校验查询是否成功
             //"查询样品数据失败：" + sampleDataResult.getMessage()
-            return R.fail(YamlMessageSource.getMessageStatic("00303014", sampleDataResult.getMessage()));
+            return R.fail("00303014",sampleDataResult.getMessage());
         }
         RationSampleDataVO dataVO = sampleDataResult.getData();
         if (dataVO == null) { // 校验VO对象是否为空
             //样品数据为空
-            return R.fail(YamlMessageSource.getMessageStatic("00303015"));
+            return R.fail("00303015");
         }
         // 2. 仅提取标准样品数据（standSampleData）
         List<Map<String, Object>> data = dataVO.getStandSampleData();
@@ -6006,7 +6043,7 @@ public class RationServiceImpl implements RationService {
 //        if (data == null || data.isEmpty()) {
 //            //没有可导出的标准样品数据
 //            throw new BusinessException(YamlMessageSource.getMessageStatic("00303016"));
-////            return R.fail(YamlMessageSource.getMessageStatic("00303016"));
+////            return R.fail("00303016");
 //        }
         // 给数据加序号（与序号列对应）
         for (int i = 0; i < data.size(); i++) {
@@ -6036,7 +6073,7 @@ public class RationServiceImpl implements RationService {
                 file.delete();
             }
             //"文件生成失败：" + e.getMessage()
-            return R.fail(YamlMessageSource.getMessageStatic("00302006", e.getMessage()));
+            return R.fail("00302006",e.getMessage());
         }
     }
 

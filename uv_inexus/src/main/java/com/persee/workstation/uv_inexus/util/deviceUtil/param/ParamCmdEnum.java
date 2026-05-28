@@ -13,6 +13,8 @@ public enum ParamCmdEnum {
     GAIN("gain", "SetGain"),
     SLIT1("slit1", "SetSlit1"),
     LAMP_POS("lampPos", "SetLampPos"),
+    CORR_STATUS("corrStatus", "DoIt"),
+    WL_LAMP("mlLamp", "MLamp"),
     WLamp_Status("WLampStatus", "SetWLampStatus"),
     DLamp_Status("DLampStatus", "SetDLampStatus"),
     Change_LampWl("changeLampWl", "SetChangeLampWl"),

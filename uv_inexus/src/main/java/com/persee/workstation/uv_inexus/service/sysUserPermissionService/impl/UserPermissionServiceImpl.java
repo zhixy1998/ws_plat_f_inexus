@@ -33,7 +33,6 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMap
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPermissionPO;
@@ -70,7 +69,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         SysUserPO userPO = systemUserManageDAO.selectById(userId);
         if (userPO == null) {
             //用户不存在
-            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+            return Result.fail("00000001");
         }
 
         // 2. 查用户关联的小组ID
@@ -79,7 +78,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(userGroupQuery);
         if (userGroupList.isEmpty()) {
             //该用户未关联任何小组
-            return Result.fail(YamlMessageSource.getMessageStatic("00605001"));
+            return Result.fail("00605001");
         }
         List<String> groupIds = userGroupList.stream()
                 .map(SysUserGroupPO::getGroupId)
@@ -97,10 +96,9 @@ public class UserPermissionServiceImpl implements UserPermissionService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        // 4. 查权限详情并排除"首页"
+        // 4. 查权限详情
         QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
         permQuery.in("id", permIds)
-                .ne("title", "首页")
                 .orderByAsc("sort");
         List<SysPermissionPO> permissionList = sysPermissionMapper.selectList(permQuery);
 
@@ -111,7 +109,6 @@ public class UserPermissionServiceImpl implements UserPermissionService {
                     BeanUtils.copyProperties(perm, dto);
                     return dto;
                 })
-                .filter(dto -> dto.getTitle() == null || !"首页".equals(dto.getTitle()))
                 .filter(dto -> {
                     // 过滤掉hidden=1的权限（注意处理null的情况，避免空指针）
                     Integer hidden = dto.getHidden();
@@ -243,7 +240,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         SysUserPO userPO = systemUserManageDAO.selectById(userId);
         if (userPO == null) {
             //用户不存在
-            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+            return Result.fail("00000001");
         }
 
         QueryWrapper<SysUserGroupPO> userGroupQuery = new QueryWrapper<>();
@@ -251,7 +248,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(userGroupQuery);
         if (userGroupList.isEmpty()) {
             //该用户未关联任何小组
-            return Result.fail(YamlMessageSource.getMessageStatic("00605001"));
+            return Result.fail("00605001");
         }
 
         List<String> groupIds = userGroupList.stream()
@@ -273,7 +270,6 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
         permQuery.in("id", permIds)
                 .eq("parent_id", 0)
-                .ne("title", "首页")
                 .orderByAsc("sort")
                 .select("path");
         List<SysPermissionPO> permissionList = sysPermissionMapper.selectList(permQuery);
@@ -295,7 +291,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             // 1. 校验小组ID有效性
             if (!StringUtils.hasText(groupId)) {
                 //小组ID不能为空
-                return Result.fail(YamlMessageSource.getMessageStatic("00500001"));
+                return Result.fail("00500001");
             }
             
             // 2. 查询小组信息，获取关联的角色ID
@@ -303,14 +299,14 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             System.out.println("groupPO:"+groupPO);
             if (groupPO == null) {
                 //"小组不存在（groupId：" + groupId + "）"
-                return Result.fail(YamlMessageSource.getMessageStatic("00605002",groupId));
+                return Result.fail("00605002",groupId);
             }
             
             String roleId = groupPO.getRoleId();
             System.out.println("roleId:"+roleId);
             if (!StringUtils.hasText(roleId)) {
                 //"小组未关联任何角色（groupId：" + groupId + "）"
-                return Result.fail(YamlMessageSource.getMessageStatic("00605003",groupId));
+                return Result.fail("00605003",groupId);
             }
             
             // 3. 查询角色信息，获取该角色的所有权限ID（总权限）
@@ -318,7 +314,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             System.out.println("rolePO:"+rolePO);
             if (rolePO == null) {
                 //"角色不存在（roleId：" + roleId + "）"
-                return Result.fail(YamlMessageSource.getMessageStatic("00605004",roleId));
+                return Result.fail("00605004",roleId);
             }
             
             String permIdsStr = rolePO.getPermIds();
@@ -348,12 +344,15 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             // 6. 构建树形结构并标记权限拥有状态
             List<PermissionTreeDTO> permissionTree = buildPermissionTree(rolePermissions, groupPermIds);
 
+            // 按sort字段从小到大排序（确保所有层级都正确排序）
+            sortPermissionTree(permissionTree);
+
             return Result.ok(permissionTree);
 
         } catch (Exception e) {
             e.printStackTrace();
             //"查询权限树形结构失败：" + e.getMessage()
-            return Result.fail(YamlMessageSource.getMessageStatic("00605005",e.getMessage()));
+            return Result.fail("00605005",e.getMessage());
         }
     }
 
@@ -475,11 +474,11 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             // 1. 校验参数
             if (!StringUtils.hasText(groupId)) {
                 //小组ID不能为空
-                return Result.fail(YamlMessageSource.getMessageStatic("00500001"));
+                return Result.fail("00500001");
             }
             if (CollectionUtils.isEmpty(targetPermIds)) {
                 //权限ID列表不能为空
-                return Result.fail(YamlMessageSource.getMessageStatic("00605006"));
+                return Result.fail("00605006");
             }
 
             // 关键修复：将不可修改的列表转换为可修改的ArrayList
@@ -584,7 +583,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         } catch (Exception e) {
             e.printStackTrace();
             //"更新小组权限失败：" + e.getMessage()
-            return Result.fail(YamlMessageSource.getMessageStatic("00605007",e.getMessage()));
+            return Result.fail("00605007",e.getMessage());
         }
     }
 

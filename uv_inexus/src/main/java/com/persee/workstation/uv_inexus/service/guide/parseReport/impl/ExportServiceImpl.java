@@ -42,12 +42,16 @@ import com.persee.workstation.uv_inexus.excel.ExcelImageExportUtils;
 import com.persee.workstation.uv_inexus.excel.QualityControlExcelModel;
 import com.persee.workstation.uv_inexus.excel.RoundingRulesExcelModel;
 import com.persee.workstation.uv_inexus.excel.StandardDetectionExcelModel;
+import com.persee.workstation.uv_inexus.excel.StandardDetectionUVVISPhotometryExcelModel;
+import com.persee.workstation.uv_inexus.excel.StandardDetectionUVVISSpectrumScanExcelModel;
 import com.persee.workstation.uv_inexus.excel.StandardPretreatmentExcelModel;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.CalculationFormula;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.Detection;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.QualityControl;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.RoundingRules;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.StandardPretreatment;
+
+import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.ExportService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -278,6 +282,18 @@ public class ExportServiceImpl implements ExportService {
                 .build();
         excelWriter.write(convertToRoundingModels(roundingRules), sheet5);
 
+        // 导出UV-VIS-光度测量-检测参数表
+        WriteSheet sheet6 = EasyExcel.writerSheet(5, "UV-VIS-光度测量-检测参数表")
+                .head(StandardDetectionUVVISPhotometryExcelModel.class)
+                .build();
+        excelWriter.write(convertToPhotometryModels(targetDetections), sheet6);
+
+        // 导出UV-VIS-光谱扫描-检测参数表
+        WriteSheet sheet7 = EasyExcel.writerSheet(6, "UV-VIS-光谱扫描-检测参数表")
+                .head(StandardDetectionUVVISSpectrumScanExcelModel.class)
+                .build();
+        excelWriter.write(convertToSpectrumScanModels(targetDetections), sheet7);
+
         excelWriter.finish();
     }
 
@@ -306,14 +322,54 @@ public class ExportServiceImpl implements ExportService {
             model.setUnit(formula.getUnit());
             model.setInputParam1Name(formula.getInputParam1Name());
             model.setInputParam1Identity(formula.getInputParam1Identity());
+            model.setInputParam1Unit(formula.getInputParam1Unit());
+            model.setIsSampleAttribute1(formula.getIsSampleAttribute1());
+            model.setCurveIdentifier1(formula.getCurveIdentifier1());
             model.setInputParam2Name(formula.getInputParam2Name());
             model.setInputParam2Identity(formula.getInputParam2Identity());
+            model.setInputParam2Unit(formula.getInputParam2Unit());
+            model.setIsSampleAttribute2(formula.getIsSampleAttribute2());
+            model.setCurveIdentifier2(formula.getCurveIdentifier2());
             model.setInputParam3Name(formula.getInputParam3Name());
             model.setInputParam3Identity(formula.getInputParam3Identity());
+            model.setInputParam3Unit(formula.getInputParam3Unit());
+            model.setIsSampleAttribute3(formula.getIsSampleAttribute3());
+            model.setCurveIdentifier3(formula.getCurveIdentifier3());
             model.setInputParam4Name(formula.getInputParam4Name());
             model.setInputParam4Identity(formula.getInputParam4Identity());
+            model.setInputParam4Unit(formula.getInputParam4Unit());
+            model.setIsSampleAttribute4(formula.getIsSampleAttribute4());
+            model.setCurveIdentifier4(formula.getCurveIdentifier4());
             model.setInputParam5Name(formula.getInputParam5Name());
             model.setInputParam5Identity(formula.getInputParam5Identity());
+            model.setInputParam5Unit(formula.getInputParam5Unit());
+            model.setIsSampleAttribute5(formula.getIsSampleAttribute5());
+            model.setCurveIdentifier5(formula.getCurveIdentifier5());
+            model.setInputParam6Name(formula.getInputParam6Name());
+            model.setInputParam6Identity(formula.getInputParam6Identity());
+            model.setInputParam6Unit(formula.getInputParam6Unit());
+            model.setIsSampleAttribute6(formula.getIsSampleAttribute6());
+            model.setCurveIdentifier6(formula.getCurveIdentifier6());
+            model.setInputParam7Name(formula.getInputParam7Name());
+            model.setInputParam7Identity(formula.getInputParam7Identity());
+            model.setInputParam7Unit(formula.getInputParam7Unit());
+            model.setIsSampleAttribute7(formula.getIsSampleAttribute7());
+            model.setCurveIdentifier7(formula.getCurveIdentifier7());
+            model.setInputParam8Name(formula.getInputParam8Name());
+            model.setInputParam8Identity(formula.getInputParam8Identity());
+            model.setInputParam8Unit(formula.getInputParam8Unit());
+            model.setIsSampleAttribute8(formula.getIsSampleAttribute8());
+            model.setCurveIdentifier8(formula.getCurveIdentifier8());
+            model.setInputParam9Name(formula.getInputParam9Name());
+            model.setInputParam9Identity(formula.getInputParam9Identity());
+            model.setInputParam9Unit(formula.getInputParam9Unit());
+            model.setIsSampleAttribute9(formula.getIsSampleAttribute9());
+            model.setCurveIdentifier9(formula.getCurveIdentifier9());
+            model.setInputParam10Name(formula.getInputParam10Name());
+            model.setInputParam10Identity(formula.getInputParam10Identity());
+            model.setInputParam10Unit(formula.getInputParam10Unit());
+            model.setIsSampleAttribute10(formula.getIsSampleAttribute10());
+            model.setCurveIdentifier10(formula.getCurveIdentifier10());
             model.setFormulaText(formula.getFormulaText());
             // 关键：不设置Base64到单元格，避免超长
             model.setFormulaImage(""); 
@@ -377,10 +433,78 @@ public class ExportServiceImpl implements ExportService {
         }).collect(Collectors.toList());
     }
 
+    /**
+     * 将 Detection 列表转换为 UV-VIS-光度测量-检测参数表 导出模型
+     * 从每个 detection 的 detectionParameters JSON 中提取光度测量相关字段
+     */
+    private List<StandardDetectionUVVISPhotometryExcelModel> convertToPhotometryModels(List<Detection> detections) {
+        List<StandardDetectionUVVISPhotometryExcelModel> result = new ArrayList<>();
+        for (Detection detection : detections) {
+            String paramsStr = detection.getDetectionParameters();
+            if (paramsStr == null || paramsStr.isEmpty()) continue;
+            try {
+                JSONObject params = JSONObject.parseObject(paramsStr);
+                // 如果有光度测量相关字段才导出
+                if (params.containsKey("波长1") || params.containsKey("波长2") ||
+                    params.containsKey("波长3") || params.containsKey("波长4") ||
+                    params.containsKey("波长5") || params.containsKey("波长6")) {
+                    StandardDetectionUVVISPhotometryExcelModel model = new StandardDetectionUVVISPhotometryExcelModel();
+                    model.setDetectionId(detection.getStandardIdentity());
+                    model.setWavelength1(params.getString("波长1"));
+                    model.setWavelength2(params.getString("波长2"));
+                    model.setWavelength3(params.getString("波长3"));
+                    model.setWavelength4(params.getString("波长4"));
+                    model.setWavelength5(params.getString("波长5"));
+                    model.setWavelength6(params.getString("波长6"));
+                    model.setIsRepeat(params.getString("是否重复"));
+                    model.setRepeatCount(params.getString("重复次数"));
+                    model.setRepeatInterval(params.getString("重复时间间隔(s)"));
+                    result.add(model);
+                }
+            } catch (Exception e) {
+                log.warn("解析 detection_parameters 失败，标准标识: {}", detection.getStandardIdentity());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 将 Detection 列表转换为 UV-VIS-光谱扫描-检测参数表 导出模型
+     * 从每个 detection 的 detectionParameters JSON 中提取光谱扫描相关字段
+     */
+    private List<StandardDetectionUVVISSpectrumScanExcelModel> convertToSpectrumScanModels(List<Detection> detections) {
+        List<StandardDetectionUVVISSpectrumScanExcelModel> result = new ArrayList<>();
+        for (Detection detection : detections) {
+            String paramsStr = detection.getDetectionParameters();
+            if (paramsStr == null || paramsStr.isEmpty()) continue;
+            try {
+                JSONObject params = JSONObject.parseObject(paramsStr);
+                // 如果有光谱扫描相关字段才导出
+                if (params.containsKey("起始波长") || params.containsKey("终止波长") ||
+                    params.containsKey("扫描间隔") || params.containsKey("扫描速度")) {
+                    StandardDetectionUVVISSpectrumScanExcelModel model = new StandardDetectionUVVISSpectrumScanExcelModel();
+                    model.setDetectionId(detection.getStandardIdentity());
+                    model.setStartWavelength(params.getString("起始波长"));
+                    model.setEndWavelength(params.getString("终止波长"));
+                    model.setScanInterval(params.getString("扫描间隔"));
+                    model.setScanSpeed(params.getString("扫描速度"));
+                    model.setIsRepeat(params.getString("是否重复"));
+                    model.setRepeatCount(params.getString("重复次数"));
+                    model.setRepeatInterval(params.getString("重复时间间隔(s)"));
+                    result.add(model);
+                }
+            } catch (Exception e) {
+                log.warn("解析 detection_parameters 失败，标准标识: {}", detection.getStandardIdentity());
+            }
+        }
+        return result;
+    }
+
     // 图片处理器（核心优化6：从缓存读取Base64，直接转换为图片插入，不读取单元格）
     private class FormulaImageHandler implements RowWriteHandler {
-        // 图片所在列索引（必须与CalculationFormulaExcelModel中formulaImage的@ExcelProperty(index)一致）
-        private static final int IMAGE_COLUMN_INDEX = 25;
+        // 图片所在列索引：4个基础字段 + 10组参数(4字段每组) + 1公式文本 = 4+40+1=45
+        // 即 formulaImage 在第46列（索引从0计）
+        private static final int IMAGE_COLUMN_INDEX = 45;
 
         @Override
         public void afterRowDispose(WriteSheetHolder writeSheetHolder,

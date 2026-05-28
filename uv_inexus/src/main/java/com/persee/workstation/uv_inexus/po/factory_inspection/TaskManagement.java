@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.po.factory_inspection;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.persee.workstation.uv_inexus.model.BasePO;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -87,4 +88,34 @@ public class TaskManagement extends BasePO {
     @TableField("task_type")
     @ApiModelProperty(value = "检测任务类型，1检定校准2开箱验收3出厂检验")
     private String taskType;
+    /**
+     * 是否启用提醒：0-否，1-是
+     */
+    @TableField("reminder_enabled")
+    @ApiModelProperty(value = "是否启用提醒：0-否，1-是")
+    private Integer reminderEnabled;
+
+    /**
+     * 首次提醒日期
+     */
+    @TableField("next_calibration_date")
+    @ApiModelProperty(value = "首次提醒日期")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private Date firstReminderDate;
+
+    /**
+     * 提醒间隔天数
+     */
+    @TableField("reminder_days")
+    @ApiModelProperty(value = "提醒间隔天数")
+    private Integer reminderIntervalDays;
+
+    /**
+     * 上次提醒日期
+     */
+    @TableField("last_reminder_date")
+    @ApiModelProperty(value = "上次提醒日期")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private Date lastReminderDate;
+
 }

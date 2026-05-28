@@ -20,5 +20,6 @@ public class SheetDto {
     private Integer lastRowNum;
     private Map<String, Map<String, Object>> rows; // 行列映射
     private List<MergedRegionDto> mergedRegions;   // 合并区域列表
+    private List<String> yellowColumns;            // 黄色高亮列名列表
 }
 

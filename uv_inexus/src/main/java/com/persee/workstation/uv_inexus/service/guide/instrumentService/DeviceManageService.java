@@ -102,6 +102,7 @@ public interface DeviceManageService {
      * @return
      */
     List<DeviceCalibrationVO> newQueryCalibrationInfo(String deviceSerialNumber);
+    List<DeviceCalibrationVO> queryMultiCalibration(String deviceSerialNumber);
 
     /**
      * 检查仪器状态
@@ -147,6 +148,16 @@ public interface DeviceManageService {
     R<Boolean> newStopInit(String deviceSerialNumber, String updateBy);
 
     R<Boolean> deviceNewCalibration(DeviceCalibrationDTO calibrationDTO);
+
+    R<Boolean> deleteMultiCalibrationInfo(DeviceCalibrationDTO dto);
+
+    R<Boolean> saveAllData(DeviceCalibrationDTO dto);
+
+    R<Boolean> sendMultiCalibrationToDevice(DeviceCalibrationDTO dto);
+
+    R<Boolean> multiCalibration(DeviceCalibrationDTO dto, String multiType);
+
+    R<Boolean> reFindPeak(String deviceSerialNumber, String updateBy);
 
     R<List<WorkTimeInfo>> queryLampLifeInfo(String deviceSerialNumber, Boolean isUpdate);
 

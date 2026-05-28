@@ -165,7 +165,7 @@ public class SystemPanelConfServiceImpl implements SystemPanelConfService {
     public R<Boolean> savePanelOrder(SystemPanelOrderDTO dto) {
         if (!StringUtils.hasText(dto.getUpdateBy())) {
             //用户未登录
-            return R.fail(YamlMessageSource.getMessageStatic("00607001"));
+            return R.fail("00607001");
         }
 
         SystemPanelConfPO po = dao.selectById(userId);

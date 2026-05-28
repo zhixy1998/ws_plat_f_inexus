@@ -5,15 +5,18 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dto.concise.common.Box;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
+import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.MethodBaseVo;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -58,6 +61,9 @@ public class ManageDataServiceImpl implements ManageDataService {
 
     @Autowired
     private FMeasureAnalysisImageService analysisImageService;
+
+    @Autowired
+    private SysUserService userService;
 
     
     // 日期格式化器
@@ -108,6 +114,8 @@ public class ManageDataServiceImpl implements ManageDataService {
                     vo.setMeasurementType(method.getMeasurementType());
                     vo.setCreateTime(method.getMethodCreateTime() != null ?
                             method.getMethodCreateTime().format(formatter) : null);
+                    vo.setRecentUsageTime(method.getMethodUseTime() != null ?
+                            method.getMethodUseTime().format(formatter) : "—");
 
                     if (method.getProjectItemKey() != null) {
                         FMeasureProject project = getProjectById(method.getProjectItemKey());
@@ -158,7 +166,7 @@ public class ManageDataServiceImpl implements ManageDataService {
         // 参数校验
         if (taskQueryParam == null) {
             //查询参数不能为空
-            return Result.fail(YamlMessageSource.getMessageStatic("00306002"));
+            return Result.fail("00306002");
         }
 
         // 分页参数默认值设置
@@ -172,6 +180,13 @@ public class ManageDataServiceImpl implements ManageDataService {
         if (StringUtils.isNotBlank(taskQueryParam.getKeyword())) {
             queryWrapper.like(FMeasureTask::getTaskName, taskQueryParam.getKeyword());
         }
+
+        // 根据名称查询当前用户id
+        if (StringUtils.isNotBlank(taskQueryParam.getUpdateBy())){
+            SysUserPO user = userService.getOne(new QueryWrapper<SysUserPO>().eq("username", taskQueryParam.getUpdateBy()));
+            queryWrapper.eq(FMeasureTask::getUserId, user.getId());
+        }
+
 
         Page<FMeasureTask> result = taskService.page(page, queryWrapper);
         List<FMeasureTask> records = result.getRecords();
@@ -198,6 +213,7 @@ public class ManageDataServiceImpl implements ManageDataService {
                     .methodId(record.getMethodKey())
                     .methodName(methodName)
                     .measureType(record.getMeasureType())
+                    .taskStatus(record.getIsSave()==(null)?"未保存":record.getIsSave().equals(Constants.PARAM_ZERO)?"未保存":"已保存")
                     .build();
             dtoList.add(dto);
         }
@@ -259,13 +275,13 @@ public class ManageDataServiceImpl implements ManageDataService {
                 boolean res = taskService.removeById(deleteTaskId);
                 if (!res) {
                     //任务删除失败
-                    return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
+                    return Result.fail("0030101D");
                 }
             } catch (Exception e) {
                 boolean i = taskService.removeById(deleteTaskId);
                 if (!i) {
                     //任务删除失败
-                    return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
+                    return Result.fail("0030101D");
                 }
             }
 

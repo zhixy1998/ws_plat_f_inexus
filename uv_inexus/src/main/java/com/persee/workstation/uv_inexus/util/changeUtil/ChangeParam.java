@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -52,6 +53,7 @@ public class ChangeParam {
         this.d = d;
     }
 
+    @JsonIgnore
     public boolean isEmpty() {
         return this.r == null && this.s == null && this.d == null;
     }

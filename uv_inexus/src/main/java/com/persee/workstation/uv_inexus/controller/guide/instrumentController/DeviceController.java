@@ -12,9 +12,9 @@ package com.persee.workstation.uv_inexus.controller.guide.instrumentController;
 
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationParamEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceAutoInjectorPO;
@@ -158,10 +158,10 @@ public class DeviceController {
 
     }
 
-    @OperateLog(module = "仪器管理-搜索仪器", description = "执行仪器管理-搜索仪器操作", recordParams = true, recordResult = true, compare = true)
     @GetMapping("/searchDevice")
     @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
     @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true, recordResult = true)
+    @OperateLog(module = "仪器管理-搜索仪器", description = "执行仪器管理-搜索仪器操作", recordParams = true, ignore = true)
     public Result<List<SearchInfo>> searchDevice(@RequestParam(required = false) Integer connectType, @RequestParam String updateBy) {
         R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType, updateBy);
         if (!r.getSuccess()) {
@@ -196,9 +196,9 @@ public class DeviceController {
         }
     }
 
-    @OperateLog(module = "仪器管理-仪器配置-断开连接", description = "执行仪器管理-仪器配置-断开连接记录", recordParams = true, recordResult = true, compare = true)
     @GetMapping("/disconnectDevice")
     @ApiOperation("新驱动-断开连接")
+    @OperateLog(module = "仪器管理-断开连接", description = "执行仪器管理-断开连接操作", recordParams = true, ignore = true)
     public Result<Boolean> disconnectDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
         R<Boolean> r = deviceManageService.disconnectDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
@@ -208,9 +208,9 @@ public class DeviceController {
         }
     }
 
-    @OperateLog(module = "仪器管理-仪器初始化", description = "执行仪器管理-仪器初始化操作", recordParams = true, recordResult = true, compare = true)
     @GetMapping("/initOneDevice")
     @ApiOperation("新驱动-初始化")
+    @OperateLog(module = "仪器管理-初始化", description = "执行仪器管理-初始化操作", recordParams = true, ignore = true)
     public Result<Boolean> initOneDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
         R<Boolean> r = deviceManageService.startInitDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
@@ -239,7 +239,7 @@ public class DeviceController {
 
     @GetMapping("/continueInit")
     @ApiOperation("新驱动-继续初始化")
-    @OperateLog(module = "仪器管理-仪器配置-继续初始化", description = "执行仪器管理-仪器配置-继续初始化记录", recordParams = true, recordResult = true, compare = true)
+    @OperateLog(module = "仪器管理-继续初始化", description = "执行仪器管理-继续初始化操作", recordParams = true, ignore = true)
     public Result<Boolean> continueInit(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
         R<Boolean> r = deviceManageService.continueInitDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
@@ -426,13 +426,12 @@ public class DeviceController {
 
 
     @ApiOperation("设置进样器参数配置")
-//    @OperateLog(
-//            module = "仪器管理-自动进样器配置-基本配置",
-//            description = "执行仪器管理-自动进样器配置-基本配置-{operateType}样品操作",
-//            recordParams = true
-//    )
     @PostMapping("/setInjectorConf")
+    @OperateLog(module = "仪器管理-{source}", description = "执行仪器管理-{source}操作", recordParams = true)
     public Result<Boolean> setInjectorConf(@RequestBody DeviceAutoInjectorPO injectorPO) {
+        if (injectorPO.getSource() == null || injectorPO.getSource().trim().isEmpty()) {
+            injectorPO.setSource("自动进样器配置保存");
+        }
         R<Boolean> r = injectorService.setInjectorConf(injectorPO);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
@@ -443,6 +442,7 @@ public class DeviceController {
 
     @ApiOperation("设置进样器托盘参数配置")
     @PostMapping("/setInjectorTray")
+    @OperateLog(module = "仪器管理-进样盘参数配置保存", description = "执行仪器管理-进样盘参数配置保存", recordParams = true)
     public Result<Boolean> setInjectorTray(@RequestBody List<InjectionTrayParamPO> poList) {
         R<Boolean> r = injectorService.setInjectorTray(poList);
         if (r.getSuccess()) {
@@ -483,6 +483,14 @@ public class DeviceController {
 
     }
 
+    @GetMapping("/queryMultiCalibration")
+    @ApiOperation("查询仪器校准信息")
+    public Result<List<DeviceCalibrationVO>> queryMultiCalibration(@RequestParam(required = false) String deviceSerialNumber) {
+        List<DeviceCalibrationVO> list = deviceManageService.queryMultiCalibration(deviceSerialNumber);
+        return Result.ok(list);
+
+    }
+
     //    @PostMapping("/calibration")
 //    @ApiOperation("仪器校准")
 //    public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto){
@@ -500,14 +508,95 @@ public class DeviceController {
 //            permissionMapping = "instrumentCalibrationWavelengthCorrection=instrumentCalibrationWavelengthCorrection,instrumentCalibrationDarkCurrentCorrection=instrumentCalibrationDarkCurrentCorrection" // 自定义操作类型→驼峰权限标识
 //    )
     @OperateLog(
-            module = "实验测试-仪器管理",
-            description = "执行仪器管理-仪器校正-{operateType}",
+            module = "仪器管理-仪器校正-{source}",
+            description = "执行仪器管理-仪器校正-{source}操作",
             recordParams = true
     )
     @PostMapping("/calibration")
     @ApiOperation("仪器校准")
     public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto) {
         R<Boolean> r = deviceManageService.deviceNewCalibration(dto);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @PostMapping("/deleteMultiCalibrationInfo")
+    @ApiOperation("多波长校正-批量删除")
+    public Result<Boolean> deleteMultiCalibrationInfo(@RequestBody DeviceCalibrationDTO dto) {
+        R<Boolean> r = deviceManageService.deleteMultiCalibrationInfo(dto);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @PostMapping("/saveMultiCalibrationInfo")
+    @ApiOperation("多波长校正-保存用户填入的信息")
+    public Result<Boolean> saveMultiCalibrationInfo(@RequestBody DeviceCalibrationDTO dto) {
+        R<Boolean> r = deviceManageService.saveAllData(dto);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+
+    @GetMapping("/reFindPeak")
+    @ApiOperation("多波长校正-重新寻峰")
+    public Result<Boolean> reFindPeak(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
+        R<Boolean> r = deviceManageService.reFindPeak(deviceSerialNumber, updateBy);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+
+
+
+    @OperateLog(
+            module = "实验测试-仪器管理",
+            description = "执行仪器管理-仪器校正-{operateType}",
+            recordParams = true
+    )
+    @PostMapping("/calibrationBaseline")
+    @ApiOperation("多波长校正-基线")
+    public Result<Boolean> calibrationBaseline(@RequestBody DeviceCalibrationDTO dto) {
+        R<Boolean> r = deviceManageService.multiCalibration(dto, DeviceCalibrationParamEnum.Baseline.getType());
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @OperateLog(
+            module = "实验测试-仪器管理",
+            description = "执行仪器管理-仪器校正-{operateType}",
+            recordParams = true
+    )
+    @PostMapping("/calibrationScan")
+    @ApiOperation("多波长校正-扫描")
+    public Result<Boolean> calibrationScan(@RequestBody DeviceCalibrationDTO dto) {
+        R<Boolean> r = deviceManageService.multiCalibration(dto, DeviceCalibrationParamEnum.Scan.getType());
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    //sendMultiCalibrationToDevice
+    @PostMapping("/sendMultiCalibrationToDevice")
+    @ApiOperation("多波长校正-发送给仪器")
+    public Result<Boolean> sendMultiCalibrationToDevice(@RequestBody DeviceCalibrationDTO dto) {
+        R<Boolean> r = deviceManageService.sendMultiCalibrationToDevice(dto);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
         } else {

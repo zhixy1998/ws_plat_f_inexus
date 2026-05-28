@@ -163,6 +163,51 @@
         <string>255:101:2:7</string>
     </HeadReceiveBytes>
 </ProtocolItem>
+    <ProtocolItem>
+        <ID>MLamp</ID>
+        <Describe>汞灯开关</Describe>
+        <Timeout>6000</Timeout>
+        <ACK>Y</ACK>
+        <InputString>
+            <string>打开汞灯:I4:0</string>
+        </InputString>
+        <OutputString>
+            <string>打开汞灯:I4:0</string>
+        </OutputString>
+        <SendBytes>
+            <string>101:255:2:6:I4:0:0:0:0:0:0:Check</string>
+        </SendBytes>
+        <ReadBytes>
+            <string>255:101:2:6:I4:0:0:0:0:0:0:Check</string>
+        </ReadBytes>
+        <ReplyNumber>24</ReplyNumber>
+        <HeadReceiveBytes>
+            <string>255:101:2:6</string>
+        </HeadReceiveBytes>
+    </ProtocolItem>
+    <ProtocolItem>
+        <ID>GotoMLamp</ID>
+        <Describe>汞灯定位</Describe>
+        <Timeout>20000</Timeout>
+        <ACK>Y</ACK>
+        <InputString>
+            <string/>
+        </InputString>
+        <OutputString>
+            <string>汞灯定位</string>
+        </OutputString>
+        <SendBytes>
+            <string>101:255:0:7:0:0:0:0:0:0:0:Check</string>
+        </SendBytes>
+        <ReadBytes>
+            <string>255:101:0:7:0:0:0:0:0:0:0:Check</string>
+        </ReadBytes>
+        <ReplyNumber>-1</ReplyNumber>
+        <HeadReceiveBytes>
+            <string>255:101:32:240</string>
+            <string>255:101:0:7</string>
+        </HeadReceiveBytes>
+    </ProtocolItem>
 <ProtocolItem>
 <ID>SetLampPos</ID>
 <Describe>设置灯位置</Describe>
@@ -222,7 +267,7 @@
 <string/>
 </OutputString>
 <SendBytes>
-<string>101:255:20:10:20:I6:I7:5:6:MOD(I8,256):TRUNC(I8/256):MOD(I9,256):TRUNC(I9/256):Check</string>
+<string>101:255:20:10:20:I6:I7:TRUNC(I8*40/256):MOD(I8*40,256):TRUNC(I9*40/256):MOD(I9*40,256):Check</string>
 </SendBytes>
 <ReadBytes>
 <string>255:101:20:10:0:0:0:0:0:0:0:Check</string>
@@ -541,7 +586,7 @@
     </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
-<ID>GetWlList</ID>
+<ID>T800GetWlList</ID>
 <Describe>读取波长列表</Describe>
 <Timeout>3000</Timeout>
 <ACK>Y</ACK>
@@ -1754,16 +1799,16 @@
         <Timeout>180000</Timeout>
         <ACK>Y</ACK>
         <InputString>
-            <string/>
+            <string>是否执行（1执行0不执行）:AJ38:0</string>
         </InputString>
         <OutputString>
             <string>波长(0成功1失败):AJ38:4</string>
         </OutputString>
         <SendBytes>
-            <string>101:255:20:14:1:0:0:0:0:0:0:Check</string>
+            <string>101:255:20:14:AJ38:0:0:0:0:0:0:Check</string>
         </SendBytes>
         <ReadBytes>
-            <string>255:101:20:14:1:0:0:0:0:0:0:Check</string>
+            <string>255:101:20:14:AJ38:0:0:0:0:0:0:Check</string>
         </ReadBytes>
         <ReplyNumber>24</ReplyNumber>
         <HeadReceiveBytes>

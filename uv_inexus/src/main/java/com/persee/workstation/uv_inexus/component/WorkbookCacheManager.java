@@ -1,6 +1,9 @@
 package com.persee.workstation.uv_inexus.component;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.SerializableWorkbook;
 import com.persee.workstation.uv_inexus.po.factory_inspection.WorkbookData;
 import com.persee.workstation.uv_inexus.service.factory_inspection.WorkbookDataService;
@@ -17,12 +20,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Slf4j
 @Component
@@ -275,58 +277,54 @@ public class WorkbookCacheManager {
      * 为任务创建Workbook实例
      */
     public Workbook createTaskWorkbook(String taskId, String fileName) throws IOException {
-        // 先检查是否已有缓存的工作簿
+        log.info("开始为任务创建工作簿：taskId={}, fileName={}", taskId, fileName);
+
+        if (StringUtils.isBlank(fileName)) {
+            log.error("模板名称为空，无法创建工作簿：taskId={}", taskId);
+            return null;
+        }
+
         Workbook existingWorkbook = getTaskWorkbook(taskId);
         if (existingWorkbook != null) {
+            log.info("从缓存获取到已有工作簿：taskId={}", taskId);
             return existingWorkbook;
         }
 
-        // 检查数据库中是否存在持久化的工作簿数据
         Workbook workbook = getWorkbookFromDB(taskId);
         if (workbook != null) {
+            log.info("从数据库加载到任务工作簿：taskId={}", taskId);
             return workbook;
         }
+
+        log.info("尝试从模板创建工作簿：fileName={}", fileName);
+
         LambdaQueryWrapper<WorkbookData> wrapper = new LambdaQueryWrapper<>();
-        //这里传递的是模板的模板code值
         wrapper.eq(WorkbookData::getTaskId, fileName);
         List<WorkbookData> list = workbookDataService.list(wrapper);
+
         if (!CollectionUtils.isEmpty(list)) {
+            log.info("找到模板数据：fileName={}, 记录数={}", fileName, list.size());
             byte[] data = list.get(0).getWorkbookData();
             if (data != null) {
                 try (ByteArrayInputStream inputStream = new ByteArrayInputStream(data)) {
                     Workbook book = new XSSFWorkbook(inputStream);
                     saveWorkbookToCacheAndDB(taskId, book, fileName, "system");
-
+                    log.info("从模板数据成功创建工作簿并缓存：taskId={}, fileName={}", taskId, fileName);
+                    return book;
                 } catch (IOException e) {
-                    log.error("转换字节数组到Workbook失败", e);
+                    log.error("转换字节数组到Workbook失败：fileName={}", fileName, e);
                 }
+            } else {
+                log.warn("模板数据的workbookData字段为空：fileName={}", fileName);
             }
+        } else {
+            log.warn("未找到模板数据：fileName={}，请检查calibration_workbook_data表中是否有taskId='{}'的记录", fileName, fileName);
         }
 
-//        ClassPathResource resource = new ClassPathResource(excelSavePath + fileName + ".xlsx");
-//        //内置模板
-//        if (resource.exists()) {
-//            try (InputStream fis = resource.getInputStream()) {
-//                workbook = new XSSFWorkbook(fis);
-//
-//                // 保存到缓存和数据库
-//                saveWorkbookToCacheAndDB(taskId, workbook, fileName, "system");
-//
-//                return workbook;
-//            }
-//        }
-//        //自定义模板
-//        if (!resource.exists()){
-//            InputStream inputStream = Files.newInputStream(Paths.get(excelSavePath + fileName + ".xlsx"));
-//            workbook = new XSSFWorkbook(inputStream);
-//
-//            // 保存到缓存和数据库
-//            saveWorkbookToCacheAndDB(taskId, workbook, fileName, "system");
-//
-//            return workbook;
-//        }
+        log.error("所有创建工作簿的方式都失败了：taskId={}, fileName={}", taskId, fileName);
         return null;
     }
+
 
     /**
      * 获取任务专属Workbook实例
@@ -454,6 +452,52 @@ public class WorkbookCacheManager {
                 workbookData.setId(IdGeneratorUtil.generateId());
                 workbookData.setTaskId(taskId);
                 workbookData.setCreateTime(LocalDateTime.now());
+
+                // 【新增】如果是新记录，从模板复制黄色高亮列信息（并过滤不存在的sheet）
+                if (taskFileMap.containsKey(taskId)) {
+                    String templateCode = taskFileMap.get(taskId);
+                    workbookData.setTemplateCode(templateCode);
+
+                    // 查询模板的黄色高亮列信息
+                    LambdaQueryWrapper<WorkbookData> templateQueryWrapper = new LambdaQueryWrapper<>();
+                    templateQueryWrapper.eq(WorkbookData::getTaskId, templateCode)
+                            .orderByDesc(WorkbookData::getCreateTime)
+                            .last("LIMIT 1");
+
+                    WorkbookData templateWorkbookData = workbookDataService.getOne(templateQueryWrapper);
+
+                    if (templateWorkbookData != null && StringUtils.isNotBlank(templateWorkbookData.getYellowHighlightedColumns())) {
+                        // 【关键】如果workbook不为null，需要过滤掉不存在的sheet页
+                        if (workbook != null) {
+                            // 获取当前workbook中实际存在的sheet名称集合
+                            Set<String> existingSheetNames = IntStream.range(0, workbook.getNumberOfSheets())
+                                    .mapToObj(workbook::getSheetName)
+                                    .collect(Collectors.toSet());
+
+                            // 解析模板的黄色高亮列信息
+                            ObjectMapper mapper = new ObjectMapper();
+                            Map<String, List<String>> templateYellowColumns = mapper.readValue(
+                                    templateWorkbookData.getYellowHighlightedColumns(),
+                                    new TypeReference<Map<String, List<String>>>(){});
+
+                            // 过滤：只保留workbook中存在的sheet页的黄色列信息
+                            Map<String, List<String>> filteredYellowColumns = templateYellowColumns.entrySet().stream()
+                                    .filter(entry -> existingSheetNames.contains(entry.getKey()))
+                                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+                            // 将过滤后的结果转换为JSON
+                            String filteredJson = mapper.writeValueAsString(filteredYellowColumns);
+                            workbookData.setYellowHighlightedColumns(filteredJson);
+
+                            log.info("从模板{}复制黄色高亮列信息到任务{}，过滤前: {}个sheet，过滤后: {}个sheet",
+                                    templateCode, taskId, templateYellowColumns.size(), filteredYellowColumns.size());
+                        } else {
+                            // workbook为null时，直接复制（这种情况不应该发生）
+                            workbookData.setYellowHighlightedColumns(templateWorkbookData.getYellowHighlightedColumns());
+                            log.info("从模板{}复制黄色高亮列信息到任务{}", templateCode, taskId);
+                        }
+                    }
+                }
             }
 
             if (workbook != null) {
@@ -466,8 +510,8 @@ public class WorkbookCacheManager {
                 workbookData.setLastAccessTime(LocalDateTime.now());
                 workbookData.setIsActive(true);
 
-                // 如果是新记录，设置模板代码
-                if (taskFileMap.containsKey(taskId)) {
+                // 如果是已有记录但还没有templateCode，设置模板代码
+                if (!taskFileMap.containsKey(taskId) && workbookData.getTemplateCode() == null && taskFileMap.containsKey(taskId)) {
                     workbookData.setTemplateCode(taskFileMap.get(taskId));
                 }
             } else {
@@ -477,11 +521,10 @@ public class WorkbookCacheManager {
             }
 
             workbookDataService.saveOrUpdate(workbookData);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("保存工作簿到数据库失败: {}", taskId, e);
         }
     }
-    // ... existing code ...
 
     /**
      * 处理前端编辑单元格后的更新

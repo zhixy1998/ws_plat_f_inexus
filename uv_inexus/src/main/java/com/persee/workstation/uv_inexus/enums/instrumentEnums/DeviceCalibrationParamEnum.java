@@ -21,6 +21,27 @@ public enum DeviceCalibrationParamEnum {
     Start("start", "起始波长"),
     End("end", "终止波长"),
     ScanSpeed("scanSpeed", "扫描速度"),
+    Table("table", "表数据"),
+    Graph("graph", "图表数据"),
+
+    //光度模式，标准波长，实际波长
+    Name("name", "物质名称"),
+    Mode("luminosity", "光度模式"),
+    StandWavelength("standLength", "标准波长"),
+    RealWavelength("realLength", "实际波长"),
+    Gain("gain", "增益"),
+    Lamp("lamp", "灯类型"),
+    IsSendToDevice("isSendToDevice", "是否已经发送给设备"),
+    Identifier("identifier", "物质标识"),
+
+    Baseline("baseline", "基线"),
+    Scan("scan", "扫描"),
+
+    Send("1", "测试过"),
+    NoSend("2", "未测试"),
+
+    XName("波长(nm)", "X轴名称"),
+    Peak("1", "峰"),
 
     Step("step", "扫描间隔");
 

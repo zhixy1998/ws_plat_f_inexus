@@ -14,6 +14,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.CalibrationTableVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DataNameValue;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -42,4 +43,8 @@ public class DeviceCalibrationParamPO {
     @ApiModelProperty("默认值")
     @TableField(value = "default_value",  typeHandler = JacksonTypeHandler.class)
     private List<DataNameValue> defaultValue;
+
+    @ApiModelProperty("表数据")
+    @TableField(value = "table_data",  typeHandler = JacksonTypeHandler.class)
+    private CalibrationTableVO tableData;
 }

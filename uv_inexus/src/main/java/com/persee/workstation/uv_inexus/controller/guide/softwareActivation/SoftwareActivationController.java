@@ -78,14 +78,14 @@ public class SoftwareActivationController {
             System.out.println("111111111111111111111111"+id+activationFile.getOriginalFilename());
             
             if (activationFile.isEmpty()) {
-                return Result.fail(400, YamlMessageSource.getMessageStatic("00701006","激活文件不能为空"));
+                return Result.fail("00701006", "激活文件不能为空");
             }
             
             // 1. 通过ID查询设备记录（优先使用ID查询，确保唯一性）
             SoftwareActivationPO activationPO = softwareActivationService.getById(id);
             if (activationPO == null) {
                 //"未找到ID为【" + id + "】的设备记录"
-                return Result.fail(404, YamlMessageSource.getMessageStatic("00701001",id));
+                return Result.fail("00701001", id);
             }
             System.out.println("查询到的设备记录:" + activationPO);
 
@@ -104,19 +104,19 @@ public class SoftwareActivationController {
             // 4. 校验解析结果
             if (codeDeviceNumber == null || expirationDateStr == null) {
                 //激活码格式错误，缺少必要参数（deviceNumber或expirationDate）
-                return Result.fail(400, YamlMessageSource.getMessageStatic("00701002"));
+                return Result.fail("00701002");
             }
 
             // 5. 验证激活码中的序列号与当前设备是否匹配
             String dbDeviceNumber = activationPO.getDeviceNumber();
             if (dbDeviceNumber == null) {
                 //数据库记录中设备序列号为空
-                return Result.fail(500, YamlMessageSource.getMessageStatic("00701003"));
+                return Result.fail("00701003");
             }
             if (!dbDeviceNumber.equals(codeDeviceNumber)) {
                 // return Result.fail(403, "激活码与设备序列号不匹配（激活码:" + codeDeviceNumber + "，设备:" + dbDeviceNumber + "）");
                 //激活码与设备序列号不匹配
-                return Result.fail(403, YamlMessageSource.getMessageStatic("00701004"));
+                return Result.fail("00701004");
             }
 
             // 6. 验证日期格式
@@ -126,12 +126,12 @@ public class SoftwareActivationController {
                 System.out.println("解析后的过期时间:" + activationExpirationDate);
             } catch (DateTimeParseException e) {
                 //"激活码中的日期格式错误（应为yyyy-MM-dd）:" + e.getMessage()
-                return Result.fail(400, YamlMessageSource.getMessageStatic("00701005",e.getMessage()));
+                return Result.fail("00701005", e.getMessage());
             }
 
             // 7. 验证过期时间是否有效
              if (activationExpirationDate.isBefore(LocalDate.now())) {
-                 return Result.fail(201, YamlMessageSource.getMessageStatic("0070100D"));
+                 return Result.fail("0070100D");
              }
 
             // 8. 更新设备激活状态
@@ -145,15 +145,15 @@ public class SoftwareActivationController {
 
             deviceInfoService.activeDevice(codeDeviceNumber);
             //激活成功
-            return Result.ok(YamlMessageSource.getMessageStatic("0070100C"));
+            return Result.ok("0070100C");
 
         } catch (RuntimeException e) {
             e.printStackTrace();
             //"激活失败：" + e.getMessage()
-            return Result.fail(400, YamlMessageSource.getMessageStatic("00701006",e.getMessage()));
+            return Result.fail("00701006", e.getMessage());
         } catch (Exception e) {
             //"激活过程异常：" + e.getMessage()
-            return Result.fail(500, YamlMessageSource.getMessageStatic("00701007",e.getMessage()));
+            return Result.fail("00701007", e.getMessage());
         }
     }
 
@@ -211,7 +211,7 @@ public class SoftwareActivationController {
     public Result<SoftwareActivationPO> findById(@PathVariable Integer id) {
         SoftwareActivationPO activation = softwareActivationService.getById(id);
         //"未找到ID为" + id + "的激活记录"
-        return activation != null ? Result.ok(activation) : Result.fail(404, YamlMessageSource.getMessageStatic("00701008",id));
+        return activation != null ? Result.ok(activation) : Result.fail("00701008", id);
     }
 
     /**
@@ -232,7 +232,7 @@ public class SoftwareActivationController {
     public Result<Void> update(@RequestBody SoftwareActivationPO activationPO) {
         if (activationPO.getId() == null) {
             //ID不能为空
-            return Result.fail(400, YamlMessageSource.getMessageStatic("00701009"));
+            return Result.fail("00701009");
         }
         softwareActivationService.updateById(activationPO);
         return Result.ok();
@@ -243,7 +243,7 @@ public class SoftwareActivationController {
      */
     @DeleteMapping("/{id}")
 //    @ButtonPermission("softwareActivationDeleteInstrument")
-    @OperateLog(module = "删除仪器", description = "执行删除仪器操作", recordParams = true, recordResult = true, compare = true)
+    @OperateLog(module = "仪器管理-软件激活-删除", description = "执行仪器管理-软件激活-删除操作", recordParams = true)
     @ApiOperation("根据ID删除软件激活记录")
     public Result<Void> deleteById(@PathVariable Integer id) {
         softwareActivationService.removeById(id);
@@ -254,25 +254,25 @@ public class SoftwareActivationController {
      * 批量删除
      */
 //    @ButtonPermission("softwareActivationBatchInstrument")
-    @OperateLog(module = "批量删除", description = "批量删除软件激活记录", recordParams = true, recordResult = true, compare = true)
+    @OperateLog(module = "仪器管理-软件激活-批量删除", description = "执行仪器管理-软件激活-批量删除操作", recordParams = true)
     @DeleteMapping("/batch")
 //    @ButtonPermission(value = "revokeActivation",description = "批量删除")
     @ApiOperation("批量删除软件激活记录")
     public Result<Void> deleteBatch(@RequestBody List<Integer> ids) {
         if (ids.isEmpty()) {
             //删除ID列表不能为空
-            return Result.fail(400, YamlMessageSource.getMessageStatic("0070100A"));
+            return Result.fail("0070100A");
         }
         boolean isSuccess = softwareActivationService.removeByIds(ids);
         //批量删除失败
-        return isSuccess ? Result.ok() : Result.fail(500, YamlMessageSource.getMessageStatic("0000004C"));
+        return isSuccess ? Result.ok() : Result.fail("0000004C");
     }
 
     /**
      * 分页查询新增的设备数据（支持搜索）
      */
-    @OperateLog(module = "仪器管理-软件激活-设备发现", description = "执行仪器管理-软件激活-设备发现操作", recordParams = true, recordResult = true, compare = true)
     @GetMapping("/addDevice")
+    @OperateLog(module = "仪器管理-软件激活-设备发现-查询", description = "执行仪器管理-软件激活-设备发现-查询操作", recordParams = true)
     @ApiOperation("自动新增设备并分页查询（保留needAdd参数用于其他用途）")
     public Result<PageView<DeviceInfoDTO>> addAndGetDevices(
             @RequestParam(defaultValue = "false") boolean needAdd, // 保留参数用于其他逻辑
@@ -303,7 +303,7 @@ public class SoftwareActivationController {
     public Result<Boolean> resetAllDeviceAddStatus(@RequestBody Map<String, Object> params) {
         boolean result = deviceDiscoveryService.resetAllDeviceAddStatus(params);
         //设备状态重置失败
-        return result ? Result.ok() : Result.fail(500,YamlMessageSource.getMessageStatic("0070100B"));
+        return result ? Result.ok() : Result.fail("0070100B");
     }
     
 }

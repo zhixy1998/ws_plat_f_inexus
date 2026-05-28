@@ -26,7 +26,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.TASK_NOT_STARTED;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.TEMPLATE_BUILT_IN_TASK;
 
 /*
  * *
@@ -55,9 +56,9 @@ public class DefaultTaskManager {
     private volatile String defaultTaskId;
 
     // 获取默认任务ID
-    public String getDefaultTaskId(String updateBy, String taskType) {
+    public String getDefaultTaskId(String updateBy, String taskType, Integer templateStatus) {
         synchronized (this) {
-            ensureDefaultTaskExists(updateBy,taskType);
+            ensureDefaultTaskExists(updateBy,taskType,templateStatus);
         }
         return defaultTaskId;
     }
@@ -69,22 +70,22 @@ public class DefaultTaskManager {
      */
     private void initializeTaskExecutionDetails(String taskId, String templateCode) {
         try {
-            // 查询模板对应的所有检测项
+            log.info("开始为任务 {} 初始化检测项状态，模板编码: {}", taskId, templateCode);
+
             LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(ExcelDataAsset::getTemplateCode, templateCode);
             List<ExcelDataAsset> assets = dataAssetService.list(wrapper);
 
             if (CollectionUtils.isEmpty(assets)) {
-                log.warn("模板 {} 没有检测项", templateCode);
-                return;
+                log.error("模板 {} 没有检测项，无法初始化状态", templateCode);
+                throw new RuntimeException("模板 " + templateCode + " 没有检测项");
             }
 
-            // 为每个检测项创建任务执行详情记录和状态记录
+            log.info("模板 {} 共有 {} 个检测项", templateCode, assets.size());
+
             List<TaskItemStatus> statusList = new ArrayList<>();
 
             for (ExcelDataAsset asset : assets) {
-
-                // 创建任务检测项状态（用于记录测量状态）
                 TaskItemStatus status = new TaskItemStatus();
                 status.setId(IdGeneratorUtil.generateId());
                 status.setTaskId(taskId);
@@ -94,18 +95,24 @@ public class DefaultTaskManager {
                 statusList.add(status);
             }
 
-
             if (!statusList.isEmpty()) {
-                taskItemStatusService.saveBatch(statusList);
-                log.info("为任务 {} 初始化了 {} 个检测项状态", taskId, statusList.size());
+                boolean saved = taskItemStatusService.saveBatch(statusList);
+                if (saved) {
+                    log.info("成功为任务 {} 初始化了 {} 个检测项状态", taskId, statusList.size());
+                } else {
+                    log.error("为任务 {} 初始化检测项状态失败，saveBatch返回false", taskId);
+                    throw new RuntimeException("初始化检测项状态失败");
+                }
             }
         } catch (Exception e) {
-            log.error("初始化任务执行详情失败，任务ID: {}", taskId, e);
+            log.error("初始化任务执行详情失败，任务ID: {}, 模板编码: {}", taskId, templateCode, e);
+            throw new RuntimeException("初始化任务检测项状态失败: " + e.getMessage(), e);
         }
     }
+
     // 确保存在未开始的默认任务
     @Transactional(rollbackFor = Exception.class)
-    public void ensureDefaultTaskExists(String updateBy, String taskType) {
+    public void ensureDefaultTaskExists(String updateBy, String taskType,Integer templateStatus) {
 //        QueryWrapper<TaskManagement> wrapper = new QueryWrapper<>();
 //        wrapper.eq("completion_status", TASK_NOT_STARTED.getCode())
 //                .eq("content_category", TEMPLATE_BUILT_IN_TASK.getCode()); // 假设用名称标识默认任务
@@ -122,7 +129,7 @@ public class DefaultTaskManager {
 //        long count = taskManagementService.count();
         if (count == 0) {
             // 创建新默认任务
-            TaskManagement newTask = createDefaultTask(updateBy,taskType);
+            TaskManagement newTask = createDefaultTask(updateBy,taskType,templateStatus);
             ExcelTemplate excelTemplate = templateService.getById(newTask.getUseTemplate());
             initializeTaskExecutionDetails(newTask.getId(), excelTemplate.getTemplateCode());
 
@@ -141,17 +148,17 @@ public class DefaultTaskManager {
             this.defaultTaskId = task1.getId();
         }
     }
-    public TaskManagement createFactoryInspectionTask(String updateBy) {
-        TaskManagement task = createDefaultTask(updateBy,FACTORY_INSPECTION_TASK.getCode());
-        taskManagementService.save(task);
-        return task;
-    }
-    private TaskManagement createDefaultTask(String updateBy, String taskType) {
+//    public TaskManagement createFactoryInspectionTask(String updateBy) {
+//        TaskManagement task = createDefaultTask(updateBy,FACTORY_INSPECTION_TASK.getCode());
+//        taskManagementService.save(task);
+//        return task;
+//    }
+    private TaskManagement createDefaultTask(String updateBy, String taskType, Integer templateStatus) {
         TaskManagement task = new TaskManagement();
         task.setId(IdGeneratorUtil.generateIdWithPrefix("task"));
         task.setDetectName("默认任务" + IdGeneratorUtil.generateShortId() + System.currentTimeMillis());
         task.setCompletionStatus(TASK_NOT_STARTED.getCode());
-        ExcelTemplate template = templateService.getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getCategory, TEMPLATE_BUILT_IN.getCode()));
+        ExcelTemplate template = templateService.getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getStatus, templateStatus));
         task.setResultTemplate(template.getTemplateCode());
         task.setUseTemplate(template.getId());
         task.setContentCategory(TEMPLATE_BUILT_IN_TASK.getCode());
@@ -172,7 +179,7 @@ public class DefaultTaskManager {
         if (ObjectUtils.isEmpty(useCount)){
             useCount = 0;
         }
-        excelTemplate.setUseCount( + 1);
+        excelTemplate.setUseCount( useCount+ 1);
         excelTemplate.setLastUsed(new Date());
         templateService.updateById(excelTemplate);
         return task;
