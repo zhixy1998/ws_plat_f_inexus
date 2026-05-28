@@ -93,7 +93,7 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
     /**
      * 解析语言字符串为 Locale 对象
      *
-     * @param localeStr 语言字符串，如 "zh_CN", "en_US", "ja_JP"
+     * @param localeStr 语言字符串，如 "zh-CN", "en-US", "ja-JP"
      * @return Locale 对象
      */
     private Locale parseLocale(String localeStr) {
@@ -102,7 +102,7 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
         }
 
         try {
-            String[] parts = localeStr.split("_");
+            String[] parts = localeStr.split("-");
             if (parts.length == 2) {
                 return new Locale(parts[0], parts[1]);
             } else if (parts.length == 3) {
