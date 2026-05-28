@@ -53,7 +53,7 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
     public Result<List<String>> getUserRoutePermissions(String userId, HttpServletRequest request) {
         // IP访问控制检查 - 新增逻辑
         if (!isAllowedIP(request)) {
-            return Result.fail("访问被拒绝：IP未授权");
+            return Result.fail("0000004F");
         }
         // 1. 查询用户所属的所有小组ID
         QueryWrapper<SysUserGroupPO> userGroupQuery = new QueryWrapper<>();

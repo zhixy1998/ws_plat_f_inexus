@@ -260,7 +260,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
 
         // 2. 校验不能删除自己
         if (id.equals(updateById)) {
-            return Result.fail("不能删除当前登录用户");
+            return Result.fail("00000050");
         }
 
         // 3. 先删除该用户的小组关联

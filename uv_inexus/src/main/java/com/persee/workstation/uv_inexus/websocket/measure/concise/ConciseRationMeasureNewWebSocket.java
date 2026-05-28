@@ -1256,7 +1256,7 @@ public class ConciseRationMeasureNewWebSocket {
 
             if (!operation.getSuccess()) {
                 log.info("设置样品池位置出错");
-                return R.fail("设置样品池位置出错！");
+                return R.fail("00301001");
             }
         }
 
@@ -1269,7 +1269,7 @@ public class ConciseRationMeasureNewWebSocket {
             operation = operationUtilService.operation(inputParam);
             if (!operation.getSuccess()) {
                 log.info("测量出错");
-                return R.fail("测量出错！");
+                return R.fail("00301002");
             }
 
             OperationResultEntity data = operation.getData();
@@ -1343,7 +1343,7 @@ public class ConciseRationMeasureNewWebSocket {
         if (!absValue.getSuccess()) {
             log.info("计算出错");
             sendError(deviceSerialNumber, absValue.getMessage());
-            return R.fail("计算出错");
+            return R.fail("00301003");
         }
         FRationCountDataInfo absValueData = absValue.getData();
 
@@ -1396,7 +1396,7 @@ public class ConciseRationMeasureNewWebSocket {
 
             if (!operation.getSuccess()) {
                 log.info("设置样品池位置出错");
-                return R.fail("设置样品池位置出错！");
+                return R.fail("00301001");
             }
 
             JSONObject object = new JSONObject();
@@ -1436,7 +1436,7 @@ public class ConciseRationMeasureNewWebSocket {
 
                 if (!operation.getSuccess()) {
                     log.info("测量出错");
-                    return R.fail("测量出错！");
+                    return R.fail("00301002");
                 }
 
                 OperationResultEntity data = operation.getData();

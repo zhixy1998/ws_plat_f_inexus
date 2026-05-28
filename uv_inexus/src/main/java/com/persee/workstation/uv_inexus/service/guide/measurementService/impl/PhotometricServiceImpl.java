@@ -176,7 +176,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             return R.fail("00103005");
         }
         if (!StringUtils.hasText(parameter.getChangeLampWaveLength())) {
-            return R.fail("换灯波长不能为空");
+            return R.fail("00304006");
         }
         if (StringUtils.hasText(parameter.getChangeLampWaveLength())) {
             double v = Double.parseDouble(parameter.getChangeLampWaveLength());
@@ -414,10 +414,10 @@ public class PhotometricServiceImpl implements PhotometricService {
     public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
         // 参数校验
         if (methodId == null || methodId.isEmpty()) {
-            return Result.fail("方法ID不能为空");
+            return Result.fail("00304002");
         }
         if (deviceSerialNumber == null || deviceSerialNumber.isEmpty()) {
-            return Result.fail("设备序列号不能为空");
+            return Result.fail("00304003");
         }
 
         // 根据methodId去方法表中查询数据
@@ -425,13 +425,13 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         if (tMeasureMethod == null) {
             // 没有找到该方法
-            return Result.fail("未找到对应的测量方法");
+            return Result.fail("00304004");
         }
 
         // 解析参数
         PhotometricParameter parameter = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), PhotometricParameter.class);
         if (parameter == null) {
-            return Result.fail("参数解析失败");
+            return Result.fail("00304005");
         }
 
         // 3.5 校验仪器参数
@@ -487,7 +487,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.fail(operation.getMessage());
         }
 
-        return Result.ok("设置参数成功");
+        return Result.ok("00302002");
     }
 
     @Override
@@ -794,7 +794,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         boolean save = tMeasureMethodService.save(newMethod);
         if (!save) {
             //创建失败
-            return Result.fail("方法修改失败");
+            return Result.fail("00304001");
         }
 
         vo.setMethodId(newMethod.getId());
@@ -1129,10 +1129,10 @@ public class PhotometricServiceImpl implements PhotometricService {
                 String jsonString = JSON.toJSONString(map);
                 SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
                 if (sample.getSampleNumber()!=null&&sample.getSampleNumber().length()>256){
-                    return Result.fail("新增样品编号超出限制");
+                    return Result.fail("00302003");
                 }
                 if (sample.getSampleName()!=null&&sample.getSampleName().length()>256){
-                    return Result.fail("新增样品名称超出限制");
+                    return Result.fail("00302004");
                 }
 
             }

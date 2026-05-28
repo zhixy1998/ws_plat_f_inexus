@@ -1,4 +1,4 @@
-/*
+﻿/*
  * *
  *  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
  *  * 本软件受商业机密法和版权法保护。
@@ -489,7 +489,7 @@ public class ConcisePhotometricNewWebSocket {
 
             if (!operation.getSuccess()) {
                 log.info("设置样品池位置出错");
-                return R.fail("设置样品池位置出错！");
+                return R.fail("00301001");
             }
 
             JSONObject object = new JSONObject();
@@ -505,7 +505,7 @@ public class ConcisePhotometricNewWebSocket {
             operation = operationUtilService.operation(inputParam);
             if (!operation.getSuccess()) {
                 log.info("测量出错");
-                return R.fail("测量出错！");
+                return R.fail("00301002");
             }
             OperationResultEntity data = operation.getData();
             ChangeParam singMeasureResult = data.getSingMeasureResult();
@@ -571,7 +571,7 @@ public class ConcisePhotometricNewWebSocket {
 
                 if (!operation.getSuccess()) {
                     log.info("设置样品池位置出错");
-                    return R.fail("设置样品池位置出错！");
+                    return R.fail("00301001");
                 }
 
                 JSONObject object = new JSONObject();
@@ -607,7 +607,7 @@ public class ConcisePhotometricNewWebSocket {
 
                     if (!operation.getSuccess()) {
                         log.info("测量出错");
-                        return R.fail("测量出错！");
+                        return R.fail("00301002");
                     }
                     OperationResultEntity data = operation.getData();
                     ChangeParam measureResult = data.getSingMeasureResult();
@@ -747,7 +747,7 @@ public class ConcisePhotometricNewWebSocket {
             return R.ok(sampleAndDataVO);
         } catch (Exception e) {
             status = 0;
-            return R.fail("测量出错");
+            return R.fail("00301002");
         }
     }
 

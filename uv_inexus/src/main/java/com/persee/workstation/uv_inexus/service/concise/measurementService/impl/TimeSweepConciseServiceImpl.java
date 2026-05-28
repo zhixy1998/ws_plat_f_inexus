@@ -207,17 +207,17 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         // 2. 光度模式校验
         String luminosity = parameter.getLuminosity();
         if (!StringUtils.hasText(luminosity)) {
-            return R.fail("光度模式不能为空");
+            return R.fail("00303007");
         }
         List<String> validLuminosityModes = Arrays.asList("1", "2", "3", "4"); // 1.abs 2.T% 3.Es 4.Er
         if (!validLuminosityModes.contains(luminosity)) {
-            return R.fail("光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：" + luminosity);
+            return R.fail("00303008", luminosity);
         }
 
         // 3. 波长值校验
         String waveLengthStr = parameter.getWaveLength();
         if (!StringUtils.hasText(waveLengthStr)) {
-            return R.fail("波长值不能为空");
+            return R.fail("00303009");
         }
 
         // 波长默认范围 190-1100
@@ -249,17 +249,17 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return R.fail("00105005",waveLengthStr);
             }
         } catch (NumberFormatException e) {
-            return R.fail("波长值格式错误，必须为数字");
+            return R.fail("0030300A");
         }
 
         // 4. 扫描单位校验
         String scanUnit = parameter.getScanUnit();
         if (!StringUtils.hasText(scanUnit)) {
-            return R.fail("扫描单位不能为空");
+            return R.fail("0030300B");
         }
         List<String> validScanUnits = Arrays.asList("0", "1"); // 0.分 1.秒
         if (!validScanUnits.contains(scanUnit)) {
-            return R.fail("扫描单位不合法（可选值：0-分、1-秒），当前值：" + scanUnit);
+            return R.fail("0030300C", scanUnit);
         }
 
         // 5. 扫描总时长和总个数的关联校验
@@ -269,33 +269,33 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
         // 5.1 扫描总时长校验
         if (!StringUtils.hasText(scanTimeStr)) {
-            return R.fail("扫描总时长不能为空");
+            return R.fail("0030300D");
         }
 
         // 5.2 时间间隔校验
         if (!StringUtils.hasText(intervalTimeStr)) {
-            return R.fail("时间间隔不能为空");
+            return R.fail("0030300E");
         }
 
         // 5.3 扫描总个数校验
         if (!StringUtils.hasText(totalNumberStr)) {
-            return R.fail("扫描总个数不能为空");
+            return R.fail("0030300F");
         }
 
         try {
             double scanTime = Double.parseDouble(scanTimeStr);
             if (scanTime <= 0) {
-                return R.fail("扫描总时长必须大于0，当前值：" + scanTime);
+                return R.fail("00303010", scanTime);
             }
 
             double intervalTime = Double.parseDouble(intervalTimeStr);
             if (intervalTime <= 0) {
-                return R.fail("时间间隔必须大于0，当前值：" + intervalTime);
+                return R.fail("00303011", intervalTime);
             }
 
             int totalNumber = Integer.parseInt(totalNumberStr);
             if (totalNumber <= 0) {
-                return R.fail("扫描总个数必须大于0，当前值：" + totalNumber);
+                return R.fail("00303012", totalNumber);
             }
 
             // 验证扫描总时长、时间间隔和总个数的关系
@@ -322,41 +322,41 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             // 根据单位设置最大扫描时长限制
             if ("0".equals(scanUnit)) { // 分
                 if (scanTime > 10000) {
-                    return R.fail("扫描总时长（分）不能超过10000分钟，当前值：" + scanTime);
+                    return R.fail("00303013", scanTime);
                 }
             } else { // 秒
                 if (scanTime > 10000) {
-                    return R.fail("扫描总时长（秒）不能超过10000秒，当前值：" + scanTime);
+                    return R.fail("00303014", scanTime);
                 }
             }
 
         } catch (NumberFormatException e) {
-            return R.fail("时间参数格式错误，必须为数字");
+            return R.fail("00303015");
         }
 
         // 6. 多联池模式校验
         String multiPoolMode = parameter.getMultiPoolMode();
         if (!StringUtils.hasText(multiPoolMode)) {
-            return R.fail("多联池模式不能为空");
+            return R.fail("00303016");
         }
         List<String> validMultiPoolModes = Arrays.asList("0", "1"); // 0.顺序单池连续采样 1.循环多池交替采样
         if (!validMultiPoolModes.contains(multiPoolMode)) {
-            return R.fail("多联池模式不合法（可选值：0-顺序单池连续采样、1-循环多池交替采样），当前值：" + multiPoolMode);
+            return R.fail("00303017", multiPoolMode);
         }
 
         // 7. 父类 MeasurePublicParameters 字段校验
         // 7.1 光谱带宽校验
         String spectralBandwidth = parameter.getSpectralBandwidth();
         if (!StringUtils.hasText(spectralBandwidth)) {
-            return R.fail("光谱带宽不能为空");
+            return R.fail("00303018");
         }
         try {
             double bandwidth = Double.parseDouble(spectralBandwidth);
             if (bandwidth <= 0) {
-                return R.fail("光谱带宽必须大于0，当前值：" + bandwidth);
+                return R.fail("00303019", bandwidth);
             }
         } catch (NumberFormatException e) {
-            return R.fail("光谱带宽格式错误，必须为数字");
+            return R.fail("0030301A");
         }
 
         // 7.3 换灯波长校验
@@ -370,27 +370,27 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return R.fail("0010202A",waveVal);
             }
         } catch (NumberFormatException e) {
-            return R.fail("换灯波长格式错误");
+            return R.fail("0030301B");
         }
 
         // 7.4 能量灯校验
         String energyLamp = parameter.getEnergyLamp();
         if (!StringUtils.hasText(energyLamp)) {
-            return R.fail("能量灯不能为空");
+            return R.fail("0030301C");
         }
         if (!energyLamp.matches("^[0-2]$")) {
-            return R.fail("能量灯值无效（可选值：0-钨灯、1-氘灯、2-汞灯），当前值：" + energyLamp);
+            return R.fail("0030301D", energyLamp);
         }
 
         // 7.5 增益校验
         if (parameter.getGain() != null && parameter.getGain() < 0) {
-            return R.fail("增益不能小于0，当前值：" + parameter.getGain());
+            return R.fail("0030301E", parameter.getGain());
         }
 
         // 7.7 参考标准名称校验（长度限制等）
         if (parameter.getReferenceStandardName() != null &&
                 parameter.getReferenceStandardName().length() > 100) {
-            return R.fail("参考标准名称长度不能超过100字符");
+            return R.fail("0030301F");
         }
 
         return R.ok(true);
@@ -593,7 +593,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         double response = Double.parseDouble(paramDto.getParameter().getResponseTime());
         double interval = Double.parseDouble(paramDto.getParameter().getIntervalTime());
         if (response > interval) {
-            return Result.fail("响应时间必须小于等于时间间隔");
+            return Result.fail("00303001");
         }
         // 仪器下发参数校验
         if (paramDto.getDeviceSerialNumber()!=null&& !paramDto.getDeviceSerialNumber().isEmpty()){
@@ -4092,14 +4092,14 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
         Boolean put = timeMeasureIsStop.put(info.getDeviceId(), true);
         if (put== null) {
-            return Result.ok("设备正在停止中");
+            return Result.ok("00303006");
         }
         if (!put) {
             log.info("设备已停止测量");
             Constants.measureStopStatus.put(deviceSerialNumber, false);
             return Result.ok();
         } else {
-            return Result.ok("设备正在停止中");
+            return Result.ok("00303006");
         }
     }
 
@@ -4275,7 +4275,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         // 从原始数据中解析波长范围
         List<String> rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
         if (rawData == null || rawData.isEmpty()) {
-            return Result.fail("原始数据为空");
+            return Result.fail("00303020");
         }
 
         // 获取所有波长点并找出最小和最大值
@@ -4289,7 +4289,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 minWave = Math.min(minWave, wave);
                 maxWave = Math.max(maxWave, wave);
             } catch (NumberFormatException e) {
-                return Result.fail("原始数据格式错误：" + dataPoint);
+                return Result.fail("00303021", dataPoint);
             }
         }
 
@@ -4304,7 +4304,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     return Result.fail(message);
                 }
             } catch (NumberFormatException e) {
-                return Result.fail("标记点格式错误：" + xStr);
+                return Result.fail("00303022", xStr);
             }
         }
 

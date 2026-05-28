@@ -128,7 +128,7 @@ public class DevMessageUtil {
     public R<FindDeviceVO> connectT600(DatagramSocket socket, List<Command> list) {
         Boolean b = changeXml(T600xmlPath);
         if (!b) {
-            return R.fail("T600xml文件加载失败");
+            return R.fail("0020A004");
         }
         FindDeviceVO findDeviceVO = new FindDeviceVO();
         //获取的波长值临时存储
@@ -212,11 +212,11 @@ public class DevMessageUtil {
 
             if (responses == null || responses.isEmpty()) {
                 if (cmdId.equals(FindDevEnum.FindDevice.getComId())) {
-                    return R.fail("没有仪器响应，请检查仪器连接状态！");
+                    return R.fail("0020A005");
                 } else if (cmdId.equals(FindDevEnum.GetWlList.getComId()) || cmdId.equals(FindDevEnum.GetCellPos.getComId())){
                     break;
                 } else {
-                    return R.fail("仪器连接失败，请检查仪器！");
+                    return R.fail("0020A006");
                 }
 
             }
@@ -224,7 +224,7 @@ public class DevMessageUtil {
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
 
             if (parse == null) {
-                return R.fail("接收报文解析异常");
+                return R.fail("0020A007");
             }
 
 //            if (cmdId.equals(FindDevEnum.FindDevice.getComId())) {
@@ -276,7 +276,7 @@ public class DevMessageUtil {
         // 这里可以加载 T800 专用的 XML 或协议定义
         Boolean b = T800changeXml(T800xmlPath);
         if (!b) {
-            return R.fail("T800xml文件加载失败");
+            return R.fail("0020A002");
         }
         FindDeviceVO findDeviceVO = new FindDeviceVO();
         findDeviceVO.setAttachmentType(25);
@@ -299,7 +299,7 @@ public class DevMessageUtil {
 
             //**********************************改这里了********************************************
             if (!ensureT800ProtocolsLoaded()) {
-                return R.fail("T800 xml 加载失败");
+                return R.fail("0020A003");
             }
 
             T800Transition item = t800xml.get(cmdId);
@@ -451,7 +451,7 @@ public class DevMessageUtil {
         if(flag == "T600") {
             Boolean b = changeXml(T600xmlPath);
             if (!b) {
-                return R.fail("xml文件加载失败");
+                return R.fail("0020A001");
             }
             String cmdId = command.getCmdId();
             Transition transition = xml.get(cmdId);
@@ -470,7 +470,7 @@ public class DevMessageUtil {
             }
 
             if (responses.size() < 2) {
-                return R.fail("校正失败");
+                return R.fail("0020A009");
             }
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             String result = parse.toString();
@@ -481,7 +481,7 @@ public class DevMessageUtil {
         else if(flag == "T800"){
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
-                return R.fail("T800xml文件加载失败");
+                return R.fail("0020A002");
             }
             String cmdId = command.getCmdId();
 
@@ -489,7 +489,7 @@ public class DevMessageUtil {
             try {
                 t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
             } catch (Exception e) {
-                return R.fail("T800发送命令失败");
+                return R.fail("0020A008");
             }
 //            String result = t800MessageUtil.getResultSingle(cmdId, 3000);
             String result = ResponseParser.Result;
@@ -567,7 +567,7 @@ public class DevMessageUtil {
         if(flag.equals("T600")) {
             Boolean b = changeXml(T600xmlPath);
             if (!b) {
-                return R.fail("xml文件加载失败");
+                return R.fail("0020A001");
             }
 
 
@@ -589,7 +589,7 @@ public class DevMessageUtil {
         else if(flag == "T800"){
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
-                return R.fail("T800xml文件加载失败");
+                return R.fail("0020A002");
             }
             String cmdId = command.getCmdId();
 
@@ -597,7 +597,7 @@ public class DevMessageUtil {
             try {
                 t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
             } catch (Exception e) {
-                return R.fail("T800发送命令失败");
+                return R.fail("0020A008");
             }
 //            String result = t800MessageUtil.getResultSingle(cmdId, 3000);
             String result = ResponseParser.Result;
@@ -632,7 +632,7 @@ public class DevMessageUtil {
 //        if(flag.equals("T600")) {
 //            Boolean b = changeXml(T600xmlPath);
 //            if (!b) {
-//                return R.fail("xml文件加载失败");
+//                return R.fail("0020A001");
 //            }
 //            String cmdId = command.getCmdId();
 //            //发送报文组
@@ -648,7 +648,7 @@ public class DevMessageUtil {
         if ("T600".equals(flag)) {
             Boolean b = changeXml(T600xmlPath);
             if (!b) {
-                return R.fail("xml文件加载失败");
+                return R.fail("0020A001");
             }
             String cmdId = command.getCmdId();
             Transition transition = xml.get(cmdId);
@@ -674,7 +674,7 @@ public class DevMessageUtil {
         } else if(flag == "T800"){
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
-                return R.fail("T800xml文件加载失败");
+                return R.fail("0020A002");
             }
             String cmdId = command.getCmdId();
 
@@ -709,7 +709,7 @@ public class DevMessageUtil {
         if(flag == "T600") {
             Boolean b = changeXml(T600xmlPath);
             if (!b) {
-                return R.fail("xml文件加载失败");
+                return R.fail("0020A001");
             }
             String cmdId = "SetInitStatus";
             Object[] param = new Object[]{status};
@@ -728,7 +728,7 @@ public class DevMessageUtil {
         } else if(flag == "T800"){
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
-                return R.fail("T800xml文件加载失败");
+                return R.fail("0020A002");
             }
             String cmdId = "SetInitStatus";
             Object[] param = new Object[]{status};
@@ -766,7 +766,7 @@ public class DevMessageUtil {
 
         Boolean b = changeXml(T600xmlPath);
         if (!b) {
-            return R.fail("xml文件加载失败");
+            return R.fail("0020A001");
         }
         String cmdId = "SetCellPos";
 
@@ -797,7 +797,7 @@ public class DevMessageUtil {
         DatagramSocket socket = ans.getData();
         Boolean b = changeXml(T600xmlPath);
         if (!b) {
-            return R.fail("转换xml出错");
+            return R.fail("0020A00A");
         }
         String cmdId = command.getCmdId();
         Transition transition = xml.get(cmdId);
@@ -806,7 +806,7 @@ public class DevMessageUtil {
         List<byte[]> responses = messageUtil.quickSendAndReceive(socket, defaultIp, cmdId, bytes, transition.getReplyNumber(), transition.getTimeout());
         Object parse = ResponseDeal.parse(cmdId, responses, bytes);
         if (parse.equals("false")) {
-            return R.fail("校零失败");
+            return R.fail("0020A00B");
         }
         return R.ok(parse.toString());
     }
@@ -825,7 +825,7 @@ public class DevMessageUtil {
         if(flag == "T600") {
             Boolean b = changeXml(T600xmlPath);
             if (!b) {
-                return R.fail("转换xml出错");
+                return R.fail("0020A00A");
             }
             for (Command command : list) {
                 String cmdId = command.getCmdId();
@@ -837,7 +837,7 @@ public class DevMessageUtil {
                 List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
                 Object parse = ResponseDeal.parse(cmdId, responses, bytes);
                     if (parse.equals("false")) {
-                    return R.fail("解析报文出错");
+                    return R.fail("0020A00C");
                 }
             }
         }
@@ -845,7 +845,7 @@ public class DevMessageUtil {
         else if(flag == "T800"){
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
-                return R.fail("T800 xml 加载失败");
+                return R.fail("0020A003");
             }
             for (Command command : list) {
                 String cmdId = command.getCmdId();
@@ -879,7 +879,7 @@ public class DevMessageUtil {
 
         Boolean b = changeXml(T600xmlPath);
         if (!b) {
-            return R.fail("转换xml出错");
+            return R.fail("0020A00A");
         }
         String cmdId = cmd.getCmdId();
         //发送报文组
@@ -903,7 +903,7 @@ public class DevMessageUtil {
         DatagramSocket socket = ans.getData();
         Boolean b = changeXml(T600xmlPath);
         if (!b) {
-            return Result.fail("转换xml出错");
+            return Result.fail("0020A00A");
         }
         String cmdId = command.getCmdId();
         //发送报文组
@@ -914,7 +914,7 @@ public class DevMessageUtil {
         List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes, replyNumber, timeout);
         Object parse = ResponseDeal.parse(cmdId, responses, bytes);
         if (parse.equals("false")) {
-            return Result.fail("解析报文出错");
+            return Result.fail("0020A00C");
         }
         return Result.ok(parse.toString());
     }
@@ -933,7 +933,7 @@ public class DevMessageUtil {
         if (flag == "T600") {
             Boolean b = changeXml(T600xmlPath);
             if (!b) {
-                return R.fail("转换xml出错");
+                return R.fail("0020A00A");
             }
             String cmdId = command.getCmdId();
             //发送报文组
@@ -944,7 +944,7 @@ public class DevMessageUtil {
             List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse.equals("false")) {
-                return R.fail("基线失败");
+                return R.fail("0020A00D");
             }
             List<ChangeParam> changeParam = (List<ChangeParam>) parse;
             return R.ok(changeParam);
@@ -952,7 +952,7 @@ public class DevMessageUtil {
         else if (flag == "T800") {
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
-                return R.fail("T800 xml 加载失败");
+                return R.fail("0020A003");
             }
             String cmdId = command.getCmdId();
 
@@ -1059,7 +1059,7 @@ public class DevMessageUtil {
         if(flag.equals("T600")) {
             Boolean b = changeXml(T600xmlPath);
             if (!b) {
-                return R.fail("转换xml出错");
+                return R.fail("0020A00A");
             }
 
             for (Command command : list) {
@@ -1073,7 +1073,7 @@ public class DevMessageUtil {
                 Object parse = ResponseDeal.parse(cmdId, responses, bytes);
 
                 if (parse == null || parse.equals("false")) {
-                    return R.fail("解析报文出错");
+                    return R.fail("0020A00C");
                 }
                 if (cmdId.equals("Measure")) {
                     changeParam = (ChangeParam) parse;
@@ -1083,7 +1083,7 @@ public class DevMessageUtil {
         else if(flag.equals("T800")) {
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
-                return R.fail("转换xml出错");
+                return R.fail("0020A00A");
             }
             for (Command command : list) {
                 String cmdId = command.getCmdId();
@@ -1093,7 +1093,7 @@ public class DevMessageUtil {
                 t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
                 Object parse = ResponseParser.parseMeasure(bytes);
                 if (parse.equals("false")) {
-                    return R.fail("解析报文出错");
+                    return R.fail("0020A00C");
                 }
                 changeParam = (ChangeParam) parse;
             }
@@ -1118,7 +1118,7 @@ public class DevMessageUtil {
         if (flag == "T600") {
             Boolean b = changeXml(T600xmlPath);
             if (!b) {
-                return R.fail("转换xml出错");
+                return R.fail("0020A00A");
             }
 
             for (Command command : list) {
@@ -1132,7 +1132,7 @@ public class DevMessageUtil {
                 List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes, ReplyNumber, Timeout);
                 Object parse = ResponseDeal.parse(cmdId, responses, bytes);
                 if (parse == null || parse.equals("false")) {
-                    return R.fail("解析报文出错");
+                    return R.fail("0020A00C");
                 }
                 changeParams.add((ChangeParam) parse);
             }
@@ -1140,7 +1140,7 @@ public class DevMessageUtil {
         else if (flag == "T800") {
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
-                return R.fail("转换xml出错");
+                return R.fail("0020A00A");
             }
             for (Command command : list) {
                 String cmdId = command.getCmdId();
@@ -1155,7 +1155,7 @@ public class DevMessageUtil {
                 }
                 Object parse = ResponseParser.parseMeasure(bytes);
                 if (parse.equals("false")) {
-                    return R.fail("解析报文出错");
+                    return R.fail("0020A00C");
                 }
                 changeParams.add((ChangeParam) parse);
             }
@@ -1302,7 +1302,7 @@ public class DevMessageUtil {
         if (flag == "T600") {
             Boolean b = changeXml(T600xmlPath);
             if (!b) {
-                return R.fail("转换xml出错");
+                return R.fail("0020A00A");
             }
             String cmdId = command.getCmdId();
             Transition transition = xml.get(cmdId);
@@ -1313,7 +1313,7 @@ public class DevMessageUtil {
             List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, ReplyNumber, Timeout);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse.equals("false")) {
-                return R.fail("校零失败");
+                return R.fail("0020A00B");
             }
             ChangeParam changeParam = (ChangeParam) parse;
             return R.ok(changeParam);
@@ -1321,7 +1321,7 @@ public class DevMessageUtil {
         else if (flag == "T800") {
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
-                return R.fail("转换xml出错");
+                return R.fail("0020A00A");
             }
             String cmdId = command.getCmdId();
             T800Transition transition = t800xml.get(cmdId);
@@ -1330,7 +1330,7 @@ public class DevMessageUtil {
             t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
             Object parse = ResponseParser.parseMeasure( bytes);
             if (parse.equals("false")) {
-                return R.fail("解析报文出错");
+                return R.fail("0020A00C");
             }
             ChangeParam changeParam = (ChangeParam) parse;
             return R.ok(changeParam);

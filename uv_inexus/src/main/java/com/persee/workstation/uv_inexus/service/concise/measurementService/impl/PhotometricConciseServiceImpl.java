@@ -205,7 +205,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return R.fail("00103005");
         }
         if(!StringUtils.hasText(parameter.getChangeLampWaveLength())){
-            return R.fail("换灯波长不能为空");
+            return R.fail("00308006");
         }
         if (StringUtils.hasText(parameter.getChangeLampWaveLength())) {
             double v = Double.parseDouble(parameter.getChangeLampWaveLength());
@@ -964,19 +964,19 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (!StringUtils.hasText(deviceSerialNumber)) {
             log.info("设备未连接,无需下发参数");
-            return R.fail("设备未连接,无需下发参数");
+            return R.fail("0030800D");
         }
 
         FMeasureMethod fMeasureMethod = fMeasureMethodService.getById(methodId);
         if (fMeasureMethod == null) {
             log.warn("找不到对应的测量方法: methodId={}", methodId);
-            return R.fail("找不到对应的测量方法");
+            return R.fail("00308004");
         }
 
         FPhotometricParameter parameter = JSON.parseObject(fMeasureMethod.getMeasurementParamInfo(), FPhotometricParameter.class);
         if (parameter == null) {
             log.warn("解析测量参数失败: methodId={}, json={}", methodId, fMeasureMethod.getMeasurementParamInfo());
-            return R.fail("解析测量参数失败");
+            return R.fail("00308005");
         }
         DeviceInfoPO info = deviceInfoService.getInfo(deviceSerialNumber);
         if (info != null && info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
@@ -1015,7 +1015,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                 if (!operation.getSuccess()) {
                     log.info("设置参数失败");
-                    return R.fail("设置参数失败");
+                    return R.fail("00304009");
                 }
 
             } catch (Exception e) {
@@ -1282,10 +1282,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 String jsonString = JSON.toJSONString(map);
                 SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
                 if (sample.getSampleNumber()!=null&&sample.getSampleNumber().length()>256){
-                    return Result.fail("新增样品编号超出限制");
+                    return Result.fail("00302003");
                 }
                 if (sample.getSampleName()!=null&&sample.getSampleName().length()>256){
-                    return Result.fail("新增样品名称超出限制");
+                    return Result.fail("00302004");
                 }
 
             }
@@ -4103,7 +4103,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
 
         if (r.getSuccess()) {
-            return Result.ok("设置参数成功");
+            return Result.ok("00302002");
         } else {
             return Result.fail(r.getMessage());
         }
