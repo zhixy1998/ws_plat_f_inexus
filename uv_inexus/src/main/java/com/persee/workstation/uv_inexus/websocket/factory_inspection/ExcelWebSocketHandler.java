@@ -3526,13 +3526,15 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
         }
 
-        // 3. 校验增益
-        if (gain != null && deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
+        // 3. 校验增益 - 只有T%和Abs模式不需要校验增益，其他模式都需要校验
+        boolean isTPercentOrAbs = "T%".equalsIgnoreCase(luminosityMode) || "Abs".equalsIgnoreCase(luminosityMode);
+        if (!isTPercentOrAbs && gain != null && deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
             if (!deviceTypeInfo.getGain().contains(gain)) {
                 errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
                         gain, deviceTypeInfo.getGain()));
             }
         }
+
 
         // 4. 校验扫描速度
         if (scanSpeed != null && deviceTypeInfo.getScanSpeed() != null && !deviceTypeInfo.getScanSpeed().isEmpty()) {
@@ -4091,8 +4093,17 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         String devType = deviceTypeInfo.getDevType();
         List<String> errorMessages = new ArrayList<>();
 
+        // 判断是否需要校验增益：只有T%和Abs可以不校验增益，其他的都要校验
+        boolean needValidateGain = true;
+        if (luminosityMode != null) {
+            String upperMode = luminosityMode.toUpperCase();
+            if ("T%".equals(upperMode) || "ABS".equals(upperMode)) {
+                needValidateGain = false;
+            }
+        }
+
         // 1. 校验增益
-        if (gain != null && deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
+        if (needValidateGain && gain != null && deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
             if (!deviceTypeInfo.getGain().contains(gain)) {
                 errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
                         gain, deviceTypeInfo.getGain()));
@@ -4801,10 +4812,25 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         List<String> errorMessages = new ArrayList<>();
 
         // 1. 校验增益
-        if (gain!=null&&deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
-            if (!deviceTypeInfo.getGain().contains(gain)) {
-                errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
-                        gain, deviceTypeInfo.getGain()));
+        // 光度模式为Abs或T%时，增益可以为null；其他光度模式下必须校验增益
+        boolean isAbsOrTPercent = "Abs".equalsIgnoreCase(luminosityMode) || "T%".equalsIgnoreCase(luminosityMode);
+        if (isAbsOrTPercent) {
+            // Abs或T%模式下，如果增益不为null，仍需校验是否在支持范围内
+            if (gain != null && deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
+                if (!deviceTypeInfo.getGain().contains(gain)) {
+                    errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
+                            gain, deviceTypeInfo.getGain()));
+                }
+            }
+        } else {
+            // 其他光度模式下，增益必须存在且在支持范围内
+            if (deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
+                if (gain == null) {
+                    errorMessages.add("增益不能为空");
+                } else if (!deviceTypeInfo.getGain().contains(gain)) {
+                    errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
+                            gain, deviceTypeInfo.getGain()));
+                }
             }
         }
 
@@ -4813,16 +4839,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         // 如果有专门的配置，可以在这里添加校验
 
         // 3. 校验响应时间
-        if (responseTime!=null&&deviceTypeInfo.getResponseTime() != null && !deviceTypeInfo.getResponseTime().isEmpty()) {
+        if (responseTime != null && deviceTypeInfo.getResponseTime() != null && !deviceTypeInfo.getResponseTime().isEmpty()) {
             String responseTimeStr = String.valueOf(responseTime);
-            if (responseTimeStr!=null&&!deviceTypeInfo.getResponseTime().contains(responseTimeStr)) {
+            if (responseTimeStr != null && !deviceTypeInfo.getResponseTime().contains(responseTimeStr)) {
                 errorMessages.add(String.format("响应时间 %s 不在设备支持范围内: %s",
                         responseTime, deviceTypeInfo.getResponseTime()));
             }
         }
 
-        // 3. 校验光度模式
-        if (luminosityMode!=null&&deviceTypeInfo.getLuminosity() != null && !deviceTypeInfo.getLuminosity().isEmpty()) {
+        // 4. 校验光度模式
+        if (luminosityMode != null && deviceTypeInfo.getLuminosity() != null && !deviceTypeInfo.getLuminosity().isEmpty()) {
             String code = WaveLengthEnum.getCode(luminosityMode);
             if (code == null) {
                 errorMessages.add(String.format("不支持的光度模式: %s", luminosityMode));
@@ -4839,7 +4865,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
         }
 
-//        // 4. 校验灯状态
+//        // 5. 校验灯状态
 //        if (StringUtils.isNotBlank(lampStatusName)) {
 //            String lampIdentity = EnergyLampEnums.getIdentityByName(lampStatusName);
 //            if (lampIdentity == null) {
@@ -4859,7 +4885,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         // 如果有任何校验错误，抛出异常
         if (!errorMessages.isEmpty()) {
-            String errorMsg = String.format("光度扫描参数校验失败：\n%s",  String.join("\n", errorMessages));
+            String errorMsg = String.format("光度扫描参数校验失败：\n%s", String.join("\n", errorMessages));
             log.error(errorMsg);
             throw new BusinessException(errorMsg);
         }
