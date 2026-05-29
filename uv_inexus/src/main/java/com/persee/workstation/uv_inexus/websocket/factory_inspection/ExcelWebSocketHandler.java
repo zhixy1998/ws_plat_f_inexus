@@ -1914,10 +1914,15 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                         map = sendBatchDataPoints(session, taskId, itemId, dataMap, updateBy, operationInstrument, list, samplePoolNum, d);
                                     }
                                 } catch (Exception e) {
+                                    setTaskMeasuring(taskId, false);
                                     return false;
                                 }
-                                Map<String, List<JSONObject>> data = Objects.requireNonNull(map).getData();
-                                List<JSONObject> line = Objects.requireNonNull(data).get("line");
+                                if (map == null || !map.getSuccess() || map.getData() == null) {
+                                    setTaskMeasuring(taskId, false);
+                                    break;
+                                }
+                                Map<String, List<JSONObject>> data = map.getData();
+                                List<JSONObject> line = data.get("line");
                                 if (CollectionUtils.isNotEmpty(line)) {
                                     lists.add(data.get("line"));
                                 }
@@ -3578,7 +3583,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         // 如果有任何校验错误，抛出异常
         if (!errorMessages.isEmpty()) {
-            String errorMsg = String.format("[%s] 参数校验失败：\n%s", devType, String.join("\n", errorMessages));
+            String errorMsg = String.format("参数校验失败：\n%s",  String.join("\n", errorMessages));
             log.error(errorMsg);
             throw new BusinessException(errorMsg);
         }
@@ -3644,6 +3649,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //        log.info("p.getTimestamp()：{}", p.getTimestamp());
         //获取枚举，看看是哪个
         WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
+        if (anEnum == null) {
+            throw new BusinessException("不支持的光度模式: " + luminosityMode);
+        }
         log.info("光度模式：{}", anEnum.getName());
 //获取起始波长
         Double startWavelength = MapUtils.getDouble(dataMap, START_WAVELENGTH.getDescription());
@@ -3651,10 +3659,18 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         Double endWavelength = MapUtils.getDouble(dataMap, END_WAVELENGTH.getDescription());
         //扫描间隔
         Double scanInterval = MapUtils.getDouble(dataMap, SCAN_INTERVAL.getDescription());
-        Double scanCount = MapUtils.getDouble(dataMap, SCAN_COUNT.getDescription());
-        Double timeInterval = MapUtils.getDouble(dataMap, TIME_INTERVAL.getDescription());
-        int actualTotalPoints = (timeInterval != null && scanCount != null && timeInterval > 0)
-                ? (int) (timeInterval * (scanCount + 1)) : scanCount.intValue();
+        // 根据起始波长、终止波长和扫描间隔计算扫描点数
+        // 公式：总点数 = |终止波长 - 起始波长| / 扫描间隔 + 1
+        Double scanCount = Math.abs(endWavelength - startWavelength) / scanInterval + 1;
+
+//        int actualTotalPoints;
+//        if (timeInterval != null && scanCount != null && timeInterval > 0) {
+//            actualTotalPoints = (int) (timeInterval * (scanCount + 1));
+//        } else if (scanCount != null) {
+//            actualTotalPoints = scanCount.intValue();
+//        } else {
+//            throw new BusinessException("扫描参数缺失：scanCount 和 timeInterval 均为空");
+//        }
         if (anEnum == abs) {
             if (ObjectUtils.isNotEmpty(p)) {
                 JSONObject payload = new JSONObject();
@@ -3860,7 +3876,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             .orElse(p.getTimestamp());
                     double relativeTimeInSeconds = Math.round((p.getTimestamp() - firstTimestamp) / 1000.0 * 10) / 10.0;
                     payload.put("timestamp", p.getTimestamp());
-                    payload.put("totalPoints", actualTotalPoints);
+                    payload.put("totalPoints", scanCount);
                     point.put("yType", "Er");
                     point.put("xType", "秒(s)");
 //                    double wavelength = p.getTResult().getWavelength();
@@ -4171,12 +4187,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         // 如果有任何校验错误，抛出异常
         if (!errorMessages.isEmpty()) {
-            String errorMsg = String.format("[%s] 时间扫描参数校验失败：\n%s", devType, String.join("\n", errorMessages));
+            String errorMsg = String.format("时间扫描参数校验失败：\n%s", String.join("\n", errorMessages));
             log.error(errorMsg);
             throw new BusinessException(errorMsg);
         }
 
-        log.info("设备 [{}] 时间扫描参数校验通过: 增益={}, 响应时间={}, 光度模式={}, 灯状态={}",
+        log.info("设备时间扫描参数校验通过: 增益={}, 响应时间={}, 光度模式={}, 灯状态={}",
                 devType, gain, responseTime, luminosityMode, lampStatusName);
     }
 
@@ -4186,6 +4202,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * 改进：边测量边推送数据，让前端时间显示更准确
      */
     private R<Map<String, List<JSONObject>>> timeScan(String taskId, Map<String, Object> dataMap, String deviceSerialNumber, Integer scanCount, String luminosityMode, boolean isMultiProductPool, String itemId, Integer d) throws BusinessException {
+        // 清理上次时间扫描可能残留的控制标志，防止第二次测量被误停止
+        timeScanStopControl.remove(taskId);
+        taskStopFlag.put(taskId, false);
+        try {
         Map<String, List<JSONObject>> map = new HashMap<>();
         // 线数据列表
         ArrayList<JSONObject> line = new ArrayList<>();
@@ -4642,7 +4662,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         R<OperationResultEntity> measure = devOperationUtilService.operation(param1);
         int i = 0;
-        waveformCache.clear();
+        waveformCache.remove(taskId);
 
         int totalPoints = totalTime.intValue();
         log.info("时间扫描总点数：{}, 总时间：{}秒，时间间隔：{}秒", totalPoints, totalTime, timeInterval);
@@ -4760,6 +4780,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         map.put("line", line);
         map.put("res", res);
         return R.ok(map);
+        } finally {
+            // 无论正常结束还是异常退出，都清理时间扫描控制标志
+            timeScanStopControl.remove(taskId);
+            taskStopFlag.put(taskId, false);
+        }
     }
 
 
@@ -4933,7 +4958,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         List<DeviceTypeInfoPO> pos = deviceTypeInfoDAO.selectByMap(devType111);
         if (CollectionUtils.isEmpty(pos)) {
             log.error("光度扫描-未找到设备类型配置: devType={}", s);
-            throw new BusinessException("未找到设备类型[" + s + "]的配置信息，请联系管理员");
+            throw new BusinessException("未找到设备的配置信息，请联系管理员");
         }
 
         DeviceTypeInfoPO deviceTypeInfoPO = pos.get(0);
