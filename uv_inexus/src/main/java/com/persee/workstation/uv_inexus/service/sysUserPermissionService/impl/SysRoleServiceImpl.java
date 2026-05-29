@@ -9,28 +9,48 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
-import com.alibaba.fastjson.JSON;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.*;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.*;
-import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.*;
-import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysGroupService;
-import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysRoleService;
-import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.alibaba.fastjson.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupTreeDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleSaveDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserTreeDTO;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysPermissionPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
+import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysGroupService;
+import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysRoleService;
+import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 @Service
 public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> implements SysRoleService {
@@ -355,7 +375,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
                 return Result.ok(new ArrayList<>());
             }
             List<PermissionTreeDTO> tree = buildPermissionTree(permissions, rolePermIds);
-            System.out.println("Permission Tree: " + JSON.toJSONString(tree));
+//            System.out.println("Permission Tree: " + JSON.toJSONString(tree));
             return Result.ok(tree);
         } catch (Exception e) {
             return Result.fail("00605005",e.getMessage());
@@ -366,7 +386,8 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         List<PermissionTreeDTO> dtoList = permissions.stream().map(po -> {
             PermissionTreeDTO dto = new PermissionTreeDTO();
             BeanUtils.copyProperties(po, dto);
-            dto.setIsHave(rolePermIds.contains(po.getId()));
+            // 如果是首页权限，isHave始终返回true
+            dto.setIsHave("首页".equals(po.getTitle()) || rolePermIds.contains(po.getId()));
             dto.setChildren(new ArrayList<>());
             return dto;
         }).collect(Collectors.toList());

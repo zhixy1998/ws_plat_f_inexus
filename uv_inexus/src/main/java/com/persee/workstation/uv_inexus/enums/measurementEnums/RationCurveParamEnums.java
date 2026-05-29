@@ -46,9 +46,15 @@ public enum RationCurveParamEnums {
     blank_abs("Blank_Abs","空白Abs值"),
     //abs和空白差值
     abs_blank_difference("Abs-Blank","abs和空白差值"),
+
+
+    blank_fit("C-Blank","空白拟合"),
+    sample_fit("C-fit","样品拟合"),
+
+
     fit_concentration("C0","拟合浓度"),
 
-    //单池重复
+        //单池重复
     single_pool_repeat("单池重复","单池重复"),
     //不重复
     no_repeat("不重复","不重复"),

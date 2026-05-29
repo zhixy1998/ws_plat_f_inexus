@@ -631,6 +631,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 return Result.fail("00000009");
             }
         }
+        // 仪器下发参数校验
+        if (methodDTO.getDeviceSerialNumber()!=null && !methodDTO.getDeviceSerialNumber().isEmpty()) {
+            R rdata = IssueCheckParam(methodDTO.getNewMethodParam(), methodDTO.getDeviceSerialNumber());
+            if (!rdata.getSuccess()) {
+                return Result.fail(rdata.getMessage());
+            }
+        }
+
         FMeasurementCurrentInfoVO ans = new FMeasurementCurrentInfoVO();
 
         if (methodDTO.getClearDataRange().equals(PhotoMetricChangeMethodTypeEnum.noChange.getIdentity()) && !StringUtils.hasText(methodDTO.getNewMethodId())) {
@@ -4053,7 +4061,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (deviceSerialNumber!=null&& !deviceSerialNumber.isEmpty()){
             R<Boolean> booleanR = IssueCheckParam(photometricParam, deviceSerialNumber);
             if (!booleanR.getSuccess()) {
-                return Result.checkFail(booleanR.getData());
+                return Result.checkFail(booleanR.getMessage());
             }
         }
 
@@ -4391,8 +4399,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         boolean a = deviceMeasureVO.getLuminosity().stream()
                 .anyMatch(obj -> obj.getParamValue().equals(param.getLuminosity()));
         if (!a) {
-            result = result ? false : result;
-            errorMessages.add("当前仪器不支持该光度模式");
+            return R.fail("当前仪器不支持该光度模式");
         }
         // 2. 波长范围是否超出限制
         List<String> waveLengths = param.getWaveLength();
@@ -4407,21 +4414,18 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
         // 3. 光谱带宽是否存在
         if (!deviceMeasureVO.getBandWidth().contains(param.getSpectralBandwidth())) {
-            result = result ? false : result;
-            errorMessages.add("当前仪器不支持该光谱带宽");
+            return R.fail("当前仪器不支持该光谱带宽");
         }
         // 4. 响应时间是否存在
         if (!deviceMeasureVO.getResponseTime().contains(param.getResponseTime())) {
-            result = result ? false : result;
-            errorMessages.add("当前仪器不支持该响应时间");
+            return R.fail("当前仪器不支持该响应时间");
         }
         // 5. 换灯波长是否超出限制
         Double lampWaveLength = Double.parseDouble(param.getChangeLampWaveLength());
         Double maxLampWavelength =  Double.parseDouble(deviceMeasureVO.getMaxLampWavelength());
         Double minLampWavelength =  Double.parseDouble(deviceMeasureVO.getMinLampWavelength());
         if (lampWaveLength > maxLampWavelength || lampWaveLength < minLampWavelength) {
-            result = result ? false : result;
-            errorMessages.add("换灯波长超出限制, 最大值: "+maxLampWavelength+"  最小值: "+minLampWavelength);
+            return R.fail("换灯波长超出限制, 换灯波长最大值: " + maxLampWavelength + "  换灯波长最小值: " + minLampWavelength);
         }
         // 7. 在光度模式为Es/Er模式下的情况
         if (param.getLuminosity().equals(Constants.PARAM_THREE)|| param.getLuminosity().equals(Constants.PARAM_FOUR)) {
@@ -4429,14 +4433,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             boolean b = deviceMeasureVO.getLampType().stream()
                     .anyMatch(obj -> obj.getParamValue().equals(param.getEnergyLamp()));
             if (!b) {
-                result = result ? false : result;
-                errorMessages.add("当前仪器不支持该能量灯");
+                return R.fail("当前仪器不支持该能量灯");
             }
 
             // 7.2 增益是否存在
             if (!deviceMeasureVO.getGain().contains(param.getGain())) {
-                result = result ? false : result;
-                errorMessages.add("当前仪器不支持该增益数值");
+                return R.fail("当前仪器不支持该增益");
             }
         }
 

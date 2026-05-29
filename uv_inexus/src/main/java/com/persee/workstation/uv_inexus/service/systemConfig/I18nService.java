@@ -30,7 +30,7 @@ public class I18nService {
     private Map<String, Map<String, String>> dictionary = new ConcurrentHashMap<>();
 
     // 默认语言
-    private static final String DEFAULT_LOCALE = "en_US";
+    private static final String DEFAULT_LOCALE = "en-US";
 
     @PostConstruct
     public void init() {
@@ -79,7 +79,7 @@ public class I18nService {
     /**
      * 获取国际化文本
      * @param key 键
-     * @param locale 语言（zh_CN / en_US / ja_JP）
+     * @param locale 语言（zh-CN / en-US / ja-JP）
      * @param args 占位符参数
      */
     public String get(String key, String locale, Object... args) {

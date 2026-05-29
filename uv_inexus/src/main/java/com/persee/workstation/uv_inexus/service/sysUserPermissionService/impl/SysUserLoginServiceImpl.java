@@ -22,7 +22,6 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserLoginDTO;
-import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
@@ -51,9 +50,8 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
     public R<LoginUserInfoVO> login(UserLoginDTO loginDTO) {
         // 1. 处理快捷登录：补全默认用户名/密码（参照你原有逻辑）
         if (loginDTO.getIsFastLogin() != null && loginDTO.getIsFastLogin() == 1) {
-            log.info("触发快捷登录，使用默认用户");
-            // 建议在Constants类中定义默认值，避免硬编码（示例：Constants.DEFAULT_USERNAME）
-            loginDTO.setUserName("kh-admin");
+            log.info("触发快捷登录，使用admin用户");
+            loginDTO.setUserName("admin");
             loginDTO.setPassword("40f1afacc21c54105f7f8dbfd20104c5");
         }
 

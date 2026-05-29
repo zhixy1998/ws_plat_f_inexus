@@ -936,7 +936,7 @@ public class ConcisePhotometricNewWebSocket {
 
         if (!countedData.getSuccess()) {
             log.info(countedData.getMessage());
-            sendError(deviceSerialNumber, "请检查公式配置");
+            sendAndNoStopError(deviceSerialNumber, "请检查公式配置");
             return R.fail(countedData.getMessage());
         }
         List<FPhotometricCountDataInfo> countDataInfos = countedData.getData();
@@ -977,6 +977,11 @@ public class ConcisePhotometricNewWebSocket {
         vo.setOperation(WebSocketOperationEnum.ConcisePhotoMetric.getOperation());
         vo.setData(jsonObject);
         webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
+    }
+
+    private void sendAndNoStopError(String deviceSerialNumber, String message) {
+
+        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConcisePhotoMetric.getOperation(), message);
     }
 
 
