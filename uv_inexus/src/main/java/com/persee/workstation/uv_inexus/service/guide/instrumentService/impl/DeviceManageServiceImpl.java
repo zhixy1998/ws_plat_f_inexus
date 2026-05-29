@@ -574,15 +574,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(DeviceModelInfoPO::getDevModel, deviceModel);
             DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
+            String devModelName = modelInfoPO.getDevModelName() + modelInfoPO.getDevName();
 
-            deviceVO.setDeviceModelName(modelInfoPO.getDevName());
-            po.setDeviceModelName(modelInfoPO.getDevName());
+            deviceVO.setDeviceModelName(devModelName);
+            po.setDeviceModelName(devModelName);
 
             if (StringUtils.hasText(po.getDeviceName())) {
                 deviceVO.setDeviceName(po.getDeviceName());
             } else {
-                deviceVO.setDeviceName(modelInfoPO.getDevName());
-                po.setDeviceName(modelInfoPO.getDevName());
+                deviceVO.setDeviceName(devModelName);
+                po.setDeviceName(devModelName);
             }
 
             Integer i = infoService.queryDeviceActivationStatus(deviceVO.getDeviceSerialNumber());
@@ -1548,14 +1549,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             wrapper.eq(DeviceModelInfoPO::getDevModel, deviceModel);
             DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
 
-            vo.setDeviceModelName(modelInfoPO.getDevName());
-            info.setDeviceModelName(modelInfoPO.getDevName());
+            String devModelName = modelInfoPO.getDevModelName() + modelInfoPO.getDevName();
+
+            vo.setDeviceModelName(devModelName);
+            info.setDeviceModelName(devModelName);
 
             if (StringUtils.hasText(info.getDeviceName())) {
                 vo.setDeviceName(info.getDeviceName());
             } else {
-                vo.setDeviceName(modelInfoPO.getDevName());
-                info.setDeviceName(modelInfoPO.getDevName());
+                vo.setDeviceName(devModelName);
+                info.setDeviceName(devModelName);
             }
 
             Integer i = infoService.queryDeviceActivationStatus(vo.getDeviceSerialNumber());
@@ -1764,15 +1767,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(DeviceModelInfoPO::getDevModel, deviceModel);
             DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
+            String devModelName = modelInfoPO.getDevModelName() + modelInfoPO.getDevName();
 
-            vo.setDeviceModelName(modelInfoPO.getDevName());
-            info.setDeviceModelName(modelInfoPO.getDevName());
+            vo.setDeviceModelName(devModelName);
+            info.setDeviceModelName(devModelName);
 
             if (StringUtils.hasText(info.getDeviceName())) {
                 vo.setDeviceName(info.getDeviceName());
             } else {
-                vo.setDeviceName(modelInfoPO.getDevName());
-                info.setDeviceName(modelInfoPO.getDevName());
+                vo.setDeviceName(devModelName);
+                info.setDeviceName(devModelName);
             }
 
             Integer i = infoService.queryDeviceActivationStatus(vo.getDeviceSerialNumber());
