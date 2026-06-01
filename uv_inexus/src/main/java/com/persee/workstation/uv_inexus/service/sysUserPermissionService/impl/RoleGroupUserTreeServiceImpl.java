@@ -60,21 +60,21 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
             SysUserPO userPO = getUserByUserId(userId);
             if (userPO == null) {
                 //用户不存在或已禁用
-                return Result.fail("00604001");
+                return Result.fail("00D04001");
             }
 
             Integer userRoleId = userPO.getRoleId();
             if (userRoleId == null) {
                 log.warn("用户未分配角色，userId={}", userId);
                 //该用户未分配任何角色
-                return Result.fail("00604002");
+                return Result.fail("00D04002");
             }
 
             // -------------------------- 2. 查询用户所属角色，判断是否为超级管理员 --------------------------
             SysRolePO userRolePO = getRoleByRoleId(userRoleId);
             if (userRolePO == null) {
                 //用户所属角色不存在或已禁用
-                return Result.fail("00604003");
+                return Result.fail("00D04003");
             }
 
             // -------------------------- 3. 分场景处理：超级管理员 vs 普通用户 --------------------------
@@ -95,7 +95,7 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
         } catch (Exception e) {
             log.error("获取角色-组-用户树形异常：userId={}", userId, e);
             //"查询失败：" + e.getMessage()
-            return Result.fail("0060300B",e.getMessage());
+            return Result.fail("00D0300B",e.getMessage());
         }
     }
 

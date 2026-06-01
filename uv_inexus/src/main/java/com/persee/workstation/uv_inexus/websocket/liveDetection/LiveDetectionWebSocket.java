@@ -403,7 +403,7 @@ public class LiveDetectionWebSocket {
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
         if (info == null) {
             log.info("实时监测：未找到该设备");
-            return R.fail("请先连接仪器");
+            return R.fail("0020A025");
         }
         if (info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
             Constants.devConnectInfo.put(deviceSerialNumber, true);

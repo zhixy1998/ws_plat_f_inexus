@@ -182,7 +182,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
     @Override
     public R<Boolean> useDevice(String deviceSerialNumber, Integer status) {
         if (!StringUtils.hasText(deviceSerialNumber)){
-            return R.fail("仪器未连接");
+            return R.fail("00208008");
         }
         //
 
@@ -247,7 +247,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
     @Override
     public R<Boolean> newUseDevice(String deviceSerialNumber, Integer status) {
         if (!StringUtils.hasText(deviceSerialNumber)){
-            return R.fail("仪器未连接");
+            return R.fail("00208008");
         }
         //
 

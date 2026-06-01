@@ -133,55 +133,55 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
     public Result<String> addQuickConfig(QuickConfigSaveDTO saveDTO) {
         if (saveDTO.getParentId() != 0) {
             SysQuickConfigPO parent = baseMapper.selectById(saveDTO.getParentId());
-            if (parent == null) return Result.fail("父级配置不存在");
+            if (parent == null) return Result.fail("00D01001");
         }
         SysQuickConfigPO po = new SysQuickConfigPO();
         BeanUtils.copyProperties(saveDTO, po);
         baseMapper.insert(po);
-        return Result.ok("新增成功");
+        return Result.ok("00D01009");
     }
 
     @Override
     @Transactional
     public Result<String> updateQuickConfig(QuickConfigSaveDTO saveDTO) {
         SysQuickConfigPO po = baseMapper.selectById(saveDTO.getId());
-        if (po == null) return Result.fail("配置不存在");
+        if (po == null) return Result.fail("00D01002");
         if (saveDTO.getParentId() != 0) {
             SysQuickConfigPO parent = baseMapper.selectById(saveDTO.getParentId());
-            if (parent == null) return Result.fail("父级配置不存在");
+            if (parent == null) return Result.fail("00D01001");
         }
         BeanUtils.copyProperties(saveDTO, po);
         baseMapper.updateById(po);
-        return Result.ok("修改成功");
+        return Result.ok("00D01010");
     }
 
     @Override
     @Transactional
     public Result<String> deleteById(Long id) {
         SysQuickConfigPO po = baseMapper.selectById(id);
-        if (po == null) return Result.fail("配置不存在");
+        if (po == null) return Result.fail("00D01002");
         long count = baseMapper.selectCount(new LambdaQueryWrapper<SysQuickConfigPO>().eq(SysQuickConfigPO::getParentId, id));
-        if (count > 0) return Result.fail("存在子级，无法删除");
+        if (count > 0) return Result.fail("00D01003");
         baseMapper.deleteById(id);
-        return Result.ok("删除成功");
+        return Result.ok("00D01011");
     }
 
     @Override
     @Transactional
     public Result<String> deleteBatch(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) return Result.fail("请选择数据");
+        if (ids == null || ids.isEmpty()) return Result.fail("00D01004");
         for (Long id : ids) {
             long count = baseMapper.selectCount(new LambdaQueryWrapper<SysQuickConfigPO>().eq(SysQuickConfigPO::getParentId, id));
-            if (count > 0) return Result.fail("ID:" + id + " 存在子级");
+            if (count > 0) return Result.fail("00D01013", id);
         }
         baseMapper.deleteBatchIds(ids);
-        return Result.ok("批量删除成功");
+        return Result.ok("00D01012");
     }
 
     @Override
     public Result<SysQuickConfigPO> getQuickConfigById(Long id) {
         SysQuickConfigPO po = baseMapper.selectById(id);
-        return po == null ? Result.fail("不存在") : Result.ok(po);
+        return po == null ? Result.fail("00D01008") : Result.ok(po);
     }
 
     // ====================== 树形回显（修复：读取当前组自己的 permIdsHave） ======================
@@ -261,7 +261,7 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
             return Result.ok(root);
         } catch (Exception e) {
             log.error("树形查询失败", e);
-            return Result.fail("查询失败");
+            return Result.fail("00D01005");
         }
     }
 
@@ -300,7 +300,7 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
     public Result<Boolean> grantQuickConfigToGroup(QuickConfigGrantPermDTO grantDTO) {
         try {
             String groupId = grantDTO.getGroupId();
-            if (!StringUtils.hasText(groupId)) return Result.fail("小组ID不能为空");
+            if (!StringUtils.hasText(groupId)) return Result.fail("00D01006");
 
             Map<String, List<Long>> permMap = grantDTO.getQuickConfigIds();
             if (permMap == null) permMap = new HashMap<>();
@@ -364,7 +364,7 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
             return Result.ok(true);
         } catch (Exception e) {
             log.error("授权失败", e);
-            return Result.fail("授权失败：" + e.getMessage());
+            return Result.fail("00D01007", e.getMessage());
         }
     }
 

@@ -319,7 +319,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
 
         if (!operation.getSuccess()) {
-            return R.fail("参数设置出错！");
+            return R.fail("00B06008");
         }
 
         po.setCurrentPoolNum(poolNum);

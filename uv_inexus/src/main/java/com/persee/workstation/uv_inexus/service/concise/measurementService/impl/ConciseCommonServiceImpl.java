@@ -549,7 +549,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     public Result updateTask(UpdateTaskDto updateTaskDto) {
         if (updateTaskDto == null) {
             //参数不能为空
-            return Result.fail("00306003");
+            return Result.fail("00B06003");
         }
         SysUserPO po = userMapper.selectByUsername(updateTaskDto.getUpdateBy());
         LambdaQueryWrapper<FMeasureTask> wrapper = new LambdaQueryWrapper<FMeasureTask>()
@@ -1832,7 +1832,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task != null && task.getIsDelete().equals("1")) {
             //任务已删除
-            return Result.fail("任务已删除");
+            return Result.fail("00300012");
         }
         rationConciseService.saveButton(copyParam.getTaskId(), copyParam.getUpdateBy());
         try {
@@ -1945,11 +1945,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     @Override
     public Result saveDataInfo(FSaveDataVO vo) {
         if (!StringUtils.hasText(vo.getTaskId())) {
-            return Result.fail("请创建任务");
+            return Result.fail("0030001A");
         }
 
         if (!StringUtils.hasText(vo.getSampleId())) {
-            return Result.fail("缺少样品id");
+            return Result.fail("0030001B");
         }
 
         if (vo.getData() == null || vo.getData().isEmpty()) {
@@ -2040,22 +2040,22 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     public Result setUpParametersPort(String taskId, String deviceSerialNumber, String measureType) {
         // 校验参数
         if (!StringUtils.hasText(taskId)) {
-            return Result.fail("请先新建任务");
+            return Result.fail("0030001C");
         }
         if (!StringUtils.hasText(deviceSerialNumber)) {
-            return Result.fail("请先连接仪器");
+            return Result.fail("0030001D");
         }
         if (!StringUtils.hasText(measureType)) {
-            return Result.fail("请选择测量类型");
+            return Result.fail("0030001E");
         }
         // 根据任务id查询任务信息
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("任务不存在");
+            return Result.fail("00B08014");
         }
         String serialNumber = task.getDeviceSerialNumber();
         if (serialNumber!=null&&!task.getDeviceSerialNumber().equals(deviceSerialNumber)){
-            return Result.fail("当前设备与任务测量设备不匹配");
+            return Result.fail("0030001F");
         }
         String methodId = task.getMethodKey();
         // 根据测量类型获取对应的测量服务
@@ -2070,9 +2070,9 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             case TIME_SCAN:
                 return timeSweepConciseService.setUpParametersPort(methodId, deviceSerialNumber);
             case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
-                return Result.fail("暂不支持双组份定量分析");
+                return Result.fail("00300020");
             default:
-                return Result.fail("测量类型不存在");
+                return Result.fail("00300021");
         }
     }
 
@@ -2085,13 +2085,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     public Result queryMultipleTaskSample(MultipTaskSample multipTaskSample) {
         // 校验参数
         if(multipTaskSample==null){
-            return Result.fail("参数不能为空");
+            return Result.fail("00300022");
         }
         if(multipTaskSample.getTaskIds()==null|| multipTaskSample.getTaskIds().isEmpty()){
-            return Result.fail("请选选择任务");
+            return Result.fail("00300023");
         }
         if(multipTaskSample.getMeasureType()==null){
-            return Result.fail("请先选择测量类型");
+            return Result.fail("0030001E");
         }
         if (multipTaskSample.getDigit()==null){
             multipTaskSample.setDigit(4);
@@ -2102,7 +2102,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         for (String taskId : multipTaskSample.getTaskIds()) {
             FMeasureTask byId = fMeasureTaskService.getById(taskId);
             if (byId == null) {
-                return Result.fail("部分任务不存在请查看");
+                return Result.fail("00300015");
             }
             Map<String,Object> result = new HashMap<>();
             Result resultData = null;
@@ -2114,7 +2114,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                     resultData = timeSweepConciseService.queryMeasuredSampleDataList(taskId, null, multipTaskSample.getDigit(), multipTaskSample.getDeviceSerialNumber());
                     break;
                 default:
-                    return Result.fail("测量类型暂不支持数据比较");
+                    return Result.fail("00300016");
             }
             result.put("title",byId.getTaskName());
             result.put("children",resultData.getData());

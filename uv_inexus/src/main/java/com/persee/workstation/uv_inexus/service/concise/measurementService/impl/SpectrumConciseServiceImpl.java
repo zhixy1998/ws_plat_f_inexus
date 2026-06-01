@@ -207,11 +207,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 2. 光度模式校验
         String luminosity = parameter.getLuminosity();
         if (!StringUtils.hasText(luminosity)) {
-            return R.fail("00303007");
+            return R.fail("00B03007");
         }
         List<String> validLuminosityModes = Arrays.asList("1", "2", "3", "4"); // 1.abs 2.T% 3.Es 4.Er
         if (!validLuminosityModes.contains(luminosity)) {
-            return R.fail("00303008", luminosity);
+            return R.fail("00B03008", luminosity);
         }
 
         // 3. 波长参数校验
@@ -220,13 +220,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         String intervalStr = parameter.getWaveLengthInterval();
 
         if (!StringUtils.hasText(startWaveStr)) {
-            return R.fail("00302018");
+            return R.fail("00B02018");
         }
         if (!StringUtils.hasText(endWaveStr)) {
-            return R.fail("00302019");
+            return R.fail("00B02019");
         }
         if (!StringUtils.hasText(intervalStr)) {
-            return R.fail("0030201A");
+            return R.fail("00B0201A");
         }
 
         // 波长默认范围 185-1100
@@ -269,42 +269,42 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             }
 
             if (startWave < endWave) {
-                return R.fail("0030201B", startWave, endWave);
+                return R.fail("00B0201B", startWave, endWave);
             }
 
             double interval = Double.parseDouble(intervalStr);
             if (interval <= 0) {
-                return R.fail("0030201C", interval);
+                return R.fail("00B0201C", interval);
             }
             if (intervalStr.contains(".") && intervalStr.split("\\.")[1].length() > 2) {
-                return R.fail("0030201D", intervalStr);
+                return R.fail("00B0201D", intervalStr);
             }
 
         } catch (NumberFormatException e) {
-            return R.fail("0030201E");
+            return R.fail("00B0201E");
         }
 
         // 4. 扫描速度校验
         String scanSpeed = parameter.getScanSpeed();
         if (!StringUtils.hasText(scanSpeed)) {
-            return R.fail("0030201F");
+            return R.fail("00B0201F");
         }
 
         // 5. 重复模式校验
         String repetitionPattern = parameter.getRepetitionPattern();
         if (!StringUtils.hasText(repetitionPattern)) {
-            return R.fail("00302020");
+            return R.fail("00B02020");
         }
         List<String> validPatterns = Arrays.asList("不重复", "单池重复"); // 0.不重复 1.单池重复
         if (!validPatterns.contains(repetitionPattern)) {
-            return R.fail("00302021", repetitionPattern);
+            return R.fail("00B02021", repetitionPattern);
         }
 
         // 单池重复模式的详细校验
         if ("1".equals(repetitionPattern)) {
             String repetitionTimeStr = parameter.getRepetitionTime();
             if (!StringUtils.hasText(repetitionTimeStr)) {
-                return R.fail("00302022");
+                return R.fail("00B02022");
             }
             try {
                 int repetitionTime = Integer.parseInt(repetitionTimeStr);
@@ -317,7 +317,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
             String timeIntervalStr = parameter.getTimeInterval();
             if (!StringUtils.hasText(timeIntervalStr)) {
-                return R.fail("00302023");
+                return R.fail("00B02023");
             }
             try {
                 double timeInterval = Double.parseDouble(timeIntervalStr);
@@ -340,55 +340,55 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (spikeRemoval != null && spikeRemoval) {
             // 校验光度模式是否为Abs(1)或T%(2)
             if (!"1".equals(luminosity) && !"2".equals(luminosity)) {
-                return R.fail("00302024", getLuminosityDesc(luminosity));
+                return R.fail("00B02024", getLuminosityDesc(luminosity));
             }
 
             List<String> spikeArray = parameter.getSpikeArray();
             if (spikeArray == null || spikeArray.isEmpty()) {
-                return R.fail("00302025");
+                return R.fail("00B02025");
             }
 
             try {
                 for (int i = 0; i < spikeArray.size(); i++) {
                     String spikeStr = spikeArray.get(i);
                     if (!StringUtils.hasText(spikeStr)) {
-                        return R.fail("00302026", i + 1);
+                        return R.fail("00B02026", i + 1);
                     }
 
                     double spikeValue = Double.parseDouble(spikeStr.trim());
 
                     // 校验尖刺点是否在波长范围内
                     if (spikeValue > startWave || spikeValue < endWave) {
-                        return R.fail("00302027", spikeStr);
+                        return R.fail("00B02027", spikeStr);
                     }
 
                     // 校验小数点后最多1位（根据业务需求调整）
                     if (spikeStr.contains(".") && spikeStr.split("\\.")[1].length() > 1) {
-                        return R.fail("00302028", spikeStr);
+                        return R.fail("00B02028", spikeStr);
                     }
                 }
 
 
                 Set<String> uniqueSpikes = new HashSet<>(spikeArray);
                 if (uniqueSpikes.size() < spikeArray.size()) {
-                    return R.fail("00302029");
+                    return R.fail("00B02029");
                 }
 
             } catch (NumberFormatException e) {
-                return R.fail("0030202A", spikeArray);
+                return R.fail("00B0202A", spikeArray);
             }
         }
         // 7.1 光谱带宽校验
         if (!StringUtils.hasText(parameter.getSpectralBandwidth())) {
-            return R.fail("00303018");
+            return R.fail("00B03018");
         }
         try {
             double bandwidth = Double.parseDouble(parameter.getSpectralBandwidth());
             if (bandwidth <= 0) {
-                return R.fail("00303019", bandwidth);
+                return R.fail("00B03019", bandwidth);
             }
         } catch (NumberFormatException e) {
-            return R.fail("0030301A");
+            return R.fail("00B0301A");
         }
 
         // 7.2 响应时间校验（如果有业务规则）
@@ -405,21 +405,21 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return R.fail("0010202A",waveVal);
             }
         } catch (NumberFormatException e) {
-            return R.fail("0030301B");
+            return R.fail("00B0301B");
         }
 
         // 7.4 能量灯校验
         String energyLamp = parameter.getEnergyLamp();
         if (!StringUtils.hasText(energyLamp)) {
-            return R.fail("0030301C");
+            return R.fail("00B0301C");
         }
         if (!energyLamp.matches("^[0-2]$")) {
-            return R.fail("0030301D", energyLamp);
+            return R.fail("00B0301D", energyLamp);
         }
 
         // 7.5 增益校验
         if (parameter.getGain() != null && parameter.getGain() < 0) {
-            return R.fail("0030301E", parameter.getGain());
+            return R.fail("00B0301E", parameter.getGain());
         }
 
         return R.ok(true);
@@ -714,7 +714,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         boolean update1 = Double.parseDouble(paramDto.getParameter().getWaveLengthInterval()) < 1;
         if (paramDto.getParameter().getScanSpeed().equals(ScanSpeedEnum.EXTREME_FAST.getCode()) && update1) {
-            return Result.fail("00302006");
+            return Result.fail("00B02006");
         }
 
         if (param.getSpikeRemoval()==null){
@@ -1971,7 +1971,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 参数校验
         if (paramDto == null || paramDto.getDataId() == null || paramDto.getDataId().trim().isEmpty()) {
             //参数不能为空
-            return Result.fail("00306003");
+            return Result.fail("00B06003");
         }
 
         String dataId = paramDto.getDataId();
@@ -2128,7 +2128,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     public Result addGaugePointRemarks(FPeakValleyMarkingDto paramDto) {
         if (paramDto == null) {
             //参数不能为空
-            return Result.fail("00306003");
+            return Result.fail("00B06003");
         }
         if (paramDto.getRemark() == null) {
             //请先添加备注
@@ -2389,7 +2389,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     .findFirst()
                     .orElse(null);
             if (ScanSpeed == null) {
-                return Result.fail("00302001");
+                return Result.fail("00B02001");
             }
             setParam.setScanSpeed(Integer.valueOf(ScanSpeed));
         }
@@ -2406,7 +2406,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         param.setParam(setParam);
         R<OperationResultEntity> r = devOperationUtilService.operation(param);
         if (r.getSuccess()) {
-            return Result.ok("00302002");
+            return Result.ok("00B02002");
         } else {
             return Result.fail(r.getMessage());
         }
@@ -3197,7 +3197,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         if (paramDto.getDataType() == null || paramDto.getDataType().equals("")) {
             //变换类型错误
-            return Result.fail("00304004");
+            return Result.fail("00B04004");
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
@@ -4050,7 +4050,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             } else {
                 // log.error("【步骤5/5】文件生成失败：文件不存在");
                 //文件生成失败：文件不存在
-                return R.fail("0030400A");
+                return R.fail("00B0400A");
             }
         } catch (Exception e) {
             // log.error("【步骤5/5】文件生成异常", e);
@@ -4059,7 +4059,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 // log.info("【步骤5/5】删除异常文件: {}", deleted ? "成功" : "失败");
             }
             //文件生成失败：
-            return R.fail("00302006",e.getMessage());
+            return R.fail("00B02006",e.getMessage());
         } finally {
             // log.info("===== 导出流程结束 =====");
         }
@@ -4761,34 +4761,34 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     private Result validateSpectrumParam(FSpectrumParameterVo parameter) {
         // 必填字段校验
         if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getLuminosity())) {
-            return Result.fail("0030200A");
+            return Result.fail("00B0200A");
         }
         if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getStartWaveLength())) {
-            return Result.fail("0030200B");
+            return Result.fail("00B0200B");
         }
         if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getEndWaveLength())) {
-            return Result.fail("0030200C");
+            return Result.fail("00B0200C");
         }
         if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getWaveLengthInterval())) {
-            return Result.fail("0030200D");
+            return Result.fail("00B0200D");
         }
         if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getTimeInterval())) {
-            return Result.fail("0030200E");
+            return Result.fail("00B0200E");
         }
         if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getScanSpeed())) {
-            return Result.fail("0030200F");
+            return Result.fail("00B0200F");
         }
         if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getSpectralBandwidth())) {
-            return Result.fail("00302010");
+            return Result.fail("00B02010");
         }
         if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getChangeLampWaveLength())) {
-            return Result.fail("00302011");
+            return Result.fail("00B02011");
         }
         if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getEnergyLamp())) {
-            return Result.fail("00302012");
+            return Result.fail("00B02012");
         }
         if (parameter.getGain() == null) {
-            return Result.fail("00302013");
+            return Result.fail("00B02013");
         }
 
         return Result.ok();
@@ -4843,7 +4843,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 从原始数据中解析波长范围
         List<String> rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
         if (rawData == null || rawData.isEmpty()) {
-            return Result.fail("00302015");
+            return Result.fail("00B02015");
         }
 
         // 获取所有波长点并找出最小和最大值
@@ -4857,7 +4857,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 minWave = Math.min(minWave, wave);
                 maxWave = Math.max(maxWave, wave);
             } catch (NumberFormatException e) {
-                return Result.fail("00302016", dataPoint);
+                return Result.fail("00B02016", dataPoint);
             }
         }
 
@@ -4872,7 +4872,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     return Result.fail(message);
                 }
             } catch (NumberFormatException e) {
-                return Result.fail("00302017", xStr);
+                return Result.fail("00B02017", xStr);
             }
         }
 

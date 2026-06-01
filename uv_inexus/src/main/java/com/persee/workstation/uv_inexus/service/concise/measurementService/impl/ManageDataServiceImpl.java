@@ -166,7 +166,7 @@ public class ManageDataServiceImpl implements ManageDataService {
         // 参数校验
         if (taskQueryParam == null) {
             //查询参数不能为空
-            return Result.fail("00306002");
+            return Result.fail("00B06002");
         }
 
         // 分页参数默认值设置

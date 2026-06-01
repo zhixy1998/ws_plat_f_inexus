@@ -31,7 +31,7 @@ public class SystemRoleServiceImpl implements SystemRoleService {
         systemRolePO.setCreateBy(systemRolePO.getUpdateBy());
         boolean b = roleDAO.insert(systemRolePO) > 0;
         //添加失败
-        return b ? R.ok() : R.fail("00501001");
+        return b ? R.ok() : R.fail("00C01001");
     }
 
     @Override

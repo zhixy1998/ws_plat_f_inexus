@@ -423,13 +423,13 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         double response = Double.parseDouble(paramDto.getResponseTime());
         double interval = Double.parseDouble(paramDto.getIntervalTime());
         if (response > interval) {
-            return Result.fail("00303001");
+            return Result.fail("00B03001");
         }
         SetParam setParam = new SetParam();
         setParam.setPhotoMode(Integer.valueOf(paramDto.getLuminosity()));
         setParam.setSetWl(Double.valueOf(paramDto.getWaveLength()));
         if (paramDto.getMethodName()==null) {
-            return Result.fail("00303002");
+            return Result.fail("00B03002");
         }
         boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
         if (!b) {
@@ -1039,10 +1039,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 String jsonString = JSON.toJSONString(map);
                 SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
                 if (sample.getSampleNumber()!=null&&sample.getSampleNumber().length()>256){
-                    return Result.fail("00303003");
+                    return Result.fail("00B03003");
                 }
                 if (sample.getSampleName()!=null&&sample.getSampleName().length()>256){
-                    return Result.fail("00303004");
+                    return Result.fail("00B03004");
                 }
 
             }
@@ -1356,7 +1356,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         try {
             resultMap = restTemplate.postForEntity(pythonPathConstant.getPeakSearchingAndValleySearching(), request, Map.class).getBody();
         } catch (Exception e){
-            return Result.fail("00303005");
+            return Result.fail("00B03005");
         }
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> xPeak = (List<Double>) resultMap.get("peak_x");
@@ -2324,7 +2324,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         if (paramDto.getDataType() == null || paramDto.getDataType().equals("")) {
             //变换类型错误
-            return Result.fail("00304004");
+            return Result.fail("00B04004");
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
@@ -2742,7 +2742,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             } else {
                 // log.error("【步骤5/5】文件生成失败：文件不存在");
                 //文件生成失败：文件不存在
-                return R.fail("0030400A");
+                return R.fail("00B0400A");
             }
         } catch (Exception e) {
             // log.error("【步骤5/5】文件生成异常", e);
@@ -2751,7 +2751,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 // log.info("【步骤5/5】删除异常文件: {}", deleted ? "成功" : "失败");
             }
             //"文件生成失败：" + e.getMessage()
-            return R.fail("00302006",e.getMessage());
+            return R.fail("00B02006",e.getMessage());
         } finally {
             // log.info("===== 导出流程结束 =====");
         }
@@ -2791,7 +2791,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         Double responseTime = Double.valueOf(timeSweepParamter.getResponseTime());
         if (intervalTime < responseTime) {
             //间隔时间不能小于响应时间
-            return Result.fail("00303001");
+            return Result.fail("00B03001");
 
         }
         R<Boolean> r = checkParam(timeSweepParamter,methodDto.getDeviceSerialNumber());
@@ -3091,14 +3091,14 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
         Boolean put = timeMeasureIsStop.put(info.getDeviceId(), true);
         if (put== null) {
-            return Result.ok("00303006");
+            return Result.ok("00B03006");
         }
         if (!put) {
             log.info("设备已停止测量");
             Constants.measureStopStatus.put(deviceSerialNumber, false);
             return Result.ok();
         } else {
-            return Result.ok("00303006");
+            return Result.ok("00B03006");
         }
     }
 
@@ -3904,7 +3904,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         // 2. 光度模式校验
         String luminosity = parameter.getLuminosity();
         if (!StringUtils.hasText(luminosity)) {
-            return R.fail("00303007");
+            return R.fail("00B03007");
         }
         R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
         if (!deviceMeasureVOR.getSuccess()) {
@@ -3917,13 +3917,13 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 .map(DeviceConfParam::getParamValue)
                 .collect(Collectors.toList());
         if (!validLuminosityModes.contains(luminosity)) {
-            return R.fail("00303008", luminosity);
+            return R.fail("00B03008", luminosity);
         }
 
         // 3. 波长值校验
         String waveLengthStr = parameter.getWaveLength();
         if (!StringUtils.hasText(waveLengthStr)) {
-            return R.fail("00303009");
+            return R.fail("00B03009");
         }
 
         // 波长默认范围 190-1100
@@ -3939,17 +3939,17 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 return R.fail("00105005",waveLengthStr);
             }
         } catch (NumberFormatException e) {
-            return R.fail("0030300A");
+            return R.fail("00B0300A");
         }
 
         // 4. 扫描单位校验
         String scanUnit = parameter.getScanUnit();
         if (!StringUtils.hasText(scanUnit)) {
-            return R.fail("0030300B");
+            return R.fail("00B0300B");
         }
         List<String> validScanUnits = Arrays.asList("0", "1"); // 0.分 1.秒
         if (!validScanUnits.contains(scanUnit)) {
-            return R.fail("0030300C", scanUnit);
+            return R.fail("00B0300C", scanUnit);
         }
 
         // 5. 扫描总时长和总个数的关联校验
@@ -3959,33 +3959,33 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
         // 5.1 扫描总时长校验
         if (!StringUtils.hasText(scanTimeStr)) {
-            return R.fail("0030300D");
+            return R.fail("00B0300D");
         }
 
         // 5.2 时间间隔校验
         if (!StringUtils.hasText(intervalTimeStr)) {
-            return R.fail("0030300E");
+            return R.fail("00B0300E");
         }
 
         // 5.3 扫描总个数校验
         if (!StringUtils.hasText(totalNumberStr)) {
-            return R.fail("0030300F");
+            return R.fail("00B0300F");
         }
 
         try {
             double scanTime = Double.parseDouble(scanTimeStr);
             if (scanTime <= 0) {
-                return R.fail("00303010", scanTime);
+                return R.fail("00B03010", scanTime);
             }
 
             double intervalTime = Double.parseDouble(intervalTimeStr);
             if (intervalTime <= 0) {
-                return R.fail("00303011", intervalTime);
+                return R.fail("00B03011", intervalTime);
             }
 
             int totalNumber = Integer.parseInt(totalNumberStr);
             if (totalNumber <= 0) {
-                return R.fail("00303012", totalNumber);
+                return R.fail("00B03012", totalNumber);
             }
 
             // 验证扫描总时长、时间间隔和总个数的关系
@@ -4012,41 +4012,41 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             // 根据单位设置最大扫描时长限制
             if ("0".equals(scanUnit)) { // 分
                 if (scanTime > 10000) {
-                    return R.fail("00303013", scanTime);
+                    return R.fail("00B03013", scanTime);
                 }
             } else { // 秒
                 if (scanTime > 10000) {
-                    return R.fail("00303014", scanTime);
+                    return R.fail("00B03014", scanTime);
                 }
             }
 
         } catch (NumberFormatException e) {
-            return R.fail("00303015");
+            return R.fail("00B03015");
         }
 
         // 6. 多联池模式校验
         String multiPoolMode = parameter.getMultiPoolMode();
         if (!StringUtils.hasText(multiPoolMode)) {
-            return R.fail("00303016");
+            return R.fail("00B03016");
         }
         List<String> validMultiPoolModes = Arrays.asList("0", "1"); // 0.顺序单池连续采样 1.循环多池交替采样
         if (!validMultiPoolModes.contains(multiPoolMode)) {
-            return R.fail("00303017", multiPoolMode);
+            return R.fail("00B03017", multiPoolMode);
         }
 
         // 7. 父类 MeasurePublicParameters 字段校验
         // 7.1 光谱带宽校验
         String spectralBandwidth = parameter.getSpectralBandwidth();
         if (!StringUtils.hasText(spectralBandwidth)) {
-            return R.fail("00303018");
+            return R.fail("00B03018");
         }
         try {
             double bandwidth = Double.parseDouble(spectralBandwidth);
             if (bandwidth <= 0) {
-                return R.fail("00303019", bandwidth);
+                return R.fail("00B03019", bandwidth);
             }
         } catch (NumberFormatException e) {
-            return R.fail("0030301A");
+            return R.fail("00B0301A");
         }
 
         // 7.3 换灯波长校验
@@ -4060,27 +4060,27 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 return R.fail("0010202A",waveVal);
             }
         } catch (NumberFormatException e) {
-            return R.fail("0030301B");
+            return R.fail("00B0301B");
         }
 
         // 7.4 能量灯校验
         String energyLamp = parameter.getEnergyLamp();
         if (!StringUtils.hasText(energyLamp)) {
-            return R.fail("0030301C");
+            return R.fail("00B0301C");
         }
         if (!energyLamp.matches("^[0-2]$")) {
-            return R.fail("0030301D", energyLamp);
+            return R.fail("00B0301D", energyLamp);
         }
 
         // 7.5 增益校验
         if (parameter.getGain() != null && parameter.getGain() < 0) {
-            return R.fail("0030301E", parameter.getGain());
+            return R.fail("00B0301E", parameter.getGain());
         }
 
         // 7.7 参考标准名称校验（长度限制等）
         if (parameter.getReferenceStandardName() != null &&
                 parameter.getReferenceStandardName().length() > 100) {
-            return R.fail("0030301F");
+            return R.fail("00B0301F");
         }
 
         return R.ok(true);
@@ -4130,7 +4130,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         // 从原始数据中解析波长范围
         List<String> rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
         if (rawData == null || rawData.isEmpty()) {
-            return Result.fail("00303020");
+            return Result.fail("00B03020");
         }
 
         // 获取所有波长点并找出最小和最大值
@@ -4144,7 +4144,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 minWave = Math.min(minWave, wave);
                 maxWave = Math.max(maxWave, wave);
             } catch (NumberFormatException e) {
-                return Result.fail("00303021", dataPoint);
+                return Result.fail("00B03021", dataPoint);
             }
         }
 
@@ -4159,7 +4159,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                     return Result.fail(message);
                 }
             } catch (NumberFormatException e) {
-                return Result.fail("00303022", xStr);
+                return Result.fail("00B03022", xStr);
             }
         }
 

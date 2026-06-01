@@ -9,24 +9,20 @@
 
 package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
-import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
-import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserLoginService;
-import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
 import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
-
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
@@ -57,7 +53,7 @@ public class SysUserLoginController {
             log.info("触发快捷登录，使用默认用户");
 
             loginDTO.setUserName("admin");
-            loginDTO.setPassword("123456");
+            loginDTO.setPassword("Px@13579!");
         }
 
         log.info("接收登录请求，username={}", loginDTO.getUserName());

@@ -190,7 +190,7 @@ public class OpenBoxCheckServiceImpl implements OpenBoxCheckService {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return Result.fail("获取任务数据失败");
+            return Result.fail("00618001");
         }
         log.info("开箱报告的内容是"+result.toString());
         return Result.ok(result);
@@ -232,7 +232,7 @@ public class OpenBoxCheckServiceImpl implements OpenBoxCheckService {
             wrapper1.eq(ExcelTemplate::getTemplateName, request.getTemplateName());
             ExcelTemplate one = templateService.getOne(wrapper1);
             if (one != null) {
-                return Result.fail("模板名称重复！！");
+                return Result.fail("00618002");
             }
 
             // 创建新模板
@@ -307,12 +307,12 @@ public class OpenBoxCheckServiceImpl implements OpenBoxCheckService {
                 management.setUseTemplate(id);
                 management.setUpdated(LocalDateTime.now());
                 boolean b = taskManagementService.updateById(management);
-                return b ? Result.ok("修改成功") : Result.fail("修改失败");
+                return b ? Result.ok("00D01010") : Result.fail("00618003");
             } else {
-                return Result.fail("修改失败");
+                return Result.fail("00618003");
             }
         } catch (Exception e) {
-            return Result.fail("修改失败: " + e.getMessage());
+            return Result.fail("00618004", e.getMessage());
         }
     }
 

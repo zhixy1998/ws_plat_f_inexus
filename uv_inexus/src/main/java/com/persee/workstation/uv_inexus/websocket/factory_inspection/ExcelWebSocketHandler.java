@@ -3655,7 +3655,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         //获取枚举，看看是哪个
         WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
         if (anEnum == null) {
-            throw new BusinessException("不支持的光度模式: " + luminosityMode);
+            throw BusinessException.withCode("0061B001", luminosityMode);
         }
         log.info("光度模式：{}", anEnum.getName());
 //获取起始波长

@@ -60,12 +60,15 @@ public class WebSocketSendUtil {
     @Deprecated
     public void sendErrorMessage(String deviceSerialNumber, String operation, String errorMessage) {
         try {
+            String locale = localeProvider.getSystemLocale();
+            String translatedMessage = i18nMessageUtil.getMessageWithDefault(errorMessage, errorMessage);
+
             WebSocketResponseVO error = new WebSocketResponseVO();
             if (operation != null) {
                 error.setOperation(operation);
             }
-            error.setErrorMsg(errorMessage);
-            Result<WebSocketResponseVO> errorResult = Result.fail(errorMessage);
+            error.setErrorMsg(translatedMessage);
+            Result<WebSocketResponseVO> errorResult = Result.fail(translatedMessage);
             messagingTemplate.convertAndSend(getDeviceMessageTopic(deviceSerialNumber), errorResult);
         } catch (Exception e) {
             log.error("发送消息失败: {} {}", deviceSerialNumber, errorMessage, e);

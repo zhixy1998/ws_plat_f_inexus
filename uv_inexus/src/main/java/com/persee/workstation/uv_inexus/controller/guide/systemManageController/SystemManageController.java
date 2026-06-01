@@ -81,7 +81,7 @@ public class SystemManageController {
         if (StringUtils.hasText(language)) {
             return Result.ok(language);
         } else {
-            return Result.ok("简体中文");
+            return Result.ok("00C01005");
         }
     }
 

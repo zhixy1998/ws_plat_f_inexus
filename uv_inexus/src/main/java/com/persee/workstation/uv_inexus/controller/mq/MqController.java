@@ -35,9 +35,9 @@ public class MqController {
         try {
             dynamicMqProducerUtil.registerProducer(config);
             System.out.println("注册成功"+config.getClusterId()+",nameserver"+config.getNameServers());
-            return Result.ok("注册成功");
+            return Result.ok("00D04001");
         } catch (Exception e) {
-            return Result.fail("注册失败: " + e.getMessage());
+            return Result.fail("00D04004", e.getMessage());
         }
     }
 
@@ -54,9 +54,9 @@ public class MqController {
             @RequestParam String clusterId) {
         boolean success = dynamicMqProducerUtil.unregisterProducer(clusterId);
         if (success) {
-            return Result.ok("注销成功");
+            return Result.ok("00D04002");
         } else {
-            return Result.fail("注销失败，未找到对应生产者");
+            return Result.fail("00D04005");
         }
     }
 
@@ -79,9 +79,9 @@ public class MqController {
         boolean success = dynamicMqProducerUtil.sendNormal(clusterId, topic, tag, jsonBody);
         System.out.println("发送"+clusterId+",topic"+topic+",tag"+tag+",jsonBody"+jsonBody);
         if (success) {
-            return Result.ok("发送成功");
+            return Result.ok("00D04003");
         } else {
-            return Result.fail("发送失败");
+            return Result.fail("00D04006");
         }
     }
 
@@ -105,9 +105,9 @@ public class MqController {
             @ApiParam(value = "消息体(JSON)", required = true) @RequestBody String jsonBody) {
         boolean success = dynamicMqProducerUtil.sendOrderly(clusterId, topic, tag, jsonBody, hashKey);
         if (success) {
-            return Result.ok("发送成功");
+            return Result.ok("00D04003");
         } else {
-            return Result.fail("发送失败");
+            return Result.fail("00D04006");
         }
     }
 
@@ -131,9 +131,9 @@ public class MqController {
             @ApiParam(value = "消息体(JSON)", required = true) @RequestBody String jsonBody) {
         boolean success = dynamicMqProducerUtil.sendDelay(clusterId, topic, tag, jsonBody, delayLevel);
         if (success) {
-            return Result.ok("发送成功");
+            return Result.ok("00D04003");
         } else {
-            return Result.fail("发送失败");
+            return Result.fail("00D04006");
         }
     }
 }
