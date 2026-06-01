@@ -46,6 +46,10 @@ public class DeviceModelInfoPO {
     @TableField(value = "dev_model")
     private String devModel;
 
+    @ApiModelProperty("设备型号名称")
+    @TableField(value = "dev_model_name")
+    private String devModelName;
+
     @ApiModelProperty("设备名称")
     @TableField(value = "dev_name")
     private String devName;
