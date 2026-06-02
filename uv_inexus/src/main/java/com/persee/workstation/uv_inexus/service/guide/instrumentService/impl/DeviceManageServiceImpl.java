@@ -28,7 +28,6 @@ import com.persee.workstation.uv_inexus.enums.instrumentEnums.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -955,7 +954,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                                     } else if (key.equals(DeviceCalibrationParamEnum.Gain.getType())) {
                                         values = typeInfoPO.getGain();
                                     } else if (key.equals(DeviceCalibrationParamEnum.RealWavelength.getType()) || key.equals(DeviceCalibrationParamEnum.StandWavelength.getType())) {
-                                        List<DataNameValue> result = dealMaxAndMinLength(typeInfoPO);
+                                        List<DataNameValue> result = dealMaxAndMinLength(modelInfoPO);
                                         headVO.setData(result);
                                         continue;
                                     }
@@ -979,10 +978,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
                             if (paramVO.getParam().equals(DeviceCalibrationParamEnum.Start.getType())) {
 
-                                paramVO.setLastValue(typeInfoPO.getMaxWavelength());
+                                paramVO.setLastValue(modelInfoPO.getMaxWavelength());
 
                             } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.End.getType())) {
-                                paramVO.setLastValue(typeInfoPO.getMinWavelength());
+                                paramVO.setLastValue(modelInfoPO.getMinWavelength());
                             } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.ScanSpeed.getType())) {
                                 Object speed = MappingParamEnum.SCAN_SPEED.getDefaultValue();
                                 String jsonString = JSONObject.toJSONString(speed);
@@ -1131,7 +1130,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                             } else if (key.equals(DeviceCalibrationParamEnum.Gain.getType())) {
                                 values = typeInfoPO.getGain();
                             } else if (key.equals(DeviceCalibrationParamEnum.RealWavelength.getType()) || key.equals(DeviceCalibrationParamEnum.StandWavelength.getType())) {
-                                List<DataNameValue> result = dealMaxAndMinLength(typeInfoPO);
+                                List<DataNameValue> result = dealMaxAndMinLength(modelInfoPO);
                                 headVO.setData(result);
                                 continue;
                             }
@@ -1155,10 +1154,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
                     if (paramVO.getParam().equals(DeviceCalibrationParamEnum.Start.getType())) {
 
-                        paramVO.setLastValue(typeInfoPO.getMaxWavelength());
+                        paramVO.setLastValue(modelInfoPO.getMaxWavelength());
 
                     } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.End.getType())) {
-                        paramVO.setLastValue(typeInfoPO.getMinWavelength());
+                        paramVO.setLastValue(modelInfoPO.getMinWavelength());
                     } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.ScanSpeed.getType())) {
                         Object speed = MappingParamEnum.SCAN_SPEED.getDefaultValue();
                         String jsonString = JSONObject.toJSONString(speed);
@@ -1198,11 +1197,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return ans;
     }
 
-    private static List<DataNameValue> dealMaxAndMinLength(DeviceTypeInfoPO typeInfoPO) {
+    private static List<DataNameValue> dealMaxAndMinLength(DeviceModelInfoPO modelInfoPO) {
         List<DataNameValue> result = new ArrayList<>();
 
-        String minWavelength = typeInfoPO.getMinWavelength();
-        String maxWavelength = typeInfoPO.getMaxWavelength();
+        String minWavelength = modelInfoPO.getMinWavelength();
+        String maxWavelength = modelInfoPO.getMaxWavelength();
         DataNameValue min = new DataNameValue();
         min.setDataKey("min");
         min.setDataValue(minWavelength);
@@ -1291,12 +1290,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (DeviceCalibrationParamEnum.Start.getType().equals(param) || DeviceCalibrationParamEnum.End.getType().equals(param)) {
             DataNameValue min = new DataNameValue();
             min.setDataKey("min");
-            min.setDataValue(po.getMinWavelength());
+            min.setDataValue(modelInfoPO.getMinWavelength());
             ans.add(min);
 
             DataNameValue max = new DataNameValue();
             max.setDataKey("max");
-            max.setDataValue(po.getMaxWavelength());
+            max.setDataValue(modelInfoPO.getMaxWavelength());
             ans.add(max);
         }
 
@@ -2223,6 +2222,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             inputParam.setParam(param);
             R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
             if (!operation.getSuccess()) {
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
                 return R.fail(operation.getMessage());
             }
 

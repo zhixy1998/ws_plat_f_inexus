@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.util.DateUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
@@ -16,6 +17,7 @@ import com.persee.workstation.uv_inexus.component.*;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.controller.guide.instrumentController.DeviceController;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
+import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceModelInfoDAO;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceTypeInfoDAO;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
@@ -30,6 +32,7 @@ import com.persee.workstation.uv_inexus.i18n.OutputTranslator;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.factory_inspection.*;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceModelInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceTypeInfoPO;
 import com.persee.workstation.uv_inexus.service.factory_inspection.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -198,6 +201,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     //任务 id 和仪器型号关联关系 - 使用自定义缓存包装类
     private DeviceTypeInfoDAO deviceTypeInfoDAO;
 
+    @Autowired
+    private DeviceModelInfoDAO deviceModelInfoDAO;
     // 在类中添加缓存存储
     private final Map<String, List<JSONObject>> waveformCache = new ConcurrentHashMap<>();
     // 在类中添加任务管理Map
@@ -887,7 +892,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 String jsonStr = workbookData.getYellowHighlightedColumns();
                 // 直接使用ObjectMapper解析（Jackson）
                 ObjectMapper objectMapper = new ObjectMapper();
-                return objectMapper.readValue(jsonStr, new TypeReference<Map<String, List<String>>>() {});
+                return objectMapper.readValue(jsonStr, new TypeReference<Map<String, List<String>>>() {
+                });
             }
         } catch (Exception e) {
             log.error("获取模板{}的黄色高亮列信息失败", templateCode, e);
@@ -895,8 +901,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         return new HashMap<>();
     }
-
-
 
 
     private List<SheetDto> extractAllSheetsData(Workbook workbook, Map<String, List<String>> yellowColumnsMap) {
@@ -1118,7 +1122,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             // 注意：这里不调用 session.close()
         }
 
-        if (SET_MEASUREMENT_QUALITY_LINE.getCode().equals(type)){
+        if (SET_MEASUREMENT_QUALITY_LINE.getCode().equals(type)) {
             log.info("收到设置测量质量线指令");
             taskStopFlag.put(taskId, false);
             String x = inputTranslator.toChinese(root.get("x").asText());
@@ -1516,13 +1520,15 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         DeviceInfoPO info = deviceInfoService.getInfo(string);
         R<String> device = deviceManageService.getConnectDevice(updateBy);
 
-        if(!string.equals(device.getData())){
-            throw BusinessException.withCode("00613001");        }
+        if (!string.equals(device.getData())) {
+            throw BusinessException.withCode("00613001");
+        }
         if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
 //            JSONObject jsonObject = new JSONObject();
 //            jsonObject.put("error", "请检查当前仪器是否连接");
 //            sendToActiveSession(null, taskId, jsonObject);
-            throw BusinessException.withCode("00613002");        }
+            throw BusinessException.withCode("00613002");
+        }
 //        if (!StringUtils.equals(device.getData(), string)) {
 ////            JSONObject jsonObject = new JSONObject();
 ////            jsonObject.put("error", "设备已切换,请检查当前仪器与任务是否匹配！！！");
@@ -1816,7 +1822,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             }
                             R<String> device = deviceManageService.getConnectDevice(updateBy);
 
-                            if(!string.equals(device.getData())){
+                            if (!string.equals(device.getData())) {
                                 throw BusinessException.withCode("00613001");
                             }
                             DeviceInfoPO info = deviceInfoService.getInfo(string);
@@ -1931,7 +1937,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 if (data.get("res") != null) {
                                     if (CollectionUtils.isNotEmpty(list)) {
 
-                                        if (data.get("line")!=null) {
+                                        if (data.get("line") != null) {
                                             //修改工作簿，需要把第一个测量值的列填满，然后第二个，第三个
                                             for (int k = 0; k < list.size(); k++) {
                                                 if (halt.get(taskId)) {
@@ -1965,7 +1971,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                                 updateWorkbookCell(workbook, cellUpdDto);
                                                 log.info("修改完成");
                                             }
-                                        }else {
+                                        } else {
                                             List<JSONObject> jsonObjects = data.get("res");
                                             //修改工作簿，需要把第一个测量值的列填满，然后第二个，第三个
                                             for (int k = 0; k < jsonObjects.size(); k++) {
@@ -2101,7 +2107,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             realTimeEcho(taskId, "测量成功");
                             if (!isAutoInspection) {
                                 log.info("不是自动测试");
-                                setTaskMeasuring(taskId,false);
+                                setTaskMeasuring(taskId, false);
                             }
                         }
                         return futureResult;
@@ -2975,6 +2981,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             Map<String, Object> devType = new HashMap<>();
             devType.put("dev_type", s);
             List<DeviceTypeInfoPO> pos = deviceTypeInfoDAO.selectByMap(devType);
+
             if (CollectionUtils.isNotEmpty(pos)) {
                 DeviceTypeInfoPO deviceTypeInfoPO = pos.get(0);
 
@@ -2986,7 +2993,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         scanInterval,
                         gain,
                         scanSpeed,
-                        luminosityMode
+                        luminosityMode,
+                        deviceSerialNumber
                 );
 
                 com.alibaba.fastjson.JSONObject speedJson = deviceTypeInfoPO.getScanSpeed();
@@ -3478,13 +3486,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     /**
      * 校验光谱扫描参数是否在设备支持范围内
      *
-     * @param deviceTypeInfo 设备类型配置信息
+     * @param deviceTypeInfo  设备类型配置信息
      * @param startWavelength 起始波长
-     * @param endWavelength 终止波长
-     * @param scanInterval 扫描间隔
-     * @param gain 增益
-     * @param scanSpeed 扫描速度
-     * @param luminosityMode 光度模式
+     * @param endWavelength   终止波长
+     * @param scanInterval    扫描间隔
+     * @param gain            增益
+     * @param scanSpeed       扫描速度
+     * @param luminosityMode  光度模式
      * @throws BusinessException 参数校验失败时抛出
      */
     private void validateSpectrumScanParams(DeviceTypeInfoPO deviceTypeInfo,
@@ -3493,32 +3501,42 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                             Double scanInterval,
                                             Integer gain,
                                             String scanSpeed,
-                                            String luminosityMode) throws BusinessException {
+                                            String luminosityMode, String deviceSerialNumber) throws BusinessException {
         if (deviceTypeInfo == null) {
             log.error("设备类型配置信息为空，无法校验参数");
             throw BusinessException.withCode("0061300C");
         }
 
-        String devType = deviceTypeInfo.getDevType();
-        List<String> errorMessages = new ArrayList<>();
+        ArrayList<String> errorMessages = new ArrayList<>();
+        DeviceModelInfoPO modelInfoPO = null;
 
         // 1. 校验波长范围
         if (startWavelength != null || endWavelength != null) {
             try {
-                double minWavelength = Double.parseDouble(deviceTypeInfo.getMinWavelength());
-                double maxWavelength = Double.parseDouble(deviceTypeInfo.getMaxWavelength());
+
+                String[] split = deviceSerialNumber.split("-");
+                if (split != null && split.length > 1) {
+                    String s = split[1];
+                    List<DeviceModelInfoPO> devModel = deviceModelInfoDAO.selectList(new QueryWrapper<DeviceModelInfoPO>().eq("dev_model", s));
+                    if (CollectionUtils.isNotEmpty(devModel)) {
+                        modelInfoPO = devModel.get(0);
+                    }
+                }
+
+                double minWavelength = Double.parseDouble(modelInfoPO.getMinWavelength());
+                double maxWavelength = Double.parseDouble(modelInfoPO.getMaxWavelength());
 
                 if (startWavelength != null && (startWavelength < minWavelength || startWavelength > maxWavelength)) {
                     errorMessages.add(String.format("起始波长 %s 超出设备支持范围 [%s, %s]nm",
-                            startWavelength, deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength()));
+                            startWavelength, modelInfoPO.getMinWavelength(), modelInfoPO.getMaxWavelength()));
                 }
                 if (endWavelength != null && (endWavelength < minWavelength || endWavelength > maxWavelength)) {
                     errorMessages.add(String.format("终止波长 %s 超出设备支持范围 [%s, %s]nm",
-                            endWavelength, deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength()));
+                            endWavelength, modelInfoPO.getMinWavelength(), modelInfoPO.getMaxWavelength()));
                 }
             } catch (NumberFormatException e) {
                 log.error("波长范围配置格式错误: min={}, max={}",
-                        deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength());
+                        modelInfoPO.getMinWavelength(), modelInfoPO.getMaxWavelength());
                 errorMessages.add("设备波长范围配置格式错误，请联系管理员");
             }
         }
@@ -3562,7 +3580,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             scanSpeed, speedCode, deviceTypeInfo.getScanSpeed()));
                 }
             }
-        }
+
 
 //        // 5. 校验光度模式
 //        if (deviceTypeInfo.getLuminosity() != null && !deviceTypeInfo.getLuminosity().isEmpty()) {
@@ -3582,15 +3600,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //            }
 //        }
 
-        // 如果有任何校验错误，抛出异常
-        if (!errorMessages.isEmpty()) {
-            String errorMsg = String.format("参数校验失败：\n%s",  String.join("\n", errorMessages));
-            log.error(errorMsg);
-            throw new BusinessException(errorMsg);
-        }
+            // 如果有任何校验错误，抛出异常
+            if (!errorMessages.isEmpty()) {
+                String errorMsg = String.format("参数校验失败：\n%s", String.join("\n", errorMessages));
+                log.error(errorMsg);
+                throw new BusinessException(errorMsg);
+            }
 
-        log.info("设备 [{}] 光谱扫描参数校验通过: 波长[{}-{}]nm, 间隔={}nm, 增益={}, 速度={}, 光度模式={}",
-                devType, startWavelength, endWavelength, scanInterval, gain, scanSpeed, luminosityMode);
+            log.info("设备光谱扫描参数校验通过: 波长[{}-{}]nm, 间隔={}nm, 增益={}, 速度={}, 光度模式={}",
+                    startWavelength, endWavelength, scanInterval, gain, scanSpeed, luminosityMode);
+        }
     }
 
 
@@ -3638,7 +3657,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
     //根据不同的光度模式得到点
-    private void getPointsByLuminosityMode(String luminosityMode, SpectrumPoint p, List<Double> xList, List<BigDecimal> yList, String taskId, Integer i, List<JSONObject> cachedDataPoints, List<JSONObject> list, Map<String, Object> dataMap) throws BusinessException {
+    private void getPointsByLuminosityMode(String luminosityMode, SpectrumPoint
+            p, List<Double> xList, List<BigDecimal> yList, String taskId, Integer
+                                                   i, List<JSONObject> cachedDataPoints, List<JSONObject> list, Map<String, Object> dataMap) throws
+            BusinessException {
 // 将时间戳转换为相对于第一个点的秒数
 //        long aaTimestamp = waveformCache.getOrDefault(taskId, new ArrayList<>()).stream()
 //                .findFirst()
@@ -3957,7 +3979,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * @param requestBody
      * @return
      */
-    private Map<String, Object> callPythonService(String url, Map<String, Object> requestBody) throws BusinessException {
+    private Map<String, Object> callPythonService(String url, Map<String, Object> requestBody) throws
+            BusinessException {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -4022,7 +4045,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
     // 修改 sendBatchDataPoints 方法
-    private R<Map<String, List<JSONObject>>> sendBatchDataPoints(WebSocketSession originalSession, String taskId, String itemId, Map<String, Object> dataMap, String updateBy, String deviceSerialNumber, List<String> list, Integer samplePoolNum, Integer d) throws BusinessException {
+    private R<Map<String, List<JSONObject>>> sendBatchDataPoints(WebSocketSession originalSession, String
+            taskId, String itemId, Map<String, Object> dataMap, String updateBy, String
+                                                                         deviceSerialNumber, List<String> list, Integer samplePoolNum, Integer d) throws BusinessException {
         boolean b = samplePoolNum > 1;
         //是不是光谱扫描
         String res = MapUtils.getString(dataMap, SPECTRAL_SCAN_TYPE.getDescription());
@@ -4091,9 +4116,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * 校验时间扫描参数是否在设备支持范围内
      *
      * @param deviceTypeInfo 设备类型配置信息
-     * @param gain 增益
-     * @param narrow 狭缝/光谱带宽
-     * @param responseTime 响应时间
+     * @param gain           增益
+     * @param narrow         狭缝/光谱带宽
+     * @param responseTime   响应时间
      * @param luminosityMode 光度模式
      * @param lampStatusName 灯状态名称
      * @throws BusinessException 参数校验失败时抛出
@@ -4201,130 +4226,132 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * 使用高精度计时器实现完美准确的时间扫描
      * 改进：边测量边推送数据，让前端时间显示更准确
      */
-    private R<Map<String, List<JSONObject>>> timeScan(String taskId, Map<String, Object> dataMap, String deviceSerialNumber, Integer scanCount, String luminosityMode, boolean isMultiProductPool, String itemId, Integer d) throws BusinessException {
+    private R<Map<String, List<JSONObject>>> timeScan(String taskId, Map<String, Object> dataMap, String
+            deviceSerialNumber, Integer scanCount, String luminosityMode, boolean isMultiProductPool, String itemId, Integer
+                                                              d) throws BusinessException {
         // 清理上次时间扫描可能残留的控制标志，防止第二次测量被误停止
         timeScanStopControl.remove(taskId);
         taskStopFlag.put(taskId, false);
         try {
-        Map<String, List<JSONObject>> map = new HashMap<>();
-        // 线数据列表
-        ArrayList<JSONObject> line = new ArrayList<>();
-        // 结果数据列表
-        ArrayList<JSONObject> res = new ArrayList<>();
-        // X轴数据列表
-        ArrayList<Double> xList = new ArrayList<>();
-        // Y轴数据列表
-        ArrayList<BigDecimal> yList = new ArrayList<>();
+            Map<String, List<JSONObject>> map = new HashMap<>();
+            // 线数据列表
+            ArrayList<JSONObject> line = new ArrayList<>();
+            // 结果数据列表
+            ArrayList<JSONObject> res = new ArrayList<>();
+            // X轴数据列表
+            ArrayList<Double> xList = new ArrayList<>();
+            // Y轴数据列表
+            ArrayList<BigDecimal> yList = new ArrayList<>();
 
-        // 增益
-        Integer gain = MapUtils.getInteger(dataMap, GAIN.getDescription());
-        // 狭缝，光谱带宽
-        Double narrow = MapUtils.getDouble(dataMap, SPECTRAL_BANDWIDTH.getDescription());
-        // 响应时间
-        Double responseTime = MapUtils.getDouble(dataMap, RESPONSE_TIME.getDescription());
-        // 特征值
-        String characteristic = MapUtils.getString(dataMap, CHARACTERISTIC.getDescription());
-        //时间间隔
-        Double timeInterval = MapUtils.getDouble(dataMap, TIME_INTERVAL.getDescription());
-        //总时长
-        Double totalTime = timeInterval * (scanCount + 1);
-        // 【新增】获取设备类型信息并进行参数校验
-        String s = taskAndVersionMap.get(taskId);
-        Map<String, Object> devType11 = new HashMap<>();
-        devType11.put("dev_type", s);
-        List<DeviceTypeInfoPO> pos = deviceTypeInfoDAO.selectByMap(devType11);
-        if (CollectionUtils.isEmpty(pos)) {
-            log.error("时间扫描-未找到设备类型配置: devType={}", s);
-            throw BusinessException.withCode("00613011", s);
-        }
+            // 增益
+            Integer gain = MapUtils.getInteger(dataMap, GAIN.getDescription());
+            // 狭缝，光谱带宽
+            Double narrow = MapUtils.getDouble(dataMap, SPECTRAL_BANDWIDTH.getDescription());
+            // 响应时间
+            Double responseTime = MapUtils.getDouble(dataMap, RESPONSE_TIME.getDescription());
+            // 特征值
+            String characteristic = MapUtils.getString(dataMap, CHARACTERISTIC.getDescription());
+            //时间间隔
+            Double timeInterval = MapUtils.getDouble(dataMap, TIME_INTERVAL.getDescription());
+            //总时长
+            Double totalTime = timeInterval * (scanCount + 1);
+            // 【新增】获取设备类型信息并进行参数校验
+            String s = taskAndVersionMap.get(taskId);
+            Map<String, Object> devType11 = new HashMap<>();
+            devType11.put("dev_type", s);
+            List<DeviceTypeInfoPO> pos = deviceTypeInfoDAO.selectByMap(devType11);
+            if (CollectionUtils.isEmpty(pos)) {
+                log.error("时间扫描-未找到设备类型配置: devType={}", s);
+                throw BusinessException.withCode("00613011", s);
+            }
 
-        DeviceTypeInfoPO deviceTypeInfoPO = pos.get(0);
+            DeviceTypeInfoPO deviceTypeInfoPO = pos.get(0);
 
-        // 【新增】时间扫描参数校验
-        String lampStatusName = MapUtils.getString(dataMap, LAMP_STATUS.getDescription());
-        validateTimeScanParams(
-                deviceTypeInfoPO,
-                gain,
-                narrow,
-                responseTime,
-                luminosityMode,
-                lampStatusName
-        );
-        // 设置参数
-        DevOperationInputParam inputParam = new DevOperationInputParam();
-        inputParam.setDeviceSerialNumber(deviceSerialNumber);
-        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
-        SetParam param = new SetParam();
+            // 【新增】时间扫描参数校验
+            String lampStatusName = MapUtils.getString(dataMap, LAMP_STATUS.getDescription());
+            validateTimeScanParams(
+                    deviceTypeInfoPO,
+                    gain,
+                    narrow,
+                    responseTime,
+                    luminosityMode,
+                    lampStatusName
+            );
+            // 设置参数
+            DevOperationInputParam inputParam = new DevOperationInputParam();
+            inputParam.setDeviceSerialNumber(deviceSerialNumber);
+            inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+            SetParam param = new SetParam();
 
-        // 光度模式
-        Integer photoMode = null;
-        try {
-            photoMode = Integer.valueOf(Objects.requireNonNull(WaveLengthEnum.getCode(luminosityMode)));
-        } catch (Exception e) {
-            log.warn("时间扫描-光度模式为空！");
-        }
+            // 光度模式
+            Integer photoMode = null;
+            try {
+                photoMode = Integer.valueOf(Objects.requireNonNull(WaveLengthEnum.getCode(luminosityMode)));
+            } catch (Exception e) {
+                log.warn("时间扫描-光度模式为空！");
+            }
 
-        // 灯状态，灯位置
-        Integer lampStatus = null;
-        try {
-            lampStatus = Integer.valueOf(Objects.requireNonNull(EnergyLampEnums.getIdentityByName(MapUtils.getString(dataMap, LAMP_STATUS.getDescription()))));
-        } catch (Exception e) {
-            log.error("时间扫描-无效的灯状态");
-        }
+            // 灯状态，灯位置
+            Integer lampStatus = null;
+            try {
+                lampStatus = Integer.valueOf(Objects.requireNonNull(EnergyLampEnums.getIdentityByName(MapUtils.getString(dataMap, LAMP_STATUS.getDescription()))));
+            } catch (Exception e) {
+                log.error("时间扫描-无效的灯状态");
+            }
 
-        param.setPhotoMode(photoMode);
-        param.setResponseTime(responseTime);
-        param.setGain(gain);
-        param.setLampPos(lampStatus);
-        param.setSlit1(narrow);
-        inputParam.setParam(param);
-        R<OperationResultEntity> operationDark3 = new R<>();
-        WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
-        boolean isOk;
-        String errorMsg = "";
-        timeScanStopControl.put(taskId, true);
-        if (d == 0) {
-            if ((anEnum == abs || anEnum == tPercent)) {
+            param.setPhotoMode(photoMode);
+            param.setResponseTime(responseTime);
+            param.setGain(gain);
+            param.setLampPos(lampStatus);
+            param.setSlit1(narrow);
+            inputParam.setParam(param);
+            R<OperationResultEntity> operationDark3 = new R<>();
+            WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
+            boolean isOk;
+            String errorMsg = "";
+            timeScanStopControl.put(taskId, true);
+            if (d == 0) {
+                if ((anEnum == abs || anEnum == tPercent)) {
 
-                if (isMultiProductPool) {
-                    realTimeEcho(taskId, "时间扫描-切换样品池到暗电流物质");
+                    if (isMultiProductPool) {
+                        realTimeEcho(taskId, "时间扫描-切换样品池到暗电流物质");
 
-                    //切换样品池到黑挡块
-                    log.info("时间扫描-切换样品池到黑挡块>>>>>>>>>>>>>>>>>>>>");
-                    DevOperationInputParam operationInputParamDark = new DevOperationInputParam();
-                    operationInputParamDark.setDeviceSerialNumber(deviceSerialNumber);
-                    operationInputParamDark.setOperationType(OperationTypeEnums.SetParam.getType());
-                    SetParam sampleParamDark = new SetParam();
-                    Integer positionDark = materialManager.getActionPosition(taskId, StandardMaterialManager.MaterialType.BLACK_BLOCK);
-                    //设置样品池位置
-                    sampleParamDark.setCellPos(positionDark);
-                    operationInputParamDark.setParam(sampleParamDark);
-                    if (halt.get(taskId)) {
-                        log.info("时间扫描-任务被暂停");
-                        return R.fail(map);
+                        //切换样品池到黑挡块
+                        log.info("时间扫描-切换样品池到黑挡块>>>>>>>>>>>>>>>>>>>>");
+                        DevOperationInputParam operationInputParamDark = new DevOperationInputParam();
+                        operationInputParamDark.setDeviceSerialNumber(deviceSerialNumber);
+                        operationInputParamDark.setOperationType(OperationTypeEnums.SetParam.getType());
+                        SetParam sampleParamDark = new SetParam();
+                        Integer positionDark = materialManager.getActionPosition(taskId, StandardMaterialManager.MaterialType.BLACK_BLOCK);
+                        //设置样品池位置
+                        sampleParamDark.setCellPos(positionDark);
+                        operationInputParamDark.setParam(sampleParamDark);
+                        if (halt.get(taskId)) {
+                            log.info("时间扫描-任务被暂停");
+                            return R.fail(map);
+                        }
+                        operationDark3 = devOperationUtilService.operation(operationInputParamDark);
+                        if (operationDark3.getSuccess()) {
+                            JSONObject jsonObject1 = new JSONObject();
+                            jsonObject1.put("currentPoolNum", positionDark);
+                            sendToActiveSession(null, taskId, jsonObject1);
+                        }
+                    } else {
+                        operationDark3.setSuccess(true);
+                        if (halt.get(taskId)) {
+                            map.put("line", line);
+                            realTimeEcho(taskId, "已停止");
+                            return R.fail(map);
+                        }
+                        promptUserToPlaceMaterial(taskId, "黑挡块");
+                        if (halt.get(taskId)) {
+                            map.put("line", line);
+                            realTimeEcho(taskId, "已停止");
+                            return R.fail(map);
+                        }
                     }
-                    operationDark3 = devOperationUtilService.operation(operationInputParamDark);
                     if (operationDark3.getSuccess()) {
-                        JSONObject jsonObject1 = new JSONObject();
-                        jsonObject1.put("currentPoolNum", positionDark);
-                        sendToActiveSession(null, taskId, jsonObject1);
-                    }
-                } else {
-                    operationDark3.setSuccess(true);
-                    if (halt.get(taskId)) {
-                        map.put("line", line);
-                        realTimeEcho(taskId, "已停止");
-                        return R.fail(map);
-                    }
-                    promptUserToPlaceMaterial(taskId, "黑挡块");
-                    if (halt.get(taskId)) {
-                        map.put("line", line);
-                        realTimeEcho(taskId, "已停止");
-                        return R.fail(map);
-                    }
-                }
-                if (operationDark3.getSuccess()) {
-                    realTimeEcho(taskId, "时间扫描-切换样品池到暗电流物质成功");
+                        realTimeEcho(taskId, "时间扫描-切换样品池到暗电流物质成功");
 
                     log.info("时间扫描-切换样品池到黑挡块成功>>>>>>>>>>>>>>>>");
                 } else {
@@ -4334,76 +4361,76 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     sendToActiveSession(null, taskId, jsonObject);
                     setTaskMeasuring(taskId, false);
 //                    stopTask(taskId);
-                    map.put("line", line);
-                    return R.fail(map);
-                }
+                        map.put("line", line);
+                        return R.fail(map);
+                    }
 
-                if (org.apache.commons.lang3.StringUtils.equalsIgnoreCase(String.valueOf(taskAndVersionMap.get(taskId)), "T800")) {
-                    String[] parts = characteristic.split("[,，]");
+                    if (org.apache.commons.lang3.StringUtils.equalsIgnoreCase(String.valueOf(taskAndVersionMap.get(taskId)), "T800")) {
+                        String[] parts = characteristic.split("[,，]");
 
-                    // 解析特征波长并找出最大最小值
-                    List<Double> wavelengths = new ArrayList<>();
-                    for (String part : parts) {
-                        try {
-                            double wl = Double.parseDouble(part.trim());
-                            wavelengths.add(wl);
-                        } catch (NumberFormatException e) {
-                            log.warn("无法解析波长值：{}", part);
+                        // 解析特征波长并找出最大最小值
+                        List<Double> wavelengths = new ArrayList<>();
+                        for (String part : parts) {
+                            try {
+                                double wl = Double.parseDouble(part.trim());
+                                wavelengths.add(wl);
+                            } catch (NumberFormatException e) {
+                                log.warn("无法解析波长值：{}", part);
+                            }
+                        }
+
+                        if (!wavelengths.isEmpty()) {
+                            double minWavelength = Collections.min(wavelengths);
+                            double maxWavelength = Collections.max(wavelengths);
+
+                            // 最大值加 2，最小值减 2
+                            double startWavelength = minWavelength - 2.0;
+                            double endWavelength = maxWavelength + 2.0;
+
+                            log.info("计算得到的起始波长：{}, 终止波长：{}", startWavelength, endWavelength);
+
+                            DevOperationInputParam devType = new DevOperationInputParam();
+                            devType.setDeviceSerialNumber(deviceSerialNumber);
+                            SetParam setParam = new SetParam();
+                            //设置起始波长
+                            setParam.setStartWl(startWavelength);
+                            //设置终止波长
+                            setParam.setEndWl(endWavelength);
+                            //设置扫描间隔
+                            setParam.setScanWlInterval(1.0);
+                            devType.setParam(setParam);
+                            devType.setOperationType(OperationTypeEnums.SetParam.getType());
+                            R<OperationResultEntity> opera =
+                                    devOperationUtilService.operation(devType);
+                        } else {
+                            log.error("未找到有效的波长值");
                         }
                     }
+                    realTimeEcho(taskId, "时间扫描-开始暗电流矫正");
 
-                    if (!wavelengths.isEmpty()) {
-                        double minWavelength = Collections.min(wavelengths);
-                        double maxWavelength = Collections.max(wavelengths);
-
-                        // 最大值加 2，最小值减 2
-                        double startWavelength = minWavelength - 2.0;
-                        double endWavelength = maxWavelength + 2.0;
-
-                        log.info("计算得到的起始波长：{}, 终止波长：{}", startWavelength, endWavelength);
-
-                        DevOperationInputParam devType = new DevOperationInputParam();
-                        devType.setDeviceSerialNumber(deviceSerialNumber);
-                        SetParam setParam = new SetParam();
-                        //设置起始波长
-                        setParam.setStartWl(startWavelength);
-                        //设置终止波长
-                        setParam.setEndWl(endWavelength);
-                        //设置扫描间隔
-                        setParam.setScanWlInterval(1.0);
-                        devType.setParam(setParam);
-                        devType.setOperationType(OperationTypeEnums.SetParam.getType());
-                        R<OperationResultEntity> opera =
-                                devOperationUtilService.operation(devType);
-                    } else {
-                        log.error("未找到有效的波长值");
-                    }
-                }
-                realTimeEcho(taskId, "时间扫描-开始暗电流矫正");
-
-                //到这里就不能停止了，得等到做完暗电流停止
-                timeScanStopControl.put(taskId, false);
-                log.info("时间扫描-开始暗电流矫正>>>>>>>>>>>>>>>>>>>>");
-                DevOperationInputParam darkParam = new DevOperationInputParam();
-                SetParam setParam1 = new SetParam();
-                darkParam.setDeviceSerialNumber(deviceSerialNumber);
+                    //到这里就不能停止了，得等到做完暗电流停止
+                    timeScanStopControl.put(taskId, false);
+                    log.info("时间扫描-开始暗电流矫正>>>>>>>>>>>>>>>>>>>>");
+                    DevOperationInputParam darkParam = new DevOperationInputParam();
+                    SetParam setParam1 = new SetParam();
+                    darkParam.setDeviceSerialNumber(deviceSerialNumber);
 //        darkParam.setParam(setParam1);
-                darkParam.setCalibrationType(DeviceCalibrationInfoEnum.Dark.getType());
-                darkParam.setOperationType(OperationTypeEnums.Calibration.getType());
+                    darkParam.setCalibrationType(DeviceCalibrationInfoEnum.Dark.getType());
+                    darkParam.setOperationType(OperationTypeEnums.Calibration.getType());
 //        darkParam.setUpdateBy();
-                if (halt.get(taskId)) {
-                    realTimeEcho(taskId, "已停止");
-                    return R.fail(map);
-                }
-                R<OperationResultEntity> operationDark =
-                        devOperationUtilService.operation(darkParam);
-                timeScanStopControl.put(taskId, true);
-                log.info("时间扫描-暗电流矫正结果：{}", operationDark);
+                    if (halt.get(taskId)) {
+                        realTimeEcho(taskId, "已停止");
+                        return R.fail(map);
+                    }
+                    R<OperationResultEntity> operationDark =
+                            devOperationUtilService.operation(darkParam);
+                    timeScanStopControl.put(taskId, true);
+                    log.info("时间扫描-暗电流矫正结果：{}", operationDark);
 //            operationDark.setSuccess(false);
-                if (operationDark.getSuccess()) {
-                    isOk = true;
-                    realTimeEcho(taskId, "时间扫描-暗电流矫正成功");
-                } else {
+                    if (operationDark.getSuccess()) {
+                        isOk = true;
+                        realTimeEcho(taskId, "时间扫描-暗电流矫正成功");
+                    } else {
 //                isOk=false;
                     log.warn("时间扫描-暗电流矫正出错！");
                     setTaskMeasuring(taskId, false);
@@ -4436,87 +4463,87 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
 
 
-            // 解析特征波长
-            String[] parts = characteristic.split("[,，]");
-            List<String> waveLength = Arrays.stream(parts)
-                    .filter(part -> part != null && !part.trim().isEmpty())
-                    .collect(Collectors.toList());
-            if (CollectionUtils.isNotEmpty(waveLength)) {
-                inputParam.setWavelength(waveLength);
-            }
-
-            if (photoMode != null) {
-                if (photoMode == 1 || photoMode == 2) {
-                    if (halt.get(taskId)) {
-                        log.warn("任务被取消！");
-                        setTaskMeasuring(taskId, false);
-                        realTimeEcho(taskId, "已停止");
-                        return R.fail(map);
-                    }
-
-
+                // 解析特征波长
+                String[] parts = characteristic.split("[,，]");
+                List<String> waveLength = Arrays.stream(parts)
+                        .filter(part -> part != null && !part.trim().isEmpty())
+                        .collect(Collectors.toList());
+                if (CollectionUtils.isNotEmpty(waveLength)) {
+                    inputParam.setWavelength(waveLength);
                 }
-            }
-            R<OperationResultEntity> operation4 = new R<>();
-            if (isMultiProductPool) {
-                realTimeEcho(taskId, "时间扫描-切换样品池到校零物质");
 
-                //切换样品池到校零物质
-                log.info("时间扫描-切换样品池到校零物质>>>>>>>>>>>>>>>>>>>>");
-                DevOperationInputParam operationInputParam = new DevOperationInputParam();
-                operationInputParam.setDeviceSerialNumber(deviceSerialNumber);
-                operationInputParam.setOperationType(OperationTypeEnums.SetParam.getType());
-                SetParam sampleParam = new SetParam();
-                Integer position = materialManager.getActionPosition(taskId, StandardMaterialManager.MaterialType.ZERO);
-                //设置样品池位置
-                sampleParam.setCellPos(position);
-                operationInputParam.setParam(sampleParam);
-                if (halt.get(taskId)) {
-                    return R.fail(map);
-
-                }
-                operation4 = devOperationUtilService.operation(operationInputParam);
-                if (operation4.getSuccess()) {
-                    JSONObject jsonObject1 = new JSONObject();
-                    jsonObject1.put("currentPoolNum", position);
-                    sendToActiveSession(null, taskId, jsonObject1);
-                }
-            } else {
-                operation4.setSuccess(true);
-                List<TaskExecutionDetail> detailList = taskExecutionDetailMapper.initTaskCal(taskId);
-                //获取当前检测项的所有标准物
-                List<TaskExecutionDetail> collect = detailList.stream().filter(detail -> detail.getItemId().equals(itemId)).collect(Collectors.toList());
-                if (CollectionUtils.isNotEmpty(collect)) {
-                    String standardName = "";
-                    for (TaskExecutionDetail detail : collect) {
-                        if (detail.getStandardType().equals(ZERO.getCode())) {
-
-                            CalStdCats cats = calStdCatsService.getById(detail.getStandardId());
-                            if (cats == null) {
-                                CalArtifacts calArtifacts = calArtifactsService.getById(detail.getStandardId());
-                                standardName = calArtifacts.getName();
-                            } else {
-                                standardName = cats.getName();
-                            }
+                if (photoMode != null) {
+                    if (photoMode == 1 || photoMode == 2) {
+                        if (halt.get(taskId)) {
+                            log.warn("任务被取消！");
+                            setTaskMeasuring(taskId, false);
+                            realTimeEcho(taskId, "已停止");
+                            return R.fail(map);
                         }
+
+
                     }
+                }
+                R<OperationResultEntity> operation4 = new R<>();
+                if (isMultiProductPool) {
+                    realTimeEcho(taskId, "时间扫描-切换样品池到校零物质");
+
+                    //切换样品池到校零物质
+                    log.info("时间扫描-切换样品池到校零物质>>>>>>>>>>>>>>>>>>>>");
+                    DevOperationInputParam operationInputParam = new DevOperationInputParam();
+                    operationInputParam.setDeviceSerialNumber(deviceSerialNumber);
+                    operationInputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+                    SetParam sampleParam = new SetParam();
+                    Integer position = materialManager.getActionPosition(taskId, StandardMaterialManager.MaterialType.ZERO);
+                    //设置样品池位置
+                    sampleParam.setCellPos(position);
+                    operationInputParam.setParam(sampleParam);
                     if (halt.get(taskId)) {
-                        map.put("line", line);
-                        realTimeEcho(taskId, "已停止");
                         return R.fail(map);
+
                     }
-                    promptUserToPlaceMaterial(taskId, standardName);
-                    if (halt.get(taskId)) {
-                        map.put("line", line);
-                        realTimeEcho(taskId, "已停止");
-                        return R.fail(map);
+                    operation4 = devOperationUtilService.operation(operationInputParam);
+                    if (operation4.getSuccess()) {
+                        JSONObject jsonObject1 = new JSONObject();
+                        jsonObject1.put("currentPoolNum", position);
+                        sendToActiveSession(null, taskId, jsonObject1);
                     }
                 } else {
-                    log.warn("当前检测项没有标准物");
+                    operation4.setSuccess(true);
+                    List<TaskExecutionDetail> detailList = taskExecutionDetailMapper.initTaskCal(taskId);
+                    //获取当前检测项的所有标准物
+                    List<TaskExecutionDetail> collect = detailList.stream().filter(detail -> detail.getItemId().equals(itemId)).collect(Collectors.toList());
+                    if (CollectionUtils.isNotEmpty(collect)) {
+                        String standardName = "";
+                        for (TaskExecutionDetail detail : collect) {
+                            if (detail.getStandardType().equals(ZERO.getCode())) {
+
+                                CalStdCats cats = calStdCatsService.getById(detail.getStandardId());
+                                if (cats == null) {
+                                    CalArtifacts calArtifacts = calArtifactsService.getById(detail.getStandardId());
+                                    standardName = calArtifacts.getName();
+                                } else {
+                                    standardName = cats.getName();
+                                }
+                            }
+                        }
+                        if (halt.get(taskId)) {
+                            map.put("line", line);
+                            realTimeEcho(taskId, "已停止");
+                            return R.fail(map);
+                        }
+                        promptUserToPlaceMaterial(taskId, standardName);
+                        if (halt.get(taskId)) {
+                            map.put("line", line);
+                            realTimeEcho(taskId, "已停止");
+                            return R.fail(map);
+                        }
+                    } else {
+                        log.warn("当前检测项没有标准物");
+                    }
                 }
-            }
-            if (operation4.getSuccess()) {
-                realTimeEcho(taskId, "时间扫描-切换样品池到校零物质成功");
+                if (operation4.getSuccess()) {
+                    realTimeEcho(taskId, "时间扫描-切换样品池到校零物质成功");
 
                 log.info("时间扫描-切换样品池到校零物质成功>>>>>>>>>>>>>>>>");
             } else {
@@ -4526,10 +4553,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 sendToActiveSession(null, taskId, jsonObject);
                 setTaskMeasuring(taskId, false);
 //            stopTask(taskId);
-                return R.fail(map);
-            }
-            // 执行校零操作
-            realTimeEcho(taskId, "时间扫描-执行校零操作");
+                    return R.fail(map);
+                }
+                // 执行校零操作
+                realTimeEcho(taskId, "时间扫描-执行校零操作");
 
             inputParam.setOperationType(OperationTypeEnums.Zero.getType());
             if (halt.get(taskId)) {
@@ -4544,241 +4571,241 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 sendToActiveSession(null, taskId, jsonObject);
                 setTaskMeasuring(taskId, false);
 //            stopTask(taskId);
-                return R.fail(map);
+                    return R.fail(map);
 
-            } else {
-                realTimeEcho(taskId, "时间扫描-校零操作成功");
+                } else {
+                    realTimeEcho(taskId, "时间扫描-校零操作成功");
+                }
+
+                List<ChangeParam> zeroList = zero.getData().getZeroResult();
+                if (CollectionUtils.isEmpty(zeroList)) {
+                    log.warn("时间扫描-校零结果为空！");
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("error", "时间扫描-校零结果为空！");
+                    sendToActiveSession(null, taskId, jsonObject);
+                    setTaskMeasuring(taskId, false);
+//            stopTask(taskId);
+                    return R.fail(map);
+                }
             }
 
-            List<ChangeParam> zeroList = zero.getData().getZeroResult();
-            if (CollectionUtils.isEmpty(zeroList)) {
-                log.warn("时间扫描-校零结果为空！");
+            // 使用定时任务实现边测量边推送
+            ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "TimeScan-" + taskId);
+                t.setDaemon(true);
+                return t;
+            });
+
+            R<OperationResultEntity> operation5 = new R<>();
+            if (isMultiProductPool) {
+                if (d == 0) {
+                    //切换样品池到测量物质
+                    realTimeEcho(taskId, "时间扫描-切换样品池到测量物质");
+
+                    log.info("时间扫描-切换样品池到测量物质>>>>>>>>>>>>>>>>>>>>");
+                    DevOperationInputParam operationInputParam1 = new DevOperationInputParam();
+                    operationInputParam1.setDeviceSerialNumber(deviceSerialNumber);
+                    operationInputParam1.setOperationType(OperationTypeEnums.SetParam.getType());
+                    SetParam sampleParam1 = new SetParam();
+                    Integer position1 = materialManager.getActionPosition(taskId, StandardMaterialManager.MaterialType.MEASURE);
+                    //设置样品池位置
+                    sampleParam1.setCellPos(position1);
+                    operationInputParam1.setParam(sampleParam1);
+                    if (halt.get(taskId)) {
+                        realTimeEcho(taskId, "已停止");
+                        return R.fail(map);
+                    }
+                    operation5 = devOperationUtilService.operation(operationInputParam1);
+                    if (operation5.getSuccess()) {
+                        JSONObject jsonObject1 = new JSONObject();
+                        jsonObject1.put("currentPoolNum", position1);
+                        sendToActiveSession(null, taskId, jsonObject1);
+                    }
+                }
+            } else {
+                operation5.setSuccess(true);
+                List<TaskExecutionDetail> detailList = taskExecutionDetailMapper.initTaskCal(taskId);
+                //获取当前检测项的所有标准物
+                List<TaskExecutionDetail> collect = detailList.stream().filter(detail -> detail.getItemId().equals(itemId)).collect(Collectors.toList());
+                if (CollectionUtils.isNotEmpty(collect)) {
+                    String standardName = "";
+                    for (TaskExecutionDetail detail : collect) {
+                        if (detail.getStandardType().equals(MEASUREMENT.getCode())) {
+
+                            CalStdCats cats = calStdCatsService.getById(detail.getStandardId());
+                            if (cats == null) {
+                                CalArtifacts calArtifacts = calArtifactsService.getById(detail.getStandardId());
+                                standardName = calArtifacts.getName();
+                            } else {
+                                standardName = cats.getName();
+                            }
+                        }
+                    }
+                    if (halt.get(taskId)) {
+                        realTimeEcho(taskId, "已停止");
+                        map.put("line", line);
+                        return R.fail(map);
+                    }
+                    promptUserToPlaceMaterial(taskId, standardName);
+                    if (halt.get(taskId)) {
+                        realTimeEcho(taskId, "已停止");
+                        map.put("line", line);
+                        return R.fail(map);
+                    }
+                } else {
+                    log.warn("当前检测项没有标准物");
+                }
+            }
+
+            if (operation5.getSuccess()) {
+                realTimeEcho(taskId, "时间扫描-切换样品池到测量物质成功");
+
+                log.info("时间扫描-切换样品池到测量物质成功>>>>>>>>>>>>>>>>");
+            } else {
+                log.warn("时间扫描-切换样品池到测量物质失败！");
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", "时间扫描-校零结果为空！");
+                jsonObject.put("error", "时间扫描-切换样品池到测量物质失败！");
                 sendToActiveSession(null, taskId, jsonObject);
                 setTaskMeasuring(taskId, false);
 //            stopTask(taskId);
                 return R.fail(map);
             }
-        }
 
-        // 使用定时任务实现边测量边推送
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "TimeScan-" + taskId);
-            t.setDaemon(true);
-            return t;
-        });
+            realTimeEcho(taskId, "时间扫描-开始扫描");
 
-        R<OperationResultEntity> operation5 = new R<>();
-        if (isMultiProductPool) {
-            if (d == 0) {
-                //切换样品池到测量物质
-                realTimeEcho(taskId, "时间扫描-切换样品池到测量物质");
-
-                log.info("时间扫描-切换样品池到测量物质>>>>>>>>>>>>>>>>>>>>");
-                DevOperationInputParam operationInputParam1 = new DevOperationInputParam();
-                operationInputParam1.setDeviceSerialNumber(deviceSerialNumber);
-                operationInputParam1.setOperationType(OperationTypeEnums.SetParam.getType());
-                SetParam sampleParam1 = new SetParam();
-                Integer position1 = materialManager.getActionPosition(taskId, StandardMaterialManager.MaterialType.MEASURE);
-                //设置样品池位置
-                sampleParam1.setCellPos(position1);
-                operationInputParam1.setParam(sampleParam1);
-                if (halt.get(taskId)) {
-                    realTimeEcho(taskId, "已停止");
-                    return R.fail(map);
-                }
-                operation5 = devOperationUtilService.operation(operationInputParam1);
-                if (operation5.getSuccess()) {
-                    JSONObject jsonObject1 = new JSONObject();
-                    jsonObject1.put("currentPoolNum", position1);
-                    sendToActiveSession(null, taskId, jsonObject1);
-                }
+            DevOperationInputParam param1 = new DevOperationInputParam();
+            // 执行单次测量
+            param1.setOperationType(OperationTypeEnums.TimeMeasure.getType());
+            param1.setDeviceSerialNumber(deviceSerialNumber);
+            ArrayList<String> strings = new ArrayList<>();
+            strings.add(characteristic);
+            param1.setIntervalSeconds(timeInterval);
+            param1.setTotalTime(totalTime);
+            if (halt.get(taskId)) {
+                realTimeEcho(taskId, "已停止");
+                return R.fail(map);
             }
-        } else {
-            operation5.setSuccess(true);
-            List<TaskExecutionDetail> detailList = taskExecutionDetailMapper.initTaskCal(taskId);
-            //获取当前检测项的所有标准物
-            List<TaskExecutionDetail> collect = detailList.stream().filter(detail -> detail.getItemId().equals(itemId)).collect(Collectors.toList());
-            if (CollectionUtils.isNotEmpty(collect)) {
-                String standardName = "";
-                for (TaskExecutionDetail detail : collect) {
-                    if (detail.getStandardType().equals(MEASUREMENT.getCode())) {
 
-                        CalStdCats cats = calStdCatsService.getById(detail.getStandardId());
-                        if (cats == null) {
-                            CalArtifacts calArtifacts = calArtifactsService.getById(detail.getStandardId());
-                            standardName = calArtifacts.getName();
-                        } else {
-                            standardName = cats.getName();
-                        }
-                    }
-                }
-                if (halt.get(taskId)) {
-                    realTimeEcho(taskId, "已停止");
-                    map.put("line", line);
-                    return R.fail(map);
-                }
-                promptUserToPlaceMaterial(taskId, standardName);
-                if (halt.get(taskId)) {
-                    realTimeEcho(taskId, "已停止");
-                    map.put("line", line);
-                    return R.fail(map);
-                }
-            } else {
-                log.warn("当前检测项没有标准物");
-            }
-        }
+            R<OperationResultEntity> measure = devOperationUtilService.operation(param1);
+            int i = 0;
+            waveformCache.remove(taskId);
 
-        if (operation5.getSuccess()) {
-            realTimeEcho(taskId, "时间扫描-切换样品池到测量物质成功");
+            int totalPoints = totalTime.intValue();
+            log.info("时间扫描总点数：{}, 总时间：{}秒，时间间隔：{}秒", totalPoints, totalTime, timeInterval);
 
-            log.info("时间扫描-切换样品池到测量物质成功>>>>>>>>>>>>>>>>");
-        } else {
-            log.warn("时间扫描-切换样品池到测量物质失败！");
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("error", "时间扫描-切换样品池到测量物质失败！");
-            sendToActiveSession(null, taskId, jsonObject);
-            setTaskMeasuring(taskId, false);
-//            stopTask(taskId);
-            return R.fail(map);
-        }
+            HashMap<String, String> map1 = new HashMap<>();
+            map1.put("type", "timeScan");
+            map1.put("totalTime", totalTime.toString());
+            map1.put("timeInterval", timeInterval.toString());
+            map1.put("totalPoints", String.valueOf(totalPoints));
+            JSONObject horizontalAxis = new JSONObject();
+            horizontalAxis.put("horizontalAxis", map1);
+            sendToActiveSession(null, taskId, horizontalAxis);
 
-        realTimeEcho(taskId, "时间扫描-开始扫描");
-
-        DevOperationInputParam param1 = new DevOperationInputParam();
-        // 执行单次测量
-        param1.setOperationType(OperationTypeEnums.TimeMeasure.getType());
-        param1.setDeviceSerialNumber(deviceSerialNumber);
-        ArrayList<String> strings = new ArrayList<>();
-        strings.add(characteristic);
-        param1.setIntervalSeconds(timeInterval);
-        param1.setTotalTime(totalTime);
-        if (halt.get(taskId)) {
-            realTimeEcho(taskId, "已停止");
-            return R.fail(map);
-        }
-
-        R<OperationResultEntity> measure = devOperationUtilService.operation(param1);
-        int i = 0;
-        waveformCache.remove(taskId);
-
-        int totalPoints = totalTime.intValue();
-        log.info("时间扫描总点数：{}, 总时间：{}秒，时间间隔：{}秒", totalPoints, totalTime, timeInterval);
-
-        HashMap<String, String> map1 = new HashMap<>();
-        map1.put("type", "timeScan");
-        map1.put("totalTime", totalTime.toString());
-        map1.put("timeInterval", timeInterval.toString());
-        map1.put("totalPoints", String.valueOf(totalPoints));
-        JSONObject horizontalAxis = new JSONObject();
-        horizontalAxis.put("horizontalAxis", map1);
-        sendToActiveSession(null, taskId, horizontalAxis);
-
-        while (true) {
-            try {
-                taskStopFlag.put(taskId, true);
+            while (true) {
+                try {
+                    taskStopFlag.put(taskId, true);
 // 在等待消息之前先检查是否已停止
-                if (halt.get(taskId)) {
-                    realTimeEcho(taskId, "已停止");
-                    map.put("line", line);
-                    return R.fail(map);
-                }
-                Object o = queue.pollMessage(deviceSerialNumber, T600ComIdEnums.Measure.getComId());
-                if (o instanceof SpectrumPoint || o == null) {
-                    if (o != null) {
-                        i++;
-                        SpectrumPoint p = (SpectrumPoint) o;
-
-                        // 获取或创建波形图数据缓存
-                        List<JSONObject> cachedDataPoints = waveformCache.computeIfAbsent(taskId, k -> new ArrayList<>());
-
-
-                        getPointsByLuminosityMode(luminosityMode, p, xList, yList, taskId, i, cachedDataPoints, line, dataMap);
-                        if (halt.get(taskId)) {
-                            realTimeEcho(taskId, "已停止");
-                            return R.fail(map);
-                        }
-
-                        log.info("时间扫描结果：{}", p);
+                    if (halt.get(taskId)) {
+                        realTimeEcho(taskId, "已停止");
+                        map.put("line", line);
+                        return R.fail(map);
                     }
-                } else {
-                    log.info("收到了结束相关标志!!!");
-                    if (o instanceof EndMarker) {
-                        log.info("找到结束标志了，看看是什么结束标志！！！");
-                        EndMarker marker = (EndMarker) o;
-                        if (marker.getReason() == EndMarker.Reason.NORMAL) {
-                            log.info("i={}, total_time={}", i, totalTime);
-                            if (i < totalTime) {
-                                log.info("时间扫描未成完，继续接收数据");
-                                continue;
+                    Object o = queue.pollMessage(deviceSerialNumber, T600ComIdEnums.Measure.getComId());
+                    if (o instanceof SpectrumPoint || o == null) {
+                        if (o != null) {
+                            i++;
+                            SpectrumPoint p = (SpectrumPoint) o;
+
+                            // 获取或创建波形图数据缓存
+                            List<JSONObject> cachedDataPoints = waveformCache.computeIfAbsent(taskId, k -> new ArrayList<>());
+
+
+                            getPointsByLuminosityMode(luminosityMode, p, xList, yList, taskId, i, cachedDataPoints, line, dataMap);
+                            if (halt.get(taskId)) {
+                                realTimeEcho(taskId, "已停止");
+                                return R.fail(map);
                             }
-                            log.info("时间扫描正常结束标志");
-                            log.info("设备 {} 的时间扫描正常结束", deviceSerialNumber);
-                            break;
-                        } else if (marker.getReason() == EndMarker.Reason.TIME_STOP) {
-                            setTaskMeasuring(taskId, false);
-                            realTimeEcho(taskId, "停止-时间扫描");
+
+                            log.info("时间扫描结果：{}", p);
+                        }
+                    } else {
+                        log.info("收到了结束相关标志!!!");
+                        if (o instanceof EndMarker) {
+                            log.info("找到结束标志了，看看是什么结束标志！！！");
+                            EndMarker marker = (EndMarker) o;
+                            if (marker.getReason() == EndMarker.Reason.NORMAL) {
+                                log.info("i={}, total_time={}", i, totalTime);
+                                if (i < totalTime) {
+                                    log.info("时间扫描未成完，继续接收数据");
+                                    continue;
+                                }
+                                log.info("时间扫描正常结束标志");
+                                log.info("设备 {} 的时间扫描正常结束", deviceSerialNumber);
+                                break;
+                            } else if (marker.getReason() == EndMarker.Reason.TIME_STOP) {
+                                setTaskMeasuring(taskId, false);
+                                realTimeEcho(taskId, "停止-时间扫描");
 //                            JSONObject jsonObject = new JSONObject();
 //                            jsonObject.put("error", "时间扫描-超时");
 //                            sendToActiveSession(null, taskId, jsonObject);
-                            map.put("line", line);
-                            log.info("时间扫描停止标志");
-                            this.realTimeEcho(taskId, "已停止");
-                            return R.fail(map);
-                        } else if (marker.getReason() == EndMarker.Reason.UN_NORMAL) {
-                            log.info("时间扫描停止标志");
-                            setTaskMeasuring(taskId, false);
-                            map.put("line", line);
-                            this.realTimeEcho(taskId, "已停止");
-                            return R.fail(map);
+                                map.put("line", line);
+                                log.info("时间扫描停止标志");
+                                this.realTimeEcho(taskId, "已停止");
+                                return R.fail(map);
+                            } else if (marker.getReason() == EndMarker.Reason.UN_NORMAL) {
+                                log.info("时间扫描停止标志");
+                                setTaskMeasuring(taskId, false);
+                                map.put("line", line);
+                                this.realTimeEcho(taskId, "已停止");
+                                return R.fail(map);
+                            }
+                        } else {
+                            log.error("队列中出现未知类" + o);
                         }
-                    } else {
-                        log.error("队列中出现未知类" + o);
+
                     }
 
+                } catch (Exception e) {
+                    log.error("错误111：", e);
+                    setTaskMeasuring(taskId, false);
+                    map.put("line", line);
+                    return R.fail(map);
                 }
-
-            } catch (Exception e) {
-                log.error("错误111：", e);
-                setTaskMeasuring(taskId, false);
+            }
+            if (halt.get(taskId)) {
+                realTimeEcho(taskId, "已停止");
                 map.put("line", line);
                 return R.fail(map);
             }
-        }
-        if (halt.get(taskId)) {
-            realTimeEcho(taskId, "已停止");
-            map.put("line", line);
-            return R.fail(map);
-        }
-        // 最终分析结果
-        try {
-            if (!xList.isEmpty() && !yList.isEmpty()) {
-                List<BigDecimal> bigDecimals = doubleListToBigDecimalList(xList);
-                List<BigDecimal> analysisResult = findMaxOffsetUVTestTool.calcResult(bigDecimals, yList, null);
-                if (CollectionUtils.isNotEmpty(analysisResult)) {
-                    for (BigDecimal value : analysisResult) {
-                        JSONObject resultObj = new JSONObject();
-                        resultObj.put("peak", value.toString());
-                        res.add(resultObj);
+            // 最终分析结果
+            try {
+                if (!xList.isEmpty() && !yList.isEmpty()) {
+                    List<BigDecimal> bigDecimals = doubleListToBigDecimalList(xList);
+                    List<BigDecimal> analysisResult = findMaxOffsetUVTestTool.calcResult(bigDecimals, yList, null);
+                    if (CollectionUtils.isNotEmpty(analysisResult)) {
+                        for (BigDecimal value : analysisResult) {
+                            JSONObject resultObj = new JSONObject();
+                            resultObj.put("peak", value.toString());
+                            res.add(resultObj);
+                        }
                     }
                 }
+            } catch (
+                    Exception e) {
+                log.warn("时间测量分析出错！", e);
+                JSONObject errorObj = new JSONObject();
+                errorObj.put("error", "时间测量分析出错！");
+                sendToActiveSession(null, taskId, errorObj);
+                setTaskMeasuring(taskId, false);
+                map.put("res", res);
+                map.put("line", line);
+                return R.fail(map);
             }
-        } catch (
-                Exception e) {
-            log.warn("时间测量分析出错！", e);
-            JSONObject errorObj = new JSONObject();
-            errorObj.put("error", "时间测量分析出错！");
-            sendToActiveSession(null, taskId, errorObj);
-            setTaskMeasuring(taskId, false);
-            map.put("res", res);
-            map.put("line", line);
-            return R.fail(map);
-        }
 
-        map.put("line", line);
-        map.put("res", res);
-        return R.ok(map);
+            map.put("line", line);
+            map.put("res", res);
+            return R.ok(map);
         } finally {
             // 无论正常结束还是异常退出，都清理时间扫描控制标志
             timeScanStopControl.remove(taskId);
@@ -4813,11 +4840,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * 校验光度扫描参数是否在设备支持范围内
      *
      * @param deviceTypeInfo 设备类型配置信息
-     * @param gain 增益
-     * @param narrow 狭缝/光谱带宽
-     * @param responseTime 响应时间
+     * @param gain           增益
+     * @param narrow         狭缝/光谱带宽
+     * @param responseTime   响应时间
      * @param luminosityMode 光度模式
-//     * @param lampStatusName 灯状态名称
+     *                       //     * @param lampStatusName 灯状态名称
      * @throws BusinessException 参数校验失败时抛出
      */
     private void validateIntensityScanParams(DeviceTypeInfoPO deviceTypeInfo,
@@ -4908,7 +4935,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         // 如果有任何校验错误，抛出异常
         if (!errorMessages.isEmpty()) {
-            String errorMsg = String.format("光度扫描参数校验失败：\n%s", String.join("\n", errorMessages));
+            String errorMsg = String.format("光度扫描参数校验失败：\n%s", java.lang.String.join("\n", errorMessages));
             log.error(errorMsg);
             throw new BusinessException(errorMsg);
         }
@@ -4918,7 +4945,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
 
-    private R<Map<String, List<JSONObject>>> intensityScan(String taskId, Map<String, Object> dataMap, String deviceSerialNumber, boolean isMultiProductPool, String itemId, Integer d) throws BusinessException {
+    private R<Map<String, List<JSONObject>>> intensityScan(String taskId, Map<String, Object> dataMap, String
+            deviceSerialNumber, boolean isMultiProductPool, String itemId, Integer d) throws BusinessException {
         //光度模式
         String luminosityMode = MapUtils.getString(dataMap, LUMINOSITY_MODE.getDescription());
         //增益
@@ -5792,7 +5820,7 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
     }
 
 
-    // 在连接关闭时清理队列
+// 在连接关闭时清理队列
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
