@@ -28,7 +28,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupPermissionMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPermissionPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysPermissionPO;
@@ -53,7 +53,7 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
     public Result<List<String>> getUserRoutePermissions(String userId, HttpServletRequest request) {
         // IP访问控制检查 - 新增逻辑
         if (!isAllowedIP(request)) {
-            return Result.fail("访问被拒绝：IP未授权");
+            return Result.fail("0000004F");
         }
         // 1. 查询用户所属的所有小组ID
         QueryWrapper<SysUserGroupPO> userGroupQuery = new QueryWrapper<>();
@@ -63,7 +63,7 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
                 .collect(Collectors.toList());
         if (groupIds.isEmpty()) {
             //用户未关联任何小组，无访问权限
-            return Result.fail(YamlMessageSource.getMessageStatic("00606001"));
+            return Result.fail("00606001");
         }
 
         // 2. 查询小组关联的所有权限ID
@@ -75,7 +75,7 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
                 .collect(Collectors.toList());
         if (permIds.isEmpty()) {
             //用户所在小组未配置权限
-            return Result.fail(YamlMessageSource.getMessageStatic("00606002"));
+            return Result.fail("00606002");
         }
 
         // 3. 查询权限详情（只查菜单类型的权限），并提取 name 字段

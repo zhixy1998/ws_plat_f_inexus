@@ -214,7 +214,7 @@ public class LiveDetectionDevicesWebSocket {
 
 
             if (!StringUtils.hasText(deviceSerialNumber) || !StringUtils.hasText(operation)) {
-                webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "缺少设备序列号或操作类型");
+                webSocketSendUtil.sendErrorMessageWithCode(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "00612001");
                 return;
             }
 
@@ -223,23 +223,23 @@ public class LiveDetectionDevicesWebSocket {
 
                 DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
                 if (info == null) {
-                    webSocketSendUtil.sendErrorMessage(deviceSerialNumber, operation, "设备不存在");
+                    webSocketSendUtil.sendErrorMessageWithCode(deviceSerialNumber, operation, "00612002");
                     return;
                 }
                 if (!info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_IDLE) && !info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_ECHO)) {
 
                     if (info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_MEASURE)) {
-                        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.Common.getOperation(), "当前仪器正在测量");
+                        webSocketSendUtil.sendErrorMessageWithCode(deviceSerialNumber, WebSocketOperationEnum.Common.getOperation(), "00612003");
                         return;
                     }
                     log.info("设备状态：{}", info.getDeviceCurrentStatus());
-                    webSocketSendUtil.sendErrorMessage(deviceSerialNumber, operation, "设备正在执行其他操作");
+                    webSocketSendUtil.sendErrorMessageWithCode(deviceSerialNumber, operation, "00612004");
                 }
             }
 
             WebSocketOperationEnum anEnum = WebSocketOperationEnum.getEnum(operation);
             if (anEnum == null) {
-                webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "未知操作类型: " + operation);
+                webSocketSendUtil.sendErrorMessageWithCode(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "00612005", operation);
                 return;
             }
             JSONObject data = input.getData();
@@ -342,7 +342,7 @@ public class LiveDetectionDevicesWebSocket {
                     break;
                 }
                 default:{
-                    webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "未知操作类型: " + operation);
+                    webSocketSendUtil.sendErrorMessageWithCode(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "00612005", operation);
                     return;
             }
             }
@@ -408,7 +408,7 @@ public class LiveDetectionDevicesWebSocket {
     private void handleSubscribe(String deviceSerialNumber) {
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
         if (info == null) {
-            webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "设备不存在");
+            webSocketSendUtil.sendErrorMessageWithCode(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "00612002");
             return;
         }
         if (!info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
@@ -484,7 +484,6 @@ public class LiveDetectionDevicesWebSocket {
                             if (StringUtils.hasText(deviceManager.getDarkWavelength(deviceId))) {
                                 statusInfo.setX(device.getDarkWavelength() + "nm");
                                 statusInfo.setDevCurrentStatus(deviceInfo.getDeviceCurrentStatus());
-                                System.err.println("calibrationWavelength: " + device.getDarkWavelength()+"nm");
                             }
                         }
                         statusInfo.setDevUseType(device.getUseType());
@@ -543,17 +542,17 @@ public class LiveDetectionDevicesWebSocket {
         try {
             DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
             if (info == null) {
-                webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "设备不存在");
+                webSocketSendUtil.sendErrorMessageWithCode(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "00612002");
                 return;
             }
 
             if (!Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
-                webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "设备未连接");
+                webSocketSendUtil.sendErrorMessageWithCode(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "00612006");
                 return;
             }
 
             if (!Constants.INIT_STATUS_SUCCESS.equals(info.getIsInited())) {
-                webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "设备未初始化");
+                webSocketSendUtil.sendErrorMessageWithCode(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "00612007");
                 return;
             }
 
@@ -599,7 +598,7 @@ public class LiveDetectionDevicesWebSocket {
 
         } catch (Exception e) {
             log.error("启动测量失败: {}", deviceSerialNumber, e);
-            webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "启动测量失败: " + e.getMessage());
+            webSocketSendUtil.sendErrorMessageWithCode(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "00612008", e.getMessage());
         }
     }
 
@@ -831,7 +830,7 @@ public class LiveDetectionDevicesWebSocket {
             webSocketResponseVO.setData("测量任务已停止");
             webSocketSendUtil.sendMessage(deviceSerialNumber, webSocketResponseVO);
         } else {
-            webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "测量任务不存在");
+            webSocketSendUtil.sendErrorMessageWithCode(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "00612009");
         }
     }
 

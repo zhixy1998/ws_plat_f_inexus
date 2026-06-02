@@ -102,6 +102,7 @@ public interface DeviceManageService {
      * @return
      */
     List<DeviceCalibrationVO> newQueryCalibrationInfo(String deviceSerialNumber);
+    List<DeviceCalibrationVO> queryMultiCalibration(String deviceSerialNumber);
 
     /**
      * 检查仪器状态
@@ -149,6 +150,8 @@ public interface DeviceManageService {
     R<Boolean> deviceNewCalibration(DeviceCalibrationDTO calibrationDTO);
 
     R<Boolean> deleteMultiCalibrationInfo(DeviceCalibrationDTO dto);
+
+    R<Boolean> saveAllData(DeviceCalibrationDTO dto);
 
     R<Boolean> sendMultiCalibrationToDevice(DeviceCalibrationDTO dto);
 

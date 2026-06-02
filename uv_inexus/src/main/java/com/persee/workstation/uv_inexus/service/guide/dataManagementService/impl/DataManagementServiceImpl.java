@@ -30,7 +30,6 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
@@ -114,22 +113,22 @@ public class DataManagementServiceImpl implements DataManagementService {
     public Result<UnFinishTasksAndNum> getTasks(UnFinishTasksAndNumParam unFinishTasksAndNumParam) {
         if (unFinishTasksAndNumParam == null) {
             //参数不能为空
-            return Result.fail(YamlMessageSource.getMessageStatic("00306003"));
+            return Result.fail("00B06003");
         }
         if (unFinishTasksAndNumParam.getNeedSelectNum() == null || unFinishTasksAndNumParam.getNeedSelectNum() == 0) {
             //数量不能为0
-            return Result.fail(YamlMessageSource.getMessageStatic("00306004"));
+            return Result.fail("00B06004");
         }
         if (unFinishTasksAndNumParam.getNeedSelectNum() > 50) {
             //数量不能大于50
-            return Result.fail(YamlMessageSource.getMessageStatic("00306005"));
+            return Result.fail("00B06005");
         }
         if (unFinishTasksAndNumParam.getTaskType().isEmpty()) {
             //类型不能为空
-            return Result.fail(YamlMessageSource.getMessageStatic("0000004B"));
+            return Result.fail("0000004B");
         }
         if (unFinishTasksAndNumParam.getSystemIdentityId() == null){
-            return Result.fail("用户未登录");
+            return Result.fail("00300017");
         }
         String status = unFinishTasksAndNumParam.getStatus();
 
@@ -215,7 +214,7 @@ public class DataManagementServiceImpl implements DataManagementService {
     @Override
     public Result queryUserProjectStatistics(ProjectStatisticVo vo) {
         if (vo.getUpdateBy() == null){
-            return Result.fail("用户未登录");
+            return Result.fail("00300017");
         }
         // 获取分页参数，设置默认值
         Integer pageNum = vo.getPageNum() != null ? vo.getPageNum() : 1;
@@ -226,12 +225,12 @@ public class DataManagementServiceImpl implements DataManagementService {
 
         SysUserPO user = userService.getOne(new QueryWrapper<SysUserPO>().eq("username", vo.getUpdateBy()).last("LIMIT 1"));
         if (user == null){
-            return Result.fail("用户不存在");
+            return Result.fail("00B09008");
         }
         // 根据用户查询用户所在的组
         SysUserGroupPO userGroupPO = userGroupMapper.selectOne(new QueryWrapper<SysUserGroupPO>().eq("user_id", user.getId()).last("LIMIT 1"));
         if (userGroupPO == null){
-            return Result.fail("用户未加入任何组");
+            return Result.fail("00B09009");
         }
         // 根据查询到的组id条件查询协作组中所有的组内的协作项目id
         List<TMeasureProjectCollaboratorGroup> projectList = collaboratorGroupService.list(new QueryWrapper<TMeasureProjectCollaboratorGroup>().eq("group_id", userGroupPO.getGroupId()));
@@ -337,13 +336,13 @@ public class DataManagementServiceImpl implements DataManagementService {
     public Result queryProjectDetail(String projectId) {
         // 校验入参
         if (StringUtils.isBlank(projectId)) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
+            return Result.fail("00000045");
         }
 
         // 查询项目
         TMeasureProject project = projectManagementMapper.selectById(projectId);
         if (project == null || !"0".equals(project.getIsDelete())) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00301010"));
+            return Result.fail("00301010");
         }
         // 组装返回数据
         Map<String, String> map = new HashMap<>();
@@ -435,11 +434,11 @@ public class DataManagementServiceImpl implements DataManagementService {
         try {
             // 1. 参数校验
             if (file.isEmpty()) {
-                return Result.fail("导入文件不能为空");
+                return Result.fail("00B09001");
             }
 
             if (!StringUtils.isNotBlank(importDto.getUpdateBy())) {
-                return Result.fail("导入负责人不能为空");
+                return Result.fail("00B0900A");
             }
 
             // 2. 获取当前用户信息
@@ -448,7 +447,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             );
 
             if (currentUser == null) {
-                return Result.fail("用户不存在: " + importDto.getUpdateBy());
+                return Result.fail("00B0900B", importDto.getUpdateBy());
             }
 
             // 3. 获取用户组信息
@@ -457,7 +456,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             );
 
             if (userGroup == null) {
-                return Result.fail("用户未加入任何组: " + importDto.getUpdateBy());
+                return Result.fail("00B0900C", importDto.getUpdateBy());
             }
 
             // 4. 解析Excel文件
@@ -548,7 +547,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 
         } catch (Exception e) {
             log.error("导入项目失败", e);
-            return Result.fail("导入失败：" + e.getMessage());
+            return Result.fail("00B09006", e.getMessage());
         }
     }
 
@@ -659,7 +658,7 @@ public class DataManagementServiceImpl implements DataManagementService {
     @Override
     public Result queryUserTaskStatistics(TaskStatisticVo vo) {
         if (vo.getUpdateBy() == null){
-            return Result.fail("用户未登录");
+            return Result.fail("00300017");
         }
         // 获取分页参数，设置默认值
         Integer pageNum = vo.getPageNum() != null ? vo.getPageNum() : 1;
@@ -669,7 +668,7 @@ public class DataManagementServiceImpl implements DataManagementService {
         Page<TMeasureTask> page = new Page<>(pageNum, pageSize);
         SysUserPO user = userService.getOne(new QueryWrapper<SysUserPO>().eq("username", vo.getUpdateBy()));
         if (user == null){
-            return Result.fail("用户不存在");
+            return Result.fail("00B09008");
         }
         // 根据用户id查询所有任务
         List<TMeasureTask> tasks = taskManagementMapper.selectList(new QueryWrapper<TMeasureTask>().eq("user_id", user.getId()).eq("is_delete","0"));
@@ -773,14 +772,14 @@ public class DataManagementServiceImpl implements DataManagementService {
     public Result<TaskDetailVO> queryTaskDetail(String taskId) {
         //  参数校验
         if (StringUtils.isBlank(taskId)) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
+            return Result.fail("00000045");
         }
 
         try {
             // 查询任务基本信息
             TMeasureTask task = taskManagementMapper.selectById(taskId);
             if (task == null || "1".equals(task.getIsDelete())) {
-                return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+                return Result.fail("00000004");
             }
             String projectId = "";
             String projectName = "";
@@ -841,7 +840,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 
             return Result.ok(vo);
         } catch (Exception e) {
-            return Result.fail("查询任务详情失败：" + e.getMessage());
+            return Result.fail("00B09007", e.getMessage());
         }
     }
 
@@ -853,7 +852,7 @@ public class DataManagementServiceImpl implements DataManagementService {
     @Override
     public Result queryUserMethodStatistics(MethodStatisticVo vo) {
         if (vo.getUpdateBy() == null){
-            return Result.fail("用户未登录");
+            return Result.fail("00300017");
         }
         // 获取分页参数，设置默认值
         Integer pageNum = vo.getPageNum() != null ? vo.getPageNum() : 1;
@@ -863,7 +862,7 @@ public class DataManagementServiceImpl implements DataManagementService {
         Page<TMeasureMethod> page = new Page<>(pageNum, pageSize);
         SysUserPO user = userService.getOne(new QueryWrapper<SysUserPO>().eq("username", vo.getUpdateBy()));
         if (user == null){
-            return Result.fail("用户不存在");
+            return Result.fail("00B09008");
         }
         /// 1. 查询当前用户创建的所有方法,以及使用方法任务测量后保存状态为1的个数
         // 根据用户名称查询方法
@@ -951,11 +950,11 @@ public class DataManagementServiceImpl implements DataManagementService {
     public Result queryMethodDetail(String methodId) {
         // 判断 methodId 是否为空
         if (StringUtils.isBlank(methodId)) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
+            return Result.fail("00000045");
         }
         TMeasureMethod method = methodManagementMapper.selectById(methodId);
         if (method == null || !"0".equals(method.getIsDelete())) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            return Result.fail("00000009");
         }
         // 构建返回结果容器
         Map<String, Object> resultMap = new HashMap<>();
@@ -999,7 +998,7 @@ public class DataManagementServiceImpl implements DataManagementService {
                     .le("create_time", now);
         }
         wrapper1.eq("is_delete", "0");
-        wrapper1.ne("task_status", Constants.PARAM_TWO);  // 使用 ne 表示不等于
+//        wrapper1.ne("task_status", Constants.PARAM_TWO);  // 使用 ne 表示不等于
         Long count = taskManagementMapper.selectCount(wrapper1);
 
         // 第二个查询：task_status == Constants.PARAM_TWO
@@ -1053,7 +1052,7 @@ public class DataManagementServiceImpl implements DataManagementService {
         } catch (Exception e) {
             log.error("根据类型分类查询方法失败", e);
             //查询失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00306001"));
+            return Result.fail("00B06001");
         }
         //任务统计封装
         TaskCount taskCount = new TaskCount();
@@ -1080,7 +1079,7 @@ public class DataManagementServiceImpl implements DataManagementService {
         // 参数校验
         if (projectQueryParam == null) {
             //查询参数不能为空
-            return Result.fail(YamlMessageSource.getMessageStatic("00306002"));
+            return Result.fail("00B06002");
         }
 
         // 分页参数默认值设置
@@ -1179,7 +1178,7 @@ public class DataManagementServiceImpl implements DataManagementService {
         // 参数校验
         if (taskQueryParam == null) {
             //查询参数不能为空
-            return Result.fail(YamlMessageSource.getMessageStatic("00306002"));
+            return Result.fail("00B06002");
         }
 
         // 分页参数默认值设置
@@ -1304,13 +1303,13 @@ public class DataManagementServiceImpl implements DataManagementService {
                 int res = taskManagementMapper.deleteById(deleteTaskId);
                 if (res == 0) {
                     //任务删除失败
-                    return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
+                    return Result.fail("0030101D");
                 }
             } catch (Exception e) {
                 int i = taskManagementMapper.deleteById(deleteTaskId);
                 if (i == 0) {
                     //任务删除失败
-                    return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
+                    return Result.fail("0030101D");
                 }
             }
 
@@ -1323,7 +1322,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 
         if (List == null) {
             //参数不能为空
-            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
+            return Result.fail("00000045");
         }
         List<String> deleteMethodIdList = List.getParams();
         for (String deleteMethodId : deleteMethodIdList) {
@@ -1334,17 +1333,17 @@ public class DataManagementServiceImpl implements DataManagementService {
             int size = tMeasureTasks.size();
             if (size > 0) {
                 //该方法包含未完成的任务
-                return Result.fail(YamlMessageSource.getMessageStatic("00306006"));
+                return Result.fail("00B06006");
             }
             int i = methodManagementMapper.deleteById(deleteMethodId);
             if (i == 0) {
                 //该方法包含未完成的任务
-                return Result.fail(YamlMessageSource.getMessageStatic("00306006"));
+                return Result.fail("00B06006");
             }
 
         }
         //删除成功
-        return Result.ok(YamlMessageSource.getMessageStatic("00100022"));
+        return Result.ok("00100022");
     }
 
     @Override
@@ -1358,12 +1357,12 @@ public class DataManagementServiceImpl implements DataManagementService {
             int size = tMeasureMethods.size();
             if (size > 0) {
                 //该项目包含未删除的方法
-                return Result.fail(YamlMessageSource.getMessageStatic("00306007"));
+                return Result.fail("00B06007");
             }
             int i = projectManagementMapper.deleteById(deleteProjectId);
             if (i == 0) {
                 //该项目包含未删除的方法
-                return Result.fail(YamlMessageSource.getMessageStatic("00306007"));
+                return Result.fail("00B06007");
             }
         }
         return Result.ok();

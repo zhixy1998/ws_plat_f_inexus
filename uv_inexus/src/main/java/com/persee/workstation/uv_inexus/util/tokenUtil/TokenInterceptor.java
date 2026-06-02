@@ -12,6 +12,8 @@ package com.persee.workstation.uv_inexus.util.tokenUtil;
 
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
+import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
@@ -28,6 +30,12 @@ public class TokenInterceptor implements HandlerInterceptor{
 
     @Autowired
     SystemUserManageDAO userMapper;
+
+    @Autowired
+    I18nMessageSource i18nMessageSource;
+
+    @Autowired
+    LocaleProvider localeProvider;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,Object handler)throws Exception {
@@ -64,7 +72,7 @@ public class TokenInterceptor implements HandlerInterceptor{
                 if (sysUserPO == null) {
                     JSONObject json = new JSONObject();
                     json.put("success", "false");
-                    json.put("message", "当前账户已禁用！");
+                    json.put("message", i18nMessageSource.getMessage("00000052", localeProvider.getSystemLocale()));
                     json.put("code", ResultCodeEnum.TOKEN_ERROR.getCode());
                     response.getWriter().append(json.toString());
                     return false;
@@ -78,7 +86,7 @@ public class TokenInterceptor implements HandlerInterceptor{
         try {
             JSONObject json = new JSONObject();
             json.put("success", "false");
-            json.put("message", "验证失败，请重新登录");
+            json.put("message", i18nMessageSource.getMessage("00000053", localeProvider.getSystemLocale()));
             json.put("code", ResultCodeEnum.TOKEN_ERROR.getCode());
             response.getWriter().append(json.toString());
             System.out.println("认证失败，未通过拦截器");

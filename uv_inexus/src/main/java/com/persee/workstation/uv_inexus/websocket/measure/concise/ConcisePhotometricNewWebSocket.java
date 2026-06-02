@@ -489,7 +489,7 @@ public class ConcisePhotometricNewWebSocket {
 
             if (!operation.getSuccess()) {
                 log.info("设置样品池位置出错");
-                return R.fail("设置样品池位置出错！");
+                return R.fail("00301001");
             }
 
             JSONObject object = new JSONObject();
@@ -505,7 +505,7 @@ public class ConcisePhotometricNewWebSocket {
             operation = operationUtilService.operation(inputParam);
             if (!operation.getSuccess()) {
                 log.info("测量出错");
-                return R.fail("测量出错！");
+                return R.fail("00301002");
             }
             OperationResultEntity data = operation.getData();
             ChangeParam singMeasureResult = data.getSingMeasureResult();
@@ -571,7 +571,7 @@ public class ConcisePhotometricNewWebSocket {
 
                 if (!operation.getSuccess()) {
                     log.info("设置样品池位置出错");
-                    return R.fail("设置样品池位置出错！");
+                    return R.fail("00301001");
                 }
 
                 JSONObject object = new JSONObject();
@@ -607,7 +607,7 @@ public class ConcisePhotometricNewWebSocket {
 
                     if (!operation.getSuccess()) {
                         log.info("测量出错");
-                        return R.fail("测量出错！");
+                        return R.fail("00301002");
                     }
                     OperationResultEntity data = operation.getData();
                     ChangeParam measureResult = data.getSingMeasureResult();
@@ -747,7 +747,7 @@ public class ConcisePhotometricNewWebSocket {
             return R.ok(sampleAndDataVO);
         } catch (Exception e) {
             status = 0;
-            return R.fail("测量出错");
+            return R.fail("00301002");
         }
     }
 
@@ -936,7 +936,7 @@ public class ConcisePhotometricNewWebSocket {
 
         if (!countedData.getSuccess()) {
             log.info(countedData.getMessage());
-            sendError(deviceSerialNumber, "请检查公式配置");
+            sendAndNoStopError(deviceSerialNumber, "请检查公式配置");
             return R.fail(countedData.getMessage());
         }
         List<FPhotometricCountDataInfo> countDataInfos = countedData.getData();
@@ -977,6 +977,11 @@ public class ConcisePhotometricNewWebSocket {
         vo.setOperation(WebSocketOperationEnum.ConcisePhotoMetric.getOperation());
         vo.setData(jsonObject);
         webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
+    }
+
+    private void sendAndNoStopError(String deviceSerialNumber, String message) {
+
+        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConcisePhotoMetric.getOperation(), message);
     }
 
 

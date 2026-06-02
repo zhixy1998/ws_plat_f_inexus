@@ -1,0 +1,4748 @@
+﻿# =====================================================
+# 国际化消息字典 - 中英俄三语
+#
+# 本文件: i18n-dictionary.yaml — API 消息码字典
+#   key 格式: 模块(3位) + 子模块(2位) + 编号(3位十六进制) = 8位
+#   例: 00613001 (出厂检测 006 + 13 + 001)
+#   用途: Result.fail("00613001") / R.fail("00613001") / BusinessException("00613001")
+#         通过 ResultMessageAdvice 自动翻译后返回给前端
+#
+# UI 文本翻译文件: i18n-ui-texts.yaml
+#   key 格式: 中文原文（供 OutputTranslator 在 WebSocket 推送时翻译）
+#
+# 新接口国际化步骤:
+#   1. API 错误/成功消息 → 在本文件添加消息码，代码中用 R.fail("码") / Result.fail("码")
+#   2. WebSocket 推送的中文文本 → 在 i18n-ui-texts.yaml 添加中文原文 key
+# =====================================================
+
+messages:
+  # ========== 全局通用 (00000) ==========
+  '00000001':
+    zh-CN: '用户不存在'
+    en-US: 'User does not exist'
+    ru-RU: 'Пользователь не существует'
+
+  '00000002':
+    zh-CN: '请选择方法'
+    en-US: 'Please select a method'
+    ru-RU: 'Пожалуйста, выберите метод'
+
+  '00000003':
+    zh-CN: '任务id不能为空'
+    en-US: 'Task ID cannot be empty'
+    ru-RU: 'ID задачи не может быть пустым'
+
+  '00000004':
+    zh-CN: '没有找到该任务'
+    en-US: 'Task not found'
+    ru-RU: 'Задача не найдена'
+
+  '00000005':
+    zh-CN: '类型错误,请重新选择'
+    en-US: 'Type error, please select again'
+    ru-RU: 'Ошибка типа, пожалуйста, выберите снова'
+
+  '00000006':
+    zh-CN: '请选择任务'
+    en-US: 'Please select a task'
+    ru-RU: 'Пожалуйста, выберите задачу'
+
+  '00000007':
+    zh-CN: '缺少参数'
+    en-US: 'Missing parameters'
+    ru-RU: 'Отсутствуют параметры'
+
+  '00000008':
+    zh-CN: '未选择方法'
+    en-US: 'No method selected'
+    ru-RU: 'Метод не выбран'
+
+  '00000009':
+    zh-CN: '没有找到该方法'
+    en-US: 'Method not found'
+    ru-RU: 'Метод не найден'
+
+  '0000000A':
+    zh-CN: '请选择样品'
+    en-US: 'Please select a sample'
+    ru-RU: 'Пожалуйста, выберите образец'
+
+  '0000000B':
+    zh-CN: '样品不存在'
+    en-US: 'Sample does not exist'
+    ru-RU: 'Образец не существует'
+
+  '0000000C':
+    zh-CN: '没有找到对应的图片数据'
+    en-US: 'Image data not found'
+    ru-RU: 'Данные изображения не найдены'
+
+  '0000000D':
+    zh-CN: '未知的测量类型'
+    en-US: 'Unknown measurement type'
+    ru-RU: 'Неизвестный тип измерения'
+
+  '0000000E':
+    zh-CN: '请填写波长值'
+    en-US: 'Please enter wavelength value'
+    ru-RU: 'Пожалуйста, введите значение длины волны'
+
+  '0000000F':
+    zh-CN: '创建成功'
+    en-US: 'Created successfully'
+    ru-RU: 'Успешно создано'
+
+  '00000010':
+    zh-CN: '创建失败'
+    en-US: 'Creation failed'
+    ru-RU: 'Создание не удалось'
+
+  '00000011':
+    zh-CN: '请先创建方法'
+    en-US: 'Please create a method first'
+    ru-RU: 'Пожалуйста, сначала создайте метод'
+
+  '00000012':
+    zh-CN: '至少需要一个表头'
+    en-US: 'At least one header is required'
+    ru-RU: 'Требуется хотя бы один заголовок'
+
+  '00000013':
+    zh-CN: '表格新增列数不能超过10列'
+    en-US: 'Cannot add more than 10 columns'
+    ru-RU: 'Нельзя добавить более 10 столбцов'
+
+  '00000014':
+    zh-CN: '系统出错'
+    en-US: 'System error'
+    ru-RU: 'Системная ошибка'
+
+  '00000015':
+    zh-CN: '请选择需要删除的任务和样品'
+    en-US: 'Please select tasks and samples to delete'
+    ru-RU: 'Пожалуйста, выберите задачи и образцы для удаления'
+
+  '00000016':
+    zh-CN: '任务无样品'
+    en-US: 'Task has no samples'
+    ru-RU: 'В задаче нет образцов'
+
+  '00000017':
+    zh-CN: '未查询到该方法参数'
+    en-US: 'Method parameters not found'
+    ru-RU: 'Параметры метода не найдены'
+
+  '00000018':
+    zh-CN: '方法参数格式错误'
+    en-US: 'Method parameter format error'
+    ru-RU: 'Ошибка формата параметров метода'
+
+  '00000019':
+    zh-CN: '缺少任务id'
+    en-US: 'Missing task ID'
+    ru-RU: 'Отсутствует ID задачи'
+
+  '0000001B':
+    zh-CN: '未选择任务'
+    en-US: 'No task selected'
+    ru-RU: 'Задача не выбрана'
+
+  '0000001C':
+    zh-CN: '缺少样品id'
+    en-US: 'Missing sample ID'
+    ru-RU: 'Отсутствует ID образца'
+
+  '0000001D':
+    zh-CN: '未连接仪器'
+    en-US: 'Instrument not connected'
+    ru-RU: 'Инструмент не подключен'
+
+  '0000001E':
+    zh-CN: '缺少波长'
+    en-US: 'Missing wavelength'
+    ru-RU: 'Отсутствует длина волны'
+
+  '0000001F':
+    zh-CN: '未创建任务，无法保存'
+    en-US: 'Cannot save without creating a task'
+    ru-RU: 'Невозможно сохранить без создания задачи'
+
+  '00000020':
+    zh-CN: '名称格式错误'
+    en-US: 'Name format error'
+    ru-RU: 'Ошибка формата имени'
+
+  '00000021':
+    zh-CN: '方法id不能为空,请创建方法或选择方法'
+    en-US: 'Method ID cannot be empty, please create or select a method'
+    ru-RU: 'ID метода не может быть пустым, пожалуйста, создайте или выберите метод'
+
+  '00000022':
+    zh-CN: '请填写波长参数'
+    en-US: 'Please enter wavelength parameters'
+    ru-RU: 'Пожалуйста, введите параметры длины волны'
+
+  '00000023':
+    zh-CN: '缺少样品种类'
+    en-US: 'Missing sample type'
+    ru-RU: 'Отсутствует тип образца'
+
+  '00000024':
+    zh-CN: '样品种类出错'
+    en-US: 'Sample type error'
+    ru-RU: 'Ошибка типа образца'
+
+  '00000025':
+    zh-CN: '没有方法!'
+    en-US: 'No method!'
+    ru-RU: 'Нет метода!'
+
+  '00000026':
+    zh-CN: '标准样品表头为空'
+    en-US: 'Standard sample header is empty'
+    ru-RU: 'Заголовок стандартного образца пуст'
+
+  '00000027':
+    zh-CN: '未知样品表头为空'
+    en-US: 'Unknown sample header is empty'
+    ru-RU: 'Заголовок неизвестного образца пуст'
+
+  '00000028':
+    zh-CN: '标准样品表格新增列数不能超过10列'
+    en-US: 'Cannot add more than 10 columns to standard sample table'
+    ru-RU: 'Нельзя добавить более 10 столбцов в таблицу стандартных образцов'
+
+  '00000029':
+    zh-CN: '未知样品表格新增列数不能超过10列'
+    en-US: 'Cannot add more than 10 columns to unknown sample table'
+    ru-RU: 'Нельзя добавить более 10 столбцов в таблицу неизвестных образцов'
+
+  '0000002A':
+    zh-CN: '没有数据'
+    en-US: 'No data'
+    ru-RU: 'Нет данных'
+
+  '0000002B':
+    zh-CN: '暂不支持'
+    en-US: 'Not supported yet'
+    ru-RU: 'Пока не поддерживается'
+
+  '0000002C':
+    zh-CN: '请输入变换名称'
+    en-US: 'Please enter transformation name'
+    ru-RU: 'Пожалуйста, введите имя преобразования'
+
+  '0000002D':
+    zh-CN: '变换名称重复'
+    en-US: 'Transformation name already exists'
+    ru-RU: 'Имя преобразования уже существует'
+
+  '0000002E':
+    zh-CN: '请选择测量数据1'
+    en-US: 'Please select measurement data 1'
+    ru-RU: 'Пожалуйста, выберите данные измерения 1'
+
+  '0000002F':
+    zh-CN: '请选择测量数据2'
+    en-US: 'Please select measurement data 2'
+    ru-RU: 'Пожалуйста, выберите данные измерения 2'
+
+  '00000030':
+    zh-CN: '请选择运算符'
+    en-US: 'Please select an operator'
+    ru-RU: 'Пожалуйста, выберите оператор'
+
+  '00000031':
+    zh-CN: '请选择数据类型'
+    en-US: 'Please select data type'
+    ru-RU: 'Пожалуйста, выберите тип данных'
+
+  '00000032':
+    zh-CN: 'python接口调用失败'
+    en-US: 'Python API call failed'
+    ru-RU: 'Вызов Python API не удался'
+
+  '00000033':
+    zh-CN: '请选择变换类型'
+    en-US: 'Please select transformation type'
+    ru-RU: 'Пожалуйста, выберите тип преобразования'
+
+  '00000034':
+    zh-CN: '数据保存失败'
+    en-US: 'Data save failed'
+    ru-RU: 'Сохранение данных не удалось'
+
+  '00000035':
+    zh-CN: '请选择测量数据'
+    en-US: 'Please select measurement data'
+    ru-RU: 'Пожалуйста, выберите данные измерения'
+
+  '00000036':
+    zh-CN: '您当前的光度模式不支持进行转换!'
+    en-US: 'Current photometric mode does not support transformation!'
+    ru-RU: 'Текущий фотометрический режим не поддерживает преобразование!'
+
+  '00000037':
+    zh-CN: '请填写重复次数'
+    en-US: 'Please enter repeat count'
+    ru-RU: 'Пожалуйста, введите количество повторений'
+
+  '00000038':
+    zh-CN: '请输入系数'
+    en-US: 'Please enter coefficient'
+    ru-RU: 'Пожалуйста, введите коэффициент'
+
+  '00000039':
+    zh-CN: '请输入点数'
+    en-US: 'Please enter number of points'
+    ru-RU: 'Пожалуйста, введите количество точек'
+
+  '0000003A':
+    zh-CN: '系数不能大于等于点数'
+    en-US: 'Coefficient cannot be greater than or equal to number of points'
+    ru-RU: 'Коэффициент не может быть больше или равен количеству точек'
+
+  '0000003B':
+    zh-CN: '测量数据不存在'
+    en-US: 'Measurement data does not exist'
+    ru-RU: 'Данные измерения не существуют'
+
+  '0000003C':
+    zh-CN: 'height参数太高'
+    en-US: 'Height parameter is too high'
+    ru-RU: 'Параметр height слишком высокий'
+
+  '0000003D':
+    zh-CN: '没有找到该分析数据'
+    en-US: 'Analysis data not found'
+    ru-RU: 'Данные анализа не найдены'
+
+  '0000003E':
+    zh-CN: '请选择标记点'
+    en-US: 'Please select marker point'
+    ru-RU: 'Пожалуйста, выберите маркерную точку'
+
+  '0000003F':
+    zh-CN: '样品编号重复'
+    en-US: 'Sample number already exists'
+    ru-RU: 'Номер образца уже существует'
+
+  '00000040':
+    zh-CN: '图片不存在'
+    en-US: 'Image does not exist'
+    ru-RU: 'Изображение не существует'
+
+  '00000041':
+    zh-CN: '任务附属不存在'
+    en-US: 'Task attachment does not exist'
+    ru-RU: 'Вложение задачи не существует'
+
+  '00000042':
+    zh-CN: 'Type类型错误'
+    en-US: 'Type error'
+    ru-RU: 'Ошибка типа Type'
+
+  '00000043':
+    zh-CN: '成功删除数据'
+    en-US: 'Data deleted successfully'
+    ru-RU: 'Данные успешно удалены'
+
+  '00000044':
+    zh-CN: '删除数据失败'
+    en-US: 'Failed to delete data'
+    ru-RU: 'Не удалось удалить данные'
+
+  '00000045':
+    zh-CN: '参数不能为空'
+    en-US: 'Parameters cannot be empty'
+    ru-RU: 'Параметры не могут быть пустыми'
+
+  '00000046':
+    zh-CN: '请先添加备注'
+    en-US: 'Please add remarks first'
+    ru-RU: 'Пожалуйста, сначала добавьте примечания'
+
+  '00000047':
+    zh-CN: '样品数据不存在'
+    en-US: 'Sample data does not exist'
+    ru-RU: 'Данные образца не существуют'
+
+  '00000048':
+    zh-CN: '更新失败'
+    en-US: 'Update failed'
+    ru-RU: 'Обновление не удалось'
+
+  '00000049':
+    zh-CN: '样品信息不存在'
+    en-US: 'Sample information does not exist'
+    ru-RU: 'Информация об образце не существует'
+
+  '0000004A':
+    zh-CN: '无测量数据'
+    en-US: 'No measurement data'
+    ru-RU: 'Нет данных измерения'
+
+  '0000004B':
+    zh-CN: '类型不能为空'
+    en-US: 'Type cannot be empty'
+    ru-RU: 'Тип не может быть пустым'
+
+  '0000004C':
+    zh-CN: '批量删除失败'
+    en-US: 'Batch deletion failed'
+    ru-RU: 'Пакетное удаление не удалось'
+
+  '0000004D':
+    zh-CN: '任务名称重复'
+    en-US: 'Task name already exists'
+    ru-RU: 'Имя задачи уже существует'
+
+  '0000004E':
+    zh-CN: '样品编号不能为空！'
+    en-US: 'Sample number cannot be empty!'
+    ru-RU: 'Номер образца не может быть пустым!'
+
+  '0000004F':
+    zh-CN: '访问被拒绝：IP未授权'
+    en-US: 'Access denied: IP unauthorized'
+    ru-RU: 'Доступ запрещен: IP не авторизован'
+
+  '00000050':
+    zh-CN: '不能删除当前登录用户'
+    en-US: 'Cannot delete the currently logged-in user'
+    ru-RU: 'Нельзя удалить текущего авторизованного пользователя'
+
+  # ========== 简洁模式公共模块 (00100) ==========
+  '00100001':
+    zh-CN: '新建失败'
+    en-US: 'Creation failed'
+    ru-RU: 'Создание не удалось'
+
+  '00100002':
+    zh-CN: '应用失败'
+    en-US: 'Application failed'
+    ru-RU: 'Применение не удалось'
+
+  '00100003':
+    zh-CN: '任务保存样品信息出错'
+    en-US: 'Error saving sample information for task'
+    ru-RU: 'Ошибка сохранения информации об образце для задачи'
+
+  '00100004':
+    zh-CN: '要恢复的样品编号重复，请处理重复编号后再恢复！'
+    en-US: 'Sample numbers to restore are duplicated, please handle duplicates before restoring!'
+    ru-RU: 'Номера образцов для восстановления дублируются, пожалуйста, обработайте дубликаты перед восстановлением!'
+
+  '00100005':
+    zh-CN: '保存草稿失败'
+    en-US: 'Failed to save draft'
+    ru-RU: 'Не удалось сохранить черновик'
+
+  '00100006':
+    zh-CN: '方法类型不能为空'
+    en-US: 'Method type cannot be empty'
+    ru-RU: 'Тип метода не может быть пустым'
+
+  '00100007':
+    zh-CN: '没有默认方法'
+    en-US: 'No default method'
+    ru-RU: 'Нет метода по умолчанию'
+
+  '00100008':
+    zh-CN: '删除失败'
+    en-US: 'Deletion failed'
+    ru-RU: 'Удаление не удалось'
+
+  '00100009':
+    zh-CN: '更新人不能为空'
+    en-US: 'Updater cannot be empty'
+    ru-RU: 'Обновляющий пользователь не может быть пустым'
+
+  '0010000A':
+    zh-CN: '新建方法失败'
+    en-US: 'Failed to create method'
+    ru-RU: 'Не удалось создать метод'
+
+  '0010000B':
+    zh-CN: '请先创建方法或者选择方法'
+    en-US: 'Please create or select a method first'
+    ru-RU: 'Пожалуйста, сначала создайте или выберите метод'
+
+  '0010000C':
+    zh-CN: '存在空的样品编号'
+    en-US: 'Empty sample number exists'
+    ru-RU: 'Существует пустой номер образца'
+
+  '0010000D':
+    zh-CN: '样品编号长度不能超过256个字符'
+    en-US: 'Sample number length cannot exceed 256 characters'
+    ru-RU: 'Длина номера образца не может превышать 256 символов'
+
+  '0010000E':
+    zh-CN: '样品名称长度不能超过256个字符'
+    en-US: 'Sample name length cannot exceed 256 characters'
+    ru-RU: 'Длина имени образца не может превышать 256 символов'
+
+  '0010000F':
+    zh-CN: '样品编号不能为空'
+    en-US: 'Sample number cannot be empty'
+    ru-RU: 'Номер образца не может быть пустым'
+
+  '00100010':
+    zh-CN: '该方法下没有草稿,请新建草稿'
+    en-US: 'No draft under this method, please create a new draft'
+    ru-RU: 'Под этим методом нет черновика, пожалуйста, создайте новый черновик'
+
+  '00100011':
+    zh-CN: '数据ID不能为空'
+    en-US: 'Data ID cannot be empty'
+    ru-RU: 'ID данных не может быть пустым'
+
+  '00100012':
+    zh-CN: '峰谷间距不可以小于1'
+    en-US: 'Peak-valley distance cannot be less than 1'
+    ru-RU: 'Расстояние между пиком и впадиной не может быть меньше 1'
+
+  '00100013':
+    zh-CN: '没有查询到数据'
+    en-US: 'No data found'
+    ru-RU: 'Данные не найдены'
+
+  '00100014':
+    zh-CN: '请选择源2'
+    en-US: 'Please select source 2'
+    ru-RU: 'Пожалуйста, выберите источник 2'
+
+  '00100015':
+    zh-CN: 'Abs光度模式不可使用高级运算'
+    en-US: 'Advanced operations not available in Abs mode'
+    ru-RU: 'Расширенные операции недоступны в режиме Abs'
+
+  '00100016':
+    zh-CN: '请创建任务'
+    en-US: 'Please create a task'
+    ru-RU: 'Пожалуйста, создайте задачу'
+
+  '00100017':
+    zh-CN: '没有可用的位置'
+    en-US: 'No available positions'
+    ru-RU: 'Нет доступных позиций'
+
+  '00100018':
+    zh-CN: '没有样品,不需要处理'
+    en-US: 'No samples, no processing needed'
+    ru-RU: 'Нет образцов, обработка не требуется'
+
+  '00100019':
+    zh-CN: '样品信息解析失败'
+    en-US: 'Failed to parse sample information'
+    ru-RU: 'Не удалось разобрать информацию об образце'
+
+  '00100020':
+    zh-CN: '下限值不能大于上限值'
+    en-US: 'Lower limit cannot be greater than upper limit'
+    ru-RU: 'Нижний предел не может быть больше верхнего предела'
+
+  '00100021':
+    zh-CN: '当上下限值相等且为有限值时，必须同时包含两端点'
+    en-US: 'When lower and upper limits are equal and finite, both endpoints must be included'
+    ru-RU: 'Когда нижний и верхний пределы равны и конечны, должны быть включены обе конечные точки'
+
+  '00100022':
+    zh-CN: '删除成功'
+    en-US: 'Deleted successfully'
+    ru-RU: 'Успешно удалено'
+
+  '00100023':
+    zh-CN: '区间重叠，请检查！'
+    en-US: 'Ranges overlap, please check!'
+    ru-RU: 'Диапазоны перекрываются, пожалуйста, проверьте!'
+
+  '00100024':
+    zh-CN: '修约范围未覆盖所有区间！'
+    en-US: 'Rounding range does not cover all intervals!'
+    ru-RU: 'Диапазон округления не покрывает все интервалы!'
+
+  '00100025':
+    zh-CN: '未找到记录'
+    en-US: 'Record not found'
+    ru-RU: 'Запись не найдена'
+
+  '00100026':
+    zh-CN: '上下限为空时不可选包含！'
+    en-US: 'Cannot select include when limits are empty!'
+    ru-RU: 'Нельзя выбрать включение, когда пределы пусты!'
+
+  '00100027':
+    zh-CN: '峰谷差阈值不可超过100'
+    en-US: 'Peak-valley difference threshold cannot exceed 100'
+    ru-RU: 'Порог разницы пик-впадина не может превышать 100'
+
+  '00100028':
+    zh-CN: '校零失败，波长设置出错！'
+    en-US: 'Zero calibration failed, wavelength setting error!'
+    ru-RU: 'Калибровка нуля не удалась, ошибка настройки длины волны!'
+
+  # ========== 通用模块=01 (00101) ==========
+  '00101001':
+    zh-CN: '{0}没有默认方法'
+    en-US: '{0} has no default method'
+    ru-RU: '{0} не имеет метода по умолчанию'
+
+  '00101002':
+    zh-CN: '用户不能为空'
+    en-US: 'User cannot be empty'
+    ru-RU: 'Пользователь не может быть пустым'
+
+  '00101003':
+    zh-CN: '该类型暂未开发'
+    en-US: 'This type is not yet developed'
+    ru-RU: 'Этот тип еще не разработан'
+
+  '00101004':
+    zh-CN: '草稿不存在'
+    en-US: 'Draft does not exist'
+    ru-RU: 'Черновик не существует'
+
+  '00101005':
+    zh-CN: '方法类型不存在'
+    en-US: 'Method type does not exist'
+    ru-RU: 'Тип метода не существует'
+
+  '00101006':
+    zh-CN: '请先创建任务'
+    en-US: 'Please create a task first'
+    ru-RU: 'Пожалуйста, сначала создайте задачу'
+
+  '00101008':
+    zh-CN: '修改失败'
+    en-US: 'Modification failed'
+    ru-RU: 'Изменение не удалось'
+
+  '00101009':
+    zh-CN: '请输入参数！'
+    en-US: 'Please enter parameters!'
+    ru-RU: 'Пожалуйста, введите параметры!'
+
+  '0010100A':
+    zh-CN: '标识格式错误：必须以大写字母开头，后跟1-10位数字'
+    en-US: 'Identifier format error: must start with uppercase letter, followed by 1-10 digits'
+    ru-RU: 'Ошибка формата идентификатора: должен начинаться с заглавной буквы, за которой следуют 1-10 цифр'
+
+  '0010100B':
+    zh-CN: '标识已存在'
+    en-US: 'Identifier already exists'
+    ru-RU: 'Идентификатор уже существует'
+
+  '0010100C':
+    zh-CN: '请输入公式！'
+    en-US: 'Please enter formula!'
+    ru-RU: 'Пожалуйста, введите формулу!'
+
+  '0010100D':
+    zh-CN: '请先设置输入参数！'
+    en-US: 'Please set input parameters first!'
+    ru-RU: 'Пожалуйста, сначала установите входные параметры!'
+
+  '0010100E':
+    zh-CN: '存在与该历史方法相关联的历史文件，请删除关联历史文件之后进行方法删除！！！'
+    en-US: 'Historical files associated with this method exist, please delete them before deleting the method!!!'
+    ru-RU: 'Существуют исторические файлы, связанные с этим методом, пожалуйста, удалите их перед удалением метода!!!'
+
+  '0010100F':
+    zh-CN: '更新任务失败'
+    en-US: 'Failed to update task'
+    ru-RU: 'Не удалось обновить задачу'
+
+  '00101010':
+    zh-CN: '修改成功'
+    en-US: 'Modified successfully'
+    ru-RU: 'Успешно изменено'
+
+  '00101011':
+    zh-CN: '未找到样品池信息'
+    en-US: 'Sample cell information not found'
+    ru-RU: 'Информация о кювете не найдена'
+
+  '00101012':
+    zh-CN: '创建样品失败'
+    en-US: 'Failed to create sample'
+    ru-RU: 'Не удалось создать образец'
+
+  '00101013':
+    zh-CN: '拷贝失败,传入taskId不能为空！！！'
+    en-US: 'Copy failed, taskId cannot be empty!!!'
+    ru-RU: 'Копирование не удалось, taskId не может быть пустым!!!'
+
+  '00101014':
+    zh-CN: '拷贝成功'
+    en-US: 'Copied successfully'
+    ru-RU: 'Успешно скопировано'
+
+  '00101015':
+    zh-CN: '拷贝失败'
+    en-US: 'Copy failed'
+    ru-RU: 'Копирование не удалось'
+
+  '00101017':
+    zh-CN: '请输入显示标题'
+    en-US: 'Please enter display title'
+    ru-RU: 'Пожалуйста, введите отображаемый заголовок'
+
+  '00101018':
+    zh-CN: '请输入结果标识！'
+    en-US: 'Please enter result identifier!'
+    ru-RU: 'Пожалуйста, введите идентификатор результата!'
+
+  '00101019':
+    zh-CN: '请输入结果单位！'
+    en-US: 'Please enter result unit!'
+    ru-RU: 'Пожалуйста, введите единицу результата!'
+
+  # ========== 定向测量模块=02 (00102) ==========
+  '00102001':
+    zh-CN: '标准样品编号重复'
+    en-US: 'Standard sample number already exists'
+    ru-RU: 'Номер стандартного образца уже существует'
+
+  '00102002':
+    zh-CN: '未知样品编号重复'
+    en-US: 'Unknown sample number already exists'
+    ru-RU: 'Номер неизвестного образца уже существует'
+
+  '00102003':
+    zh-CN: '定量测定参数对象不能为空'
+    en-US: 'Quantitative analysis parameter object cannot be empty'
+    ru-RU: 'Объект параметров количественного анализа не может быть пустым'
+
+  '00102004':
+    zh-CN: '波长值最多支持3个，当前数量：{0}'
+    en-US: 'Maximum 3 wavelength values supported, current: {0}'
+    ru-RU: 'Максимум 3 значения длины волны поддерживаются, текущее: {0}'
+
+  '00102005':
+    zh-CN: '第{0}个波长值不能为空字符串'
+    en-US: 'Wavelength value {0} cannot be empty string'
+    ru-RU: 'Значение длины волны {0} не может быть пустой строкой'
+
+  '00102006':
+    zh-CN: '第{0}个波长值超出范围({3},{4})，当前值：{1}'
+    en-US: 'Wavelength value {0} out of range ({3},{4}), current: {1}'
+    ru-RU: 'Значение длины волны {0} вне диапазона ({3},{4}), текущее: {1}'
+
+  '00102007':
+    zh-CN: '第{0}个波长值格式错误（需为数字），当前值：{1}'
+    en-US: 'Wavelength value {0} format error (must be number), current: {1}'
+    ru-RU: 'Ошибка формата значения длины волны {0} (должно быть числом), текущее: {1}'
+
+  '00102008':
+    zh-CN: '波长参数不能为空'
+    en-US: 'Wavelength parameter cannot be empty'
+    ru-RU: 'Параметр длины волны не может быть пустым'
+
+  '00102009':
+    zh-CN: '波长参数数量需与波长值一致（当前参数数：{0}，波长数：{1})'
+    en-US: 'Number of wavelength parameters must match wavelength values (current parameters: {0}, wavelengths: {1})'
+    ru-RU: 'Количество параметров длины волны должно соответствовать значениям длин волн (текущие параметры: {0}, длины волн: {1})'
+
+  '0010200A':
+    zh-CN: '第{0}个波长参数不能为空字符串'
+    en-US: 'Wavelength parameter {0} cannot be empty string'
+    ru-RU: 'Параметр длины волны {0} не может быть пустой строкой'
+
+  '0010200B':
+    zh-CN: '曲线类型不能为空'
+    en-US: 'Curve type cannot be empty'
+    ru-RU: 'Тип кривой не может быть пустым'
+
+  '0010200C':
+    zh-CN: '方程类型不能为空'
+    en-US: 'Equation type cannot be empty'
+    ru-RU: 'Тип уравнения не может быть пустым'
+
+  '0010200D':
+    zh-CN: '系数方式不能为空'
+    en-US: 'Coefficient method cannot be empty'
+    ru-RU: 'Метод коэффициентов не может быть пустым'
+
+  '0010200E':
+    zh-CN: '系数方式不合法（可选值：直接系数法、标准曲线法）'
+    en-US: 'Invalid coefficient method (options: direct coefficient, standard curve)'
+    ru-RU: 'Недопустимый метод коэффициентов (варианты: прямой коэффициент, стандартная кривая)'
+
+  '0010200F':
+    zh-CN: '系数参数不能为空'
+    en-US: 'Coefficient parameter cannot be empty'
+    ru-RU: 'Параметр коэффициента не может быть пустым'
+
+  '00102010':
+    zh-CN: '系数参数最多支持10个，当前数量：{0}'
+    en-US: 'Maximum 10 coefficient parameters supported, current: {0}'
+    ru-RU: 'Максимум 10 параметров коэффициентов поддерживается, текущее: {0}'
+
+  '00102011':
+    zh-CN: '系数参数数量不足，当前数量：{0}，所需数量：{1}'
+    en-US: 'Insufficient coefficient parameters, current: {0}, required: {1}'
+    ru-RU: 'Недостаточно параметров коэффициентов, текущее: {0}, требуется: {1}'
+
+  '00102012':
+    zh-CN: '第{0}个系数参数不能为空字符串'
+    en-US: 'Coefficient parameter {0} cannot be empty string'
+    ru-RU: 'Параметр коэффициента {0} не может быть пустой строкой'
+
+  '00102013':
+    zh-CN: '第{0}个系数参数小数位数不能超过3位，当前值：{1}'
+    en-US: 'Coefficient parameter {0} decimal places cannot exceed 3, current: {1}'
+    ru-RU: 'Количество десятичных знаков параметра коэффициента {0} не может превышать 3, текущее: {1}'
+
+  '00102014':
+    zh-CN: '第{0}个系数参数格式错误（需为数字），当前值：{1}'
+    en-US: 'Coefficient parameter {0} format error (must be number), current: {1}'
+    ru-RU: 'Ошибка формата параметра коэффициента {0} (должно быть числом), текущее: {1}'
+
+  '00102015':
+    zh-CN: '零点方式不合法（可选值：过零点、插入零点）'
+    en-US: 'Invalid zero mode (options: through zero, insert zero)'
+    ru-RU: 'Недопустимый режим нуля (варианты: через ноль, вставить ноль)'
+
+  '00102016':
+    zh-CN: '重复模式不合法'
+    en-US: 'Invalid repeat mode'
+    ru-RU: 'Недопустимый режим повторения'
+
+  '00102017':
+    zh-CN: '单池重复模式下，重复次数不能为空'
+    en-US: 'Repeat count cannot be empty in single cell repeat mode'
+    ru-RU: 'Количество повторений не может быть пустым в режиме повторения одной кюветы'
+
+  '00102018':
+    zh-CN: '重复次数需在2-10范围内，当前值：{0}'
+    en-US: 'Repeat count must be between 2-10, current: {0}'
+    ru-RU: 'Количество повторений должно быть в диапазоне 2-10, текущее: {0}'
+
+  '00102019':
+    zh-CN: '重复次数格式错误（需为整数），当前值：{0}'
+    en-US: 'Repeat count format error (must be integer), current: {0}'
+    ru-RU: 'Ошибка формата количества повторений (должно быть целым числом), текущее: {0}'
+
+  '0010201A':
+    zh-CN: '单池重复模式下，时间间隔不能为空'
+    en-US: 'Time interval cannot be empty in single cell repeat mode'
+    ru-RU: 'Временной интервал не может быть пустым в режиме повторения одной кюветы'
+
+  '0010201B':
+    zh-CN: '时间间隔需在0-60秒范围内，当前值：{0}'
+    en-US: 'Time interval must be between 0-60 seconds, current: {0}'
+    ru-RU: 'Временной интервал должен быть в диапазоне 0-60 секунд, текущее: {0}'
+
+  '0010201C':
+    zh-CN: '时间间隔小数位数不能超过1位，当前值：{0}'
+    en-US: 'Time interval decimal places cannot exceed 1, current: {0}'
+    ru-RU: 'Количество десятичных знаков временного интервала не может превышать 1, текущее: {0}'
+
+  '0010201D':
+    zh-CN: '时间间隔格式错误（需为数字），当前值：{0}'
+    en-US: 'Time interval format error (must be number), current: {0}'
+    ru-RU: 'Ошибка формата временного интервала (должно быть числом), текущее: {0}'
+
+  '0010201E':
+    zh-CN: '样品输入参数最多支持20个，当前数量：{0}'
+    en-US: 'Maximum 20 sample input parameters supported, current: {0}'
+    ru-RU: 'Максимум 20 входных параметров образца поддерживается, текущее: {0}'
+
+  '0010201F':
+    zh-CN: '第{0}个样品输入参数标题不能为空'
+    en-US: 'Sample input parameter {0} title cannot be empty'
+    ru-RU: 'Заголовок входного параметра образца {0} не может быть пустым'
+
+  '00102020':
+    zh-CN: '待计算结果参数最多支持5个，当前数量：{0}'
+    en-US: 'Maximum 5 result calculation parameters supported, current: {0}'
+    ru-RU: 'Максимум 5 параметров расчета результатов поддерживается, текущее: {0}'
+
+  '00102021':
+    zh-CN: '第{0}个待计算结果参数标题或公式不能为空'
+    en-US: 'Result calculation parameter {0} title or formula cannot be empty'
+    ru-RU: 'Заголовок или формула параметра расчета результата {0} не могут быть пустыми'
+
+  '00102022':
+    zh-CN: '质控设置最多支持10个规则，当前数量：{0}'
+    en-US: 'Maximum 10 quality control rules supported, current: {0}'
+    ru-RU: 'Максимум 10 правил контроля качества поддерживается, текущее: {0}'
+
+  '00102023':
+    zh-CN: '方法名称长度不能超过256字符'
+    en-US: 'Method name length cannot exceed 256 characters'
+    ru-RU: 'Длина имени метода не может превышать 256 символов'
+
+  '00102024':
+    zh-CN: '请设置标准浓度'
+    en-US: 'Please set standard concentration'
+    ru-RU: 'Пожалуйста, установите стандартную концентрацию'
+
+  '00102025':
+    zh-CN: '请选择曲线类型'
+    en-US: 'Please select curve type'
+    ru-RU: 'Пожалуйста, выберите тип кривой'
+
+  '00102026':
+    zh-CN: '数据点数不足，不进行曲线拟合'
+    en-US: 'Insufficient data points, no curve fitting performed'
+    ru-RU: 'Недостаточно точек данных, подгонка кривой не выполняется'
+
+  '00102027':
+    zh-CN: '获取标准样品表头失败：{0}'
+    en-US: 'Failed to get standard sample header: {0}'
+    ru-RU: 'Не удалось получить заголовок стандартного образца: {0}'
+
+  '00102028':
+    zh-CN: '获取未知样品表头失败：{0}'
+    en-US: 'Failed to get unknown sample header: {0}'
+    ru-RU: 'Не удалось получить заголовок неизвестного образца: {0}'
+
+  '00102029':
+    zh-CN: '没有可导出的样品数据'
+    en-US: 'No sample data to export'
+    ru-RU: 'Нет данных образцов для экспорта'
+
+  '0010202A':
+    zh-CN: '换灯波长要在（330-390）之间，当前值：{0}'
+    en-US: 'Lamp change wavelength must be between 330-390, current: {0}'
+    ru-RU: 'Длина волны смены лампы должна быть между 330-390, текущее: {0}'
+
+  '0010202B':
+    zh-CN: '换灯波长不能和测量波长一样！'
+    en-US: 'Lamp change wavelength cannot be the same as measurement wavelength!'
+    ru-RU: 'Длина волны смены лампы не может быть такой же, как длина волны измерения!'
+
+  '0010202C':
+    zh-CN: '标准浓度输入有误！'
+    en-US: 'Standard concentration input error!'
+    ru-RU: 'Ошибка ввода стандартной концентрации!'
+
+  '0010202D':
+    zh-CN: '标准浓度为非负数！'
+    en-US: 'Standard concentration must be non-negative!'
+    ru-RU: 'Стандартная концентрация должна быть неотрицательной!'
+
+  # ========== 光度测量模块=03 (00103) ==========
+  '00103001':
+    zh-CN: '重新分析出错'
+    en-US: 'Re-analysis error'
+    ru-RU: 'Ошибка повторного анализа'
+
+  '00103002':
+    zh-CN: '{0}模式下请选择能量灯并设置增益'
+    en-US: 'Please select energy lamp and set gain in {0} mode'
+    ru-RU: 'Пожалуйста, выберите энергетическую лампу и установите усиление в режиме {0}'
+
+  '00103003':
+    zh-CN: '{0}模式下请设置增益'
+    en-US: 'Please set gain in {0} mode'
+    ru-RU: 'Пожалуйста, установите усиление в режиме {0}'
+
+  '00103004':
+    zh-CN: '光度模式选择出错'
+    en-US: 'Photometric mode selection error'
+    ru-RU: 'Ошибка выбора фотометрического режима'
+
+  '00103005':
+    zh-CN: '波长值数量必须在1-26个范围内'
+    en-US: 'Number of wavelength values must be between 1-26'
+    ru-RU: 'Количество значений длин волн должно быть в диапазоне 1-26'
+
+  '00103006':
+    zh-CN: '波长值不能包含空值'
+    en-US: 'Wavelength values cannot contain null values'
+    ru-RU: 'Значения длин волн не могут содержать null значения'
+
+  '00103007':
+    zh-CN: '重复模式不能为空'
+    en-US: 'Repeat mode cannot be empty'
+    ru-RU: 'Режим повторения не может быть пустым'
+
+  '00103008':
+    zh-CN: '重复模式只能是rmNone(不重复)、rmCR(单池重复)'
+    en-US: 'Repeat mode can only be rmNone (no repeat), rmCR (single cell repeat)'
+    ru-RU: 'Режим повторения может быть только rmNone (без повторения), rmCR (повторение одной кюветы)'
+
+  '00103009':
+    zh-CN: '单池重复模式下重复次数不能为空'
+    en-US: 'Repeat count cannot be empty in single cell repeat mode'
+    ru-RU: 'Количество повторений не может быть пустым в режиме повторения одной кюветы'
+
+  '0010300A':
+    zh-CN: '重复次数必须在2-10范围内'
+    en-US: 'Repeat count must be between 2-10'
+    ru-RU: 'Количество повторений должно быть в диапазоне 2-10'
+
+  '0010300B':
+    zh-CN: '重复次数必须为有效的整数'
+    en-US: 'Repeat count must be a valid integer'
+    ru-RU: 'Количество повторений должно быть действительным целым числом'
+
+  '0010300C':
+    zh-CN: '单池重复模式下时间间隔不能为空'
+    en-US: 'Time interval cannot be empty in single cell repeat mode'
+    ru-RU: 'Временной интервал не может быть пустым в режиме повторения одной кюветы'
+
+  '0010300D':
+    zh-CN: '时间间隔必须在0-60范围内（单位：秒）'
+    en-US: 'Time interval must be between 0-60 (unit: seconds)'
+    ru-RU: 'Временной интервал должен быть в диапазоне 0-60 (единица: секунды)'
+
+  '0010300E':
+    zh-CN: '输入参数数量不能超过40个'
+    en-US: 'Number of input parameters cannot exceed 40'
+    ru-RU: 'Количество входных параметров не может превышать 40'
+
+  '0010300F':
+    zh-CN: '待计算结果数量不能超过5个'
+    en-US: 'Number of result calculations cannot exceed 5'
+    ru-RU: 'Количество расчетов результатов не может превышать 5'
+
+  '00103010':
+    zh-CN: '最多支持修约10个变量{0}'
+    en-US: 'Maximum 10 variables can be rounded {0}'
+    ru-RU: 'Максимум 10 переменных могут быть округлены {0}'
+
+  '00103011':
+    zh-CN: '修约设置{0}的修约条件不能为空'
+    en-US: 'Rounding condition for setting {0} cannot be empty'
+    ru-RU: 'Условие округления для настройки {0} не может быть пустым'
+
+  '00103012':
+    zh-CN: '修约设置{0}的修约条件数量不能超过10个'
+    en-US: 'Number of rounding conditions for setting {0} cannot exceed 10'
+    ru-RU: 'Количество условий округления для настройки {0} не может превышать 10'
+
+  '00103013':
+    zh-CN: '质控设置数量不能超过10个'
+    en-US: 'Number of quality control settings cannot exceed 10'
+    ru-RU: 'Количество настроек контроля качества не может превышать 10'
+
+  '00103014':
+    zh-CN: '没有可应用的方法参数'
+    en-US: 'No applicable method parameters'
+    ru-RU: 'Нет применимых параметров метода'
+
+  '00103015':
+    zh-CN: '没有可应用的方法或参数'
+    en-US: 'No applicable method or parameters'
+    ru-RU: 'Нет применимого метода или параметров'
+
+  '00103016':
+    zh-CN: '没有测量数据'
+    en-US: 'No measurement data'
+    ru-RU: 'Нет данных измерений'
+
+  '00103017':
+    zh-CN: '更新数据失败'
+    en-US: 'Failed to update data'
+    ru-RU: 'Не удалось обновить данные'
+
+  '00103018':
+    zh-CN: '请先选择方法'
+    en-US: 'Please select a method first'
+    ru-RU: 'Пожалуйста, сначала выберите метод'
+
+  '00103019':
+    zh-CN: '该方法没有用于分析的公式'
+    en-US: 'This method has no formula for analysis'
+    ru-RU: 'У этого метода нет формулы для анализа'
+
+  # ========== 光谱扫描模块=04 (00104) ==========
+  '00104001':
+    zh-CN: '方法参数一致'
+    en-US: 'Method parameters match'
+    ru-RU: 'Параметры метода совпадают'
+
+  '00104003':
+    zh-CN: '参数错误'
+    en-US: 'Parameter error'
+    ru-RU: 'Ошибка параметра'
+
+  '00104004':
+    zh-CN: '波长 {0} 不存在，请重新选择'
+    en-US: 'Wavelength {0} does not exist, please select again'
+    ru-RU: 'Длина волны {0} не существует, пожалуйста, выберите снова'
+
+  '00104005':
+    zh-CN: '光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：{0}'
+    en-US: 'Invalid photometric mode (options: 1-abs, 2-T%, 3-Es, 4-Er), current: {0}'
+    ru-RU: 'Недопустимый фотометрический режим (варианты: 1-abs, 2-T%, 3-Es, 4-Er), текущее: {0}'
+
+  '00104006':
+    zh-CN: '开始波长不能为空'
+    en-US: 'Start wavelength cannot be empty'
+    ru-RU: 'Начальная длина волны не может быть пустой'
+
+  '00104007':
+    zh-CN: '开始波长需在190-900范围内，当前值：{0}'
+    en-US: 'Start wavelength must be between 190-900, current: {0}'
+    ru-RU: 'Начальная длина волны должна быть в диапазоне 190-900, текущее: {0}'
+
+  '00104008':
+    zh-CN: '开始波长小数点后最多保留1位，当前值：{0}'
+    en-US: 'Start wavelength can have at most 1 decimal place, current: {0}'
+    ru-RU: 'Начальная длина волны может иметь максимум 1 десятичный знак, текущее: {0}'
+
+  '00104009':
+    zh-CN: '开始波长格式错误（需为数字），当前值：{0}'
+    en-US: 'Start wavelength format error (must be number), current: {0}'
+    ru-RU: 'Ошибка формата начальной длины волны (должно быть числом), текущее значение: {0}'
+
+  '0010400A':
+    zh-CN: '结束波长不能为空'
+    en-US: 'End wavelength cannot be empty'
+    ru-RU: 'Конечная длина волны не может быть пустой'
+
+  '0010400B':
+    zh-CN: '结束波长需在190-900范围内，当前值：{0}'
+    en-US: 'End wavelength must be between 190-900, current: {0}'
+    ru-RU: 'Конечная длина волны должна быть в диапазоне 190-900, текущее значение: {0}'
+
+  '0010400C':
+    zh-CN: '结束波长小数点后最多保留1位，当前值：{0}'
+    en-US: 'End wavelength can have at most 1 decimal place, current: {0}'
+    ru-RU: 'Конечная длина волны может иметь не более 1 знака после запятой, текущее значение: {0}'
+
+  '0010400D':
+    zh-CN: '开始波长必须大于结束波长（开始：{0}，结束：{1})'
+    en-US: 'Start wavelength must be greater than end wavelength (start: {0}, end: {1})'
+    ru-RU: 'Начальная длина волны должна быть больше конечной (начало: {0}, конец: {1})'
+
+  '0010400E':
+    zh-CN: '结束波长格式错误（需为数字），当前值：{0}'
+    en-US: 'End wavelength format error (must be number), current: {0}'
+    ru-RU: 'Ошибка формата конечной длины волны (должно быть числом), текущее значение: {0}'
+
+  '0010400F':
+    zh-CN: '波长间隔不能为空'
+    en-US: 'Wavelength interval cannot be empty'
+    ru-RU: 'Интервал длин волн не может быть пустым'
+
+  '00104010':
+    zh-CN: '波长间隔不合法（可选值：{0}），当前值：{1}'
+    en-US: 'Invalid wavelength interval (options: {0}), current: {1}'
+    ru-RU: 'Недопустимый интервал длин волн (варианты: {0}), текущее значение: {1}'
+
+  '00104011':
+    zh-CN: '重复模式不合法（可选值：0-不重复、1-单池重复），当前值：{0}'
+    en-US: 'Invalid repeat mode (options: 0-no repeat, 1-single cell repeat), current: {0}'
+    ru-RU: 'Недопустимый режим повторения (варианты: 0-без повторения, 1-повторение одной ячейки), текущее значение: {0}'
+
+  '00104012':
+    zh-CN: '时间间隔小数点后最多保留1位，当前值：{0}'
+    en-US: 'Time interval can have at most 1 decimal place, current: {0}'
+    ru-RU: 'Временной интервал может иметь не более 1 знака после запятой, текущее значение: {0}'
+
+  '00104013':
+    zh-CN: '扫描速度不能为空'
+    en-US: 'Scan speed cannot be empty'
+    ru-RU: 'Скорость сканирования не может быть пустой'
+
+  '00104014':
+    zh-CN: '扫描速度不合法（可选值：0-慢速、1-中速、2-快速、3-极快），当前值：{0}'
+    en-US: 'Invalid scan speed (options: 0-slow, 1-medium, 2-fast, 3-ultra fast), current: {0}'
+    ru-RU: 'Недопустимая скорость сканирования (варианты: 0-медленная, 1-средняя, 2-быстрая, 3-ультра быстрая), текущее значение: {0}'
+
+  '00104015':
+    zh-CN: '起始波长不能小于等于停止波长'
+    en-US: 'Start wavelength cannot be less than or equal to stop wavelength'
+    ru-RU: 'Начальная длина волны не может быть меньше или равна конечной длине волны'
+
+  '00104016':
+    zh-CN: '样品信息不存在: {0}'
+    en-US: 'Sample information does not exist: {0}'
+    ru-RU: 'Информация об образце не существует: {0}'
+
+  '00104017':
+    zh-CN: '时间{0}不存在，请重新选择'
+    en-US: 'Time {0} does not exist, please select again'
+    ru-RU: 'Время {0} не существует, пожалуйста, выберите снова'
+
+  # ========== 时间扫描模块=05 (00105) ==========
+  '00105001':
+    zh-CN: '光度模式不能为空'
+    en-US: 'Photometric mode cannot be empty'
+    ru-RU: 'Фотометрический режим не может быть пустым'
+
+  '00105002':
+    zh-CN: '光度模式只能是1(abs)、2(T%)、3(Es)、4(Er)'
+    en-US: 'Photometric mode can only be 1(abs), 2(T%), 3(Es), 4(Er)'
+    ru-RU: 'Фотометрический режим может быть только 1(abs), 2(T%), 3(Es), 4(Er)'
+
+  '00105003':
+    zh-CN: '波长值不能为空'
+    en-US: 'Wavelength value cannot be empty'
+    ru-RU: 'Значение длины волны не может быть пустым'
+
+  '00105004':
+    zh-CN: '波长值 {0} 必须在{1}-{2}范围内'
+    en-US: 'Wavelength value {0} must be between {1}-{2}'
+    ru-RU: 'Значение длины волны {0} должно быть в диапазоне {1}-{2}'
+
+  '00105005':
+    zh-CN: '波长值{0}小数点后最多保留1位'
+    en-US: 'Wavelength value {0} can have at most 1 decimal place'
+    ru-RU: 'Значение длины волны {0} может иметь не более 1 знака после запятой'
+
+  '00105006':
+    zh-CN: '波长值{0}必须为有效的数字'
+    en-US: 'Wavelength value {0} must be a valid number'
+    ru-RU: 'Значение длины волны {0} должно быть допустимым числом'
+
+  '00105007':
+    zh-CN: '扫描总时长不能为空'
+    en-US: 'Total scan duration cannot be empty'
+    ru-RU: 'Общая продолжительность сканирования не может быть пустой'
+
+  '00105008':
+    zh-CN: '扫描总时长必须在0-10000范围内'
+    en-US: 'Total scan duration must be between 0-10000'
+    ru-RU: 'Общая продолжительность сканирования должна быть в диапазоне 0-10000'
+
+  '00105009':
+    zh-CN: '扫描总时长小数点后最多保留1位'
+    en-US: 'Total scan duration can have at most 1 decimal place'
+    ru-RU: 'Общая продолжительность сканирования может иметь не более 1 знака после запятой'
+
+  '0010500A':
+    zh-CN: '扫描总时长必须为有效的数字'
+    en-US: 'Total scan duration must be a valid number'
+    ru-RU: 'Общая продолжительность сканирования должна быть допустимым числом'
+
+  '0010500B':
+    zh-CN: '扫描单位不能为空'
+    en-US: 'Scan unit cannot be empty'
+    ru-RU: 'Единица сканирования не может быть пустой'
+
+  '0010500C':
+    zh-CN: '扫描单位只能是0(分)、1(秒)'
+    en-US: 'Scan unit can only be 0(minutes), 1(seconds)'
+    ru-RU: 'Единица сканирования может быть только 0(минуты), 1(секунды)'
+
+  '0010500D':
+    zh-CN: '时间间隔不能为空'
+    en-US: 'Time interval cannot be empty'
+    ru-RU: 'Временной интервал не может быть пустым'
+
+  '0010500E':
+    zh-CN: '时间间隔必须在0-100范围内'
+    en-US: 'Time interval must be between 0-100'
+    ru-RU: 'Временной интервал должен быть в диапазоне 0-100'
+
+  '0010500F':
+    zh-CN: '时间间隔小数点后最多保留1位'
+    en-US: 'Time interval can have at most 1 decimal place'
+    ru-RU: 'Временной интервал может иметь не более 1 знака после запятой'
+
+  '00105010':
+    zh-CN: '时间间隔必须为有效的数字'
+    en-US: 'Time interval must be a valid number'
+    ru-RU: 'Временной интервал должен быть допустимым числом'
+
+  '00105011':
+    zh-CN: '扫描总个数不能为空'
+    en-US: 'Total scan count cannot be empty'
+    ru-RU: 'Общее количество сканирований не может быть пустым'
+
+  '00105012':
+    zh-CN: '扫描总个数必须为有效的整数'
+    en-US: 'Total scan count must be a valid integer'
+    ru-RU: 'Общее количество сканирований должно быть допустимым целым числом'
+
+  '00105013':
+    zh-CN: '多联池模式不能为空'
+    en-US: 'Multi-cell mode cannot be empty'
+    ru-RU: 'Режим мульти-ячеек не может быть пустым'
+
+  '00105014':
+    zh-CN: '多联池模式只能是0(顺序单池连续采样)、1(循环多池交替采样)'
+    en-US: 'Multi-cell mode can only be 0(sequential single cell continuous sampling), 1(circular multi-cell alternating sampling)'
+    ru-RU: 'Режим мульти-ячеек может быть только 0(последовательная непрерывная выборка одной ячейки), 1(циклическая попеременная выборка нескольких ячеек)'
+
+  '00105016':
+    zh-CN: '请勿重复使用'
+    en-US: 'Please do not reuse'
+    ru-RU: 'Пожалуйста, не используйте повторно'
+
+  '00105017':
+    zh-CN: '方法参数错误'
+    en-US: 'Method parameter error'
+    ru-RU: 'Ошибка параметра метода'
+
+  '00105018':
+    zh-CN: '图片解码失败'
+    en-US: 'Image decoding failed'
+    ru-RU: 'Ошибка декодирования изображения'
+
+  '00105019':
+    zh-CN: '波长值小数点后最多保留1位'
+    en-US: 'Wavelength value can have at most 1 decimal place'
+    ru-RU: 'Значение длины волны может иметь не более 1 знака после запятой'
+
+  '0010501A':
+    zh-CN: '波长值必须为有效的数字'
+    en-US: 'Wavelength value must be a valid number'
+    ru-RU: 'Значение длины волны должно быть допустимым числом'
+
+  '0010501B':
+    zh-CN: '样品编号重复:{0}'
+    en-US: 'Sample number already exists: {0}'
+    ru-RU: 'Номер образца уже существует: {0}'
+
+  # ========== 样品池控制模块=06 (00106) ==========
+  '00106001':
+    zh-CN: '未找到该仪器附件配置'
+    en-US: 'Instrument accessory configuration not found'
+    ru-RU: 'Конфигурация аксессуаров прибора не найдена'
+
+  '00106002':
+    zh-CN: '没有切换的样品池'
+    en-US: 'No switchable sample cell'
+    ru-RU: 'Нет переключаемой ячейки для образца'
+
+  '00106003':
+    zh-CN: '请选择要操作的样品池'
+    en-US: 'Please select the sample cell to operate'
+    ru-RU: 'Пожалуйста, выберите ячейку для образца для операции'
+
+  '00106004':
+    zh-CN: '设置出错'
+    en-US: 'Setting error'
+    ru-RU: 'Ошибка настройки'
+
+  # ========== 简洁模式-数据管理模块 (00106) ==========
+  '00106005':
+    zh-CN: '成功导入 {0} 个方法'
+    en-US: 'Successfully imported {0} methods'
+    ru-RU: 'Успешно импортировано {0} методов'
+
+  '00106006':
+    zh-CN: '导入方法失败：{0}'
+    en-US: 'Method import failed: {0}'
+    ru-RU: 'Ошибка импорта методов: {0}'
+
+  '00106007':
+    zh-CN: '成功删除 {0} 个方法'
+    en-US: 'Successfully deleted {0} methods'
+    ru-RU: 'Успешно удалено {0} методов'
+
+  '00106008':
+    zh-CN: '删除方法失败：{0}'
+    en-US: 'Method deletion failed: {0}'
+    ru-RU: 'Ошибка удаления методов: {0}'
+
+  '00106009':
+    zh-CN: '未指定要删除的方法'
+    en-US: 'No methods specified for deletion'
+    ru-RU: 'Методы для удаления не указаны'
+
+  '0010600A':
+    zh-CN: '方法不存在'
+    en-US: 'Method does not exist'
+    ru-RU: 'Метод не существует'
+
+  '0010600B':
+    zh-CN: '查询方法详情失败：{0}'
+    en-US: 'Failed to query method details: {0}'
+    ru-RU: 'Не удалось получить сведения о методе: {0}'
+
+  '0010600C':
+    zh-CN: '查询项目失败：{0}'
+    en-US: 'Failed to query project: {0}'
+    ru-RU: 'Не удалось запросить проект: {0}'
+
+  '0010600D':
+    zh-CN: '参数不能为空'
+    en-US: 'Parameter cannot be empty'
+    ru-RU: 'Параметр не может быть пустым'
+
+  '0010600E':
+    zh-CN: '方法名称检查失败：{0}'
+    en-US: 'Method name check failed: {0}'
+    ru-RU: 'Ошибка проверки имени метода: {0}'
+
+  '0010600F':
+    zh-CN: '方法名称重复'
+    en-US: 'Method name already exists'
+    ru-RU: 'Имя метода уже существует'
+
+  '00106010':
+    zh-CN: '创建方法失败：{0}'
+    en-US: 'Method creation failed: {0}'
+    ru-RU: 'Ошибка создания метода: {0}'
+  # ========== 仪器管理模块=002 ==========
+  # 进样器模块=01
+  '00201001':
+    zh-CN: '请先连接仪器！'
+    en-US: 'Please connect the instrument first!'
+    ru-RU: 'Пожалуйста, сначала подключите прибор!'
+
+  '00201002':
+    zh-CN: '仪器设置成功，数据库保存失败，请检查数据库设置'
+    en-US: 'Instrument settings successful, database save failed, please check database settings'
+    ru-RU: 'Настройки прибора успешны, сохранение в базу данных не удалось, пожалуйста, проверьте настройки базы данных'
+
+  # 仪器信息模块=02
+  '00202001':
+    zh-CN: '请先激活仪器'
+    en-US: 'Please activate the instrument first'
+    ru-RU: 'Пожалуйста, сначала активируйте прибор'
+
+  '00202002':
+    zh-CN: '设备正在初始化，请等待'
+    en-US: 'Device is initializing, please wait'
+    ru-RU: 'Устройство инициализируется, пожалуйста, подождите'
+
+  '00202003':
+    zh-CN: '设备正在测量，请等待'
+    en-US: 'Device is measuring, please wait'
+    ru-RU: 'Устройство выполняет измерение, пожалуйста, подождите'
+
+  '00202004':
+    zh-CN: '请先初始化仪器！'
+    en-US: 'Please initialize the instrument first!'
+    ru-RU: 'Пожалуйста, сначала инициализируйте прибор!'
+
+  '00202005':
+    zh-CN: '系统异常'
+    en-US: 'System exception'
+    ru-RU: 'Системное исключение'
+
+  '00202006':
+    zh-CN: '设备正在使用中，请等待'
+    en-US: 'Device is in use, please wait'
+    ru-RU: 'Устройство используется, пожалуйста, подождите'
+
+  '00202007':
+    zh-CN: '仪器已断开！'
+    en-US: 'Instrument disconnected!'
+    ru-RU: 'Прибор отключен!'
+
+  # 仪器配置模块=03
+  '00203001':
+    zh-CN: '未查找到仪器信息'
+    en-US: 'Instrument information not found'
+    ru-RU: 'Информация о приборе не найдена'
+
+  '00203002':
+    zh-CN: '查询初始化状态异常'
+    en-US: 'Query initialization status exception'
+    ru-RU: 'Исключение при запросе состояния инициализации'
+
+  '00203003':
+    zh-CN: '请先连接仪器！'
+    en-US: 'Please connect the instrument first!'
+    ru-RU: 'Пожалуйста, сначала подключите прибор!'
+
+  '00203004':
+    zh-CN: '缺少校准类型'
+    en-US: 'Missing calibration type'
+    ru-RU: 'Отсутствует тип калибровки'
+
+  '00203005':
+    zh-CN: '未找到该设备'
+    en-US: 'Device not found'
+    ru-RU: 'Устройство не найдено'
+
+  '00203006':
+    zh-CN: '未识别该型号'
+    en-US: 'Model not recognized'
+    ru-RU: 'Модель не распознана'
+
+  # 系统用户管理=04
+  '00204001':
+    zh-CN: '缺少用户角色'
+    en-US: 'Missing user role'
+    ru-RU: 'Отсутствует роль пользователя'
+
+  '00204002':
+    zh-CN: '添加用户出错，权限不足'
+    en-US: 'Error adding user, insufficient permissions'
+    ru-RU: 'Ошибка добавления пользователя, недостаточно прав'
+
+  '00204003':
+    zh-CN: '当前用户名已存在'
+    en-US: 'Username already exists'
+    ru-RU: 'Текущее имя пользователя уже существует'
+
+  '00204004':
+    zh-CN: '修改用户出错，权限不足'
+    en-US: 'Error modifying user, insufficient permissions'
+    ru-RU: 'Ошибка изменения пользователя, недостаточно прав'
+
+  '00204005':
+    zh-CN: '修改用户名出错，请检查'
+    en-US: 'Error modifying username, please check'
+    ru-RU: 'Ошибка изменения имени пользователя, пожалуйста, проверьте'
+
+  '00204006':
+    zh-CN: '管理员不允许删除'
+    en-US: 'Administrator cannot be deleted'
+    ru-RU: 'Администратор не может быть удален'
+
+  '00204007':
+    zh-CN: '不能删除自己'
+    en-US: 'Cannot delete yourself'
+    ru-RU: 'Нельзя удалить себя'
+
+  '00204008':
+    zh-CN: '删除用户出错，权限不足'
+    en-US: 'Error deleting user, insufficient permissions'
+    ru-RU: 'Ошибка удаления пользователя, недостаточно прав'
+
+  '00204009':
+    zh-CN: '缺少用户名或密码'
+    en-US: 'Missing username or password'
+    ru-RU: 'Отсутствует имя пользователя или пароль'
+
+  '0020400A':
+    zh-CN: '没找到该用户'
+    en-US: 'User not found'
+    ru-RU: 'Пользователь не найден'
+
+  '0020400B':
+    zh-CN: '密码错误!'
+    en-US: 'Password error!'
+    ru-RU: 'Ошибка пароля!'
+
+  # 仪器管理=05
+  '00205001':
+    zh-CN: '仪器编号为空'
+    en-US: 'Instrument number is empty'
+    ru-RU: 'Номер прибора пуст'
+
+  '00205002':
+    zh-CN: '用户名为空'
+    en-US: 'Username is empty'
+    ru-RU: 'Имя пользователя пусто'
+
+  '00205003':
+    zh-CN: '该用户不存在'
+    en-US: 'User does not exist'
+    ru-RU: 'Этот пользователь не существует'
+
+  '00205004':
+    zh-CN: '检测类型分项统计功能未开启'
+    en-US: 'Detection type statistics function not enabled'
+    ru-RU: 'Функция статистики по типу обнаружения не включена'
+
+  '00205005':
+    zh-CN: '检测项目分项统计功能未开启'
+    en-US: 'Detection item statistics function not enabled'
+    ru-RU: 'Функция статистики по элементам обнаружения не включена'
+
+  '00205006':
+    zh-CN: '获取检测类型分项统计异常'
+    en-US: 'Exception getting detection type statistics'
+    ru-RU: 'Исключение при получении статистики по типу обнаружения'
+
+  '00205007':
+    zh-CN: '获取检测项目分项统计异常'
+    en-US: 'Exception getting detection item statistics'
+    ru-RU: 'Исключение при получении статистики по элементам обнаружения'
+
+  '00205008':
+    zh-CN: '开始时间不能大于结束时间'
+    en-US: 'Start time cannot be greater than end time'
+    ru-RU: 'Время начала не может быть больше времени окончания'
+
+  # ========== 经典模式模块=003 ==========
+  # 通用模块=00
+  '00300001':
+    zh-CN: '不支持的导出格式，仅支持word/txt/xlsx'
+    en-US: 'Unsupported export format, only word/txt/xlsx supported'
+    ru-RU: 'Неподдерживаемый формат экспорта, поддерживаются только word/txt/xlsx'
+
+  '00300002':
+    zh-CN: '方法名格式错误'
+    en-US: 'Method name format error'
+    ru-RU: 'Ошибка формата имени метода'
+
+  '00300003':
+    zh-CN: '缺少分析参数，无法计算分析'
+    en-US: 'Missing analysis parameters, cannot calculate analysis'
+    ru-RU: 'Отсутствуют параметры анализа, невозможно выполнить расчет анализа'
+
+  '00300004':
+    zh-CN: '缺少映射关系，无法计算分析'
+    en-US: 'Missing mapping relationship, cannot calculate analysis'
+    ru-RU: 'Отсутствует отношение отображения, невозможно выполнить расчет анализа'
+
+  '00300005':
+    zh-CN: '缺少参数映射：{0}'
+    en-US: 'Missing parameter mapping: {0}'
+    ru-RU: 'Отсутствует отображение параметра: {0}'
+
+  '00300006':
+    zh-CN: '缺少数据！'
+    en-US: 'Missing data!'
+    ru-RU: 'Отсутствуют данные!'
+
+  '00300007':
+    zh-CN: '公式计算出错!{0}'
+    en-US: 'Formula calculation error! {0}'
+    ru-RU: 'Ошибка расчета по формуле! {0}'
+
+  '00300008':
+    zh-CN: '保存失败'
+    en-US: 'Save failed'
+    ru-RU: 'Сохранение не удалось'
+
+  '00300009':
+    zh-CN: '测量方法不存在'
+    en-US: 'Measurement method does not exist'
+    ru-RU: 'Метод измерения не существует'
+
+  '0030000A':
+    zh-CN: '没有此类型的数据'
+    en-US: 'No data of this type'
+    ru-RU: 'Нет данных этого типа'
+
+  '0030000B':
+    zh-CN: '变换数据不存在'
+    en-US: 'Transformation data does not exist'
+    ru-RU: 'Данные преобразования не существуют'
+
+  '0030000C':
+    zh-CN: '仪器设置参数失败！'
+    en-US: 'Instrument parameter setting failed!'
+    ru-RU: 'Не удалось установить параметры прибора!'
+
+  # 实验测试模块=01
+  '00301001':
+    zh-CN: '该项目已存在'
+    en-US: 'Project already exists'
+    ru-RU: 'Этот проект уже существует'
+
+  '00301002':
+    zh-CN: '方法名称重复'
+    en-US: 'Method name already exists'
+    ru-RU: 'Имя метода уже существует'
+
+  '00301003':
+    zh-CN: '创建方法失败'
+    en-US: 'Failed to create method'
+    ru-RU: 'Не удалось создать метод'
+
+  '00301004':
+    zh-CN: '请选择测量类型'
+    en-US: 'Please select measurement type'
+    ru-RU: 'Пожалуйста, выберите тип измерения'
+
+  '00301007':
+    zh-CN: '请选择光度测量'
+    en-US: 'Please select photometric measurement'
+    ru-RU: 'Пожалуйста, выберите фотометрическое измерение'
+
+  '00301008':
+    zh-CN: '请选择定量测定'
+    en-US: 'Please select quantitative analysis'
+    ru-RU: 'Пожалуйста, выберите количественный анализ'
+
+  '00301009':
+    zh-CN: '请选择光谱扫描'
+    en-US: 'Please select spectrum scan'
+    ru-RU: 'Пожалуйста, выберите спектральное сканирование'
+
+  '0030100A':
+    zh-CN: '请选择时间扫描'
+    en-US: 'Please select time scan'
+    ru-RU: 'Пожалуйста, выберите временное сканирование'
+
+  '0030100B':
+    zh-CN: '请选择双组份定量分析'
+    en-US: 'Please select dual-component quantitative analysis'
+    ru-RU: 'Пожалуйста, выберите двухкомпонентный количественный анализ'
+
+  '0030100C':
+    zh-CN: '未查询到数据'
+    en-US: 'No data found'
+    ru-RU: 'Данные не найдены'
+
+  '0030100D':
+    zh-CN: '未查询到前处理信息'
+    en-US: 'Pretreatment information not found'
+    ru-RU: 'Информация о предварительной обработке не найдена'
+
+  '0030100E':
+    zh-CN: '暂未开放'
+    en-US: 'Not yet available'
+    ru-RU: 'Еще не доступно'
+
+  '0030100F':
+    zh-CN: '未测量,请先测量'
+    en-US: 'Not measured, please measure first'
+    ru-RU: 'Не измерено, пожалуйста, сначала выполните измерение'
+
+  '00301010':
+    zh-CN: '项目不存在'
+    en-US: 'Project does not exist'
+    ru-RU: 'Проект не существует'
+
+  '00301011':
+    zh-CN: '方法删除失败'
+    en-US: 'Failed to delete method'
+    ru-RU: 'Не удалось удалить метод'
+
+  '00301012':
+    zh-CN: '当前方法缺少类型'
+    en-US: 'Current method missing type'
+    ru-RU: 'Текущему методу отсутствует тип'
+
+  '00301013':
+    zh-CN: '未找到该测量数据'
+    en-US: 'Measurement data not found'
+    ru-RU: 'Данные измерения не найдены'
+
+  '00301014':
+    zh-CN: '方法已删除'
+    en-US: 'Method has been deleted'
+    ru-RU: 'Метод был удален'
+
+  '00301015':
+    zh-CN: '成功导入{0}个方法'
+    en-US: 'Successfully imported {0} methods'
+    ru-RU: 'Успешно импортировано {0} методов'
+
+  '00301016':
+    zh-CN: '请先删除所有任务'
+    en-US: 'Please delete all tasks first'
+    ru-RU: 'Пожалуйста, сначала удалите все задачи'
+
+  '00301017':
+    zh-CN: '项目清空失败'
+    en-US: 'Failed to clear project'
+    ru-RU: 'Не удалось очистить проект'
+
+  '00301018':
+    zh-CN: '任务样品删除失败,请重新删除'
+    en-US: 'Failed to delete task samples, please try again'
+    ru-RU: 'Не удалось удалить образцы задачи, пожалуйста, попробуйте снова'
+
+  '00301019':
+    zh-CN: '任务测量数据删除失败,请重新删除'
+    en-US: 'Failed to delete task measurement data, please try again'
+    ru-RU: 'Не удалось удалить данные измерения задачи, пожалуйста, попробуйте снова'
+
+  '0030101A':
+    zh-CN: '任务分析数据删除失败,请重新删除'
+    en-US: 'Failed to delete task analysis data, please try again'
+    ru-RU: 'Не удалось удалить данные анализа задачи, пожалуйста, попробуйте снова'
+
+  '0030101B':
+    zh-CN: '任务附属信息删除失败,请重新删除'
+    en-US: 'Failed to delete task attachment information, please try again'
+    ru-RU: 'Не удалось удалить дополнительную информацию задачи, пожалуйста, попробуйте снова'
+
+  '0030101C':
+    zh-CN: '任务已删除'
+    en-US: 'Task deleted'
+    ru-RU: 'Задача удалена'
+
+  '0030101D':
+    zh-CN: '任务删除失败'
+    en-US: 'Failed to delete task'
+    ru-RU: 'Не удалось удалить задачу'
+
+  '0030101E':
+    zh-CN: '项目已清空'
+    en-US: 'Project cleared'
+    ru-RU: 'Проект очищен'
+
+  '0030101F':
+    zh-CN: '请先删除使用该方法的所有任务'
+    en-US: 'Please delete all tasks using this method first'
+    ru-RU: 'Пожалуйста, сначала удалите все задачи, использующие этот метод'
+  # 光度测量模块=02
+  '00302001':
+    zh-CN: '缺少方法'
+    en-US: 'Missing method'
+    ru-RU: 'Отсутствует метод'
+
+  '00302002':
+    zh-CN: '缺少结果参数'
+    en-US: 'Missing result parameters'
+    ru-RU: 'Отсутствуют параметры результата'
+
+  '00302003':
+    zh-CN: '没有要保存的数据'
+    en-US: 'No data to save'
+    ru-RU: 'Нет данных для сохранения'
+
+  '00302004':
+    zh-CN: '缺少备注'
+    en-US: 'Missing remarks'
+    ru-RU: 'Отсутствуют примечания'
+
+  '00302005':
+    zh-CN: '没有可导出的数据'
+    en-US: 'No data to export'
+    ru-RU: 'Нет данных для экспорта'
+
+  '00302006':
+    zh-CN: '文件生成失败：{0}'
+    en-US: 'File generation failed: {0}'
+    ru-RU: 'Не удалось создать файл: {0}'
+
+  '00302007':
+    zh-CN: '变量{0}缺少数据'
+    en-US: 'Variable {0} missing data'
+    ru-RU: 'Переменная {0}缺少数据'
+
+#   定量测定模块=03
+  '00303001':
+    zh-CN: '参考标准方法长度超限'
+    en-US: 'Reference standard method length exceeded'
+    ru-RU: 'Превышена длина ссылочного стандартного метода'
+
+  '00303002':
+    zh-CN: '前处理参数个数超限'
+    en-US: 'Pretreatment parameter count exceeded'
+    ru-RU: 'Превышено количество параметров предварительной обработки'
+
+  '00303003':
+    zh-CN: '前处理参数长度超限'
+    en-US: 'Pretreatment parameter length exceeded'
+    ru-RU: 'Превышена длина параметра предварительной обработки'
+
+  '00303004':
+    zh-CN: '波长个数需在1-3之间'
+    en-US: 'Number of wavelengths must be between 1-3'
+    ru-RU: 'Количество длин волн должно быть от 1 до 3'
+
+  '00303005':
+    zh-CN: '波长超出范围(190-900)'
+    en-US: 'Wavelength out of range (190-900)'
+    ru-RU: 'Длина волны вне диапазона (190-900)'
+
+  '00303006':
+    zh-CN: '波长需保留1位小数'
+    en-US: 'Wavelength must have 1 decimal place'
+    ru-RU: 'Длина волны должна иметь 1 знак после запятой'
+
+  '00303007':
+    zh-CN: '波长格式错误'
+    en-US: 'Wavelength format error'
+    ru-RU: 'Ошибка формата длины волны'
+
+  '00303008':
+    zh-CN: '曲线次数范围应为1-4'
+    en-US: 'Curve degree range should be 1-4'
+    ru-RU: 'Диапазон степени кривой должен быть 1-4'
+
+  '00303009':
+    zh-CN: '曲线系数数据个数需在1-10之间'
+    en-US: 'Number of curve coefficient data must be between 1-10'
+    ru-RU: 'Количество данных коэффициентов кривой должно быть от 1 до 10'
+
+  '0030300A':
+    zh-CN: '结果单位长度应为1-10'
+    en-US: 'Result unit length should be 1-10'
+    ru-RU: 'Длина единицы результата должна быть 1-10'
+
+  '0030300B':
+    zh-CN: '方法ID格式应为32位'
+    en-US: 'Method ID format should be 32 bits'
+    ru-RU: 'Формат ID метода должен быть 32 бита'
+
+  '0030300C':
+    zh-CN: '非标准样品，跳过'
+    en-US: 'Non-standard sample, skipped'
+    ru-RU: 'Нестандартный образец, пропущено'
+
+  '0030300E':
+    zh-CN: '未找到对应波长数据'
+    en-US: 'Corresponding wavelength data not found'
+    ru-RU: 'Соответствующие данные длины волны не найдены'
+
+  '0030300F':
+    zh-CN: '曲线拟合失败'
+    en-US: 'Curve fitting failed'
+    ru-RU: 'Не удалось выполнить аппроксимацию кривой'
+
+  '00303010':
+    zh-CN: '没有样品'
+    en-US: 'No samples'
+    ru-RU: 'Нет образцов'
+
+  '00303011':
+    zh-CN: '数据处理出错且没有找到旧数据，处理失败'
+    en-US: 'Data processing error and old data not found, processing failed'
+    ru-RU: 'Ошибка обработки данных и старые данные не найдены, обработка не удалась'
+
+  '00303012':
+    zh-CN: '未选择样品种类'
+    en-US: 'Sample type not selected'
+    ru-RU: 'Тип образца не выбран'
+
+  '00303013':
+    zh-CN: '样品种类有误'
+    en-US: 'Sample type error'
+    ru-RU: 'Ошибка типа образца'
+
+  '00303014':
+    zh-CN: '查询样品数据失败：{0}'
+    en-US: 'Failed to query sample data: {0}'
+    ru-RU: 'Не удалось запросить данные образца: {0}'
+
+  '00303015':
+    zh-CN: '样品数据为空'
+    en-US: 'Sample data is empty'
+    ru-RU: 'Данные образца пусты'
+
+  '00303016':
+    zh-CN: '没有可导出的标准样品数据'
+    en-US: 'No standard sample data to export'
+    ru-RU: 'Нет данных стандартных образцов для экспорта'
+
+  '00303017':
+    zh-CN: '光谱扫描参数对象不能为空'
+    en-US: 'Spectrum scan parameter object cannot be empty'
+    ru-RU: 'Объект параметров спектрального сканирования не может быть пустым'
+
+  '00303018':
+    zh-CN: '波长系数个数需在1-3之间'
+    en-US: 'Number of wavelength coefficients must be between 1-3'
+    ru-RU: 'Количество коэффициентов длины волны должно быть от 1 до 3'
+
+  # 光谱测量模块=04
+  '00304001':
+    zh-CN: '数据转换失败'
+    en-US: 'Data conversion failed'
+    ru-RU: 'Не удалось преобразовать данные'
+
+  '00304002':
+    zh-CN: '请选择正确的光度模式'
+    en-US: 'Please select correct photometric mode'
+    ru-RU: 'Пожалуйста, выберите правильный фотометрический режим'
+
+  '00304003':
+    zh-CN: '请选择正确的扫描速度'
+    en-US: 'Please select correct scan speed'
+    ru-RU: 'Пожалуйста, выберите правильную скорость сканирования'
+
+  '00304004':
+    zh-CN: '变换类型错误'
+    en-US: 'Transformation type error'
+    ru-RU: 'Ошибка типа преобразования'
+
+  '00304005':
+    zh-CN: '样品编号不能位空'
+    en-US: 'Sample number cannot be empty'
+    ru-RU: 'Номер образца не может быть пустым'
+
+  '00304006':
+    zh-CN: '预处理参数不存在'
+    en-US: 'Pretreatment parameters do not exist'
+    ru-RU: 'Параметры предварительной обработки не существуют'
+
+  '00304007':
+    zh-CN: '方法编号不能为空'
+    en-US: 'Method number cannot be empty'
+    ru-RU: 'Номер метода не может быть пустым'
+
+  '00304008':
+    zh-CN: '设备编号不能为空'
+    en-US: 'Device number cannot be empty'
+    ru-RU: 'Номер устройства не может быть пустым'
+
+  '00304009':
+    zh-CN: '设置参数失败'
+    en-US: 'Failed to set parameters'
+    ru-RU: 'Не удалось установить параметры'
+
+  '0030400A':
+    zh-CN: '文件生成失败：文件不存在'
+    en-US: 'File generation failed: file does not exist'
+    ru-RU: 'Не удалось создать файл: файл не существует'
+
+  # 时间扫描模块=05
+  '00305001':
+    zh-CN: '用户名过长！'
+    en-US: 'Username too long!'
+    ru-RU: 'Имя пользователя слишком длинное!'
+
+  '00305002':
+    zh-CN: '暂不支持此测量类型'
+    en-US: 'This measurement type is not supported yet'
+    ru-RU: 'Этот тип измерения пока не поддерживается'
+
+  '00305003':
+    zh-CN: '暂无任务数据'
+    en-US: 'No task data available'
+    ru-RU: 'Нет данных задачи'
+
+  '00305004':
+    zh-CN: '方法名称过长！'
+    en-US: 'Method name too long!'
+    ru-RU: 'Имя метода слишком длинное!'
+
+  '00305005':
+    zh-CN: '没有此方法'
+    en-US: 'Method does not exist'
+    ru-RU: 'Этот метод не существует'
+
+  '00305006':
+    zh-CN: '此方法没有参数'
+    en-US: 'This method has no parameters'
+    ru-RU: 'У этого метода нет параметров'
+
+  '00305007':
+    zh-CN: '缺少设备序列号'
+    en-US: 'Missing device serial number'
+    ru-RU: 'Отсутствует серийный номер устройства'
+
+  '00305008':
+    zh-CN: '缺少方法id'
+    en-US: 'Missing method ID'
+    ru-RU: 'Отсутствует ID метода'
+
+  '00305009':
+    zh-CN: '没有要新增或删除的样品！'
+    en-US: 'No samples to add or delete!'
+    ru-RU: 'Нет образцов для добавления или удаления!'
+  # 数据库管理模块=06
+  '00306001':
+    zh-CN: '查询失败'
+    en-US: 'Query failed'
+    ru-RU: 'Запрос не удался'
+
+  '00306002':
+    zh-CN: '查询参数不能为空'
+    en-US: 'Query parameters cannot be empty'
+    ru-RU: 'Параметры запроса не могут быть пустыми'
+
+  '00306003':
+    zh-CN: '参数不能为空'
+    en-US: 'Parameters cannot be empty'
+    ru-RU: 'Параметры не могут быть пустыми'
+
+  '00306004':
+    zh-CN: '数量不能为0'
+    en-US: 'Quantity cannot be 0'
+    ru-RU: 'Количество не может быть 0'
+
+  '00306005':
+    zh-CN: '数量不能大于50'
+    en-US: 'Quantity cannot be greater than 50'
+    ru-RU: 'Количество не может быть больше 50'
+
+  '00306006':
+    zh-CN: '该方法包含未完成的任务'
+    en-US: 'This method contains incomplete tasks'
+    ru-RU: 'Этот метод содержит незавершенные задачи'
+
+  '00306007':
+    zh-CN: '该项目包含未删除的方法'
+    en-US: 'This project contains undeleted methods'
+    ru-RU: 'Этот проект содержит неудаленные методы'
+
+  # 模板管理模块=07
+  '00307001':
+    zh-CN: '没有可保存为模板的信息'
+    en-US: 'No information to save as template'
+    ru-RU: 'Нет информации для сохранения в качестве шаблона'
+
+  '00307002':
+    zh-CN: '模板名称不能为空'
+    en-US: 'Template name cannot be empty'
+    ru-RU: 'Имя шаблона не может быть пустым'
+
+  '00307003':
+    zh-CN: '测量类型不能为空'
+    en-US: 'Measurement type cannot be empty'
+    ru-RU: 'Тип измерения не может быть пустым'
+
+  '00307004':
+    zh-CN: '请登录后操作！'
+    en-US: 'Please log in to operate!'
+    ru-RU: 'Пожалуйста, войдите в систему для выполнения операции!'
+
+  '00307005':
+    zh-CN: '该模板已存在,模板名称为：{0}'
+    en-US: 'Template already exists, template name: {0}'
+    ru-RU: 'Этот шаблон уже существует, имя шаблона: {0}'
+
+  '00307006':
+    zh-CN: '没有要删除的模板'
+    en-US: 'No templates to delete'
+    ru-RU: 'Нет шаблонов для удаления'
+
+  '00307007':
+    zh-CN: '不可删除他人创建的模板'
+    en-US: 'Cannot delete templates created by others'
+    ru-RU: 'Нельзя удалять шаблоны, созданные другими'
+
+  # ========== 分析报告模块=004 ==========
+  # 计算公式模块=01
+  '00401001':
+    zh-CN: '未找到ID为{0}的计算公式记录'
+    en-US: 'Calculation formula record with ID {0} not found'
+    ru-RU: 'Запись формулы расчета с ID {0} не найдена'
+
+  # 标准管理模块=02
+  '00402001':
+    zh-CN: '未找到ID为{0}的记录'
+    en-US: 'Record with ID {0} not found'
+    ru-RU: 'Запись с ID {0} не найдена'
+
+  # 导出管理模块=03
+  '00403001':
+    zh-CN: '当isAll=0时，必须提供exportIds参数'
+    en-US: 'When isAll=0, exportIds parameter must be provided'
+    ru-RU: 'Когда isAll=0, необходимо предоставить параметр exportIds'
+
+  '00403002':
+    zh-CN: '导出失败：{0}'
+    en-US: 'Export failed: {0}'
+    ru-RU: 'Экспорт не удался: {0}'
+
+  '00403003':
+    zh-CN: '导出异常：{0}'
+    en-US: 'Export exception: {0}'
+    ru-RU: 'Исключение при экспорте: {0}'
+
+  # 导入管理模块=04
+  '00404001':
+    zh-CN: '文件上传成功'
+    en-US: 'File uploaded successfully'
+    ru-RU: 'Файл успешно загружен'
+
+  '00404002':
+    zh-CN: '文件上传失败：{0}'
+    en-US: 'File upload failed: {0}'
+    ru-RU: 'Не удалось загрузить файл: {0}'
+
+  # 质控管理模块=05
+  '00405001':
+    zh-CN: '未找到ID为{0}的质控记录'
+    en-US: 'Quality control record with ID {0} not found'
+    ru-RU: 'Запись контроля качества с ID {0} не найдена'
+
+  # 修约规则模块=06
+  '00406001':
+    zh-CN: '未找到ID为{0}的修约规则记录'
+    en-US: 'Rounding rule record with ID {0} not found'
+    ru-RU: 'Запись правила округления с ID {0} не найдена'
+
+  # 标准预处理模块=07
+  '004007001':
+    zh-CN: '未找到ID为{0}的检测记录'
+    en-US: 'Detection record with ID {0} not found'
+    ru-RU: 'Запись обнаружения с ID {0} не найдена'
+
+  # ========== 系统管理模块=005 ==========
+  # 通用模块=00
+  '00500001':
+    zh-CN: '小组ID不能为空'
+    en-US: 'Group ID cannot be empty'
+    ru-RU: 'ID группы не может быть пустым'
+
+  # 全局管理模块=01
+  '00501001':
+    zh-CN: '添加失败'
+    en-US: 'Add failed'
+    ru-RU: 'Добавление не удалось'
+
+  # ========== 用户管理模块=006 ==========
+  # 用户管理模块=01
+  '00601001':
+    zh-CN: '用户名已存在'
+    en-US: 'Username already exists'
+    ru-RU: 'Имя пользователя уже существует'
+
+  '00601002':
+    zh-CN: '该小组不存在，请刷新重试！'
+    en-US: 'Group does not exist, please refresh and try again!'
+    ru-RU: 'Группа не существует, пожалуйста, обновите и попробуйте снова!'
+
+  '00601003':
+    zh-CN: '用户创建成功，已关联小组'
+    en-US: 'User created successfully, group associated'
+    ru-RU: 'Пользователь успешно создан, группа связана'
+
+  '00601004':
+    zh-CN: '用户更新成功，已同步更新小组关联'
+    en-US: 'User updated successfully, group association synchronized'
+    ru-RU: 'Пользователь успешно обновлен, связь с группой синхронизирована'
+  '00601005':
+    zh-CN: '请选择需要删除的用户'
+    en-US: 'Please select users to delete'
+    ru-RU: 'Пожалуйста, выберите пользователей для удаления'
+
+  '00601006':
+    zh-CN: '用户删除成功'
+    en-US: 'User deleted successfully'
+    ru-RU: 'Пользователь успешно удален'
+
+  '00601007':
+    zh-CN: '用户不存在，删除失败'
+    en-US: 'User does not exist, deletion failed'
+    ru-RU: 'Пользователь не существует, удаление не удалось'
+
+  '00601008':
+    zh-CN: '旧密码不正确'
+    en-US: 'Old password is incorrect'
+    ru-RU: 'Старый пароль неверен'
+
+  '00601009':
+    zh-CN: '新密码不能与旧密码相同'
+    en-US: 'New password cannot be the same as old password'
+    ru-RU: 'Новый пароль не может совпадать со старым'
+
+  '0060100A':
+    zh-CN: '新密码与确认密码不一致，请重新输入'
+    en-US: 'New password and confirmation password do not match, please re-enter'
+    ru-RU: 'Новый пароль и подтверждение пароля не совпадают, пожалуйста, введите снова'
+
+  '0060100B':
+    zh-CN: '密码修改成功'
+    en-US: 'Password changed successfully'
+    ru-RU: 'Пароль успешно изменен'
+
+  '0060100C':
+    zh-CN: '当前密码已是默认密码，无需重置'
+    en-US: 'Current password is already default, no reset needed'
+    ru-RU: 'Текущий пароль уже является паролем по умолчанию, сброс не требуется'
+
+  '0060100D':
+    zh-CN: '密码已重置为默认值123456，请提醒用户及时修改'
+    en-US: 'Password has been reset to default 123456, please remind user to change it'
+    ru-RU: 'Пароль сброшен до значения по умолчанию 123456, пожалуйста, напомните пользователю изменить его'
+
+  # 小组管理模块=02
+  '00602001':
+    zh-CN: '小组名已存在，请更改'
+    en-US: 'Group name already exists, please change'
+    ru-RU: 'Имя группы уже существует, пожалуйста, измените'
+
+  '00602002':
+    zh-CN: '角色ID不能为空'
+    en-US: 'Role ID cannot be empty'
+    ru-RU: 'ID роли не может быть пустым'
+
+  '00602003':
+    zh-CN: '该角色不存在，请刷新重试！'
+    en-US: 'Role does not exist, please refresh and try again!'
+    ru-RU: 'Роль не существует, пожалуйста, обновите и попробуйте снова!'
+
+  '00602004':
+    zh-CN: '小组创建成功，已关联角色'
+    en-US: 'Group created successfully, role associated'
+    ru-RU: 'Группа успешно создана, роль связана'
+
+  '00602005':
+    zh-CN: '小组不存在'
+    en-US: 'Group does not exist'
+    ru-RU: 'Группа не существует'
+
+  '00602006':
+    zh-CN: '小组更新成功，已同步更新角色关联'
+    en-US: 'Group updated successfully, role association synchronized'
+    ru-RU: 'Группа успешно обновлена, связь с ролью синхронизирована'
+
+  '00602007':
+    zh-CN: '请选择需要删除的小组'
+    en-US: 'Please select groups to delete'
+    ru-RU: 'Пожалуйста, выберите группы для удаления'
+
+  '00602008':
+    zh-CN: '小组删除成功'
+    en-US: 'Group deleted successfully'
+    ru-RU: 'Группа успешно удалена'
+
+  '00602009':
+    zh-CN: '小组不存在，删除失败'
+    en-US: 'Group does not exist, deletion failed'
+    ru-RU: 'Группа не существует, удаление не удалось'
+
+  # 角色管理模块=03
+  '00603001':
+    zh-CN: '角色编码已存在'
+    en-US: 'Role code already exists'
+    ru-RU: 'Код роли уже существует'
+
+  '00603002':
+    zh-CN: '角色创建成功'
+    en-US: 'Role created successfully'
+    ru-RU: 'Роль успешно создана'
+
+  '00603003':
+    zh-CN: '角色不存在'
+    en-US: 'Role does not exist'
+    ru-RU: 'Роль не существует'
+
+  '00603004':
+    zh-CN: '角色更新成功'
+    en-US: 'Role updated successfully'
+    ru-RU: 'Роль успешно обновлена'
+
+  '00603005':
+    zh-CN: '请选择需要删除的角色'
+    en-US: 'Please select roles to delete'
+    ru-RU: 'Пожалуйста, выберите роли для удаления'
+
+  '00603006':
+    zh-CN: '角色删除成功'
+    en-US: 'Role deleted successfully'
+    ru-RU: 'Роль успешно удалена'
+
+  '00603007':
+    zh-CN: '角色不存在，删除失败'
+    en-US: 'Role does not exist, deletion failed'
+    ru-RU: 'Роль не существует, удаление не удалось'
+
+  '00603008':
+    zh-CN: '该用户未分配任何组'
+    en-US: 'User is not assigned to any group'
+    ru-RU: 'Пользователь не назначен ни в одну группу'
+
+  '00603009':
+    zh-CN: '用户所属组不存在'
+    en-US: 'User group does not exist'
+    ru-RU: 'Группа пользователя не существует'
+
+  '0060300A':
+    zh-CN: '用户所属组未分配角色'
+    en-US: 'User group has no assigned role'
+    ru-RU: 'Группе пользователя не назначена роль'
+
+  '0060300B':
+    zh-CN: '查询失败：{0}'
+    en-US: 'Query failed: {0}'
+    ru-RU: 'Запрос не удался: {0}'
+
+  '0060300C':
+    zh-CN: '该角色已禁用，无法查询下属组'
+    en-US: 'Role is disabled, cannot query subordinate groups'
+    ru-RU: 'Роль отключена, невозможно запросить подчиненные группы'
+
+  # 角色小组用户树=04
+  '00604001':
+    zh-CN: '用户不存在或已禁用'
+    en-US: 'User does not exist or is disabled'
+    ru-RU: 'Пользователь не существует или отключен'
+
+  '00604002':
+    zh-CN: '该用户未分配任何角色'
+    en-US: 'User has no assigned role'
+    ru-RU: 'Пользователю не назначена никакая роль'
+
+  '00604003':
+    zh-CN: '用户所属角色不存在或已禁用'
+    en-US: 'User role does not exist or is disabled'
+    ru-RU: 'Роль пользователя не существует или отключена'
+
+  # 用户权限模块=05
+  '00605001':
+    zh-CN: '该用户未关联任何小组'
+    en-US: 'User is not associated with any group'
+    ru-RU: 'Пользователь не связан ни с одной группой'
+
+  '00605002':
+    zh-CN: '小组不存在（groupId：{0}）'
+    en-US: 'Group does not exist (groupId: {0})'
+    ru-RU: 'Группа не существует (groupId: {0})'
+
+  '00605003':
+    zh-CN: '小组未关联任何角色（groupId：{0}）'
+    en-US: 'Group has no associated role (groupId: {0})'
+    ru-RU: 'Группа не связана ни с одной ролью (groupId: {0})'
+
+  '00605004':
+    zh-CN: '角色不存在（roleId：{0}）'
+    en-US: 'Role does not exist (roleId: {0})'
+    ru-RU: 'Роль не существует (roleId: {0})'
+
+  '00605005':
+    zh-CN: '查询权限树形结构失败：{0}'
+    en-US: 'Failed to query permission tree structure: {0}'
+    ru-RU: 'Не удалось запросить древовидную структуру разрешений: {0}'
+
+  '00605006':
+    zh-CN: '权限ID列表不能为空'
+    en-US: 'Permission ID list cannot be empty'
+    ru-RU: 'Список ID разрешений не может быть пустым'
+
+  '00605007':
+    zh-CN: '更新小组权限失败：{0}'
+    en-US: 'Failed to update group permissions: {0}'
+    ru-RU: 'Не удалось обновить разрешения группы: {0}'
+
+  # 用户路由权限模块=06
+  '00606001':
+    zh-CN: '用户未关联任何小组，无访问权限'
+    en-US: 'User not associated with any group, no access permission'
+    ru-RU: 'Пользователь не связан ни с одной группой, нет прав доступа'
+
+  '00606002':
+    zh-CN: '用户所在小组未配置权限'
+    en-US: 'User group has no configured permissions'
+    ru-RU: 'В группе пользователя не настроены разрешения'
+
+  # 系统面板配置=07
+  '00607001':
+    zh-CN: '用户未登录'
+    en-US: 'User not logged in'
+    ru-RU: 'Пользователь не вошел в систему'
+
+  # 用户登录模块=08
+  '00608001':
+    zh-CN: '用户名不存在或已被禁用'
+    en-US: 'Username does not exist or has been disabled'
+    ru-RU: 'Имя пользователя не существует или было отключено'
+
+  '00609001':
+    zh-CN: '登录成功，但身份令牌存储失败，请重试'
+    en-US: 'Login successful, but token storage failed, please retry'
+    ru-RU: 'Вход выполнен успешно, но сохранение токена не удалось, пожалуйста, повторите попытку'
+
+  # ========== 软件激活模块=007 ==========
+  # 软件激活模块=01
+  '00701001':
+    zh-CN: '未找到ID为【{0}】的设备记录'
+    en-US: 'Device record with ID [{0}] not found'
+    ru-RU: 'Запись устройства с ID 【{0}】 не найдена'
+
+  '00701002':
+    zh-CN: '激活码格式错误，缺少必要参数（deviceNumber或expirationDate）'
+    en-US: 'Activation code format error, missing required parameters (deviceNumber or expirationDate)'
+    ru-RU: 'Ошибка формата кода активации, отсутствуют необходимые параметры (deviceNumber или expirationDate)'
+
+  '00701003':
+    zh-CN: '数据库记录中设备序列号为空'
+    en-US: 'Device serial number is empty in database record'
+    ru-RU: 'Серийный номер устройства пуст в записи базы данных'
+
+  '00701004':
+    zh-CN: '激活码与设备序列号不匹配'
+    en-US: 'Activation code does not match device serial number'
+    ru-RU: 'Код активации не совпадает с серийным номером устройства'
+
+  '00701005':
+    zh-CN: '激活码中的日期格式错误（应为yyyy-MM-dd）:{0}'
+    en-US: 'Date format error in activation code (should be yyyy-MM-dd): {0}'
+    ru-RU: 'Ошибка формата даты в коде активации (должно быть yyyy-MM-dd): {0}'
+
+  '00701006':
+    zh-CN: '激活失败：{0}'
+    en-US: 'Activation failed: {0}'
+    ru-RU: 'Активация не удалась: {0}'
+
+  '00701007':
+    zh-CN: '激活过程异常：{0}'
+    en-US: 'Activation process exception: {0}'
+    ru-RU: 'Исключение в процессе активации: {0}'
+
+  '00701008':
+    zh-CN: '未找到ID为{0}的激活记录'
+    en-US: 'Activation record with ID {0} not found'
+    ru-RU: 'Запись активации с ID {0} не найдена'
+
+  '00701009':
+    zh-CN: 'ID不能为空'
+    en-US: 'ID cannot be empty'
+    ru-RU: 'ID не может быть пустым'
+
+  '0070100A':
+    zh-CN: '删除ID列表不能为空'
+    en-US: 'Delete ID list cannot be empty'
+    ru-RU: 'Список ID для удаления не может быть пустым'
+
+  '0070100B':
+    zh-CN: '设备状态重置失败'
+    en-US: 'Device status reset failed'
+    ru-RU: 'Сброс состояния устройства не удался'
+
+  '0070100C':
+    zh-CN: '激活成功'
+    en-US: 'Activation successful'
+    ru-RU: 'Активация успешна'
+
+  '0070100D':
+    zh-CN: '激活码已过期'
+    en-US: 'Activation code has expired'
+    ru-RU: 'Код активации истек'
+
+  # ========== 平行样模块=008 ==========
+  # 平行样控制模块=01
+  '00801001':
+    zh-CN: '创建平行样失败'
+    en-US: 'Failed to create parallel sample'
+    ru-RU: 'Не удалось создать параллельный образец'
+
+  '00801002':
+    zh-CN: '平行样名称存在'
+    en-US: 'Parallel sample name already exists'
+    ru-RU: 'Имя параллельного образца уже существует'
+
+  # ========== 文件加密模块=009 ==========
+  # 文件加密模块=01
+  '00901001':
+    zh-CN: '版本解析成功'
+    en-US: 'Version parsing successful'
+    ru-RU: 'Разбор версии успешен'
+
+  '00901002':
+    zh-CN: '当前版本已存在，请核实升级版本'
+    en-US: 'Current version already exists, please verify upgrade version'
+    ru-RU: 'Текущая версия уже существует, пожалуйста, проверьте версию обновления'
+
+  '00901003':
+    zh-CN: '导入并存储版本信息成功'
+    en-US: 'Version information imported and stored successfully'
+    ru-RU: 'Информация о версии успешно импортирована и сохранена'
+
+  # ========== 智能助手-标准物质效期提醒 (00610) ==========
+  '00610001':
+    zh-CN: '仪器无响应，请检查仪器状态和网线连接后，重新查找并联接仪器！'
+    en-US: 'Instrument not responding, please check instrument status and network cable connection, then reconnect!'
+    ru-RU: 'Прибор не отвечает, пожалуйста, проверьте состояние прибора и подключение сетевого кабеля, затем переподключитесь!'
+
+  '00610002':
+    zh-CN: '系统消息'
+    en-US: 'System Message'
+    ru-RU: 'Системное сообщение'
+
+  '00610003':
+    zh-CN: '【即将到期的标准物质】'
+    en-US: '[Standard Materials Expiring Soon]'
+    ru-RU: '[Стандартные материалы с истекающим сроком]'
+
+  '00610004':
+    zh-CN: '🔴 {0} - 今天到期！'
+    en-US: '🔴 {0} - Expires today!'
+    ru-RU: '🔴 {0} - Истекает сегодня!'
+
+  '00610005':
+    zh-CN: '🟡 {0} - {1}天后到期 ({2})'
+    en-US: '🟡 {0} - Expires in {1} days ({2})'
+    ru-RU: '🟡 {0} - Истекает через {1} дней ({2})'
+
+  '00610006':
+    zh-CN: '【已过期的标准物质】'
+    en-US: '[Expired Standard Materials]'
+    ru-RU: '[Истекшие стандартные материалы]'
+
+  '00610007':
+    zh-CN: '❌ {0} - 已过期{1}天 (应于{2}更换)'
+    en-US: '❌ {0} - Expired {1} days ago (should be replaced by {2})'
+    ru-RU: '❌ {0} - Истекло {1} дней назад (следовало заменить к {2})'
+
+  '00610008':
+    zh-CN: '请及时更换或重新标定标准物质，确保检测数据准确性！'
+    en-US: 'Please replace or recalibrate standard materials promptly to ensure data accuracy!'
+    ru-RU: 'Пожалуйста, своевременно замените или перекалибруйте стандартные материалы для обеспечения точности данных!'
+
+  '00610009':
+    zh-CN: '标准物质效期提醒'
+    en-US: 'Standard Material Expiry Reminder'
+    ru-RU: 'Напоминание об истечении срока стандартных материалов'
+
+  '00610010':
+    zh-CN: '提醒'
+    en-US: 'Reminder'
+    ru-RU: 'Напоминание'
+
+  '00610011':
+    zh-CN: '通知'
+    en-US: 'Notification'
+    ru-RU: 'Уведомление'
+
+  # ========== 设备操作错误消息 (00612) ==========
+  '00612001':
+    zh-CN: '缺少设备序列号或操作类型'
+    en-US: 'Missing device serial number or operation type'
+    ru-RU: 'Отсутствует серийный номер устройства или тип операции'
+
+  '00612002':
+    zh-CN: '设备不存在'
+    en-US: 'Device not found'
+    ru-RU: 'Устройство не найдено'
+
+  '00612003':
+    zh-CN: '当前仪器正在测量'
+    en-US: 'Instrument is currently measuring'
+    ru-RU: 'Прибор正在进行измерение'
+
+  '00612004':
+    zh-CN: '设备正在执行其他操作'
+    en-US: 'Device is performing another operation'
+    ru-RU: 'Устройство выполняет другую операцию'
+
+  '00612005':
+    zh-CN: '未知操作类型: {0}'
+    en-US: 'Unknown operation type: {0}'
+    ru-RU: 'Неизвестный тип операции: {0}'
+
+  '00612006':
+    zh-CN: '设备未连接'
+    en-US: 'Device not connected'
+    ru-RU: 'Устройство не подключено'
+
+  '00612007':
+    zh-CN: '设备未初始化'
+    en-US: 'Device not initialized'
+    ru-RU: 'Устройство не инициализировано'
+
+  '00612008':
+    zh-CN: '启动测量失败: {0}'
+    en-US: 'Failed to start measurement: {0}'
+    ru-RU: 'Не удалось начать измерение: {0}'
+
+  '00612009':
+    zh-CN: '测量任务不存在'
+    en-US: 'Measurement task not found'
+    ru-RU: 'Задача измерения не найдена'
+
+  # ========== 出厂检测模块 (00613) ==========
+  '00613001':
+    zh-CN: '当前任务与仪器序列号不匹配，请新建任务'
+    en-US: 'Task does not match instrument serial number, please create a new task'
+    ru-RU: 'Задача не соответствует серийному номеру прибора, создайте новую задачу'
+
+  '00613002':
+    zh-CN: '请检查当前仪器是否连接'
+    en-US: 'Please check if the instrument is connected'
+    ru-RU: 'Пожалуйста, проверьте подключение прибора'
+
+  '00613003':
+    zh-CN: '设备未激活'
+    en-US: 'Device not activated'
+    ru-RU: 'Устройство не активировано'
+
+  '00613004':
+    zh-CN: '请检查当前仪器是否初始化'
+    en-US: 'Please check if the instrument is initialized'
+    ru-RU: 'Пожалуйста, проверьте инициализацию прибора'
+
+  '00613005':
+    zh-CN: '设备正在初始化'
+    en-US: 'Device is initializing'
+    ru-RU: 'Устройство инициализируется'
+
+  '00613006':
+    zh-CN: '暂停任务失败'
+    en-US: 'Failed to pause task'
+    ru-RU: 'Не удалось приостановить задачу'
+
+  '00613007':
+    zh-CN: '请检查是否连接仪器'
+    en-US: 'Please check instrument connection'
+    ru-RU: 'Пожалуйста, проверьте подключение прибора'
+
+  '00613008':
+    zh-CN: '样品池中未找到：{0}'
+    en-US: 'Not found in sample pool: {0}'
+    ru-RU: 'Не найдено в пуле образцов: {0}'
+
+  '00613009':
+    zh-CN: '样品池中，未找到基线所需的空气'
+    en-US: 'Air required for baseline not found in sample pool'
+    ru-RU: 'В пуле образцов не найден воздух, необходимый для базовой линии'
+
+  '0061300A':
+    zh-CN: '样品池为空'
+    en-US: 'Sample pool is empty'
+    ru-RU: 'Пул образцов пуст'
+
+  '0061300B':
+    zh-CN: 'Python服务调用异常'
+    en-US: 'Python service call exception'
+    ru-RU: 'Исключение при вызове службы Python'
+
+  '0061300C':
+    zh-CN: '设备类型配置信息不存在'
+    en-US: 'Device type configuration does not exist'
+    ru-RU: 'Конфигурация типа устройства не существует'
+
+  '0061300D':
+    zh-CN: '算法服务调用超时'
+    en-US: 'Algorithm service call timed out'
+    ru-RU: 'Тайм-аут вызова службы алгоритмов'
+
+  '0061300E':
+    zh-CN: '算法服务调用失败: {0}'
+    en-US: 'Algorithm service call failed: {0}'
+    ru-RU: 'Вызов службы алгоритмов не удался: {0}'
+
+  '0061300F':
+    zh-CN: '算法服务调用被中断'
+    en-US: 'Algorithm service call interrupted'
+    ru-RU: 'Вызов службы алгоритмов прерван'
+
+  '00613010':
+    zh-CN: '算法服务异常,请重启服务'
+    en-US: 'Algorithm service error, please restart the service'
+    ru-RU: 'Ошибка службы алгоритмов, перезапустите службу'
+
+  '00613011':
+    zh-CN: '未找到设备类型[{0}]的配置信息，请联系管理员'
+    en-US: 'Configuration for device type [{0}] not found, please contact administrator'
+    ru-RU: 'Конфигурация для типа устройства [{0}] не найдена, обратитесь к администратору'
+
+  '00613012':
+    zh-CN: '停止任务失败: {0}'
+    en-US: 'Failed to stop task: {0}'
+    ru-RU: 'Не удалось остановить задачу: {0}'
+
+  # ========== 仪器操作模块-补充 (00208) ==========
+  '00208001':
+    zh-CN: '灯类型出错'
+    en-US: 'Lamp type error'
+    ru-RU: 'Ошибка типа лампы'
+
+  '00208002':
+    zh-CN: '波长校正失败，请检查仪器'
+    en-US: 'Wavelength calibration failed, please check instrument'
+    ru-RU: 'Калибровка длины волны не удалась, проверьте прибор'
+
+  '00208003':
+    zh-CN: '暗电流校正失败，请检查仪器'
+    en-US: 'Dark current calibration failed, please check instrument'
+    ru-RU: 'Калибровка темнового тока не удалась, проверьте прибор'
+
+  '00208004':
+    zh-CN: '未找到该设备'
+    en-US: 'Device not found'
+    ru-RU: 'Устройство не найдено'
+
+  '00208005':
+    zh-CN: '设备正在使用中，请等待'
+    en-US: 'Device is in use, please wait'
+    ru-RU: 'Устройство занято, подождите'
+
+  '00208006':
+    zh-CN: '终止波长不能大于起始波长'
+    en-US: 'End wavelength cannot be greater than start wavelength'
+    ru-RU: 'Конечная длина волны не может быть больше начальной'
+
+  '00208007':
+    zh-CN: '当前仪器不支持该扫描速度'
+    en-US: 'Current instrument does not support this scan speed'
+    ru-RU: 'Текущий прибор не поддерживает эту скорость сканирования'
+
+  '00208008':
+    zh-CN: '请连接仪器'
+    en-US: 'Please connect the instrument'
+    ru-RU: 'Пожалуйста, подключите прибор'
+
+  '00208009':
+    zh-CN: '没有需要删除的波长信息'
+    en-US: 'No wavelength information to delete'
+    ru-RU: 'Нет информации о длине волны для удаления'
+
+  '0020800A':
+    zh-CN: '没有可以下发给仪器的参数'
+    en-US: 'No parameters to send to instrument'
+    ru-RU: 'Нет параметров для отправки прибору'
+
+  '0020800B':
+    zh-CN: '没有数据可以寻峰'
+    en-US: 'No data available for peak finding'
+    ru-RU: 'Нет данных для поиска пиков'
+
+  '0020800C':
+    zh-CN: '第{0}号请选择物质'
+    en-US: 'Please select material for position {0}'
+    ru-RU: 'Пожалуйста, выберите материал для позиции {0}'
+
+  '0020800D':
+    zh-CN: '第{0}号请选择光度模式'
+    en-US: 'Please select photometric mode for position {0}'
+    ru-RU: 'Пожалуйста, выберите фотометрический режим для позиции {0}'
+
+  '0020800E':
+    zh-CN: '第{0}号请选择增益'
+    en-US: 'Please select gain for position {0}'
+    ru-RU: 'Пожалуйста, выберите усиление для позиции {0}'
+
+  '0020800F':
+    zh-CN: '第{0}号请选择灯类型'
+    en-US: 'Please select lamp type for position {0}'
+    ru-RU: 'Пожалуйста, выберите тип лампы для позиции {0}'
+
+  '00208010':
+    zh-CN: '第{0}号请选择标准波长'
+    en-US: 'Please select standard wavelength for position {0}'
+    ru-RU: 'Пожалуйста, выберите стандартную длину волны для позиции {0}'
+
+  '00208011':
+    zh-CN: '请选择同一物质'
+    en-US: 'Please select the same material'
+    ru-RU: 'Пожалуйста, выберите один и тот же материал'
+
+  '00208012':
+    zh-CN: '请选择同一光度模式'
+    en-US: 'Please select the same photometric mode'
+    ru-RU: 'Пожалуйста, выберите один и тот же фотометрический режим'
+
+  '00208013':
+    zh-CN: '请选择同一增益'
+    en-US: 'Please select the same gain'
+    ru-RU: 'Пожалуйста, выберите одинаковое усиление'
+
+  '00208014':
+    zh-CN: '请选择同一灯类型'
+    en-US: 'Please select the same lamp type'
+    ru-RU: 'Пожалуйста, выберите один и тот же тип лампы'
+
+  '00208015':
+    zh-CN: '光度模式缺失'
+    en-US: 'Photometric mode missing'
+    ru-RU: 'Фотометрический режим отсутствует'
+
+  '00208016':
+    zh-CN: '基线不能选择光度模式为ES、ER'
+    en-US: 'Baseline cannot use ES or ER photometric mode'
+    ru-RU: 'Базовая линия не может использовать фотометрический режим ES или ER'
+
+  '00208017':
+    zh-CN: '未识别当前仪器'
+    en-US: 'Current instrument not recognized'
+    ru-RU: 'Текущий прибор не распознан'
+
+  '00208018':
+    zh-CN: '波段超出范围'
+    en-US: 'Wavelength range out of bounds'
+    ru-RU: 'Диапазон длин волн выходит за пределы'
+
+  '00208019':
+    zh-CN: '基线和扫描只能选择一个物质'
+    en-US: 'Only one material can be selected for baseline and scan'
+    ru-RU: 'Для базовой линии и сканирования можно выбрать только один материал'
+
+  '0020801A':
+    zh-CN: '该设备不支持查询使用寿命'
+    en-US: 'This device does not support lifespan query'
+    ru-RU: 'Это устройство не поддерживает запрос срока службы'
+
+  '0020801B':
+    zh-CN: '参数为空'
+    en-US: 'Parameters are empty'
+    ru-RU: 'Параметры пусты'
+
+  '00613013':
+    zh-CN: '设备列表不能为空'
+    en-US: 'Device list cannot be empty'
+    ru-RU: 'Список устройств не может быть пустым'
+
+  '00613014':
+    zh-CN: '所有设备连接失败'
+    en-US: 'All device connections failed'
+    ru-RU: 'Не удалось подключить все устройства'
+
+  '00613015':
+    zh-CN: '部分设备断开失败：{0}'
+    en-US: 'Some devices failed to disconnect: {0}'
+    ru-RU: 'Не удалось отключить некоторые устройства: {0}'
+
+  '00613016':
+    zh-CN: '请求参数不能为空'
+    en-US: 'Request parameters cannot be empty'
+    ru-RU: 'Параметры запроса не могут быть пустыми'
+
+  '00613017':
+    zh-CN: '创建模板失败: {0}'
+    en-US: 'Failed to create template: {0}'
+    ru-RU: 'Не удалось создать шаблон: {0}'
+
+  '00613018':
+    zh-CN: '模板代码不能为空'
+    en-US: 'Template code cannot be empty'
+    ru-RU: 'Код шаблона не может быть пустым'
+
+  '00613019':
+    zh-CN: '选中字段不能为空'
+    en-US: 'Selected fields cannot be empty'
+    ru-RU: 'Выбранные поля не могут быть пустыми'
+
+  '0061301A':
+    zh-CN: '模板不存在: {0}'
+    en-US: 'Template not found: {0}'
+    ru-RU: 'Шаблон не найден: {0}'
+
+  '0061301B':
+    zh-CN: '更新模板失败: {0}'
+    en-US: 'Failed to update template: {0}'
+    ru-RU: 'Не удалось обновить шаблон: {0}'
+
+  '0061301C':
+    zh-CN: '请选择要删除的模板'
+    en-US: 'Please select templates to delete'
+    ru-RU: 'Пожалуйста, выберите шаблоны для удаления'
+
+  '0061301D':
+    zh-CN: '未找到连接仪器信息'
+    en-US: 'Connected instrument information not found'
+    ru-RU: 'Информация о подключенном приборе не найдена'
+
+  '0061301E':
+    zh-CN: '未找到出厂模板'
+    en-US: 'Factory template not found'
+    ru-RU: 'Заводской шаблон не найден'
+
+  '0061301F':
+    zh-CN: '未找到该序列号对应的仪器型号'
+    en-US: 'No instrument model found for this serial number'
+    ru-RU: 'Не найдена модель прибора для этого серийного номера'
+
+  '00613020':
+    zh-CN: '未找到模板'
+    en-US: 'Template not found'
+    ru-RU: 'Шаблон не найден'
+
+  '00613021':
+    zh-CN: '创建任务失败'
+    en-US: 'Failed to create task'
+    ru-RU: 'Не удалось создать задачу'
+
+  # ========== 设备操作工具类 (00209) ==========
+  '00209001':
+    zh-CN: '缺少入参！'
+    en-US: 'Missing input parameters!'
+    ru-RU: 'Отсутствуют входные параметры!'
+
+  '00209002':
+    zh-CN: '缺少操作类型！'
+    en-US: 'Missing operation type!'
+    ru-RU: 'Отсутствует тип операции!'
+
+  '00209003':
+    zh-CN: '未找到该操作！'
+    en-US: 'Operation not found!'
+    ru-RU: 'Операция не найдена!'
+
+  '00209004':
+    zh-CN: '请先连接仪器！'
+    en-US: 'Please connect the instrument first!'
+    ru-RU: 'Пожалуйста, сначала подключите прибор!'
+
+  '00209005':
+    zh-CN: '汞灯定位失败'
+    en-US: 'Mercury lamp positioning failed'
+    ru-RU: 'Не удалось позиционировать ртутную лампу'
+
+  '00209006':
+    zh-CN: '设置波长列表失败'
+    en-US: 'Failed to set wavelength list'
+    ru-RU: 'Не удалось установить список длин волн'
+
+  '00209007':
+    zh-CN: '当前仪器无法统计时间！'
+    en-US: 'Current instrument cannot count time!'
+    ru-RU: 'Текущий прибор не может считать время!'
+
+  '00209008':
+    zh-CN: '停止失败！'
+    en-US: 'Stop failed!'
+    ru-RU: 'Ошибка остановки!'
+
+  '00209009':
+    zh-CN: '请检查 WIFI 连接！'
+    en-US: 'Please check WIFI connection!'
+    ru-RU: 'Пожалуйста, проверьте WIFI-подключение!'
+
+  '0020900A':
+    zh-CN: '请检查网线连接！'
+    en-US: 'Please check Ethernet cable connection!'
+    ru-RU: 'Пожалуйста, проверьте подключение сетевого кабеля!'
+
+  '0020900B':
+    zh-CN: '未传入任何可读取参数'
+    en-US: 'No readable parameters provided'
+    ru-RU: 'Не передано ни одного читаемого параметра'
+
+  '0020900C':
+    zh-CN: '未找到指令定义：{0}'
+    en-US: 'Command definition not found: {0}'
+    ru-RU: 'Определение команды не найдено: {0}'
+
+  '0020900D':
+    zh-CN: '指令执行失败：{0}'
+    en-US: 'Command execution failed: {0}'
+    ru-RU: 'Ошибка выполнения команды: {0}'
+
+  '0020900E':
+    zh-CN: '请设置参数！'
+    en-US: 'Please set parameters!'
+    ru-RU: 'Пожалуйста, установите параметры!'
+
+  '0020900F':
+    zh-CN: '未传入任何可设置参数'
+    en-US: 'No settable parameters provided'
+    ru-RU: 'Не передано ни одного настраиваемого параметра'
+
+  '00209010':
+    zh-CN: '参数设置失败，指令：{0}'
+    en-US: 'Parameter setting failed, command: {0}'
+    ru-RU: 'Ошибка настройки параметров, команда: {0}'
+
+  '00209011':
+    zh-CN: '串口连接暂不支持！'
+    en-US: 'Serial connection not supported yet!'
+    ru-RU: 'Последовательное подключение пока не поддерживается!'
+
+  '00209012':
+    zh-CN: '请检查WIFI连接和仪器电源是否开启！'
+    en-US: 'Please check WIFI connection and instrument power!'
+    ru-RU: 'Пожалуйста, проверьте WIFI-подключение и питание прибора!'
+
+  '00209013':
+    zh-CN: '请检查网线连接和仪器电源是否开启！'
+    en-US: 'Please check Ethernet cable and instrument power!'
+    ru-RU: 'Пожалуйста, проверьте сетевой кабель и питание прибора!'
+
+  '00209014':
+    zh-CN: '请先查找仪器！'
+    en-US: 'Please search for the instrument first!'
+    ru-RU: 'Пожалуйста, сначала найдите прибор!'
+
+  '00209015':
+    zh-CN: '当前仪器已被连接！'
+    en-US: 'Instrument is already connected!'
+    ru-RU: 'Прибор уже подключен!'
+
+  '00209016':
+    zh-CN: '串口连接暂未实现！'
+    en-US: 'Serial connection not implemented yet!'
+    ru-RU: 'Последовательное подключение еще не реализовано!'
+
+  '00209017':
+    zh-CN: '请检查WIFI连接！'
+    en-US: 'Please check WIFI connection!'
+    ru-RU: 'Пожалуйста, проверьте WIFI-подключение!'
+
+  '00209018':
+    zh-CN: '请检查网线连接！'
+    en-US: 'Please check Ethernet cable connection!'
+    ru-RU: 'Пожалуйста, проверьте подключение сетевого кабеля!'
+
+  '00209019':
+    zh-CN: '仪器连接超数量！'
+    en-US: 'Instrument connection limit exceeded!'
+    ru-RU: 'Превышен лимит подключений приборов!'
+
+  '0020901A':
+    zh-CN: '当前仪器无法连接！'
+    en-US: 'Unable to connect to the instrument!'
+    ru-RU: 'Невозможно подключить прибор!'
+
+  '0020901B':
+    zh-CN: '指令{0}，解析出错！'
+    en-US: 'Command {0} parsing error!'
+    ru-RU: 'Ошибка разбора команды {0}!'
+
+  '0020901C':
+    zh-CN: '数据转换错误'
+    en-US: 'Data conversion error'
+    ru-RU: 'Ошибка преобразования данных'
+
+  '0020901D':
+    zh-CN: '时间间隔必须大于 0'
+    en-US: 'Time interval must be greater than 0'
+    ru-RU: 'Временной интервал должен быть больше 0'
+
+  '0020901E':
+    zh-CN: '时间必须大于 0'
+    en-US: 'Time must be greater than 0'
+    ru-RU: 'Время должно быть больше 0'
+
+  '0020901F':
+    zh-CN: '当前波长未设置，请先校零'
+    en-US: 'Current wavelength not set, please perform zero calibration first'
+    ru-RU: 'Текущая длина волны не установлена, сначала выполните калибровку нуля'
+
+  '00209020':
+    zh-CN: '请选择测量的波长'
+    en-US: 'Please select measurement wavelength'
+    ru-RU: 'Пожалуйста, выберите длину волны измерения'
+
+  '00209021':
+    zh-CN: '零点失败'
+    en-US: 'Zero calibration failed'
+    ru-RU: 'Калибровка нуля не удалась'
+
+  '00209022':
+    zh-CN: '测量失败'
+    en-US: 'Measurement failed'
+    ru-RU: 'Измерение не удалось'
+
+  '00209023':
+    zh-CN: '断开失败！'
+    en-US: 'Disconnect failed!'
+    ru-RU: 'Ошибка отключения!'
+
+  '00209024':
+    zh-CN: '处理失败！'
+    en-US: 'Processing failed!'
+    ru-RU: 'Ошибка обработки!'
+
+  # ========== 出厂检测-模板管理补充 (00613) ==========
+  '00613022':
+    zh-CN: '模板字段配置为空'
+    en-US: 'Template field configuration is empty'
+    ru-RU: 'Конфигурация полей шаблона пуста'
+
+  '00613023':
+    zh-CN: '获取字段列表失败: {0}'
+    en-US: 'Failed to get field list: {0}'
+    ru-RU: 'Не удалось получить список полей: {0}'
+
+  '00613024':
+    zh-CN: '模板名称重复！！'
+    en-US: 'Template name already exists!!'
+    ru-RU: 'Имя шаблона уже существует!!'
+
+  '00613025':
+    zh-CN: '模板创建成功'
+    en-US: 'Template created successfully'
+    ru-RU: 'Шаблон успешно создан'
+
+  '00613026':
+    zh-CN: '模板创建失败'
+    en-US: 'Failed to create template'
+    ru-RU: 'Не удалось создать шаблон'
+
+  '00613027':
+    zh-CN: '模板ID不能为空'
+    en-US: 'Template ID cannot be empty'
+    ru-RU: 'ID шаблона не может быть пустым'
+
+  '00613028':
+    zh-CN: '未找到要编辑的模板'
+    en-US: 'Template to edit not found'
+    ru-RU: 'Шаблон для редактирования не найден'
+
+  '00613029':
+    zh-CN: '内置模板不允许编辑'
+    en-US: 'Built-in templates cannot be edited'
+    ru-RU: 'Встроенные шаблоны нельзя редактировать'
+
+  '0061302A':
+    zh-CN: '模板编辑成功'
+    en-US: 'Template edited successfully'
+    ru-RU: 'Шаблон успешно отредактирован'
+
+  '0061302B':
+    zh-CN: '模板编辑失败'
+    en-US: 'Failed to edit template'
+    ru-RU: 'Не удалось отредактировать шаблон'
+
+  '0061302C':
+    zh-CN: '模板编辑失败: {0}'
+    en-US: 'Failed to edit template: {0}'
+    ru-RU: 'Не удалось отредактировать шаблон: {0}'
+
+  '0061302D':
+    zh-CN: '未知错误'
+    en-US: 'Unknown error'
+    ru-RU: 'Неизвестная ошибка'
+
+  '0061302E':
+    zh-CN: '模板更新成功'
+    en-US: 'Template updated successfully'
+    ru-RU: 'Шаблон успешно обновлен'
+
+  '0061302F':
+    zh-CN: '模板更新失败'
+    en-US: 'Failed to update template'
+    ru-RU: 'Не удалось обновить шаблон'
+
+  '00613030':
+    zh-CN: '文件处理失败'
+    en-US: 'File processing failed'
+    ru-RU: 'Ошибка обработки файла'
+
+  '00613031':
+    zh-CN: '此模板正在使用中，请先删除任务！！！'
+    en-US: 'This template is in use, please delete the task first!!!'
+    ru-RU: 'Этот шаблон используется, сначала удалите задачу!!!'
+
+  '00613032':
+    zh-CN: '内置模板，不可删除'
+    en-US: 'Built-in template, cannot be deleted'
+    ru-RU: 'Встроенный шаблон, нельзя удалить'
+
+  '00613033':
+    zh-CN: '删除成功'
+    en-US: 'Deleted successfully'
+    ru-RU: 'Успешно удалено'
+
+  '00613034':
+    zh-CN: '删除失败'
+    en-US: 'Deletion failed'
+    ru-RU: 'Ошибка удаления'
+
+  '00613035':
+    zh-CN: '模板数据不存在'
+    en-US: 'Template data does not exist'
+    ru-RU: 'Данные шаблона не существуют'
+
+  '00613036':
+    zh-CN: '模板数据解析失败'
+    en-US: 'Template data parsing failed'
+    ru-RU: 'Не удалось разобрать данные шаблона'
+
+  '00613037':
+    zh-CN: '没有数据可以导出'
+    en-US: 'No data to export'
+    ru-RU: 'Нет данных для экспорта'
+
+  '00613038':
+    zh-CN: '模板列配置为空'
+    en-US: 'Template column configuration is empty'
+    ru-RU: 'Конфигурация столбцов шаблона пуста'
+
+  '00613039':
+    zh-CN: '导出成功'
+    en-US: 'Export successful'
+    ru-RU: 'Экспорт завершен'
+
+  '0061303A':
+    zh-CN: '导出失败: {0}'
+    en-US: 'Export failed: {0}'
+    ru-RU: 'Ошибка экспорта: {0}'
+
+  '0061303B':
+    zh-CN: '获取结构化数据失败: {0}'
+    en-US: 'Failed to get structured data: {0}'
+    ru-RU: 'Не удалось получить структурированные данные: {0}'
+
+  '0061303C':
+    zh-CN: '获取数据失败: {0}'
+    en-US: 'Failed to get data: {0}'
+    ru-RU: 'Не удалось получить данные: {0}'
+
+  '0061303D':
+    zh-CN: '未找到模板'
+    en-US: 'Template not found'
+    ru-RU: 'Шаблон не найден'
+
+  '0061303E':
+    zh-CN: '获取分组数据失败: {0}'
+    en-US: 'Failed to get grouped data: {0}'
+    ru-RU: 'Не удалось получить сгруппированные данные: {0}'
+
+  # ========== 出厂检测-任务管理补充 (00614) ==========
+  '00614001':
+    zh-CN: '查询任务管理列表失败'
+    en-US: 'Failed to query task management list'
+    ru-RU: 'Не удалось получить список управления задачами'
+
+  '00614002':
+    zh-CN: '任务不存在'
+    en-US: 'Task does not exist'
+    ru-RU: 'Задача не существует'
+
+  '00614003':
+    zh-CN: '查询任务模板失败'
+    en-US: 'Failed to query task template'
+    ru-RU: 'Не удалось запросить шаблон задачи'
+
+  '00614004':
+    zh-CN: '任务名称已存在'
+    en-US: 'Task name already exists'
+    ru-RU: 'Имя задачи уже существует'
+
+  '00614005':
+    zh-CN: '保存成功'
+    en-US: 'Saved successfully'
+    ru-RU: 'Успешно сохранено'
+
+  '00614006':
+    zh-CN: '任务名称未改变'
+    en-US: 'Task name unchanged'
+    ru-RU: 'Имя задачи не изменено'
+
+  '00614007':
+    zh-CN: '修改成功'
+    en-US: 'Modified successfully'
+    ru-RU: 'Успешно изменено'
+
+  '00614008':
+    zh-CN: '修改任务名称失败'
+    en-US: 'Failed to rename task'
+    ru-RU: 'Не удалось переименовать задачу'
+
+  '00614009':
+    zh-CN: '删除任务失败'
+    en-US: 'Failed to delete task'
+    ru-RU: 'Не удалось удалить задачу'
+
+  '0061400A':
+    zh-CN: '请选择要删除的任务'
+    en-US: 'Please select tasks to delete'
+    ru-RU: 'Пожалуйста, выберите задачи для удаления'
+
+  '0061400B':
+    zh-CN: '删除成功'
+    en-US: 'Deleted successfully'
+    ru-RU: 'Успешно удалено'
+
+  '0061400C':
+    zh-CN: '删除失败'
+    en-US: 'Deletion failed'
+    ru-RU: 'Ошибка удаления'
+
+  '0061400D':
+    zh-CN: '任务ID不能为空'
+    en-US: 'Task ID cannot be empty'
+    ru-RU: 'ID задачи не может быть пустым'
+
+  '0061400E':
+    zh-CN: '设置任务定时提醒属性失败'
+    en-US: 'Failed to set task reminder properties'
+    ru-RU: 'Не удалось установить свойства напоминания задачи'
+
+  '0061400F':
+    zh-CN: '设置任务定时提醒属性异常：{0}'
+    en-US: 'Exception setting task reminder properties: {0}'
+    ru-RU: 'Исключение при установке свойств напоминания задачи: {0}'
+
+  # ========== 引导模式-实验测试模块 (00B00) ==========
+  '00B00001':
+    zh-CN: '请先新建任务'
+    en-US: 'Please create a task first'
+    ru-RU: 'Пожалуйста, сначала создайте задачу'
+
+  '00B00002':
+    zh-CN: '请先连接仪器'
+    en-US: 'Please connect the instrument first'
+    ru-RU: 'Пожалуйста, сначала подключите прибор'
+
+  '00B00003':
+    zh-CN: '请选择测量类型'
+    en-US: 'Please select measurement type'
+    ru-RU: 'Пожалуйста, выберите тип измерения'
+
+  '00B00004':
+    zh-CN: '当前设备与任务测量设备不匹配'
+    en-US: 'Current device does not match task measurement device'
+    ru-RU: 'Текущее устройство не соответствует измерительному устройству задачи'
+
+  '00B00005':
+    zh-CN: '任务已结束,无法测量'
+    en-US: 'Task has ended, cannot measure'
+    ru-RU: 'Задача завершена, невозможно измерить'
+
+  '00B00006':
+    zh-CN: '暂不支持双组份定量分析'
+    en-US: 'Dual-component quantitative analysis not supported yet'
+    ru-RU: 'Двухкомпонентный количественный анализ пока не поддерживается'
+
+  '00B00007':
+    zh-CN: '测量类型不存在'
+    en-US: 'Measurement type does not exist'
+    ru-RU: 'Тип измерения не существует'
+
+  '00B00008':
+    zh-CN: '用户未加入任何组'
+    en-US: 'User has not joined any group'
+    ru-RU: 'Пользователь не присоединился ни к одной группе'
+
+  '00B00009':
+    zh-CN: '项目不存在'
+    en-US: 'Project does not exist'
+    ru-RU: 'Проект не существует'
+
+  '00B0000A':
+    zh-CN: '暂未开放'
+    en-US: 'Not yet available'
+    ru-RU: 'Пока недоступно'
+
+  '00B0000B':
+    zh-CN: '成功导入 {0} 个方法'
+    en-US: 'Successfully imported {0} methods'
+    ru-RU: 'Успешно импортировано {0} методов'
+
+  '00B0000C':
+    zh-CN: '导入方法失败: {0}'
+    en-US: 'Method import failed: {0}'
+    ru-RU: 'Ошибка импорта метода: {0}'
+
+  '00B0000D':
+    zh-CN: '请创建任务'
+    en-US: 'Please create a task'
+    ru-RU: 'Пожалуйста, создайте задачу'
+
+  '00B0000E':
+    zh-CN: '任务结束失败'
+    en-US: 'Failed to end task'
+    ru-RU: 'Не удалось завершить задачу'
+
+  '00B0000F':
+    zh-CN: '测量类型不能为空'
+    en-US: 'Measurement type cannot be empty'
+    ru-RU: 'Тип измерения не может быть пустым'
+
+  '00B00010':
+    zh-CN: '项目不能为空'
+    en-US: 'Project cannot be empty'
+    ru-RU: 'Проект не может быть пустым'
+
+  '00B00011':
+    zh-CN: '参考标准不能为空'
+    en-US: 'Reference standard cannot be empty'
+    ru-RU: 'Эталон не может быть пустым'
+
+  # ========== WebSocket测量模块 (00B01) ==========
+  '00B01001':
+    zh-CN: '设置样品池位置出错！'
+    en-US: 'Error setting sample pool position!'
+    ru-RU: 'Ошибка установки позиции кюветы!'
+
+  '00B01002':
+    zh-CN: '测量出错！'
+    en-US: 'Measurement error!'
+    ru-RU: 'Ошибка измерения!'
+
+  '00B01003':
+    zh-CN: '计算出错'
+    en-US: 'Calculation error'
+    ru-RU: 'Ошибка вычисления'
+
+  # ========== 引导模式-光谱扫描模块 (00B02) ==========
+  '00B02001':
+    zh-CN: '扫描速度参数错误'
+    en-US: 'Scan speed parameter error'
+    ru-RU: 'Ошибка параметра скорости сканирования'
+
+  '00B02002':
+    zh-CN: '设置参数成功'
+    en-US: 'Parameters set successfully'
+    ru-RU: 'Параметры успешно установлены'
+
+  '00B02003':
+    zh-CN: '新增样品编号超出限制'
+    en-US: 'New sample number exceeds limit'
+    ru-RU: 'Номер нового образца превышает лимит'
+
+  '00B02004':
+    zh-CN: '新增样品名称超出限制'
+    en-US: 'New sample name exceeds limit'
+    ru-RU: 'Название нового образца превышает лимит'
+
+  '00B02005':
+    zh-CN: '算法调用失败,请联系管理员'
+    en-US: 'Algorithm call failed, please contact administrator'
+    ru-RU: 'Ошибка вызова алгоритма, обратитесь к администратору'
+
+  '00B02006':
+    zh-CN: '极快扫描速度时,扫描间隔不能小于1秒'
+    en-US: 'At ultra-fast scan speed, scan interval cannot be less than 1 second'
+    ru-RU: 'При сверхбыстрой скорости сканирования интервал не может быть менее 1 секунды'
+
+  '00B02007':
+    zh-CN: '幻灯波长在330~390之间'
+    en-US: 'Lamp change wavelength must be between 330 and 390'
+    ru-RU: 'Длина волны смены лампы должна быть между 330 и 390'
+
+  '00B02008':
+    zh-CN: '极快扫描速度时,波长区间应在1100.0~380.0'
+    en-US: 'At ultra-fast scan speed, wavelength range should be 1100.0~380.0'
+    ru-RU: 'При сверхбыстрой скорости сканирования диапазон длин волн должен быть 1100.0~380.0'
+
+  '00B02009':
+    zh-CN: '方法名称不能为空'
+    en-US: 'Method name cannot be empty'
+    ru-RU: 'Название метода не может быть пустым'
+
+  '00B0200A':
+    zh-CN: '光度模式不能为空'
+    en-US: 'Photometric mode cannot be empty'
+    ru-RU: 'Фотометрический режим не может быть пустым'
+
+  '00B0200B':
+    zh-CN: '开始波长不能为空'
+    en-US: 'Start wavelength cannot be empty'
+    ru-RU: 'Начальная длина волны не может быть пустой'
+
+  '00B0200C':
+    zh-CN: '结束波长不能为空'
+    en-US: 'End wavelength cannot be empty'
+    ru-RU: 'Конечная длина волны не может быть пустой'
+
+  '00B0200D':
+    zh-CN: '波长间隔不能为空'
+    en-US: 'Wavelength interval cannot be empty'
+    ru-RU: 'Интервал длин волн не может быть пустым'
+
+  '00B0200E':
+    zh-CN: '时间间隔不能为空'
+    en-US: 'Time interval cannot be empty'
+    ru-RU: 'Временной интервал не может быть пустым'
+
+  '00B0200F':
+    zh-CN: '扫描速度不能为空'
+    en-US: 'Scan speed cannot be empty'
+    ru-RU: 'Скорость сканирования не может быть пустой'
+
+  '00B02010':
+    zh-CN: '光谱带宽不能为空'
+    en-US: 'Spectral bandwidth cannot be empty'
+    ru-RU: 'Спектральная ширина полосы не может быть пустой'
+
+  '00B02011':
+    zh-CN: '换灯波长不能为空'
+    en-US: 'Lamp change wavelength cannot be empty'
+    ru-RU: 'Длина волны смены лампы не может быть пустой'
+
+  '00B02012':
+    zh-CN: '能量灯不能为空'
+    en-US: 'Energy lamp cannot be empty'
+    ru-RU: 'Лампа энергии не может быть пустой'
+
+  '00B02013':
+    zh-CN: '增益不能为空'
+    en-US: 'Gain cannot be empty'
+    ru-RU: 'Усиление не может быть пустым'
+
+  '00B02014':
+    zh-CN: '该方法正在被使用，是否要新建方法'
+    en-US: 'This method is in use, do you want to create a new method'
+    ru-RU: 'Этот метод используется, хотите ли вы создать новый метод'
+
+  '00B02015':
+    zh-CN: '原始数据为空'
+    en-US: 'Raw data is empty'
+    ru-RU: 'Исходные данные пусты'
+
+  '00B02016':
+    zh-CN: '原始数据格式错误：{0}'
+    en-US: 'Raw data format error: {0}'
+    ru-RU: 'Ошибка формата исходных данных: {0}'
+
+  '00B02017':
+    zh-CN: '标记点格式错误：{0}'
+    en-US: 'Marker point format error: {0}'
+    ru-RU: 'Ошибка формата точки маркировки: {0}'
+
+  # ========== 引导模式-光谱扫描-参数校验扩展 (00B02) ==========
+  '00B02018':
+    zh-CN: '开始波长不能为空'
+    en-US: 'Start wavelength cannot be empty'
+    ru-RU: 'Начальная длина волны не может быть пустой'
+
+  '00B02019':
+    zh-CN: '结束波长不能为空'
+    en-US: 'End wavelength cannot be empty'
+    ru-RU: 'Конечная длина волны не может быть пустой'
+
+  '00B0201A':
+    zh-CN: '波长间隔不能为空'
+    en-US: 'Wavelength interval cannot be empty'
+    ru-RU: 'Интервал длин волн не может быть пустым'
+
+  '00B0201B':
+    zh-CN: '开始波长不能小于结束波长，当前开始：{0}，结束：{1}'
+    en-US: 'Start wavelength must not be less than end wavelength, start: {0}, end: {1}'
+    ru-RU: 'Начальная длина волны не может быть меньше конечной, начало: {0}, конец: {1}'
+
+  '00B0201C':
+    zh-CN: '波长间隔必须大于0，当前值：{0}'
+    en-US: 'Wavelength interval must be greater than 0, current value: {0}'
+    ru-RU: 'Интервал длин волн должен быть больше 0, текущее значение: {0}'
+
+  '00B0201D':
+    zh-CN: '波长间隔小数点后最多保留2位，当前值：{0}'
+    en-US: 'Wavelength interval can have at most 2 decimal places, current value: {0}'
+    ru-RU: 'Интервал длин волн может иметь не более 2 десятичных знаков, текущее значение: {0}'
+
+  '00B0201E':
+    zh-CN: '波长参数格式错误，必须为数字'
+    en-US: 'Invalid wavelength parameter format, must be a number'
+    ru-RU: 'Неверный формат параметра длины волны, должно быть числом'
+
+  '00B0201F':
+    zh-CN: '扫描速度不能为空'
+    en-US: 'Scan speed cannot be empty'
+    ru-RU: 'Скорость сканирования не может быть пустой'
+
+  '00B02020':
+    zh-CN: '重复模式不能为空'
+    en-US: 'Repetition mode cannot be empty'
+    ru-RU: 'Режим повторения не может быть пустым'
+
+  '00B02021':
+    zh-CN: '重复模式不合法（可选值：不重复、单池重复），当前值：{0}'
+    en-US: 'Invalid repetition mode (options: no repeat, single pool repeat), current value: {0}'
+    ru-RU: 'Недопустимый режим повторения (варианты: без повторения, повторение одиночного пула), текущее значение: {0}'
+
+  '00B02022':
+    zh-CN: '单池重复模式下，重复次数不能为空'
+    en-US: 'In single pool repeat mode, repetition count cannot be empty'
+    ru-RU: 'В режиме повторения одиночного пула, количество повторений не может быть пустым'
+
+  '00B02023':
+    zh-CN: '单池重复模式下，扫描间隔不能为空'
+    en-US: 'In single pool repeat mode, scan interval cannot be empty'
+    ru-RU: 'В режиме повторения одиночного пула, интервал сканирования не может быть пустым'
+
+  '00B02024':
+    zh-CN: '消除尖刺功能只能在Abs或T%光度模式下使用，当前光度模式：{0}'
+    en-US: 'Spike removal can only be used in Abs or T% photometric mode, current mode: {0}'
+    ru-RU: 'Удаление пиков можно использовать только в режимах Abs или T%, текущий режим: {0}'
+
+  '00B02025':
+    zh-CN: '启用消除尖刺功能时，尖刺数组不能为空'
+    en-US: 'When spike removal is enabled, spike array cannot be empty'
+    ru-RU: 'При включенном удалении пиков массив пиков не может быть пустым'
+
+  '00B02026':
+    zh-CN: '尖刺数组中存在空值，请检查第{0}个尖刺点'
+    en-US: 'Empty value found in spike array, please check the {0}th spike point'
+    ru-RU: 'Найдено пустое значение в массиве пиков, проверьте {0}-ю точку пика'
+
+  '00B02027':
+    zh-CN: '尖刺点{0}不在波长范围内，请检查'
+    en-US: 'Spike point {0} is out of wavelength range, please check'
+    ru-RU: 'Точка пика {0} вне диапазона длин волн, проверьте'
+
+  '00B02028':
+    zh-CN: '尖刺点{0}小数点后最多保留1位'
+    en-US: 'Spike point {0} can have at most 1 decimal place'
+    ru-RU: 'Точка пика {0} может иметь не более 1 десятичного знака'
+
+  '00B02029':
+    zh-CN: '尖刺数组中存在重复的尖刺点，请检查'
+    en-US: 'Duplicate spike points found in spike array, please check'
+    ru-RU: 'Обнаружены дублирующиеся точки пиков в массиве, проверьте'
+
+  '00B0202A':
+    zh-CN: '尖刺数组格式错误，必须为数字，当前值：{0}'
+    en-US: 'Invalid spike array format, must be numbers, current value: {0}'
+    ru-RU: 'Неверный формат массива пиков, должны быть числа, текущее значение: {0}'
+
+  # ========== 设备通信工具类 (0020A) ==========
+  '0020A001':
+    zh-CN: 'xml文件加载失败'
+    en-US: 'XML file loading failed'
+    ru-RU: 'Ошибка загрузки XML-файла'
+
+  '0020A002':
+    zh-CN: 'T800xml文件加载失败'
+    en-US: 'T800 XML file loading failed'
+    ru-RU: 'Ошибка загрузки XML-файла T800'
+
+  '0020A003':
+    zh-CN: 'T800 xml 加载失败'
+    en-US: 'T800 XML loading failed'
+    ru-RU: 'Ошибка загрузки XML T800'
+
+  '0020A004':
+    zh-CN: 'T600xml文件加载失败'
+    en-US: 'T600 XML file loading failed'
+    ru-RU: 'Ошибка загрузки XML-файла T600'
+
+  '0020A005':
+    zh-CN: '没有仪器响应，请检查仪器连接状态！'
+    en-US: 'No instrument response, please check instrument connection!'
+    ru-RU: 'Нет ответа прибора, проверьте подключение прибора!'
+
+  '0020A006':
+    zh-CN: '仪器连接失败，请检查仪器！'
+    en-US: 'Instrument connection failed, please check the instrument!'
+    ru-RU: 'Не удалось подключить прибор, проверьте прибор!'
+
+  '0020A007':
+    zh-CN: '接收报文解析异常'
+    en-US: 'Received message parsing exception'
+    ru-RU: 'Исключение при разборе полученного сообщения'
+
+  '0020A008':
+    zh-CN: 'T800发送命令失败'
+    en-US: 'T800 command sending failed'
+    ru-RU: 'Ошибка отправки команды T800'
+
+  '0020A009':
+    zh-CN: '校正失败'
+    en-US: 'Calibration failed'
+    ru-RU: 'Ошибка калибровки'
+
+  '0020A00A':
+    zh-CN: '转换xml出错'
+    en-US: 'XML conversion error'
+    ru-RU: 'Ошибка преобразования XML'
+
+  '0020A00B':
+    zh-CN: '校零失败'
+    en-US: 'Zero calibration failed'
+    ru-RU: 'Ошибка калибровки нуля'
+
+  '0020A00C':
+    zh-CN: '解析报文出错'
+    en-US: 'Message parsing error'
+    ru-RU: 'Ошибка разбора сообщения'
+
+  '0020A00D':
+    zh-CN: '基线失败'
+    en-US: 'Baseline failed'
+    ru-RU: 'Ошибка базовой линии'
+
+  # ========== 引导模式-时间扫描模块 (00B03) ==========
+  '00B03001':
+    zh-CN: '响应时间必须小于等于时间间隔'
+    en-US: 'Response time must be less than or equal to time interval'
+    ru-RU: 'Время отклика должно быть меньше или равно интервалу времени'
+
+  '00B03002':
+    zh-CN: '方法名称不能为空'
+    en-US: 'Method name cannot be empty'
+    ru-RU: 'Имя метода не может быть пустым'
+
+  '00B03003':
+    zh-CN: '新增样品编号超出限制'
+    en-US: 'New sample number exceeds limit'
+    ru-RU: 'Новый номер образца превышает лимит'
+
+  '00B03004':
+    zh-CN: '新增样品名称超出限制'
+    en-US: 'New sample name exceeds limit'
+    ru-RU: 'Новое имя образца превышает лимит'
+
+  '00B03005':
+    zh-CN: '算法调用失败,请联系管理员'
+    en-US: 'Algorithm call failed, please contact administrator'
+    ru-RU: 'Вызов алгоритма не удался, обратитесь к администратору'
+
+  '00B03006':
+    zh-CN: '设备正在停止中'
+    en-US: 'Device is stopping'
+    ru-RU: 'Устройство останавливается'
+
+  '00B03007':
+    zh-CN: '光度模式不能为空'
+    en-US: 'Photometric mode cannot be empty'
+    ru-RU: 'Фотометрический режим не может быть пустым'
+
+  '00B03008':
+    zh-CN: '光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：{0}'
+    en-US: 'Invalid photometric mode (options: 1-abs, 2-T%, 3-Es, 4-Er), current value: {0}'
+    ru-RU: 'Недопустимый фотометрический режим (варианты: 1-abs, 2-T%, 3-Es, 4-Er), текущее значение: {0}'
+
+  '00B03009':
+    zh-CN: '波长值不能为空'
+    en-US: 'Wavelength value cannot be empty'
+    ru-RU: 'Значение длины волны не может быть пустым'
+
+  '00B0300A':
+    zh-CN: '波长值格式错误，必须为数字'
+    en-US: 'Invalid wavelength format, must be a number'
+    ru-RU: 'Неверный формат длины волны, должно быть числом'
+
+  '00B0300B':
+    zh-CN: '扫描单位不能为空'
+    en-US: 'Scan unit cannot be empty'
+    ru-RU: 'Единица сканирования не может быть пустой'
+
+  '00B0300C':
+    zh-CN: '扫描单位不合法（可选值：0-分、1-秒），当前值：{0}'
+    en-US: 'Invalid scan unit (options: 0-minutes, 1-seconds), current value: {0}'
+    ru-RU: 'Недопустимая единица сканирования (варианты: 0-минуты, 1-секунды), текущее значение: {0}'
+
+  '00B0300D':
+    zh-CN: '扫描总时长不能为空'
+    en-US: 'Total scan duration cannot be empty'
+    ru-RU: 'Общая длительность сканирования не может быть пустой'
+
+  '00B0300E':
+    zh-CN: '时间间隔不能为空'
+    en-US: 'Time interval cannot be empty'
+    ru-RU: 'Интервал времени не может быть пустым'
+
+  '00B0300F':
+    zh-CN: '扫描总个数不能为空'
+    en-US: 'Total scan count cannot be empty'
+    ru-RU: 'Общее количество сканирований не может быть пустым'
+
+  '00B03010':
+    zh-CN: '扫描总时长必须大于0，当前值：{0}'
+    en-US: 'Total scan duration must be greater than 0, current value: {0}'
+    ru-RU: 'Общая длительность сканирования должна быть больше 0, текущее значение: {0}'
+
+  '00B03011':
+    zh-CN: '时间间隔必须大于0，当前值：{0}'
+    en-US: 'Time interval must be greater than 0, current value: {0}'
+    ru-RU: 'Интервал времени должен быть больше 0, текущее значение: {0}'
+
+  '00B03012':
+    zh-CN: '扫描总个数必须大于0，当前值：{0}'
+    en-US: 'Total scan count must be greater than 0, current value: {0}'
+    ru-RU: 'Общее количество сканирований должно быть больше 0, текущее значение: {0}'
+
+  '00B03013':
+    zh-CN: '扫描总时长（分）不能超过10000分钟，当前值：{0}'
+    en-US: 'Total scan duration (minutes) cannot exceed 10000 minutes, current value: {0}'
+    ru-RU: 'Общая длительность сканирования (минуты) не может превышать 10000 минут, текущее значение: {0}'
+
+  '00B03014':
+    zh-CN: '扫描总时长（秒）不能超过10000秒，当前值：{0}'
+    en-US: 'Total scan duration (seconds) cannot exceed 10000 seconds, current value: {0}'
+    ru-RU: 'Общая длительность сканирования (секунды) не может превышать 10000 секунд, текущее значение: {0}'
+
+  '00B03015':
+    zh-CN: '时间参数格式错误，必须为数字'
+    en-US: 'Invalid time parameter format, must be a number'
+    ru-RU: 'Неверный формат параметра времени, должно быть числом'
+
+  '00B03016':
+    zh-CN: '多联池模式不能为空'
+    en-US: 'Multi-pool mode cannot be empty'
+    ru-RU: 'Режим мультипула не может быть пустым'
+
+  '00B03017':
+    zh-CN: '多联池模式不合法（可选值：0-顺序单池连续采样、1-循环多池交替采样），当前值：{0}'
+    en-US: 'Invalid multi-pool mode (options: 0-sequential single pool, 1-cyclic multi-pool), current value: {0}'
+    ru-RU: 'Недопустимый режим мультипула (варианты: 0-последовательный одиночный пул, 1-циклический мультипул), текущее значение: {0}'
+
+  '00B03018':
+    zh-CN: '光谱带宽不能为空'
+    en-US: 'Spectral bandwidth cannot be empty'
+    ru-RU: 'Спектральная полоса пропускания не может быть пустой'
+
+  '00B03019':
+    zh-CN: '光谱带宽必须大于0，当前值：{0}'
+    en-US: 'Spectral bandwidth must be greater than 0, current value: {0}'
+    ru-RU: 'Спектральная полоса пропускания должна быть больше 0, текущее значение: {0}'
+
+  '00B0301A':
+    zh-CN: '光谱带宽格式错误，必须为数字'
+    en-US: 'Invalid spectral bandwidth format, must be a number'
+    ru-RU: 'Неверный формат спектральной полосы пропускания, должно быть числом'
+
+  '00B0301B':
+    zh-CN: '换灯波长格式错误'
+    en-US: 'Invalid lamp switching wavelength format'
+    ru-RU: 'Неверный формат длины волны переключения лампы'
+
+  '00B0301C':
+    zh-CN: '能量灯不能为空'
+    en-US: 'Energy lamp cannot be empty'
+    ru-RU: 'Энергетическая лампа не может быть пустой'
+
+  '00B0301D':
+    zh-CN: '能量灯值无效（可选值：0-钨灯、1-氘灯、2-汞灯），当前值：{0}'
+    en-US: 'Invalid energy lamp value (options: 0-tungsten, 1-deuterium, 2-mercury), current value: {0}'
+    ru-RU: 'Недопустимое значение энергетической лампы (варианты: 0-вольфрамовая, 1-дейтериевая, 2-ртутная), текущее значение: {0}'
+
+  '00B0301E':
+    zh-CN: '增益不能小于0，当前值：{0}'
+    en-US: 'Gain cannot be less than 0, current value: {0}'
+    ru-RU: 'Усиление не может быть меньше 0, текущее значение: {0}'
+
+  '00B0301F':
+    zh-CN: '参考标准名称长度不能超过100字符'
+    en-US: 'Reference standard name length cannot exceed 100 characters'
+    ru-RU: 'Длина имени эталона не может превышать 100 символов'
+
+  '00B03020':
+    zh-CN: '原始数据为空'
+    en-US: 'Raw data is empty'
+    ru-RU: 'Сырые данные пусты'
+
+  '00B03021':
+    zh-CN: '原始数据格式错误：{0}'
+    en-US: 'Raw data format error: {0}'
+    ru-RU: 'Ошибка формата сырых данных: {0}'
+
+  '00B03022':
+    zh-CN: '标记点格式错误：{0}'
+    en-US: 'Marker point format error: {0}'
+    ru-RU: 'Ошибка формата точки маркировки: {0}'
+
+  # ========== 引导模式-定量分析模块 (00B08) ==========
+  '00B08001':
+    zh-CN: '方法修改失败'
+    en-US: 'Method modification failed'
+    ru-RU: 'Ошибка изменения метода'
+
+  '00B08002':
+    zh-CN: '方法ID不能为空'
+    en-US: 'Method ID cannot be empty'
+    ru-RU: 'ID метода не может быть пустым'
+
+  '00B08003':
+    zh-CN: '设备序列号不能为空'
+    en-US: 'Device serial number cannot be empty'
+    ru-RU: 'Серийный номер устройства не может быть пустым'
+
+  '00B08004':
+    zh-CN: '未找到对应的测量方法'
+    en-US: 'Corresponding measurement method not found'
+    ru-RU: 'Соответствующий метод измерения не найден'
+
+  '00B08005':
+    zh-CN: '参数解析失败'
+    en-US: 'Parameter parsing failed'
+    ru-RU: 'Ошибка разбора параметров'
+
+  '00B08006':
+    zh-CN: '换灯波长不能为空'
+    en-US: 'Lamp switching wavelength cannot be empty'
+    ru-RU: 'Длина волны переключения лампы не может быть пустой'
+
+  '00B08007':
+    zh-CN: '新增标准样品编号超出限制'
+    en-US: 'New standard sample number exceeds limit'
+    ru-RU: 'Новый номер стандартного образца превышает лимит'
+
+  '00B08008':
+    zh-CN: '新增标准样品名称超出限制'
+    en-US: 'New standard sample name exceeds limit'
+    ru-RU: 'Новое имя стандартного образца превышает лимит'
+
+  '00B08009':
+    zh-CN: '新增未知样品编号超出限制'
+    en-US: 'New unknown sample number exceeds limit'
+    ru-RU: 'Новый номер неизвестного образца превышает лимит'
+
+  '00B0800A':
+    zh-CN: '新增未知样品名称超出限制'
+    en-US: 'New unknown sample name exceeds limit'
+    ru-RU: 'Новое имя неизвестного образца превышает лимит'
+
+  '00B0800B':
+    zh-CN: '曲线拟合失败'
+    en-US: 'Curve fitting failed'
+    ru-RU: 'Ошибка подбора кривой'
+
+  '00B0800C':
+    zh-CN: '任务不存在'
+    en-US: 'Task does not exist'
+    ru-RU: 'Задание не существует'
+
+  '00B0800D':
+    zh-CN: '设备未连接,无需下发参数'
+    en-US: 'Device not connected, no need to send parameters'
+    ru-RU: 'Устройство не подключено, нет необходимости отправлять параметры'
+
+  # ========== 引导模式-数据管理模块 (00B09) ==========
+  '00B09001':
+    zh-CN: '导入文件不能为空'
+    en-US: 'Import file cannot be empty'
+    ru-RU: 'Файл импорта не может быть пустым'
+
+  '00B09002':
+    zh-CN: '导入负责人不能为空'
+    en-US: 'Import responsible person cannot be empty'
+    ru-RU: 'Ответственное лицо за импорт не может быть пустым'
+
+  '00B09003':
+    zh-CN: '用户不存在：{0}'
+    en-US: 'User does not exist: {0}'
+    ru-RU: 'Пользователь не существует: {0}'
+
+  '00B09004':
+    zh-CN: '用户未加入任何组：{0}'
+    en-US: 'User has not joined any group: {0}'
+    ru-RU: 'Пользователь не присоединился ни к одной группе: {0}'
+
+  '00B09005':
+    zh-CN: 'Excel文件中没有数据'
+    en-US: 'No data in Excel file'
+    ru-RU: 'В файле Excel нет данных'
+
+  '00B09006':
+    zh-CN: '导入失败：{0}'
+    en-US: 'Import failed: {0}'
+    ru-RU: 'Ошибка импорта: {0}'
+
+  '00B09007':
+    zh-CN: '查询任务详情失败：{0}'
+    en-US: 'Failed to query task details: {0}'
+    ru-RU: 'Не удалось получить сведения о задании: {0}'
+
+  # ========== 仪器操作模块-补充2 (00208) ==========
+  '0020801C':
+    zh-CN: '起始波长范围在 {0} ~ {1} 内'
+    en-US: 'Start wavelength range must be within {0} ~ {1}'
+    ru-RU: 'Начальная длина волны должна быть в диапазоне {0} ~ {1}'
+
+  '0020801D':
+    zh-CN: '终止波长范围在 {0} ~ {1} 内'
+    en-US: 'End wavelength range must be within {0} ~ {1}'
+    ru-RU: 'Конечная длина волны должна быть в диапазоне {0} ~ {1}'
+
+  '0020801E':
+    zh-CN: '没有需要保存信息'
+    en-US: 'No information to save'
+    ru-RU: 'Нет информации для сохранения'
+
+  '0020801F':
+    zh-CN: '未找到连接仪器信息'
+    en-US: 'Connected instrument information not found'
+    ru-RU: 'Информация о подключённом приборе не найдена'
+
+  # ========== 设备通信工具类-补充 (0020A) ==========
+  '0020A00E':
+    zh-CN: '请检查{0}连接'
+    en-US: 'Please check {0} connection'
+    ru-RU: 'Пожалуйста, проверьте подключение {0}'
+
+  '0020A00F':
+    zh-CN: '请检查仪器'
+    en-US: 'Please check the instrument'
+    ru-RU: 'Пожалуйста, проверьте прибор'
+
+  '0020A010':
+    zh-CN: '报文不足'
+    en-US: 'Insufficient message data'
+    ru-RU: 'Недостаточно данных сообщения'
+
+  '0020A011':
+    zh-CN: '回应报文字节数大于1'
+    en-US: 'Response message bytes greater than 1'
+    ru-RU: 'Количество байт ответа больше 1'
+
+  '0020A012':
+    zh-CN: '解析失败'
+    en-US: 'Parsing failed'
+    ru-RU: 'Ошибка разбора'
+
+  '0020A013':
+    zh-CN: '报文接收不足'
+    en-US: 'Insufficient message received'
+    ru-RU: 'Получено недостаточное сообщение'
+
+  '0020A014':
+    zh-CN: 'TimeMeasure 启动成功'
+    en-US: 'TimeMeasure started successfully'
+    ru-RU: 'TimeMeasure успешно запущен'
+
+  # ========== 引导模式-光度测量模块 (00B04) ==========
+  '00B04001':
+    zh-CN: '当前仪器不支持该光度模式'
+    en-US: 'Current instrument does not support this photometric mode'
+    ru-RU: 'Текущий прибор не поддерживает этот фотометрический режим'
+
+  '00B04002':
+    zh-CN: '波长超出限制, 最大值: {0} 最小值: {1}'
+    en-US: 'Wavelength out of range, max: {0} min: {1}'
+    ru-RU: 'Длина волны вне диапазона, макс: {0} мин: {1}'
+
+  '00B04003':
+    zh-CN: '当前仪器不支持该光谱带宽'
+    en-US: 'Current instrument does not support this spectral bandwidth'
+    ru-RU: 'Текущий прибор не поддерживает эту спектральную полосу'
+
+  '00B04004':
+    zh-CN: '当前仪器不支持该响应时间'
+    en-US: 'Current instrument does not support this response time'
+    ru-RU: 'Текущий прибор не поддерживает это время отклика'
+
+  '00B04005':
+    zh-CN: '换灯波长超出限制, 换灯最大值: {0} 换灯最小值: {1}'
+    en-US: 'Lamp change wavelength out of range, max: {0} min: {1}'
+    ru-RU: 'Длина волны смены лампы вне диапазона, макс: {0} мин: {1}'
+
+  '00B04006':
+    zh-CN: '当前仪器不支持该能量灯'
+    en-US: 'Current instrument does not support this energy lamp'
+    ru-RU: 'Текущий прибор не поддерживает эту энергетическую лампу'
+
+  '00B04007':
+    zh-CN: '当前仪器不支持该增益'
+    en-US: 'Current instrument does not support this gain'
+    ru-RU: 'Текущий прибор не поддерживает это усиление'
+
+  '00B04008':
+    zh-CN: '换灯波长超出限制, 换灯波长最大值: {0} 换灯波长最小值: {1}'
+    en-US: 'Lamp change wavelength out of range, max: {0} min: {1}'
+    ru-RU: 'Длина волны смены лампы вне диапазона, макс: {0} мин: {1}'
+
+  # ========== 引导模式-定量分析-补充 (00B08) ==========
+  '00B0800E':
+    zh-CN: '设置参数失败'
+    en-US: 'Failed to set parameters'
+    ru-RU: 'Не удалось установить параметры'
+
+  '00B0800F':
+    zh-CN: '新增样品编号超出限制'
+    en-US: 'New sample number exceeds limit'
+    ru-RU: 'Номер нового образца превышает лимит'
+
+  '00B08010':
+    zh-CN: '新增样品名称超出限制'
+    en-US: 'New sample name exceeds limit'
+    ru-RU: 'Название нового образца превышает лимит'
+
+  # ========== 引导模式-实验测试-补充 (00300) ==========
+  '00B00012':
+    zh-CN: '任务已删除'
+    en-US: 'Task has been deleted'
+    ru-RU: 'Задача удалена'
+
+  '00B00013':
+    zh-CN: '请选择任务'
+    en-US: 'Please select a task'
+    ru-RU: 'Пожалуйста, выберите задачу'
+
+  '00B00014':
+    zh-CN: '请先选择测量类型'
+    en-US: 'Please select measurement type first'
+    ru-RU: 'Пожалуйста, сначала выберите тип измерения'
+
+  '00B00015':
+    zh-CN: '部分任务不存在请查看'
+    en-US: 'Some tasks do not exist, please check'
+    ru-RU: 'Некоторые задачи не существуют, проверьте'
+
+  '00B00016':
+    zh-CN: '测量类型暂不支持数据比较'
+    en-US: 'Measurement type does not support data comparison yet'
+    ru-RU: 'Тип измерения пока не поддерживает сравнение данных'
+
+  '00B00017':
+    zh-CN: '用户未登录'
+    en-US: 'User not logged in'
+    ru-RU: 'Пользователь не авторизован'
+
+  '00B00018':
+    zh-CN: '参数校验失败: {0}'
+    en-US: 'Parameter validation failed: {0}'
+    ru-RU: 'Ошибка валидации параметров: {0}'
+
+  '00B00019':
+    zh-CN: '参数序列化失败: {0}'
+    en-US: 'Parameter serialization failed: {0}'
+    ru-RU: 'Ошибка сериализации параметров: {0}'
+
+  # ========== 引导模式-样品池控制-补充 (00B06) ==========
+  '00B06008':
+    zh-CN: '参数设置出错'
+    en-US: 'Parameter setting error'
+    ru-RU: 'Ошибка настройки параметров'
+
+  # ========== 系统管理-消息模块 (00C01) ==========
+  '00C01001':
+    zh-CN: '消息不存在'
+    en-US: 'Message does not exist'
+    ru-RU: 'Сообщение не существует'
+
+  '00C01002':
+    zh-CN: '删除失败，消息可能不存在'
+    en-US: 'Deletion failed, message may not exist'
+    ru-RU: 'Ошибка удаления, сообщение может не существовать'
+
+  '00C01003':
+    zh-CN: '批量删除失败，请检查ID列表'
+    en-US: 'Batch deletion failed, please check ID list'
+    ru-RU: 'Ошибка пакетного удаления, проверьте список ID'
+
+  '00C01004':
+    zh-CN: '操作失败'
+    en-US: 'Operation failed'
+    ru-RU: 'Операция не удалась'
+
+  # ========== 用户管理-快捷配置模块 (00D01) ==========
+  '00D01001':
+    zh-CN: '父级配置不存在'
+    en-US: 'Parent configuration does not exist'
+    ru-RU: 'Родительская конфигурация не существует'
+
+  '00D01002':
+    zh-CN: '配置不存在'
+    en-US: 'Configuration does not exist'
+    ru-RU: 'Конфигурация не существует'
+
+  '00D01003':
+    zh-CN: '存在子级，无法删除'
+    en-US: 'Has child items, cannot delete'
+    ru-RU: 'Есть дочерние элементы, удаление невозможно'
+
+  '00D01004':
+    zh-CN: '请选择数据'
+    en-US: 'Please select data'
+    ru-RU: 'Пожалуйста, выберите данные'
+
+  '00D01005':
+    zh-CN: '查询失败'
+    en-US: 'Query failed'
+    ru-RU: 'Ошибка запроса'
+
+  '00D01006':
+    zh-CN: '小组ID不能为空'
+    en-US: 'Group ID cannot be empty'
+    ru-RU: 'ID группы не может быть пустым'
+
+  '00D01007':
+    zh-CN: '授权失败: {0}'
+    en-US: 'Authorization failed: {0}'
+    ru-RU: 'Ошибка авторизации: {0}'
+
+  # ========== 用户管理-权限模块 (00D02) ==========
+  '00D02001':
+    zh-CN: '新增权限成功'
+    en-US: 'Permission added successfully'
+    ru-RU: 'Разрешение успешно добавлено'
+
+  '00D02002':
+    zh-CN: '更新权限成功'
+    en-US: 'Permission updated successfully'
+    ru-RU: 'Разрешение успешно обновлено'
+
+  '00D02003':
+    zh-CN: '删除权限成功'
+    en-US: 'Permission deleted successfully'
+    ru-RU: 'Разрешение успешно удалено'
+
+  # ========== 用户管理-用户操作 (00D03) ==========
+  '00D03001':
+    zh-CN: '快捷导航添加失败'
+    en-US: 'Quick navigation addition failed'
+    ru-RU: 'Ошибка добавления быстрой навигации'
+
+  '00D03002':
+    zh-CN: '快捷导航添加成功'
+    en-US: 'Quick navigation added successfully'
+    ru-RU: 'Быстрая навигация успешно добавлена'
+
+  # ========== 用户管理-MQ操作 (00D04) ==========
+  '00D04001':
+    zh-CN: '注册成功'
+    en-US: 'Registration successful'
+    ru-RU: 'Регистрация успешна'
+
+  '00D04002':
+    zh-CN: '注销成功'
+    en-US: 'Deregistration successful'
+    ru-RU: 'Отмена регистрации успешна'
+
+  '00D04003':
+    zh-CN: '发送成功'
+    en-US: 'Sent successfully'
+    ru-RU: 'Успешно отправлено'
+
+  # ========== 出厂检测-提醒配置 (00615) ==========
+  '00615001':
+    zh-CN: '获取提醒配置列表异常: {0}'
+    en-US: 'Exception getting reminder config list: {0}'
+    ru-RU: 'Исключение при получении списка конфигурации напоминаний: {0}'
+
+  '00615002':
+    zh-CN: '未找到该类型的提醒配置'
+    en-US: 'Reminder configuration of this type not found'
+    ru-RU: 'Конфигурация напоминаний этого типа не найдена'
+
+  '00615003':
+    zh-CN: '获取提醒配置异常: {0}'
+    en-US: 'Exception getting reminder configuration: {0}'
+    ru-RU: 'Исключение при получении конфигурации напоминаний: {0}'
+
+  '00615004':
+    zh-CN: '更新提醒配置失败'
+    en-US: 'Failed to update reminder configuration'
+    ru-RU: 'Не удалось обновить конфигурацию напоминаний'
+
+  '00615005':
+    zh-CN: '更新提醒配置异常: {0}'
+    en-US: 'Exception updating reminder configuration: {0}'
+    ru-RU: 'Исключение при обновлении конфигурации напоминаний: {0}'
+
+  '00615006':
+    zh-CN: '配置列表不能为空'
+    en-US: 'Configuration list cannot be empty'
+    ru-RU: 'Список конфигурации не может быть пустым'
+
+  '00615007':
+    zh-CN: '批量更新提醒配置异常: {0}'
+    en-US: 'Exception batch updating reminder configuration: {0}'
+    ru-RU: 'Исключение при пакетном обновлении конфигурации напоминаний: {0}'
+
+  # ========== 出厂检测-标准物质 (00616) ==========
+  '00616001':
+    zh-CN: '特征值第{0}项不是数字，请检查输入格式是否正确'
+    en-US: 'Characteristic value item {0} is not a number, please check input format'
+    ru-RU: 'Характеристическое значение элемент {0} не является числом, проверьте формат ввода'
+
+  '00616002':
+    zh-CN: '标准值第{0}项不是数字，请检查输入格式是否正确'
+    en-US: 'Standard value item {0} is not a number, please check input format'
+    ru-RU: 'Стандартное значение элемент {0} не является числом, проверьте формат ввода'
+
+  '00616003':
+    zh-CN: '请先删除该标准物下的所有标准实体物'
+    en-US: 'Please delete all standard entities under this standard material first'
+    ru-RU: 'Сначала удалите все стандартные сущности под этим стандартным материалом'
+
+  '00616004':
+    zh-CN: '该标准物质类型为内置，不可删除'
+    en-US: 'This standard material type is built-in and cannot be deleted'
+    ru-RU: 'Этот тип стандартного материала встроенный, удаление невозможно'
+
+  '00616005':
+    zh-CN: '有任务正在使用该标准物，无法删除'
+    en-US: 'A task is using this standard material, cannot delete'
+    ru-RU: 'Задача использует этот стандартный материал, удаление невозможно'
+
+  # ========== 出厂检测-Excel导入 (00617) ==========
+  '00617001':
+    zh-CN: 'Excel文件没有表头信息'
+    en-US: 'Excel file has no header information'
+    ru-RU: 'Файл Excel не содержит информации заголовка'
+
+  '00617002':
+    zh-CN: '导入失败: {0}'
+    en-US: 'Import failed: {0}'
+    ru-RU: 'Ошибка импорта: {0}'
+
+  # ========== 出厂检测-开箱检验 (00618) ==========
+  '00618001':
+    zh-CN: '获取任务数据失败'
+    en-US: 'Failed to get task data'
+    ru-RU: 'Не удалось получить данные задачи'
+
+  # ========== 出厂检测-校准标准实体 (00619) ==========
+  '00619001':
+    zh-CN: '删除成功'
+    en-US: 'Deleted successfully'
+    ru-RU: 'Успешно удалено'
+
+  # ========== 引导模式-定量测试 (0061A) ==========
+  '0061A001':
+    zh-CN: '测试成功'
+    en-US: 'Test successful'
+    ru-RU: 'Тест успешен'
+
+  # ========== 出厂检测-WebSocket (0061B) ==========
+  '0061B001':
+    zh-CN: '不支持的光度模式: {0}'
+    en-US: 'Unsupported photometric mode: {0}'
+    ru-RU: 'Неподдерживаемый фотометрический режим: {0}'
+
+  # ========== 引导模式-定量分析-补充2 (00B08) ==========
+  '00B08011':
+    zh-CN: '新增未知样品编号超出限制'
+    en-US: 'New unknown sample number exceeds limit'
+    ru-RU: 'Номер нового неизвестного образца превышает лимит'
+
+  '00B08012':
+    zh-CN: '新增未知样品名称超出限制'
+    en-US: 'New unknown sample name exceeds limit'
+    ru-RU: 'Название нового неизвестного образца превышает лимит'
+
+  '00B08013':
+    zh-CN: '曲线拟合失败'
+    en-US: 'Curve fitting failed'
+    ru-RU: 'Ошибка аппроксимации кривой'
+
+  '00B08014':
+    zh-CN: '任务不存在'
+    en-US: 'Task does not exist'
+    ru-RU: 'Задача не существует'
+
+  # ========== 简洁模式-定量分析 (00B0A) ==========
+  '00B0A001':
+    zh-CN: '设备未连接,无需下发参数'
+    en-US: 'Device not connected, no need to send parameters'
+    ru-RU: 'Устройство не подключено, нет необходимости отправлять параметры'
+
+  '00B0A002':
+    zh-CN: '找不到对应的测量方法'
+    en-US: 'Corresponding measurement method not found'
+    ru-RU: 'Соответствующий метод измерения не найден'
+
+  '00B0A003':
+    zh-CN: '解析测量参数失败'
+    en-US: 'Failed to parse measurement parameters'
+    ru-RU: 'Ошибка разбора параметров измерения'
+
+  # ========== 引导模式-实验测试-补充2 (00300) ==========
+  '00B0001A':
+    zh-CN: '请创建任务'
+    en-US: 'Please create a task'
+    ru-RU: 'Пожалуйста, создайте задачу'
+
+  '00B0001B':
+    zh-CN: '缺少样品id'
+    en-US: 'Missing sample ID'
+    ru-RU: 'Отсутствует ID образца'
+
+  '00B0001C':
+    zh-CN: '请先新建任务'
+    en-US: 'Please create a new task first'
+    ru-RU: 'Пожалуйста, сначала создайте новую задачу'
+
+  '00B0001D':
+    zh-CN: '请先连接仪器'
+    en-US: 'Please connect the instrument first'
+    ru-RU: 'Пожалуйста, сначала подключите прибор'
+
+  '00B0001E':
+    zh-CN: '请选择测量类型'
+    en-US: 'Please select measurement type'
+    ru-RU: 'Пожалуйста, выберите тип измерения'
+
+  '00B0001F':
+    zh-CN: '当前设备与任务测量设备不匹配'
+    en-US: 'Current device does not match task measurement device'
+    ru-RU: 'Текущее устройство не соответствует устройству измерения задачи'
+
+  '00B00020':
+    zh-CN: '暂不支持双组份定量分析'
+    en-US: 'Dual-component quantitative analysis not supported yet'
+    ru-RU: 'Двухкомпонентный количественный анализ пока не поддерживается'
+
+  '00B00021':
+    zh-CN: '测量类型不存在'
+    en-US: 'Measurement type does not exist'
+    ru-RU: 'Тип измерения не существует'
+
+  '00B00022':
+    zh-CN: '参数不能为空'
+    en-US: 'Parameter cannot be empty'
+    ru-RU: 'Параметр не может быть пустым'
+
+  '00B00023':
+    zh-CN: '请选择任务'
+    en-US: 'Please select a task'
+    ru-RU: 'Пожалуйста, выберите задачу'
+
+  # ========== 引导模式-数据管理-补充 (00B09) ==========
+  '00B09008':
+    zh-CN: '用户不存在'
+    en-US: 'User does not exist'
+    ru-RU: 'Пользователь не существует'
+
+  '00B09009':
+    zh-CN: '用户未加入任何组'
+    en-US: 'User has not joined any group'
+    ru-RU: 'Пользователь не присоединён ни к одной группе'
+
+  '00B0900A':
+    zh-CN: '导入负责人不能为空'
+    en-US: 'Import operator cannot be empty'
+    ru-RU: 'Ответственный за импорт не может быть пустым'
+
+  '00B0900B':
+    zh-CN: '用户不存在: {0}'
+    en-US: 'User does not exist: {0}'
+    ru-RU: 'Пользователь не существует: {0}'
+
+  '00B0900C':
+    zh-CN: '用户未加入任何组: {0}'
+    en-US: 'User has not joined any group: {0}'
+    ru-RU: 'Пользователь не присоединён ни к одной группе: {0}'
+
+  # ========== 设备通信-UDP响应 (0020A) ==========
+  '0020A015':
+    zh-CN: '回应报文为空'
+    en-US: 'Response message is empty'
+    ru-RU: 'Ответное сообщение пусто'
+
+  '0020A016':
+    zh-CN: '无响应'
+    en-US: 'No response'
+    ru-RU: 'Нет ответа'
+
+  '0020A017':
+    zh-CN: '发送报文长度不足5字节，实际长度: {0}'
+    en-US: 'Send message length less than 5 bytes, actual length: {0}'
+    ru-RU: 'Длина отправленного сообщения менее 5 байт, фактическая длина: {0}'
+
+  '0020A018':
+    zh-CN: '回应报文长度不足5字节，实际长度: {0}'
+    en-US: 'Response message length less than 5 bytes, actual length: {0}'
+    ru-RU: 'Длина ответного сообщения менее 5 байт, фактическая длина: {0}'
+
+  '0020A019':
+    zh-CN: '回应列表为空'
+    en-US: 'Response list is empty'
+    ru-RU: 'Список ответов пуст'
+
+  '0020A01A':
+    zh-CN: '未解析到有效 StepPoint 数据'
+    en-US: 'No valid StepPoint data parsed'
+    ru-RU: 'Не найдены допустимые данные StepPoint'
+
+  '0020A01B':
+    zh-CN: '解析异常: {0}'
+    en-US: 'Parsing exception: {0}'
+    ru-RU: 'Исключение при разборе: {0}'
+
+  '0020A01C':
+    zh-CN: '回应为空，无法解析 Zero'
+    en-US: 'Response is empty, cannot parse Zero'
+    ru-RU: 'Ответ пуст, невозможно разобрать Zero'
+
+  '0020A01D':
+    zh-CN: '未解析到 Zero 测量数据'
+    en-US: 'No Zero measurement data parsed'
+    ru-RU: 'Не найдены данные измерения Zero'
+
+  '0020A01E':
+    zh-CN: '回应报文为空，无法解析 Scan'
+    en-US: 'Response message is empty, cannot parse Scan'
+    ru-RU: 'Ответное сообщение пусто, невозможно разобрать Scan'
+
+  '0020A01F':
+    zh-CN: '未解析到有效 Scan 数据'
+    en-US: 'No valid Scan data parsed'
+    ru-RU: 'Не найдены допустимые данные Scan'
+
+  '0020A020':
+    zh-CN: '解析 Scan 报文异常：{0}'
+    en-US: 'Scan message parsing exception: {0}'
+    ru-RU: 'Исключение при разборе сообщения Scan: {0}'
+
+  '0020A021':
+    zh-CN: '回应为空，无法解析 measure'
+    en-US: 'Response is empty, cannot parse measure'
+    ru-RU: 'Ответ пуст, невозможно разобрать measure'
+
+  '0020A022':
+    zh-CN: '未解析到 measure 测量数据'
+    en-US: 'No measure data parsed'
+    ru-RU: 'Не найдены данные измерения measure'
+
+  # ========== 仪器操作-补充3 (00208) ==========
+  '00208020':
+    zh-CN: '更新失败'
+    en-US: 'Update failed'
+    ru-RU: 'Ошибка обновления'
+
+  '00208021':
+    zh-CN: '请先连接仪器'
+    en-US: 'Please connect the instrument first'
+    ru-RU: 'Пожалуйста, сначала подключите прибор'
+
+  # ========== 设备通信-UDP发送 (0020A) 补充 ==========
+  '0020A023':
+    zh-CN: '请检查{0}连接'
+    en-US: 'Please check {0} connection'
+    ru-RU: 'Пожалуйста, проверьте подключение {0}'
+
+  '0020A024':
+    zh-CN: '请检查仪器'
+    en-US: 'Please check the instrument'
+    ru-RU: 'Пожалуйста, проверьте прибор'
+
+  '0020A025':
+    zh-CN: '报文不足'
+    en-US: 'Insufficient message data'
+    ru-RU: 'Недостаточно данных сообщения'
+
+  '0020A026':
+    zh-CN: '回应报文字节数大于 1'
+    en-US: 'Response message byte count greater than 1'
+    ru-RU: 'Количество байт ответного сообщения больше 1'
+
+  '0020A027':
+    zh-CN: '解析失败'
+    en-US: 'Parse failed'
+    ru-RU: 'Ошибка разбора'
+
+  '0020A028':
+    zh-CN: '报文接收不足'
+    en-US: 'Insufficient message received'
+    ru-RU: 'Получено недостаточно данных сообщения'
+
+  '0020A029':
+    zh-CN: '请选择测量间隔时间和测量总时间'
+    en-US: 'Please select measurement interval and total measurement time'
+    ru-RU: 'Пожалуйста, выберите интервал измерения и общее время измерения'
+
+  '0020A02A':
+    zh-CN: '处理消息出错'
+    en-US: 'Error processing message'
+    ru-RU: 'Ошибка обработки сообщения'
+
+  '0020A02B':
+    zh-CN: '请检查网线连接'
+    en-US: 'Please check network cable connection'
+    ru-RU: 'Пожалуйста, проверьте подключение сетевого кабеля'
+
+  '0020A02C':
+    zh-CN: '未找到可用的IP'
+    en-US: 'No available IP found'
+    ru-RU: 'Доступный IP не найден'
+
+  '0020A02D':
+    zh-CN: '创建 DatagramSocket 失败: {0}'
+    en-US: 'Failed to create DatagramSocket: {0}'
+    ru-RU: 'Не удалось создать DatagramSocket: {0}'
+
+  '0020A02E':
+    zh-CN: '无法绑定任何可用端口，从 {0} 起连续尝试 {1} 个端口失败'
+    en-US: 'Unable to bind any available port, failed to try {1} consecutive ports starting from {0}'
+    ru-RU: 'Невозможно привязать ни один доступный порт, не удалось попробовать {1} последовательных портов начиная с {0}'
+
+  # ========== 用户管理-快捷配置补充 (00D01) ==========
+  '00D01008':
+    zh-CN: '不存在'
+    en-US: 'Does not exist'
+    ru-RU: 'Не существует'
+
+  # ========== 用户管理-权限管理 (00D02) 补充 ==========
+  '00D02004':
+    zh-CN: '权限编码已存在'
+    en-US: 'Permission code already exists'
+    ru-RU: 'Код разрешения уже существует'
+
+  '00D02005':
+    zh-CN: '权限名称已存在'
+    en-US: 'Permission name already exists'
+    ru-RU: 'Название разрешения уже существует'
+
+  '00D02006':
+    zh-CN: '路由路径已存在'
+    en-US: 'Route path already exists'
+    ru-RU: 'Путь маршрута уже существует'
+
+  '00D02007':
+    zh-CN: '前端组件路径已存在'
+    en-US: 'Frontend component path already exists'
+    ru-RU: 'Путь фронтенд-компонента уже существует'
+
+  '00D02008':
+    zh-CN: '权限记录不存在'
+    en-US: 'Permission record does not exist'
+    ru-RU: 'Запись разрешения не существует'
+
+  # ========== 用户管理-MQ操作 (00D04) 补充 ==========
+  '00D04004':
+    zh-CN: '注册失败: {0}'
+    en-US: 'Registration failed: {0}'
+    ru-RU: 'Ошибка регистрации: {0}'
+
+  '00D04005':
+    zh-CN: '注销失败，未找到对应生产者'
+    en-US: 'Deregistration failed, corresponding producer not found'
+    ru-RU: 'Ошибка отмены регистрации, соответствующий производитель не найден'
+
+  '00D04006':
+    zh-CN: '发送失败'
+    en-US: 'Send failed'
+    ru-RU: 'Ошибка отправки'
+
+  # ========== 出厂检测-标准物质补充 (00616) ==========
+  '00616006':
+    zh-CN: '有任务正在使用该标准物'
+    en-US: 'A task is using this standard material'
+    ru-RU: 'Задача использует этот стандартный материал'
+
+  # ========== 出厂检测-校准标准实体补充 (00619) ==========
+  '00619002':
+    zh-CN: '特征值第{0}项格式不正确，请检查输入格式是否正确'
+    en-US: 'Characteristic value item {0} has incorrect format, please check input format'
+    ru-RU: 'Характеристическое значение элемент {0} имеет неверный формат, проверьте формат ввода'
+
+  '00619003':
+    zh-CN: '标准值第{0}项格式不正确，请检查输入格式是否正确'
+    en-US: 'Standard value item {0} has incorrect format, please check input format'
+    ru-RU: 'Стандартное значение элемент {0} имеет неверный формат, проверьте формат ввода'
+
+  # ========== 出厂检测-开箱检验补充 (00618) ==========
+  '00618002':
+    zh-CN: '模板名称重复'
+    en-US: 'Template name is duplicated'
+    ru-RU: 'Имя шаблона дублируется'
+
+  '00618003':
+    zh-CN: '修改失败'
+    en-US: 'Modification failed'
+    ru-RU: 'Ошибка изменения'
+
+  '00618004':
+    zh-CN: '修改失败: {0}'
+    en-US: 'Modification failed: {0}'
+    ru-RU: 'Ошибка изменения: {0}'
+
+  '00618005':
+    zh-CN: '请求参数不能为空'
+    en-US: 'Request parameters cannot be empty'
+    ru-RU: 'Параметры запроса не могут быть пустыми'
+
+  '00618006':
+    zh-CN: '创建模板失败: {0}'
+    en-US: 'Failed to create template: {0}'
+    ru-RU: 'Не удалось создать шаблон: {0}'
+
+  # ========== 引导模式-参数校验 (00300) 补充 ==========
+  '00B00024':
+    zh-CN: '参数校验失败: {0}'
+    en-US: 'Parameter validation failed: {0}'
+    ru-RU: 'Ошибка валидации параметров: {0}'
+
+  '00B00025':
+    zh-CN: '参数序列化失败：{0}'
+    en-US: 'Parameter serialization failed: {0}'
+    ru-RU: 'Ошибка сериализации параметров: {0}'
+
+  # ========== 引导模式-报告 (00510) ==========
+  '00510001':
+    zh-CN: '处理 {0} 时出错: {1}'
+    en-US: 'Error processing {0}: {1}'
+    ru-RU: 'Ошибка обработки {0}: {1}'
+
+  # ========== 软件激活 (00520) ==========
+  '00520001':
+    zh-CN: '保存配置失败: {0}'
+    en-US: 'Failed to save configuration: {0}'
+    ru-RU: 'Не удалось сохранить конфигурацию: {0}'
+
+  # ========== 系统管理-快捷配置补充 (00D01) ==========
+  '00D01010':
+    zh-CN: '修改成功'
+    en-US: 'Modification successful'
+    ru-RU: 'Успешно изменено'
+
+  '00D01011':
+    zh-CN: '删除成功'
+    en-US: 'Deletion successful'
+    ru-RU: 'Успешно удалено'
+
+  '00D01012':
+    zh-CN: '批量删除成功'
+    en-US: 'Batch deletion successful'
+    ru-RU: 'Пакетное удаление выполнено'
+
+  # ========== 系统管理-权限管理补充 (00D02) ==========
+  '00D02010':
+    zh-CN: '更新权限成功'
+    en-US: 'Permission updated successfully'
+    ru-RU: 'Разрешение успешно обновлено'
+
+  '00D02011':
+    zh-CN: '删除权限成功'
+    en-US: 'Permission deleted successfully'
+    ru-RU: 'Разрешение успешно удалено'
+
+  # ========== 系统管理-消息管理补充 (00C01) ==========
+  '00C01005':
+    zh-CN: '简体中文'
+    en-US: 'Simplified Chinese'
+    ru-RU: 'Упрощенный китайский'
+
+  # ========== 出厂检测-校准标准实体补充 (00619) ==========
+  '00619004':
+    zh-CN: '删除失败'
+    en-US: 'Deletion failed'
+    ru-RU: 'Ошибка удаления'
+
+  '00619005':
+    zh-CN: '请选择要删除的记录'
+    en-US: 'Please select records to delete'
+    ru-RU: 'Пожалуйста, выберите записи для удаления'
+
+  # ========== 系统管理-快捷配置补充2 (00D01) ==========
+  '00D01013':
+    zh-CN: 'ID:{0} 存在子级'
+    en-US: 'ID:{0} has child items'
+    ru-RU: 'ID:{0} имеет дочерние элементы'
+
+  # ========== 全局-Token拦截 (00000) 补充 ==========
+  '00000052':
+    zh-CN: '当前账户已禁用！'
+    en-US: 'Current account is disabled!'
+    ru-RU: 'Текущая учётная запись отключена!'
+
+  '00000053':
+    zh-CN: '验证失败，请重新登录'
+    en-US: 'Verification failed, please log in again'
+    ru-RU: 'Ошибка проверки, пожалуйста, войдите снова'

@@ -22,7 +22,6 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserLoginDTO;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
@@ -51,9 +50,8 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
     public R<LoginUserInfoVO> login(UserLoginDTO loginDTO) {
         // 1. 处理快捷登录：补全默认用户名/密码（参照你原有逻辑）
         if (loginDTO.getIsFastLogin() != null && loginDTO.getIsFastLogin() == 1) {
-            log.info("触发快捷登录，使用默认用户");
-            // 建议在Constants类中定义默认值，避免硬编码（示例：Constants.DEFAULT_USERNAME）
-            loginDTO.setUserName("kh-admin");
+            log.info("触发快捷登录，使用admin用户");
+            loginDTO.setUserName("admin");
             loginDTO.setPassword("40f1afacc21c54105f7f8dbfd20104c5");
         }
 
@@ -63,7 +61,7 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
         if (!StringUtils.hasText(username) || !StringUtils.hasText(rawPassword)) {
             log.warn("登录失败：用户名或密码为空，username={}", username);
             //缺少用户名或密码
-            return R.fail(YamlMessageSource.getMessageStatic("00204009"));
+            return R.fail("00204009");
         }
 
         // 3. 查询数据库中的用户（只查询「启用状态」的用户，status=1）
@@ -71,7 +69,7 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
         if (userPO == null) {
             log.warn("登录失败：未找到用户或用户已禁用，username={}", username);
             //用户名不存在或已被禁用
-            return R.fail(YamlMessageSource.getMessageStatic("00608001"));
+            return R.fail("00608001");
         }
 
         // 4. 密码校验：用PasswordUtils匹配（明文 vs BCrypt加密密码）→ 核心修复！
@@ -81,7 +79,7 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
         if (!b) {
             log.warn("登录失败：密码错误，username={}", username);
             //密码错误
-            return R.fail(YamlMessageSource.getMessageStatic("0020400B"));
+            return R.fail("0020400B");
         }
 
         // 5. Token处理：复用有效Token / 生成新Token（保留原有逻辑）
@@ -102,7 +100,7 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
             int updateRows = sysUserDAO.updateTokenAndLoginTime(username, token, now);
             if (updateRows <= 0) {
                 log.error("登录警告：Token和最后登录时间更新失败，username={}", username);
-                return R.fail(YamlMessageSource.getMessageStatic("00609001"));
+                return R.fail("00609001");
             }
             log.info("登录成功：生成新Token，username={}", username);
         }

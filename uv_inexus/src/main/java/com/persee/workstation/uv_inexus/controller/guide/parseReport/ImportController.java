@@ -11,7 +11,7 @@ package com.persee.workstation.uv_inexus.controller.guide.parseReport;
 
 import java.io.IOException;
 
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,10 +39,10 @@ public class ImportController {
         try {
             importService.importExcel(file);
             //文件上传成功
-            return ResponseEntity.ok(Result.ok(YamlMessageSource.getMessageStatic("00404001")));
+            return ResponseEntity.ok(Result.ok("00404001"));
         } catch (IOException e) {
             System.err.println("11111111111111111");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Result.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), YamlMessageSource.getMessageStatic("00404002",e.getMessage())));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Result.fail("00404002", e.getMessage()));
         } catch (IllegalArgumentException e) {
             System.err.println("22222222222");
 

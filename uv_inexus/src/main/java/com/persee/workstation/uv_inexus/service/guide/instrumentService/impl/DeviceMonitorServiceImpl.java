@@ -20,7 +20,7 @@ import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceUsageCountDTO;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceMonitorEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceTaskStatusEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
@@ -115,7 +115,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
 
         if (StringUtils.isBlank(updateBy)) {
             log.warn("获取类型统计失败: 用户名为空");
-            return Result.fail(YamlMessageSource.getMessageStatic("00205002"));
+            return Result.fail("00205002");
         }
 
         try {
@@ -125,7 +125,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
 
             if (user == null) {
                 log.warn("获取类型统计失败: 用户 '{}' 不存在", updateBy);
-                return Result.fail(YamlMessageSource.getMessageStatic("00205003"));
+                return Result.fail("00205003");
             }
 
             SystemLogSwitchVO switchVO = logSwitchService.querySystemLogSwitch();
@@ -148,7 +148,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
                     taskWrapper.le(TMeasureTask::getCreateTime, end);
                 }
                 if (start != null && end != null && start.isAfter(end)) {
-                    return Result.fail(YamlMessageSource.getMessageStatic("00205008"));
+                    return Result.fail("00205008");
                 }
                 List<TMeasureTask> tasks = tMeasureTaskService.list(taskWrapper);
 
@@ -160,14 +160,14 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
                 }
             } else {
                 log.info("检测类型分项统计功能未开启");
-                return Result.fail(YamlMessageSource.getMessageStatic("00205004"));
+                return Result.fail("00205004");
             }
             return Result.ok(statisticsMap);
 
 
         } catch (Exception e) {
             log.error("获取检测类型分项统计异常: {}", e.getMessage(), e);
-            return Result.fail(YamlMessageSource.getMessageStatic("00205006"));
+            return Result.fail("00205006");
         }
     }
 
@@ -183,7 +183,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
         }
         if (StringUtils.isBlank(updateBy)) {
             log.warn("获取项目统计失败: 用户名为空");
-            return Result.fail(YamlMessageSource.getMessageStatic("00205002"));
+            return Result.fail("00205002");
         }
 
         try {
@@ -193,7 +193,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
 
             if (user == null) {
                 log.warn("获取项目统计失败: 用户 '{}' 不存在", updateBy);
-                return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
+                return Result.fail("00000003");
             }
 
             SystemLogSwitchVO switchVO = logSwitchService.querySystemLogSwitch();
@@ -215,7 +215,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
                     taskWrapper.le(TMeasureTask::getCreateTime, end);
                 }
                 if (start != null && end != null && start.isAfter(end)) {
-                    return Result.fail(YamlMessageSource.getMessageStatic("00205008"));
+                    return Result.fail("00205008");
                 }
 
                 List<TMeasureTask> tasks = tMeasureTaskService.list(taskWrapper);
@@ -254,11 +254,11 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
 
             // 如果po为null或统计功能未开启
             log.info("检测项目分项统计功能未开启");
-            return Result.fail(YamlMessageSource.getMessageStatic("00205005"));
+            return Result.fail("00205005");
 
         } catch (Exception e) {
             log.error("获取项目统计异常: {}", e.getMessage(), e);
-            return Result.fail(YamlMessageSource.getMessageStatic("00205007"));
+            return Result.fail("00205007");
         }
     }
 
@@ -315,7 +315,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
         }
         if (queryDto.getStartDateTime() != null && queryDto.getEndDateTime() != null && queryDto.getStartDateTime().isAfter(queryDto.getEndDateTime())) {
             log.warn("查询历史任务失败：开始时间不能大于结束时间");
-            throw new BusinessException(YamlMessageSource.getMessageStatic("00205008"));
+            throw BusinessException.withCode("00205008");
         }
 
         IPage<HistoryTaskVO> resultPage = tMeasureTaskMapper.selectHistoryTaskPage(page, queryDto);

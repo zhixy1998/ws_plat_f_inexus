@@ -698,7 +698,11 @@ public class MessageOnTimeDeal {
 
         DeviceInfoPO po = infoService.getInfo(deviceSerialNumber);
         if (po != null) {
-            po.setDarkInfo(map); // 保存整个Map
+            Map<String, String> darkInfo = po.getDarkInfo() == null ? new HashMap<>() : po.getDarkInfo();
+            darkInfo.putAll(map);
+            po.setDarkInfo(darkInfo);
+
+//            po.setDarkInfo(map); // 保存整个Map
             Boolean b = infoService.saveOrUpdateInfo(po);
             if (b){
                 log.info("[Dark] device={} darkInfo写入数据库成功", deviceSerialNumber);

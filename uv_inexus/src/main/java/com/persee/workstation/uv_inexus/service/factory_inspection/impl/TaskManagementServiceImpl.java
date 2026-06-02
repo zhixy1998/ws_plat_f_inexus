@@ -129,7 +129,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         } catch (Exception e) {
             log.error("查询任务管理列表失败", e);
         }
-        return Result.fail("查询任务管理列表失败");
+        return Result.fail("00614001");
     }
 
     @Override
@@ -147,7 +147,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 
             TaskCheckItemDto dto = new TaskCheckItemDto();
             if (management == null) {
-                return Result.fail("任务不存在");
+                return Result.fail("00614002");
             }
             // 设置任务基本信息
             dto.setTaskId(management.getId());
@@ -178,7 +178,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             return Result.ok(dto);
         } catch (Exception e) {
             log.error("查询任务模板失败", e);
-            return Result.fail("查询任务模板失败");
+            return Result.fail("00614003");
         }
     }
 
@@ -189,7 +189,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             log.info("新建任务");
             //看一下新的名字有没有重名
             if (this.checkTaskName(task.getDetectName())) {
-                return Result.fail("任务名称已存在");
+                return Result.fail("00614004");
             }
             TaskManagement management = new TaskManagement();
             management.setId(IdGeneratorUtil.generateIdWithPrefix("task"));
@@ -205,6 +205,9 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             management.setCreateBy(task.getCreateBy());
             if (device.getData() != null) {
                 management.setOperationInstrument(device.getData());
+            }
+            if (task.getSerialNumber()!=null) {
+                management.setOperationInstrument(task.getSerialNumber());
             }
             if (StringUtils.isNotBlank(task.getTaskType())) {
                 management.setTaskType(task.getTaskType());
@@ -334,7 +337,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         try {
 //看一下新的名字有没有重名
             if (this.checkTaskName(taskCreateDto.getNewTaskName())) {
-                return Result.fail("任务名称已存在");
+                return Result.fail("00614004");
             }
 
 //            R<String> device = deviceManageService.getConnectDevice(taskCreateDto.getUpdateBy());
@@ -471,7 +474,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 taskExecutionDetailService.saveBatch(detailList);
             }
 
-            return Result.ok("保存成功");
+            return Result.ok("00614005");
         } catch (Exception e) {
             log.error("保存检测项失败", e);
             throw new RuntimeException("保存检测项失败", e);
@@ -639,13 +642,54 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 management.setTemplateName(excelTemplate.getTemplateName());
                 management.setTemplateCode(excelTemplate.getTemplateCode());
                 R<String> device = deviceManageService.getConnectDevice(updateBy);
-                if (StringUtils.isBlank(management.getOperationInstrument())){
-                    if (StringUtils.isNotBlank(device.getData())) {
-                        management.setOperationInstrument(device.getData());
+
+                // 获取当前连接的设备序列号
+                String currentDevice = device.getData();
+                String taskDevice = management.getOperationInstrument();
+
+                // 如果任务未绑定设备，则直接设置并更新数据库
+                if (StringUtils.isBlank(taskDevice)) {
+                    if (StringUtils.isNotBlank(currentDevice)) {
+                        management.setOperationInstrument(currentDevice);
+                        TaskManagement updateEntity = new TaskManagement();
+                        updateEntity.setId(defaultTaskId);
+                        updateEntity.setOperationInstrument(currentDevice);
+                        this.updateById(updateEntity);
                     }
+                    return Result.ok(management);
                 }
 
-                return Result.ok(management);
+                // 如果任务已绑定的设备与当前连接的设备不一致，则创建新任务
+                String trimmedTaskDevice = taskDevice.trim();
+                String trimmedCurrentDevice = currentDevice != null ? currentDevice.trim() : "";
+
+                if (!trimmedTaskDevice.equals(trimmedCurrentDevice)) {
+                    // 创建新的检定任务
+                    TaskAddDto addDto = new TaskAddDto();
+                    addDto.setDetectName("verifyTask" + "_" + System.currentTimeMillis());
+                    ExcelTemplate template = templateService.getById(management.getUseTemplate());
+                    addDto.setUseTemplate(template.getTemplateCode());
+                    addDto.setContentCategory(management.getContentCategory());
+                    addDto.setCreateBy(updateBy);
+                    addDto.setUpdateBy(updateBy);
+                    addDto.setSerialNumber(currentDevice);
+                    addDto.setCreated(LocalDateTime.now());
+                    addDto.setUpdated(LocalDateTime.now());
+                    addDto.setTaskType(CALIBRATION_INSPECTION.getCode());
+
+                    Result<HashMap<String, String>> taskResult = newTask(addDto);
+                    if (taskResult.getCode() == 200) {
+                        String newTaskId = taskResult.getData().get("taskId");
+                        TaskManagement newManagement = this.getById(newTaskId);
+                        ExcelTemplate newExcelTemplate = templateService.getById(newManagement.getUseTemplate());
+                        newManagement.setTemplateName(newExcelTemplate.getTemplateName());
+                        newManagement.setTemplateCode(newExcelTemplate.getTemplateCode());
+                        return Result.ok(newManagement);
+                    }
+                } else {
+                    // 设备一致，直接返回
+                    return Result.ok(management);
+                }
             }
             if (CALIBRATION_TASK.getCode().equals(taskId)) {
                 //这是校准任务
@@ -655,13 +699,54 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 management.setTemplateName(excelTemplate.getTemplateName());
                 management.setTemplateCode(excelTemplate.getTemplateCode());
                 R<String> device = deviceManageService.getConnectDevice(updateBy);
-                if (StringUtils.isBlank(management.getOperationInstrument())){
-                    if (StringUtils.isNotBlank(device.getData())) {
-                        management.setOperationInstrument(device.getData());
+
+                // 获取当前连接的设备序列号
+                String currentDevice = device.getData();
+                String taskDevice = management.getOperationInstrument();
+
+                // 如果任务未绑定设备，则直接设置并更新数据库
+                if (StringUtils.isBlank(taskDevice)) {
+                    if (StringUtils.isNotBlank(currentDevice)) {
+                        management.setOperationInstrument(currentDevice);
+                        TaskManagement updateEntity = new TaskManagement();
+                        updateEntity.setId(defaultTaskId);
+                        updateEntity.setOperationInstrument(currentDevice);
+                        this.updateById(updateEntity);
                     }
+                    return Result.ok(management);
                 }
 
-                return Result.ok(management);
+                // 如果任务已绑定的设备与当前连接的设备不一致，则创建新任务
+                String trimmedTaskDevice = taskDevice.trim();
+                String trimmedCurrentDevice = currentDevice != null ? currentDevice.trim() : "";
+
+                if (!trimmedTaskDevice.equals(trimmedCurrentDevice)) {
+                    // 创建新的校准任务
+                    TaskAddDto addDto = new TaskAddDto();
+                    addDto.setDetectName("calibrationTask" + "_" + System.currentTimeMillis());
+                    ExcelTemplate template = templateService.getById(management.getUseTemplate());
+                    addDto.setUseTemplate(template.getTemplateCode());
+                    addDto.setContentCategory(management.getContentCategory());
+                    addDto.setCreateBy(updateBy);
+                    addDto.setUpdateBy(updateBy);
+                    addDto.setSerialNumber(currentDevice);
+                    addDto.setCreated(LocalDateTime.now());
+                    addDto.setUpdated(LocalDateTime.now());
+                    addDto.setTaskType(CALIBRATION.getCode());
+
+                    Result<HashMap<String, String>> taskResult = newTask(addDto);
+                    if (taskResult.getCode() == 200) {
+                        String newTaskId = taskResult.getData().get("taskId");
+                        TaskManagement newManagement = this.getById(newTaskId);
+                        ExcelTemplate newExcelTemplate = templateService.getById(newManagement.getUseTemplate());
+                        newManagement.setTemplateName(newExcelTemplate.getTemplateName());
+                        newManagement.setTemplateCode(newExcelTemplate.getTemplateCode());
+                        return Result.ok(newManagement);
+                    }
+                } else {
+                    // 设备一致，直接返回
+                    return Result.ok(management);
+                }
             }
             if (PERIODIC_INSPECTION.getCode().equals(taskId)) {
                 //这是期间核查任务
@@ -671,14 +756,56 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 management.setTemplateName(excelTemplate.getTemplateName());
                 management.setTemplateCode(excelTemplate.getTemplateCode());
                 R<String> device = deviceManageService.getConnectDevice(updateBy);
-                if (StringUtils.isBlank(management.getOperationInstrument())){
-                    if (StringUtils.isNotBlank(device.getData())) {
-                        management.setOperationInstrument(device.getData());
+
+                // 获取当前连接的设备序列号
+                String currentDevice = device.getData();
+                String taskDevice = management.getOperationInstrument();
+
+                // 如果任务未绑定设备，则直接设置并更新数据库
+                if (StringUtils.isBlank(taskDevice)) {
+                    if (StringUtils.isNotBlank(currentDevice)) {
+                        management.setOperationInstrument(currentDevice);
+                        TaskManagement updateEntity = new TaskManagement();
+                        updateEntity.setId(defaultTaskId);
+                        updateEntity.setOperationInstrument(currentDevice);
+                        this.updateById(updateEntity);
                     }
+                    return Result.ok(management);
                 }
 
-                return Result.ok(management);
+                // 如果任务已绑定的设备与当前连接的设备不一致，则创建新任务
+                String trimmedTaskDevice = taskDevice.trim();
+                String trimmedCurrentDevice = currentDevice != null ? currentDevice.trim() : "";
+
+                if (!trimmedTaskDevice.equals(trimmedCurrentDevice)) {
+                    // 创建新的期间核查任务（使用与检定/校准相同的模板）
+                    TaskAddDto addDto = new TaskAddDto();
+                    addDto.setDetectName("inPeriodCheckTask" + "_" + System.currentTimeMillis());
+                    ExcelTemplate template = templateService.getById(management.getUseTemplate());
+                    addDto.setUseTemplate(template.getTemplateCode());
+                    addDto.setContentCategory(management.getContentCategory());
+                    addDto.setCreateBy(updateBy);
+                    addDto.setUpdateBy(updateBy);
+                    addDto.setSerialNumber(currentDevice);
+                    addDto.setCreated(LocalDateTime.now());
+                    addDto.setUpdated(LocalDateTime.now());
+                    addDto.setTaskType(PERIODIC_INSPECTION_TASK.getCode());
+
+                    Result<HashMap<String, String>> taskResult = newTask(addDto);
+                    if (taskResult.getCode() == 200) {
+                        String newTaskId = taskResult.getData().get("taskId");
+                        TaskManagement newManagement = this.getById(newTaskId);
+                        ExcelTemplate newExcelTemplate = templateService.getById(newManagement.getUseTemplate());
+                        newManagement.setTemplateName(newExcelTemplate.getTemplateName());
+                        newManagement.setTemplateCode(newExcelTemplate.getTemplateCode());
+                        return Result.ok(newManagement);
+                    }
+                } else {
+                    // 设备一致，直接返回
+                    return Result.ok(management);
+                }
             }
+
             if (OPEN_BOX_INSPECTION.getCode().equals(taskId)) {
                 TaskManagement management = null;
                 R<String> device = deviceManageService.getConnectDevice(updateBy);
@@ -702,7 +829,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                     }
                 }
                 if (CollectionUtils.isEmpty(list)){
-                    String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,PERIODIC_INSPECTION_TASK.getCode(),3);
+                    // 修复：使用正确的开箱检验任务类型，而不是期间核查
+                    String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy, INSTALLATION_ACCEPTANCE.getCode(), 3);
                     management = this.getById(defaultTaskId);
                 }else {
                     management = list.get(0);
@@ -785,21 +913,20 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             // 检查任务是否存在
             TaskManagement task = this.getById(dto.getTaskId());
             if (task == null) {
-                return Result.fail("任务不存在");
+                return Result.fail("00614002");
             }
             if (StringUtils.equals(dto.getTaskName(), task.getDetectName())) {
-                return Result.ok("任务名称未改变");
+                return Result.ok("00614006");
             }
-            //看一下新的名字有没有重名
             if (this.checkTaskName(dto.getTaskName())) {
-                return Result.fail("任务名称已存在");
+                return Result.fail("00614004");
             }
             task.setDetectName(dto.getTaskName());
             this.updateById(task);
-            return Result.ok("修改成功");
+            return Result.ok("00614007");
         } catch (Exception e) {
             log.error("修改任务名称失败", e);
-            return Result.fail("修改任务名称失败");
+            return Result.fail("00614008");
         }
     }
 
@@ -809,19 +936,19 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             TaskManagement task = this.getById(taskId);
 
             if (task == null) {
-                return Result.fail("任务不存在");
+                return Result.fail("00614002");
             }
 //            if (TEMPLATE_BUILT_IN_TASK.getCode().equals(task.getContentCategory())) {
 //                return Result.fail("内置任务不能删除");
 //            }
             if (this.removeById(taskId)) {
-                return Result.ok("删除成功");
+                return Result.ok("0061400B");
             } else {
-                return Result.fail("删除任务失败");
+                return Result.fail("00614009");
             }
         } catch (Exception e) {
             log.error("删除任务失败", e);
-            return Result.fail("删除任务失败");
+            return Result.fail("00614009");
         }
     }
 
@@ -830,10 +957,10 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         try {
             List<String> taskIds = batchDelDto.getTaskIds();
             if (CollectionUtils.isEmpty(taskIds)) {
-                return Result.fail("请选择要删除的任务");
+                return Result.fail("0061400A");
             }
             boolean b = this.removeBatchByIds(taskIds);
-            return b ? Result.ok("删除成功") : Result.fail("删除失败");
+            return b ? Result.ok("0061400B") : Result.fail("0061400C");
         } catch (Exception e) {
             log.error("批量删除任务失败", e);
         }
@@ -930,12 +1057,12 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             log.info("设置任务定时提醒属性，taskId: {}", dto.getTaskId());
 
             if (StringUtils.isBlank(dto.getTaskId())) {
-                return Result.fail("任务ID不能为空");
+                return Result.fail("0061400D");
             }
 
             TaskManagement task = new TaskManagement();
             if (task == null) {
-                return Result.fail("任务不存在");
+                return Result.fail("00614002");
             }
 
 
@@ -960,11 +1087,11 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 return Result.ok(true);
             } else {
                 log.error("任务定时提醒属性设置失败，taskId: {}", dto.getTaskId());
-                return Result.fail("设置任务定时提醒属性失败");
+                return Result.fail("0061400E");
             }
         } catch (Exception e) {
             log.error("设置任务定时提醒属性异常", e);
-            return Result.fail("设置任务定时提醒属性异常：" + e.getMessage());
+            return Result.fail("0061400F", e.getMessage());
         }
     }
 

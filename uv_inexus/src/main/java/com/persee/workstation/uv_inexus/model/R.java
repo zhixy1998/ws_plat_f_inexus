@@ -45,13 +45,12 @@ public class R<T> {
         return R;
     }
 
-    // 通过消息码与参数构建（消息解析交由 ResponseBodyAdvice 处理）
-    private static <T> R<T> build(Boolean success, String messageCode, Object... obj) {
+    // 核心构建：通过消息码与参数构建
+    private static <T> R<T> buildWithCode(Boolean success, String messageCode, Object... obj) {
         R<T> R = new R<T>();
         R.setSuccess(success);
         R.setMessageCode(messageCode);
         R.setObj(obj);
-        // 暂存 messageCode 到 message，实际解析在响应拦截器中完成
         R.setMessage(messageCode);
         return R;
     }
@@ -75,21 +74,25 @@ public class R<T> {
 
     /**
      * 操作成功
-     * @param data  baseCategory1List
-     * @param <T>
-     * @return
      */
     public static<T> R<T> ok(T data){
         R<T> R = build(data);
         return build(data, true);
     }
 
-    // 操作成功（通过消息码与占位参数）
-    public static<T> R<T> okCode(String messageCode, Object... obj){
-        return build(true, messageCode, obj);
+    // 操作成功（通过消息码字符串 - 自动识别）
+    public static<T> R<T> ok(String messageCode, Object... obj){
+        if (isMessageCode(messageCode)) {
+            return buildWithCode(true, messageCode, obj);
+        } else {
+            return build(true, messageCode);
+        }
     }
 
-    // 操作成功（携带数据 + 消息码与占位参数）
+    public static<T> R<T> okCode(String messageCode, Object... obj){
+        return buildWithCode(true, messageCode, obj);
+    }
+
     public static<T> R<T> okCode(T data, String messageCode, Object... obj){
         R<T> R = build(data);
         R.setSuccess(true);
@@ -99,15 +102,38 @@ public class R<T> {
         return R;
     }
 
+    public static<T> R<T> warn(){
+        return R.warn(null);
+    }
+
+    public static<T> R<T> warn(T data){
+        R<T> R = build(data);
+        return build(data, false);
+    }
+
+    // 警告（通过消息码字符串 - 自动识别）
+    public static<T> R<T> warn(String messageCode, Object... obj){
+        if (isMessageCode(messageCode)) {
+            return buildWithCode(false, messageCode, obj);
+        } else {
+            return build(false, messageCode);
+        }
+    }
+
+    public static<T> R<T> warnCode(String messageCode, Object... obj){
+        return buildWithCode(false, messageCode, obj);
+    }
+
+    public static<T> R<T> warn(String message){
+        return build(false, message);
+    }
+
     public static<T> R<T> fail(){
         return R.fail(null);
     }
 
     /**
      * 操作失败
-     * @param data
-     * @param <T>
-     * @return
      */
     public static<T> R<T> fail(T data){
         R<T> R = build(data);
@@ -115,18 +141,24 @@ public class R<T> {
     }
 
     public static<T> R<T> fail(String message) {
-        R<T> R = build(false,message);
-        return R;
+        if (isMessageCode(message)) {
+            return buildWithCode(false, message);
+        } else {
+            return build(false, message);
+        }
     }
 
-    // 操作失败（通过消息码与占位参数）
+    // 操作失败（通过消息码字符串 - 自动识别）
     public static<T> R<T> fail(String messageCode, Object... obj){
-        return build(false, messageCode, obj);
+        if (isMessageCode(messageCode)) {
+            return buildWithCode(false, messageCode, obj);
+        } else {
+            return build(false, messageCode);
+        }
     }
 
-    // 失败别名，统一调用风格
     public static<T> R<T> failCode(String messageCode, Object... obj){
-        return fail(messageCode, obj);
+        return buildWithCode(false, messageCode, obj);
     }
 
     public static<T> R<T> fail(Boolean success, String message) {
@@ -134,10 +166,13 @@ public class R<T> {
         return R;
     }
 
-
-
     public R<T> message(String msg){
-        this.setMessage(msg);
+        if (isMessageCode(msg)) {
+            this.setMessageCode(msg);
+            this.setMessage(msg);
+        } else {
+            this.setMessage(msg);
+        }
         return this;
     }
 
@@ -154,5 +189,15 @@ public class R<T> {
     public R<T> obj(Object... obj){
         this.setObj(obj);
         return this;
+    }
+
+    /**
+     * 判断是否为消息码（8位十六进制）
+     */
+    private static boolean isMessageCode(String code) {
+        if (code == null || code.isEmpty()) {
+            return false;
+        }
+        return code.matches("^[0-9a-fA-F]{8}$");
     }
 }

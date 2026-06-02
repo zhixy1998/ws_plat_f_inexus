@@ -14,7 +14,7 @@ import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMap
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
@@ -80,20 +80,20 @@ public class GuidePublicUtilServiceImpl implements GuidePublicUtilService {
     public R<Boolean> changeSampleLocation(String taskId, List<Integer> usefulLocation) {
         if (!StringUtils.hasText(taskId)) {
             //请创建任务
-            return R.fail(YamlMessageSource.getMessageStatic("00100016"));
+            return R.fail("00100016");
         }
 
         if (CollectionUtils.isEmpty(usefulLocation)) {
             log.info("没有可用的位置");
             //没有可用的位置
-            return R.fail(YamlMessageSource.getMessageStatic("00100017"));
+            return R.fail("00100017");
         }
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null || !StringUtils.hasText(task.getSampleKey())) {
             log.info("没有样品,不需要处理");
             //没有样品,不需要处理
-            return R.fail(YamlMessageSource.getMessageStatic("00100018"));
+            return R.fail("00100018");
         }
         List<FTaskSpecimen> taskSpecimen;
         try {
@@ -101,7 +101,7 @@ public class GuidePublicUtilServiceImpl implements GuidePublicUtilService {
         } catch (Exception e) {
             log.error("样品信息解析失败，任务ID: {}", taskId, e);
             //样品信息解析失败
-            return R.fail(YamlMessageSource.getMessageStatic("00100019"));
+            return R.fail("00100019");
         }
         if (task.getMeasureType().equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
 
@@ -162,7 +162,7 @@ public class GuidePublicUtilServiceImpl implements GuidePublicUtilService {
         List<RoundingParamVO> params = vo.getRoundingParams();
 
         if (params == null || params.isEmpty()) {
-            return R.fail(YamlMessageSource.getMessageStatic("00100023"));
+            return R.fail("00100023");
         }
 
         // 1. 检查每个区间内部的合法性
@@ -172,23 +172,23 @@ public class GuidePublicUtilServiceImpl implements GuidePublicUtilService {
 
             // 检查无穷边界的包含性设置
             if (lowerLimit == null && Boolean.TRUE.equals(param.getIsLowerLimitIncluded())) {
-                return R.fail(YamlMessageSource.getMessageStatic("00100026")); // 下限为负无穷时不能包含端点
+                return R.fail("00100026"); // 下限为负无穷时不能包含端点
             }
             if (upperLimit == null && Boolean.TRUE.equals(param.getIsUpperLimitIncluded())) {
-                return R.fail(YamlMessageSource.getMessageStatic("00100026")); // 上限为正无穷时不能包含端点
+                return R.fail("00100026"); // 上限为正无穷时不能包含端点
             }
 
             if (lowerLimit == null && upperLimit == null && params.size() != 1) {
-                return R.fail(YamlMessageSource.getMessageStatic("00100023"));
+                return R.fail("00100023");
             }
 
             if (lowerLimit != null && upperLimit != null) {
                 if (lowerLimit > upperLimit) {
-                    return R.fail(YamlMessageSource.getMessageStatic("00100020"));
+                    return R.fail("00100020");
                 }
                 if (lowerLimit.equals(upperLimit)) {
                     if (!param.getIsLowerLimitIncluded() || !param.getIsUpperLimitIncluded()) {
-                        return R.fail(YamlMessageSource.getMessageStatic("00100021"));
+                        return R.fail("00100021");
                     }
                 }
             }
@@ -212,13 +212,13 @@ public class GuidePublicUtilServiceImpl implements GuidePublicUtilService {
             return params.size() == 1 &&
                     params.get(0).getLowerLimit() == null &&
                     params.get(0).getUpperLimit() == null ?
-                    R.ok(true) : R.fail(YamlMessageSource.getMessageStatic("00100024"));
+                    R.ok(true) : R.fail("00100024");
         }
 
         // 检查是否完整覆盖
         if (validParams.get(0).getLowerLimit() != null ||
                 validParams.get(validParams.size() - 1).getUpperLimit() != null) {
-            return R.fail(YamlMessageSource.getMessageStatic("00100024"));
+            return R.fail("00100024");
         }
 
         // 检查重叠和连续性
@@ -234,15 +234,15 @@ public class GuidePublicUtilServiceImpl implements GuidePublicUtilService {
             if (upper1 != null && lower2 != null) {
                 int compare = upper1.compareTo(lower2);
                 if (compare > 0) {
-                    return R.fail(YamlMessageSource.getMessageStatic("00100023")); // 重叠
+                    return R.fail("00100023"); // 重叠
                 } else if (compare < 0) {
-                    return R.fail(YamlMessageSource.getMessageStatic("00100024")); // 不连续(未覆盖)
+                    return R.fail("00100024"); // 不连续(未覆盖)
                 } else {
                     // 边界相等时，必须恰好一个包含端点
                     if (includeUpper1 && includeLower2) {
-                        return R.fail(YamlMessageSource.getMessageStatic("00100023")); // 重叠
+                        return R.fail("00100023"); // 重叠
                     } else if (!includeUpper1 && !includeLower2) {
-                        return R.fail(YamlMessageSource.getMessageStatic("00100024")); // 不连续(未覆盖)
+                        return R.fail("00100024"); // 不连续(未覆盖)
                     }
                     // 恰好一个包含端点是正确的
                 }

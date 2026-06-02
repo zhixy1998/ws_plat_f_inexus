@@ -35,6 +35,12 @@ public class OperationResultEntity {
     @ApiModelProperty("错误信息")
     private String errorMsg;
 
+    @ApiModelProperty("错误消息码")
+    private String errorCode;
+
+    @ApiModelProperty("错误消息参数")
+    private Object[] errorArgs;
+
     @ApiModelProperty("本机ip")
     private String machineIp;
 

@@ -40,7 +40,7 @@ public class MessageInfoController {
     public Result<MessageInfoVO> getMessageInfo(@RequestParam String messageId) {
         MessageInfoVO vo = messageInfoService.getMessageInfo(messageId);
         if (vo == null) {
-            return Result.fail("消息不存在");
+            return Result.fail("00C01001");
         }
         return Result.ok(vo);
     }
@@ -52,7 +52,7 @@ public class MessageInfoController {
         if (success) {
             return Result.ok(true);
         } else {
-            return Result.fail("删除失败，消息可能不存在");
+            return Result.fail("00C01002");
         }
     }
 
@@ -63,7 +63,7 @@ public class MessageInfoController {
         if (success) {
             return Result.ok(true);
         } else {
-            return Result.fail("批量删除失败，请检查ID列表");
+            return Result.fail("00C01003");
         }
     }
 
@@ -81,7 +81,7 @@ public class MessageInfoController {
         if (success) {
             return Result.ok(true);
         } else {
-            return Result.fail("操作失败");
+            return Result.fail("00C01004");
         }
     }
 }

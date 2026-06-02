@@ -12,7 +12,7 @@ package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceAutoInjectorDAO;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.InjectorTrayParamDAO;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceAutoInjectorPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InjectionTrayParamPO;
@@ -74,7 +74,7 @@ public class DeviceAutoInjectorServiceImpl implements DeviceAutoInjectorService 
             }
         }
         //仪器设置成功，数据库保存失败，请检查数据库设置
-        return R.fail(YamlMessageSource.getMessageStatic("00201002"));
+        return R.fail("00201002");
     }
 
     @Override
@@ -82,7 +82,7 @@ public class DeviceAutoInjectorServiceImpl implements DeviceAutoInjectorService 
         String deviceSerialNumber = null;
         if (poList.isEmpty()) {
             //没有数据
-            return R.fail(YamlMessageSource.getMessageStatic("0000002A"));
+            return R.fail("0000002A");
         }
         for (InjectionTrayParamPO paramPO : poList) {
             if(StringUtils.hasText(paramPO.getDeviceSerialNumber())) {

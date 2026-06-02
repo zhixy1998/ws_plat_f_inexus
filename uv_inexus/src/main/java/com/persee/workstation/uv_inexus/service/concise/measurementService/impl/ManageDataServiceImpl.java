@@ -9,7 +9,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dto.concise.common.Box;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
@@ -166,7 +166,7 @@ public class ManageDataServiceImpl implements ManageDataService {
         // 参数校验
         if (taskQueryParam == null) {
             //查询参数不能为空
-            return Result.fail(YamlMessageSource.getMessageStatic("00306002"));
+            return Result.fail("00B06002");
         }
 
         // 分页参数默认值设置
@@ -275,13 +275,13 @@ public class ManageDataServiceImpl implements ManageDataService {
                 boolean res = taskService.removeById(deleteTaskId);
                 if (!res) {
                     //任务删除失败
-                    return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
+                    return Result.fail("0030101D");
                 }
             } catch (Exception e) {
                 boolean i = taskService.removeById(deleteTaskId);
                 if (!i) {
                     //任务删除失败
-                    return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
+                    return Result.fail("0030101D");
                 }
             }
 
@@ -464,9 +464,9 @@ public class ManageDataServiceImpl implements ManageDataService {
                 }
             }
             
-            return Result.ok("成功导入 " + methodList.size() + " 个方法");
+            return Result.ok("00106005", methodList.size());
         } catch (Exception e) {
-            return Result.fail("导入方法失败：" + e.getMessage());
+            return Result.fail("00106006", e.getMessage());
         }
     }
     
@@ -507,7 +507,7 @@ public class ManageDataServiceImpl implements ManageDataService {
             List<String> methodIds = deleteMethodIdList.getParams();
             
             if (methodIds == null || methodIds.isEmpty()) {
-                return Result.fail("未指定要删除的方法");
+                return Result.fail("00106009");
             }
             
             // 检查方法是否被任务使用
@@ -526,9 +526,9 @@ public class ManageDataServiceImpl implements ManageDataService {
             // 批量删除方法
             measureMethodService.removeByIds(methodIds);
             
-            return Result.ok("成功删除 " + methodIds.size() + " 个方法");
+            return Result.ok("00106007", methodIds.size());
         } catch (Exception e) {
-            return Result.fail("删除方法失败：" + e.getMessage());
+            return Result.fail("00106008", e.getMessage());
         }
     }
     
@@ -542,7 +542,7 @@ public class ManageDataServiceImpl implements ManageDataService {
             FMeasureMethod method = measureMethodService.getById(methodId);
             
             if (method == null) {
-                return Result.fail("方法不存在");
+                return Result.fail("0010600A");
             }
             
             // 将方法的参数信息转换为 Map 返回
@@ -570,7 +570,7 @@ public class ManageDataServiceImpl implements ManageDataService {
             
             return Result.ok(result);
         } catch (Exception e) {
-            return Result.fail("查询方法详情失败：" + e.getMessage());
+            return Result.fail("0010600B", e.getMessage());
         }
     }
     
@@ -590,7 +590,7 @@ public class ManageDataServiceImpl implements ManageDataService {
             
             return Result.ok(projects);
         } catch (Exception e) {
-            return Result.fail("查询项目失败：" + e.getMessage());
+            return Result.fail("0010600C", e.getMessage());
         }
     }
     
@@ -603,7 +603,7 @@ public class ManageDataServiceImpl implements ManageDataService {
             // 参数校验
             if (methodName == null || methodName.isEmpty() ||
                 measureType == null || measureType.isEmpty()) {
-                return Result.fail("参数不能为空");
+                return Result.fail("0010600D");
             }
             
             // 构建查询条件
@@ -623,7 +623,7 @@ public class ManageDataServiceImpl implements ManageDataService {
                 return Result.ok(false); // 不存在重复
             }
         } catch (Exception e) {
-            return Result.fail("方法名称检查失败：" + e.getMessage());
+            return Result.fail("0010600E", e.getMessage());
         }
     }
     
@@ -642,7 +642,7 @@ public class ManageDataServiceImpl implements ManageDataService {
             
             if (list.size() > 0) {
                 // 方法名称重复
-                return Result.fail("方法名称重复");
+                return Result.fail("0010600F");
             }
             
             // 创建测量方法表
@@ -658,13 +658,13 @@ public class ManageDataServiceImpl implements ManageDataService {
             boolean save = measureMethodService.save(fMeasureMethod);
             if (save) {
                 // 创建成功
-                return Result.ok("创建成功");
+                return Result.ok("0000000F");
             } else {
                 // 创建失败
-                return Result.fail("创建失败");
+                return Result.fail("00000010");
             }
         } catch (Exception e) {
-            return Result.fail("创建方法失败：" + e.getMessage());
+            return Result.fail("00106010", e.getMessage());
         }
     }
 }

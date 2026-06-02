@@ -899,14 +899,13 @@ public class ConciseRationMeasureNewWebSocket {
                                 emptyValue = minuend;
                             }
                             R<FRationDataVO> formulaCount = formulaCont(deviceSerialNumber, data, sample, task, parameter, emptyValue);
-                            if (!formulaCount.getSuccess()) {
+                            if (formulaCount.getSuccess()) {
 
-                                sendError(deviceSerialNumber, "公式计算出错，请检查公式配置！");
-                                return;
+                                data = formulaCount.getData();
+
+                                measureAbsDataList.addAll(data.getCountData());
                             }
-                            data = formulaCount.getData();
 
-                            measureAbsDataList.addAll(data.getCountData());
                         }
 
                         saveDataInfo.setCountData(measureAbsDataList);
@@ -970,7 +969,7 @@ public class ConciseRationMeasureNewWebSocket {
 
         if (!countedData.getSuccess()) {
             log.info(countedData.getMessage());
-            sendError(deviceSerialNumber, "请检查公式配置");
+            sendAndNoStopError(deviceSerialNumber, "请检查公式配置");
             return R.fail(countedData.getMessage());
         }
 
@@ -1256,7 +1255,7 @@ public class ConciseRationMeasureNewWebSocket {
 
             if (!operation.getSuccess()) {
                 log.info("设置样品池位置出错");
-                return R.fail("设置样品池位置出错！");
+                return R.fail("00301001");
             }
         }
 
@@ -1269,7 +1268,7 @@ public class ConciseRationMeasureNewWebSocket {
             operation = operationUtilService.operation(inputParam);
             if (!operation.getSuccess()) {
                 log.info("测量出错");
-                return R.fail("测量出错！");
+                return R.fail("00301002");
             }
 
             OperationResultEntity data = operation.getData();
@@ -1343,7 +1342,7 @@ public class ConciseRationMeasureNewWebSocket {
         if (!absValue.getSuccess()) {
             log.info("计算出错");
             sendError(deviceSerialNumber, absValue.getMessage());
-            return R.fail("计算出错");
+            return R.fail("00301003");
         }
         FRationCountDataInfo absValueData = absValue.getData();
 
@@ -1396,7 +1395,7 @@ public class ConciseRationMeasureNewWebSocket {
 
             if (!operation.getSuccess()) {
                 log.info("设置样品池位置出错");
-                return R.fail("设置样品池位置出错！");
+                return R.fail("00301001");
             }
 
             JSONObject object = new JSONObject();
@@ -1436,7 +1435,7 @@ public class ConciseRationMeasureNewWebSocket {
 
                 if (!operation.getSuccess()) {
                     log.info("测量出错");
-                    return R.fail("测量出错！");
+                    return R.fail("00301002");
                 }
 
                 OperationResultEntity data = operation.getData();
@@ -1674,7 +1673,7 @@ public class ConciseRationMeasureNewWebSocket {
     private void sendMessage(String deviceSerialNumber,JSONObject object) {
 
         WebSocketResponseVO vo = new WebSocketResponseVO();
-        vo.setOperation(WebSocketOperationEnum.RationMeasure.getOperation());
+        vo.setOperation(WebSocketOperationEnum.ConciseRationMeasure.getOperation());
         vo.setData(object);
 
         webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
@@ -1682,7 +1681,7 @@ public class ConciseRationMeasureNewWebSocket {
 
     private void sendError(String deviceSerialNumber, String message) {
 
-        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.RationMeasure.getOperation(), message);
+        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConciseRationMeasure.getOperation(), message);
 
         infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
 
@@ -1690,8 +1689,13 @@ public class ConciseRationMeasureNewWebSocket {
         jsonObject.put("result", "finish");
 
         WebSocketResponseVO vo = new WebSocketResponseVO();
-        vo.setOperation(WebSocketOperationEnum.RationMeasure.getOperation());
+        vo.setOperation(WebSocketOperationEnum.ConciseRationMeasure.getOperation());
         vo.setData(jsonObject);
         webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
+    }
+
+    private void sendAndNoStopError(String deviceSerialNumber, String message) {
+
+        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConciseRationMeasure.getOperation(), message);
     }
 }

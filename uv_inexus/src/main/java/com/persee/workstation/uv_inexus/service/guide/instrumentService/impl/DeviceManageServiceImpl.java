@@ -28,7 +28,7 @@ import com.persee.workstation.uv_inexus.enums.instrumentEnums.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -58,7 +58,6 @@ import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
-import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
@@ -178,14 +177,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (deviceInfoPO == null || deviceInfoPO.getId() == null) {
             log.info("未找到连接仪器信息！");
             //未查找到仪器信息
-            return R.fail(YamlMessageSource.getMessageStatic("00203001"));
+            return R.fail("00203001");
         }
 
         List<InitRecordPO> initList = initRecordService.searchInitStatus(deviceSerialNumber, deviceInfoPO.getId());
         if (initList.isEmpty()) {
             log.info("查询初始化状态异常");
             //查询初始化状态异常
-            return R.fail(false, YamlMessageSource.getMessageStatic("00203002"));
+            return R.fail(false, "00203002");
         }
 
         vo.setIsInited(deviceInfoPO.getIsInited());
@@ -231,7 +230,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (info == null || info.getDeviceCurrentStatus() == null || !StringUtils.hasText(info.getDeviceId())) {
             log.info("未找到连接仪器信息！");
             //未查找到仪器信息
-            return R.fail(YamlMessageSource.getMessageStatic("00203001"));
+            return R.fail("00203001");
         }
 
 //        DeviceConnectionManager manager = DeviceConnectionManager.getInstance();
@@ -269,14 +268,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (initDTO.getDeviceSerialNumber().isEmpty()) {
             log.info("未传仪器序列号！");
             //缺少序列号
-            return R.fail(YamlMessageSource.getMessageStatic("00203003"));
+            return R.fail("00203003");
         }
 
         DeviceInfoPO infoPO = infoService.getInfo(initDTO.getDeviceSerialNumber());
         if (infoPO == null || !StringUtils.hasText(infoPO.getId()) || !StringUtils.hasText(infoPO.getDeviceModel())) {
             log.info("未找到连接仪器信息！");
             //未查找到仪器信息
-            return R.fail(YamlMessageSource.getMessageStatic("00203001"));
+            return R.fail("00203001");
         }
         log.info("调用机器初始化接口");
 
@@ -471,7 +470,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             param.setDLampStatus(status);
         } else {
             log.info("灯类型出错");
-            return R.fail("灯类型出错！");
+            return R.fail("00208001");
         }
 
         inputParam.setParam(param);
@@ -498,7 +497,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             param.setLampPos(0);
         } else {
             log.info("当前灯类型出错");
-            return R.fail("灯类型出错！");
+            return R.fail("00208001");
         }
         inputParam.setParam(param);
 
@@ -576,15 +575,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(DeviceModelInfoPO::getDevModel, deviceModel);
             DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
+            String devModelName = modelInfoPO.getDevModelName() + modelInfoPO.getDevName();
 
-            deviceVO.setDeviceModelName(modelInfoPO.getDevName());
-            po.setDeviceModelName(modelInfoPO.getDevName());
+            deviceVO.setDeviceModelName(devModelName);
+            po.setDeviceModelName(devModelName);
 
             if (StringUtils.hasText(po.getDeviceName())) {
                 deviceVO.setDeviceName(po.getDeviceName());
             } else {
-                deviceVO.setDeviceName(modelInfoPO.getDevName());
-                po.setDeviceName(modelInfoPO.getDevName());
+                deviceVO.setDeviceName(devModelName);
+                po.setDeviceName(devModelName);
             }
 
             Integer i = infoService.queryDeviceActivationStatus(deviceVO.getDeviceSerialNumber());
@@ -755,13 +755,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
             log.info("缺少序列号");
             //缺少序列号
-            return R.fail(YamlMessageSource.getMessageStatic("00203003"));
+            return R.fail("00203003");
         }
 
         if (dto.getCalibrationType() == null || DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()) == null) {
             log.info("缺少校准类型");
             //缺少校准类型
-            return R.fail(YamlMessageSource.getMessageStatic("00203004"));
+            return R.fail("00203004");
         }
 
         String ip = infoService.getIp(dto.getDeviceSerialNumber());
@@ -779,7 +779,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             try {
                 R<String> stringR = devMessageUtil.deviceCalibration(command, ip);
                 if (!stringR.getSuccess()) {
-                    return R.fail("波长校正失败，请检查仪器!");
+                    return R.fail("00208002");
                 }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
@@ -792,7 +792,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             try {
                 R<String> stringR = devMessageUtil.deviceCalibration(command, ip);
                 if (!stringR.getSuccess()) {
-                    return R.fail("暗电流校正失败，请检查仪器!");
+                    return R.fail("00208003");
                 }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
@@ -879,6 +879,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         if (calibrationType != null && !calibrationType.isEmpty()) {
             for (Integer type : calibrationType) {
+
+                if (type.equals(DeviceCalibrationInfoEnum.MultiWavelength.getType())) {
+                    log.info("多波长校正，跳过");
+                    continue;
+                }
 
 
                 DeviceCalibrationVO vo = new DeviceCalibrationVO();
@@ -1013,6 +1018,182 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
 
         }
+
+        return ans;
+    }
+
+    @Override
+    public List<DeviceCalibrationVO> queryMultiCalibration(String deviceSerialNumber) {
+        String deviceType = "T600/T700";
+
+        DeviceTypeInfoPO typeInfoPO = new DeviceTypeInfoPO();
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        DeviceModelInfoPO modelInfoPO = null;
+
+
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            LambdaQueryWrapper<DeviceTypeInfoPO> query = new LambdaQueryWrapper<>();
+            query.eq(DeviceTypeInfoPO::getDevType, deviceType);
+            typeInfoPO = deviceTypeInfoDAO.selectOne(query);
+
+        } else {
+            //根据序列号，去查找仪器类型，根据仪器类型，去获取参数列表
+            log.info("检测仪器类型");
+            DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+            if (info != null) {
+                LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
+                query.eq(DeviceModelInfoPO::getDevModel, info.getDeviceModel());
+
+                modelInfoPO = deviceModelInfoDAO.selectOne(query);
+                if (modelInfoPO != null) {
+                    typeInfoPO = deviceTypeInfoDAO.selectById(modelInfoPO.getDevTypeId());
+                }
+            }
+
+        }
+
+        List<Integer> calibrationType = typeInfoPO.getCalibrationType();
+        Integer type = DeviceCalibrationInfoEnum.MultiWavelength.getType();
+
+        if (!calibrationType.contains(DeviceCalibrationInfoEnum.MultiWavelength.getType())) {
+            log.info("当前设备不支持多波长校准");
+            return null;
+        }
+
+        List<DeviceCalibrationVO> ans = new ArrayList<>();
+
+        DeviceCalibrationVO vo = new DeviceCalibrationVO();
+
+        DeviceCalibrationConfigPO configPO = calibrationConfigDAO.selectById(type);
+        List<Integer> paramList = configPO.getParamList();
+        List<DeviceCalibrationParams> params = new ArrayList<>();
+
+        vo.setCalibrationType(type);
+        vo.setCalibrationName(configPO.getCalibrationName());
+
+        for (Integer paramId : paramList) {
+
+            DeviceCalibrationParamPO param = calibrationParamDAO.selectById(paramId);
+            DeviceCalibrationParams paramVO = new DeviceCalibrationParams();
+            paramVO.setId(param.getId());
+            paramVO.setParamName(param.getParamName());
+            paramVO.setParam(param.getParam());
+            paramVO.setParamType(param.getParamType());
+
+            if (param.getParam().equals(DeviceCalibrationParamEnum.Table.getType()) || param.getParam().equals(DeviceCalibrationParamEnum.Graph.getType())) {
+                paramVO.setTableData(param.getTableData());
+
+                wrapper.eq(CalibrationTempPO::getCalibrationType, type);
+                wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber);
+                wrapper.eq(CalibrationTempPO::getParam, param.getParam());
+                wrapper.orderByDesc(CalibrationTempPO::getUpdated).last("limit 1");
+                CalibrationTempPO tempPO = tempDao.selectOne(wrapper);
+                wrapper.clear();
+                if (tempPO != null) {
+                    paramVO.setLastValue(tempPO.getParamValue());
+
+                    if(param.getParam().equals(DeviceCalibrationParamEnum.Table.getType())) {
+                        tempPO.getTableData().setHead(param.getTableData().getHead());
+
+                        List<CalibrationTableHeadVO> headVOList = param.getTableData().getHead();
+
+                        for (CalibrationTableHeadVO headVO : headVOList) {
+                            String key = headVO.getKey();
+                            List<Integer> values = null;
+                            MappingParamEnum paramEnum = null;
+
+                            if (key.equals(DeviceCalibrationParamEnum.Mode.getType())) {
+
+                                values = typeInfoPO.getLuminosity();
+                                if (values != null && !values.isEmpty()) {
+                                    values = values.stream()
+                                            .map(v -> v + 1)
+                                            .collect(Collectors.toList());
+                                }
+                                paramEnum = MappingParamEnum.LUMINOSITY;
+                            } else if (key.equals(DeviceCalibrationParamEnum.Lamp.getType())) {
+                                values = typeInfoPO.getLampType();
+                                paramEnum = MappingParamEnum.LAMP_TYPE;
+                                List<DataNameValue> result = new ArrayList<>();
+                                for (Integer value : values) {
+                                    DataNameValue dataNameValue = new DataNameValue();
+                                    dataNameValue.setDataValue(String.valueOf(value));
+
+                                    String name = EnergyLampEnums.getName(String.valueOf(value));
+
+                                    dataNameValue.setDataKey(name != null ? name : String.valueOf(value));
+
+                                    result.add(dataNameValue);
+                                }
+                                headVO.setData(result);
+                                continue;
+
+                            } else if (key.equals(DeviceCalibrationParamEnum.Gain.getType())) {
+                                values = typeInfoPO.getGain();
+                            } else if (key.equals(DeviceCalibrationParamEnum.RealWavelength.getType()) || key.equals(DeviceCalibrationParamEnum.StandWavelength.getType())) {
+                                List<DataNameValue> result = dealMaxAndMinLength(typeInfoPO);
+                                headVO.setData(result);
+                                continue;
+                            }
+
+                            if (values != null && !values.isEmpty()) {
+                                List<DataNameValue> data = buildDataNameValues(values, paramEnum);
+                                headVO.setData(data);
+                            }
+                        }
+                        tempPO.getTableData().setHead(headVOList);
+                    }
+                    paramVO.setTableData(tempPO.getTableData());
+                }
+
+                params.add(paramVO);
+                continue;
+            } else {
+                List<DataNameValue> defaultValue = param.getDefaultValue();
+                if (defaultValue != null && !defaultValue.isEmpty()) {
+
+
+                    if (paramVO.getParam().equals(DeviceCalibrationParamEnum.Start.getType())) {
+
+                        paramVO.setLastValue(typeInfoPO.getMaxWavelength());
+
+                    } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.End.getType())) {
+                        paramVO.setLastValue(typeInfoPO.getMinWavelength());
+                    } else if (paramVO.getParam().equals(DeviceCalibrationParamEnum.ScanSpeed.getType())) {
+                        Object speed = MappingParamEnum.SCAN_SPEED.getDefaultValue();
+                        String jsonString = JSONObject.toJSONString(speed);
+                        List<DeviceConfParam> options = JSON.parseArray(jsonString, DeviceConfParam.class);
+                        DeviceConfParam deviceConfParam = options.get(0);
+
+                        paramVO.setLastValue(deviceConfParam.getParamValue());
+                    }else {
+                        DataNameValue value = defaultValue.get(0);
+                        if (StringUtils.hasText(value.getDataValue())) {
+                            paramVO.setLastValue(value.getDataValue());
+                        }
+                    }
+                }
+            }
+
+            wrapper.eq(CalibrationTempPO::getCalibrationType, type);
+            wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber);
+            wrapper.eq(CalibrationTempPO::getParam, param.getParam());
+            wrapper.orderByDesc(CalibrationTempPO::getUpdated).last("limit 1");
+            CalibrationTempPO tempPO = tempDao.selectOne(wrapper);
+            wrapper.clear();
+            if (tempPO != null) {
+                paramVO.setLastValue(tempPO.getParamValue());
+            }
+            List<DataNameValue> dataNameValues = dealData(param, typeInfoPO, modelInfoPO);
+            paramVO.setData(dataNameValues);
+            params.add(paramVO);
+        }
+        vo.setParams(params);
+
+        ans.add(vo);
+
+
+
 
         return ans;
     }
@@ -1369,14 +1550,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             wrapper.eq(DeviceModelInfoPO::getDevModel, deviceModel);
             DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
 
-            vo.setDeviceModelName(modelInfoPO.getDevName());
-            info.setDeviceModelName(modelInfoPO.getDevName());
+            String devModelName = modelInfoPO.getDevModelName() + modelInfoPO.getDevName();
+
+            vo.setDeviceModelName(devModelName);
+            info.setDeviceModelName(devModelName);
 
             if (StringUtils.hasText(info.getDeviceName())) {
                 vo.setDeviceName(info.getDeviceName());
             } else {
-                vo.setDeviceName(modelInfoPO.getDevName());
-                info.setDeviceName(modelInfoPO.getDevName());
+                vo.setDeviceName(devModelName);
+                info.setDeviceName(devModelName);
             }
 
             Integer i = infoService.queryDeviceActivationStatus(vo.getDeviceSerialNumber());
@@ -1505,6 +1688,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 data.setStandLength(standLength);
                 data.setRealLength(realLength);
                 data.setNum(String.valueOf(++currentNum));
+                data.setIsOriginData(true);
                 newContent.add(data);
             }
 
@@ -1584,15 +1768,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(DeviceModelInfoPO::getDevModel, deviceModel);
             DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
+            String devModelName = modelInfoPO.getDevModelName() + modelInfoPO.getDevName();
 
-            vo.setDeviceModelName(modelInfoPO.getDevName());
-            info.setDeviceModelName(modelInfoPO.getDevName());
+            vo.setDeviceModelName(devModelName);
+            info.setDeviceModelName(devModelName);
 
             if (StringUtils.hasText(info.getDeviceName())) {
                 vo.setDeviceName(info.getDeviceName());
             } else {
-                vo.setDeviceName(modelInfoPO.getDevName());
-                info.setDeviceName(modelInfoPO.getDevName());
+                vo.setDeviceName(devModelName);
+                info.setDeviceName(devModelName);
             }
 
             Integer i = infoService.queryDeviceActivationStatus(vo.getDeviceSerialNumber());
@@ -1715,11 +1900,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
 
         if (info == null) {
-            return R.fail("未找到该设备");
+            return R.fail("00208004");
         }
 
         if (!info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_IDLE) && !info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_ECHO)) {
-            return R.fail("设备正在使用中，请等待！");
+            return R.fail("00208005");
         }
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
@@ -1915,13 +2100,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (!StringUtils.hasText(deviceSerialNumber)) {
             log.info("缺少序列号");
             //缺少序列号
-            return R.fail(YamlMessageSource.getMessageStatic("00203003"));
+            return R.fail("00203003");
         }
 
         if (dto.getCalibrationType() == null || DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()) == null) {
             log.info("缺少校准类型");
             //缺少校准类型
-            return R.fail(YamlMessageSource.getMessageStatic("00203004"));
+            return R.fail("00203004");
         }
 
 
@@ -1929,7 +2114,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (Objects.equals(dto.getCalibrationType(), DeviceCalibrationInfoEnum.T800Dark.getType())) {
             double start = 900.0;
             double end = 190.0;
-            double step = 0.5;
+            double step = 1.0;
 
             String scanSpeed = "medium";
             double darkBand = 2.0;
@@ -1962,12 +2147,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                         scanSpeed = datum.getDataValue();
                     }
 
-                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.WaveBrand.getType())) {
-                        darkBand = Double.parseDouble(datum.getDataValue());
-                    }
-                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.Step.getType())) {
-                        step = Double.parseDouble(datum.getDataValue());
-                    }
+//                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.WaveBrand.getType())) {
+//                        darkBand = Double.parseDouble(datum.getDataValue());
+//                    }
+//                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.Step.getType())) {
+//                        step = Double.parseDouble(datum.getDataValue());
+//                    }
                 } catch (Exception e) {
                     log.info("参数转换失败");
                 }
@@ -1975,17 +2160,17 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             if (start < minWaveLength || start > maxWaveLength) {
                 infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-                return R.fail(String.format("起始波长范围在 %s ~ %s 内", minWaveLength, maxWaveLength));
+                return R.fail("0020801C", minWaveLength, maxWaveLength);
             }
             if (end < minWaveLength || end > maxWaveLength) {
                 infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-                return R.fail(String.format("终止波长范围在 %s ~ %s 内", minWaveLength, maxWaveLength));
+                return R.fail("0020801D", minWaveLength, maxWaveLength);
             }
 
 
             if (end >= start) {
                 infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-                return R.fail("终止波长不能大于起始波长");
+                return R.fail("00208006");
             }
 
             R<DeviceMeasureVO> r = infoService.queryDeviceTypeInfo(deviceSerialNumber);
@@ -1995,12 +2180,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
             DeviceMeasureVO vo = r.getData();
 
-            List<String> bandWidth = vo.getBandWidth();
-            if (!bandWidth.contains(String.valueOf(darkBand))) {
-                log.info("当前仪器不支持该光谱带宽！");
-                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-                return R.fail("当前仪器不支持该光谱带宽！");
-            }
+//            List<String> bandWidth = vo.getBandWidth();
+//            if (!bandWidth.contains(String.valueOf(darkBand))) {
+//                log.info("当前仪器不支持该光谱带宽！");
+//                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+//                return R.fail("当前仪器不支持该光谱带宽！");
+//            }
             List<DeviceConfParam> speed = vo.getScanSpeed();
             int deviceScanSpeed = -1;
 
@@ -2015,7 +2200,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             if (deviceScanSpeed == -1) {
                 log.info("缺少扫描速度");
                 infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-                return R.fail("当前仪器不支持该扫描速度");
+                return R.fail("00208007");
             }
 
             start = start + step;
@@ -2126,110 +2311,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok();
     }
 
-//    @Override
-//    public R<Boolean> deleteMultiCalibrationInfo(DeviceCalibrationDTO dto) {
-//        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
-//            return R.fail("请连接仪器！");
-//        }
-//
-//        List<CalibrationTableData> deleteData = dto.getCalibrationTableData();
-//
-//
-//
-//        if (deleteData == null || deleteData.isEmpty()) {
-//            return R.fail("没有需要删除的波长信息！");
-//        }
-//
-//        Map<String, List<String>> toDeleteInfo = new HashMap<>();
-//
-//        for (CalibrationTableData de : deleteData) {
-//            String identifier = de.getIdentifier();
-//            String num = de.getNum();
-//            toDeleteInfo.computeIfAbsent(identifier, k -> new ArrayList<>()).add(num);
-//        }
-//
-//        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
-//        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
-//                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
-//        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
-//
-//        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
-//        if (tablePo == null) {
-//            return R.ok();
-//        }
-//        CalibrationTableVO tableData = tablePo.getTableData();
-//
-//        List<CalibrationTableData> content = tableData.getContent();
-//        List<CalibrationTableData> newContent = new ArrayList<>();
-//        for (CalibrationTableData data : content) {
-//            if (toDeleteInfo.get(data.getIdentifier()) != null && toDeleteInfo.get(data.getIdentifier()).contains(data.getNum())) {
-//                continue;
-//            }
-//            newContent.add(data);
-//        }
-//        tableData.setContent(newContent);
-//        tablePo.setTableData(tableData);
-//        tempDao.update(tablePo, wrapper);
-//
-//        wrapper.clear();
-//        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
-//                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
-//        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Graph.getType());
-//
-//        CalibrationTempPO graphPo = tempDao.selectOne(wrapper);
-//        if (graphPo == null) {
-//            return R.ok();
-//        }
-//        CalibrationTableVO graphData = graphPo.getTableData();
-//        Map<String, CalibrationGraphDataVO> graph = graphData.getGraph();
-//        List<CalibrationTableHeadVO> graphHead = graphData.getHead();
-//        List<CalibrationTableHeadVO> newGraphHead = graphData.getHead();
-//        List<String> removeKeys = new ArrayList<>();
-//
-//
-//        toDeleteInfo.forEach((identifier, nums) -> {
-//            CalibrationGraphDataVO vo = graph.get(identifier);
-//            if (vo != null && nums != null && !nums.isEmpty()) {
-//
-//                Map<String, List<GraphData>> voData = vo.getData();
-//                Map<String, List<GraphData>> newVoData = vo.getData();
-//                voData.forEach((key, value) -> {
-//                    if (!nums.contains(key)) {
-//                        newVoData.put(key, value);
-//                    }
-//                });
-//                if (!newVoData.isEmpty()) {
-//                    removeKeys.add(identifier);
-//                    graph.remove(identifier);
-//                } else {
-//                    vo.setData(newVoData);
-//                    graph.put(identifier, vo);
-//                }
-//            }
-//        });
-//        for (CalibrationTableHeadVO headVO : graphHead) {
-//            if (!removeKeys.contains(headVO.getKey())) {
-//                newGraphHead.add(headVO);
-//            }
-//        }
-//
-//        graphData.setHead(newGraphHead);
-//        graphData.setGraph(graph);
-//        graphPo.setTableData(graphData);
-//        tempDao.update(graphPo, wrapper);
-//
-//        return R.ok();
-//    }
 
     @Override
     public R<Boolean> deleteMultiCalibrationInfo(DeviceCalibrationDTO dto) {
         if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
-            return R.fail("请连接仪器！");
+            return R.fail("00208008");
         }
 
         List<CalibrationTableData> deleteData = dto.getCalibrationTableData();
         if (deleteData == null || deleteData.isEmpty()) {
-            return R.fail("没有需要删除的波长信息！");
+            return R.fail("00208009");
         }
 
         Map<String, List<String>> toDeleteInfo = new HashMap<>();
@@ -2251,8 +2342,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             if (content != null) {
                 List<CalibrationTableData> newContent = content.stream()
                         .filter(data -> {
-                            List<String> numsToDelete = toDeleteInfo.get(data.getIdentifier());
-                            return numsToDelete == null || !numsToDelete.contains(data.getNum());
+                            List<String> numToDelete = toDeleteInfo.get(data.getIdentifier());
+                            return numToDelete == null || !numToDelete.contains(data.getNum());
                         })
                         .collect(Collectors.toList());
                 tableData.setContent(newContent);
@@ -2332,6 +2423,63 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok();
     }
 
+    @Override
+    public R<Boolean> saveAllData(DeviceCalibrationDTO dto) {
+
+        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            return R.fail("00208008");
+        }
+        if (dto.getAllTableData() == null || dto.getAllTableData().isEmpty()) {
+            return R.fail("0020801E");
+        }
+
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, DeviceCalibrationInfoEnum.MultiWavelength.getType());
+        wrapper.eq(CalibrationTempPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        CalibrationTempPO tablePo = tempDao.selectOne(wrapper);
+
+        LambdaQueryWrapper<DeviceCalibrationParamPO> paramWrapper = new LambdaQueryWrapper<>();
+        paramWrapper.eq(DeviceCalibrationParamPO::getParam, DeviceCalibrationParamEnum.Table.getType());
+
+        DeviceCalibrationParamPO paramPO = calibrationParamDAO.selectOne(paramWrapper);
+
+        CalibrationTableVO tableVO = paramPO.getTableData();
+
+        List<CalibrationTableData> allTableData = dto.getAllTableData();
+        allTableData.forEach(data -> data.setIsOriginData(true));
+
+        if (tablePo == null) {
+
+            CalibrationTempPO po = new CalibrationTempPO();
+            po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+            po.setCreateBy(dto.getUpdateBy());
+            po.setCalibrationType(dto.getCalibrationType());
+            po.setParam(DeviceCalibrationParamEnum.Table.getType());
+            tableVO.setContent(allTableData);
+            po.setTableData(tableVO);
+
+            tempDao.insert(po);
+        } else {
+
+            tablePo.setUpdateBy(dto.getUpdateBy());
+            CalibrationTableVO tableData = tablePo.getTableData();
+            if (tableData == null) {
+                tableData = new CalibrationTableVO();
+                tableData.setHead(tableVO.getHead());
+            }
+
+            tableData.setContent(allTableData);
+
+            tablePo.setTableData(tableData);
+            tempDao.update(tablePo, wrapper);
+        }
+
+
+        return R.ok();
+    }
+
     /**
      *
      * 下发所有的参数给仪器
@@ -2339,14 +2487,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public R<Boolean> sendMultiCalibrationToDevice(DeviceCalibrationDTO dto) {
         if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
-            return R.fail("请连接仪器！");
+            return R.fail("00208008");
         }
 
         String deviceSerialNumber = dto.getDeviceSerialNumber();
         List<CalibrationTableData> allTableData = dto.getAllTableData();
 
         if (allTableData == null || allTableData.isEmpty()) {
-            return R.fail("没有可以下发给仪器的参数！");
+            return R.fail("0020800A");
         }
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
@@ -2362,7 +2510,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
 
         if (setWlList.isEmpty()) {
-            return R.fail("没有可以下发给仪器的参数！");
+            return R.fail("0020800A");
         }
         inputParam.setSetWlList(setWlList);
 
@@ -2419,9 +2567,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public R<Boolean> multiCalibration(DeviceCalibrationDTO dto, String multiType) {
+        infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), WebSocketOperationEnum.Calibration.getOperation(), Constants.DEVICE_STATUS_CALIBRATION);
 
         R<SetParam> r = multiCheckAndSendParam(dto, multiType);
         if (!r.getSuccess()) {
+            infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
             return R.fail(r.getMessage());
         }
         SetParam param = r.getData();
@@ -2439,11 +2589,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
             if (!operation.getSuccess()) {
                 log.info("设置灯位置为汞灯失败：{}", operation.getMessage());
+                infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
+
                 return R.fail(operation.getMessage());
             }
 
         }
-
 
         //表格数据保存
         LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
@@ -2460,15 +2611,23 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         CalibrationTableVO tableVO = paramPO.getTableData();
 
         List<CalibrationTableData> allTableData = dto.getAllTableData();
+        dto.getCalibrationTableData().forEach(data -> {
+            data.setIdentifier(data.getName());
+            data.setIsOriginData(true);
+        });
 
         if (allTableData == null) {
             allTableData = dto.getCalibrationTableData();
         }
-        tableVO.setContent(allTableData);
+
         allTableData.forEach(data -> {
             data.setIdentifier(data.getName());
             data.setIsOriginData(true);
         });
+
+
+        tableVO.setContent(allTableData);
+        dto.setAllTableData(allTableData);
 
         if (tablePo == null) {
             CalibrationTempPO po = new CalibrationTempPO();
@@ -2494,6 +2653,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
 
             for (CalibrationTableData cont : allTableData) {
+                cont.setIsOriginData(true);
                 map.put(cont.getNum(), cont);
             }
             ans = new ArrayList<>(map.values());
@@ -2519,15 +2679,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         CalibrationTempPO originGraphPO = tempDao.selectOne(wrapper);
 
         if (originGraphPO == null) {
-            return R.fail("没有数据可以寻峰！");
+            return R.fail("0020800B");
         } else {
             originGraphPO.setUpdateBy(updateBy);
 
             CalibrationTableVO originTableData = originGraphPO.getTableData();
             Map<String, CalibrationGraphDataVO> graph = originTableData.getGraph();
-            SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
-
-            double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+            double height = Constants.CALIBRATION_PARAM_PEAK_VALLEY_DIFF / 100;
 
             for(String key : graph.keySet()) {
 
@@ -2542,7 +2700,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                         yList.add(Double.valueOf(graData.getY()));
                         graData.setFeng(null);
                     }
-                    String s = restUtil.peakSearching(xList, yList, height, Double.parseDouble(confVO.getPeakInterval()));
+                    String s = restUtil.peakSearching(xList, yList, height, Constants.CALIBRATION_PARAM_PEAK_INTERVAL);
 
                     PeakReceiveInfo info = JSON.parseObject(s, PeakReceiveInfo.class);
                     if (info != null && ResultCodeEnum.SUCCESS.getCode().equals(info.getCode()) && info.getPeakX() != null && !info.getPeakX().isEmpty()) {
@@ -2571,7 +2729,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
 
         String deviceSerialNumber = dto.getDeviceSerialNumber();
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.Calibration.getOperation(), Constants.DEVICE_STATUS_CALIBRATION);
         ActionCmdEnum action = ActionCmdEnum.BaseLine;
         String key;
         if (multiType.equals(DeviceCalibrationParamEnum.Scan.getType())) {
@@ -2752,11 +2909,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 graphData.add(scanGraph);
             }
 
-            SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
 
-            double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+            double height = Constants.CALIBRATION_PARAM_PEAK_VALLEY_DIFF / 100;
 
-            String s = restUtil.peakSearching(xList, yList, height, Double.parseDouble(confVO.getPeakInterval()));
+            String s = restUtil.peakSearching(xList, yList, height, Constants.CALIBRATION_PARAM_PEAK_INTERVAL);
 
             PeakReceiveInfo info = JSON.parseObject(s, PeakReceiveInfo.class);
 
@@ -2973,48 +3129,48 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             String num = data.getNum();
 
             if (!StringUtils.hasText(data.getName())) {
-                return R.fail("第"+  num +"号请选择物质！");
+                return R.fail("0020800C", num);
             }
             if (!StringUtils.hasText(data.getLuminosity())) {
-                return R.fail("第"+  num +"号请选择光度模式！");
+                return R.fail("0020800D", num);
             }
             if (data.getLuminosity().equals(WaveLengthEnum.er.getCode()) || data.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
                 if (!StringUtils.hasText(data.getGain())) {
-                    return R.fail("第"+  num +"号请选择增益！");
+                    return R.fail("0020800E", num);
                 }
 
                 if (!StringUtils.hasText(data.getLamp())) {
-                    return R.fail("第"+  num +"号请选择灯类型！");
+                    return R.fail("0020800F", num);
                 }
             }
             if (!StringUtils.hasText(data.getStandLength())) {
-                return R.fail("第"+  num +"号请选择标准波长！");
+                return R.fail("00208010", num);
             }
 
             if (identifier == null) {
                 identifier = data.getIdentifier();
             } else if (!identifier.equals(data.getIdentifier())) {
-                return R.fail("请选择同一物质");
+                return R.fail("00208011");
             }
 
             if (mode == null) {
                 mode = data.getLuminosity();
             } else if (!mode.equals(data.getLuminosity())) {
-                return R.fail("请选择同一光度模式");
+                return R.fail("00208012");
             }
             if (mode.equals(WaveLengthEnum.er.getCode()) || mode.equals(WaveLengthEnum.es.getCode())) {
                 int v = Integer.parseInt(data.getGain());
                 if (gain == -1) {
                     gain = v;
                 } else if (gain != v) {
-                    return R.fail("请选择同一增益");
+                    return R.fail("00208013");
                 }
 
                 String object = data.getLamp();
                 if (lamp == null) {
                     lamp = object;
                 } else if (!lamp.equals(object)) {
-                    return R.fail("请选择同一灯类型");
+                    return R.fail("00208014");
                 }
             }
 
@@ -3031,12 +3187,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         if (mode == null) {
             log.error("光度模式缺失");
-            return R.fail("光度模式缺失");
+            return R.fail("00208015");
         }
 
         if (Objects.equals(operateType, DeviceCalibrationParamEnum.Baseline.getType()) && (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode()))) {
             log.error("基线不能选择光度模式为ES、ER");
-            return R.fail("基线不能选择光度模式为ES、ER");
+            return R.fail("00208016");
         }
 
 
@@ -3046,7 +3202,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         R<DeviceMeasureVO> r = infoService.queryDeviceTypeInfo(dto.getDeviceSerialNumber());
         if (!r.getSuccess()) {
             log.error("未识别当前仪器");
-            return R.fail("未识别当前仪器");
+            return R.fail("00208017");
         }
         DeviceMeasureVO measureVO = r.getData();
         String maxWavelength = measureVO.getMaxWavelength();
@@ -3060,7 +3216,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         if (start < Double.parseDouble(minWavelength) || end > Double.parseDouble(maxWavelength)) {
             log.error("波段超出范围");
-            return R.fail("波段超出范围");
+            return R.fail("00208018");
         }
 
         if (start > Double.parseDouble(maxWavelength)) {
@@ -3078,10 +3234,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         setParam.setPhotoMode(Integer.valueOf(mode));
         setParam.setSlit1(2.0);
         setParam.setScanWlInterval(minInterval);
+
+        setParam.setCorrStatus(0);
         if (mode.equals(WaveLengthEnum.er.getCode()) || mode.equals(WaveLengthEnum.es.getCode())) {
 
             setParam.setGain(gain);
-
 
             if (lamp.equals(EnergyLampEnums.Mercury.getIdentity())) {
                 setParam.setMlLamp(1);
@@ -3118,7 +3275,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         List<CalibrationTableData> tableData = dto.getCalibrationTableData();
         if (tableData == null || tableData.size() != 1) {
             log.error("基线和扫描只能选择一个物质");
-            return R.fail("基线和扫描只能选择一个物质");
+            return R.fail("00208019");
         }
         CalibrationTableData data = tableData.get(0);
 
@@ -3126,12 +3283,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         if (mode == null) {
             log.error("光度模式缺失");
-            return R.fail("光度模式缺失");
+            return R.fail("00208015");
         }
 
         if (Objects.equals(operateType, DeviceCalibrationParamEnum.Baseline.getType()) && (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode()))) {
             log.error("基线不能选择光度模式为ES、ER");
-            return R.fail("基线不能选择光度模式为ES、ER");
+            return R.fail("00208016");
         }
 
         double standWavelength = Double.parseDouble(data.getStandLength());
@@ -3143,7 +3300,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         R<DeviceMeasureVO> r = infoService.queryDeviceTypeInfo(dto.getOperateType());
         if (!r.getSuccess()) {
             log.error("未识别当前仪器");
-            return R.fail("未识别当前仪器");
+            return R.fail("00208017");
         }
         DeviceMeasureVO measureVO = r.getData();
         String maxWavelength = measureVO.getMaxWavelength();
@@ -3151,7 +3308,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         if (standWavelength < Double.parseDouble(minWavelength) || standWavelength > Double.parseDouble(maxWavelength)) {
             log.error("波段超出范围");
-            return R.fail("波段超出范围");
+            return R.fail("00208018");
         }
 
         if (start > Double.parseDouble(maxWavelength)) {
@@ -3197,7 +3354,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
         if (info == null) {
-            return R.fail("未找到该设备");
+            return R.fail("00208004");
         }
 
         if (info.getWorkTimeInfo() == null) {
@@ -3210,7 +3367,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             if (type == null) {
                 log.info("该设备不支持查询使用寿命信息");
-                return R.fail("该设备不支持查询使用寿命");
+                return R.fail("0020801A");
             }
 
             LambdaQueryWrapper<DeviceTypeInfoPO> wrapper = new LambdaQueryWrapper<>();
@@ -3219,7 +3376,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             if (deviceTypeInfoPO == null || deviceTypeInfoPO.getWorkTimeCount() == null || deviceTypeInfoPO.getWorkTimeCount().isEmpty()) {
                 log.info("该设备不支持查询使用寿命信息");
-                return R.fail("该设备不支持查询使用寿命");
+                return R.fail("0020801A");
             }
 
             DevOperationInputParam inputParam = new DevOperationInputParam();
@@ -3334,7 +3491,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public R connect(List<SearchInfo> params, String updateBy, String templateCode) {
         if (params == null || params.isEmpty()) {
-            return R.fail("参数为空");
+            return R.fail("0020801B");
         }
 
         try {
@@ -3411,7 +3568,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         DeviceInfoPO deviceInfoPO = infoService.getInfo(deviceSerialNumber);
         if (deviceInfoPO == null || deviceInfoPO.getId() == null) {
             log.info("未找到连接仪器信息！");
-            throw new BusinessException("未找到连接仪器信息！");
+            throw  BusinessException.withCode("0020801F");
         }
 
         // 先将初始化中的状态添加到缓存
@@ -3483,15 +3640,38 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
                 queryWrapper.eq(ExcelTemplate::getStatus, TemplateTypeEnum.OUT_FACTORY_CHECK.getCode())
                         .like(ExcelTemplate::getModel, deviceType);
                 List<ExcelTemplate> list2 = templateService.list(queryWrapper);
+
+                // 如果精确匹配失败，尝试查找通用模板（model为空或包含"通用"的模板）
+                if (CollectionUtils.isEmpty(list2)) {
+                    log.warn("未找到仪器型号 [{}] 的专用出厂模板，尝试查找通用模板", deviceType);
+                    LambdaQueryWrapper<ExcelTemplate> genericWrapper = new LambdaQueryWrapper<>();
+                    genericWrapper.eq(ExcelTemplate::getStatus, TemplateTypeEnum.OUT_FACTORY_CHECK.getCode());
+                    List<ExcelTemplate> genericTemplates = templateService.list(genericWrapper);
+
+                    // 查找通用模板（model为空、null或标记为"通用"）
+                    if (!CollectionUtils.isEmpty(genericTemplates)) {
+                        for (ExcelTemplate template : genericTemplates) {
+                            if (template.getModel() == null || template.getModel().trim().isEmpty() ||
+                                "通用".equals(template.getModel()) || "ALL".equalsIgnoreCase(template.getModel())) {
+                                list2 = new ArrayList<>();
+                                list2.add(template);
+                                log.info("找到通用出厂模板，templateCode={}", template.getTemplateCode());
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 if (!CollectionUtils.isEmpty(list2)){
                     templateCode=list2.get(0).getTemplateCode();
+                    log.info("成功找到出厂模板，deviceType={}, templateCode={}", deviceType, templateCode);
                 }else{
                     log.info("未找到模板!");
-                    throw new BusinessException("未找到出厂模板!");
+                    throw BusinessException.withCode("0061301E");
                 }
             }else {
                 log.info("未找到该序列号对应的仪器型号!");
-                throw new BusinessException("未找到该序列号对应的仪器型号!");
+                throw BusinessException.withCode("0061301F");
             }
 
             LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
@@ -3505,7 +3685,7 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
                 ExcelTemplate excelTemplate = templateService.getById(taskManagement.getUseTemplate());
                 if (ObjectUtils.isEmpty(excelTemplate)) {
                     log.info("未找到模板!");
-                    throw new BusinessException("未找到模板!");
+                    throw BusinessException.withCode("00613020");
                 }
                 dto.setDeviceSerialNumber(deviceSerialNumber);
                 dto.setTemplateCode(excelTemplate.getTemplateCode());
@@ -3523,7 +3703,7 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
             taskAddDto.setTaskType(FACTORY_INSPECTION_TASK.getCode());
             Result<HashMap<String, String>> task = taskManagementService.newTask(taskAddDto);
             if (ObjectUtils.isEmpty(task)) {
-                throw new BusinessException("创建任务失败!");
+                throw BusinessException.withCode("00613021");
             }
 
             HashMap<String, String> map = task.getData();

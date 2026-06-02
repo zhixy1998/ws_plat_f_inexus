@@ -839,6 +839,9 @@ public class RationMeasureNewWebSocket{
                             break;
                         }
                     }
+
+                    String emptyFitCon = null;
+
                     if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
 
                         RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
@@ -857,6 +860,41 @@ public class RationMeasureNewWebSocket{
                             }
 
                         }
+
+                        double countValue = Double.parseDouble(absData.getColValue());
+
+                        FittingReceiveInfo fittingInfo = null;
+                        if (StringUtils.hasText(task.getFittingParam())) {
+                            fittingInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+                        }
+                        if (fittingInfo != null) {
+                            String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType());
+
+                            if (ans != null && fittingInfo.getRoundCoefficient() != null) {
+                                RationCountDataInfo valueData = new RationCountDataInfo();
+                                valueData.setOriginalValue(ans);
+                                String s = rationService.fitDataRounding(ans, parameter);
+                                emptyFitCon = s;
+
+                                valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                                valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+                                valueData.setColValue(s);
+                                measureAbsDataList.add(valueData);
+
+                                measureAbsDataList = rationService.dataRounding(measureAbsDataList, parameter);
+
+                                JSONObject jsonObject = new JSONObject();
+                                jsonObject.put("sampleId", specimen.getSpecimenKey());
+                                jsonObject.put("key", valueData.getIdentity());
+                                jsonObject.put("value", valueData.getColValue());
+                                sendMessage(deviceSerialNumber, jsonObject);
+                                sendUnknowPoint(deviceSerialNumber, valueData, String.valueOf(countValue), parameter);
+
+                            }
+                        }
+
+                        saveDataInfo.setCountData(measureAbsDataList);
+                        rationService.saveAnalyzeData(saveDataInfo);
 
                         lastIsEmpty = true;
                         specimen.setIsTested(right);
@@ -929,15 +967,14 @@ public class RationMeasureNewWebSocket{
                             if (empty) {
                                 emptyValue = minuend;
                             }
-                            R<RationDataVO> formulaCount = formulaCont(deviceSerialNumber, data, sample, task, parameter, emptyValue);
-                            if (!formulaCount.getSuccess()) {
+                            R<RationDataVO> formulaCount = formulaCont(deviceSerialNumber, data, sample, task, parameter, emptyValue, emptyFitCon);
+                            if (formulaCount.getSuccess()) {
 
-                                sendError(deviceSerialNumber, "公式计算出错，请检查公式配置！");
-                                return;
+                                data = formulaCount.getData();
+
+                                measureAbsDataList.addAll(data.getCountData());
                             }
-                            data = formulaCount.getData();
 
-                            measureAbsDataList.addAll(data.getCountData());
                         }
 
 
@@ -1088,12 +1125,12 @@ public class RationMeasureNewWebSocket{
         rationService.updateParallelData(dataList);
     }
 
-    private R<RationDataVO> formulaCont(String deviceSerialNumber, RationDataVO vo, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Double minuend) {
-        R<List<RationCountDataInfo>> countedData = rationService.formula(vo.getCountData(), vo.getWavelengthData(), sample, task, parameter, minuend, digit);
+    private R<RationDataVO> formulaCont(String deviceSerialNumber, RationDataVO vo, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Double minuend, String emptyFitCon) {
+        R<List<RationCountDataInfo>> countedData = rationService.formula(vo.getCountData(), vo.getWavelengthData(), sample, task, parameter, minuend, digit, emptyFitCon);
 
         if (!countedData.getSuccess()) {
             log.info(countedData.getMessage());
-            sendError(deviceSerialNumber, "请检查公式配置");
+            sendAndNoStopError(deviceSerialNumber, "请检查公式配置");
             return R.fail(countedData.getMessage());
         }
 
@@ -1401,7 +1438,7 @@ public class RationMeasureNewWebSocket{
 
             if (!operation.getSuccess()) {
                 log.info("设置样品池位置出错");
-                return R.fail("设置样品池位置出错！");
+                return R.fail("00301001");
             }
         }
 
@@ -1414,7 +1451,7 @@ public class RationMeasureNewWebSocket{
             operation = operationUtilService.operation(inputParam);
             if (!operation.getSuccess()) {
                 log.info("测量出错");
-                return R.fail("测量出错！");
+                return R.fail("00301002");
             }
 
             OperationResultEntity data = operation.getData();
@@ -1482,7 +1519,7 @@ public class RationMeasureNewWebSocket{
         if (!absValue.getSuccess()) {
             log.info("计算出错");
             sendError(deviceSerialNumber, absValue.getMessage());
-            return R.fail("计算出错");
+            return R.fail("00301003");
         }
         RationCountDataInfo absValueData = absValue.getData();
 
@@ -1535,7 +1572,7 @@ public class RationMeasureNewWebSocket{
 
                 if (!operation.getSuccess()) {
                     log.info("设置样品池位置出错");
-                    return R.fail("设置样品池位置出错！");
+                    return R.fail("00301001");
                 }
 
                 JSONObject object = new JSONObject();
@@ -1571,7 +1608,7 @@ public class RationMeasureNewWebSocket{
 
                     if (!operation.getSuccess()) {
                         log.info("测量出错");
-                        return R.fail("测量出错！");
+                        return R.fail("00301002");
                     }
 
                     OperationResultEntity data = operation.getData();
@@ -1832,5 +1869,9 @@ public class RationMeasureNewWebSocket{
         webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
     }
 
+    private void sendAndNoStopError(String deviceSerialNumber, String message) {
+
+        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.RationMeasure.getOperation(), message);
+    }
 
 }

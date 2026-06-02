@@ -1,17 +1,12 @@
-/*
- * *
- *  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
- *  * 本软件受商业机密法和版权法保护。
- *  * 本代码仅限与北京普析通用仪器有限责任公司签订有效协议的授权用户内部使用。
- *  * 任何未经明确许可的复制、使用、修改、分发或公开均被严格禁止。
- *
- */
-
 package com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices;
 
+
 import com.alibaba.fastjson.JSONObject;
+import com.persee.workstation.uv_inexus.i18n.LocaleContext;
+import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.util.I18nMessageUtil;
 import com.persee.workstation.uv_inexus.vo.messageVo.MessageReport;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,42 +23,32 @@ public class WebSocketSendUtil {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    @Autowired
+    private I18nMessageUtil i18nMessageUtil;
+
+    @Autowired
+    private LocaleProvider localeProvider;
+
     @Value("/topic/device")
-//@Value("/topic/detection")
     private String deviceTopic;
 
     @Value("/topic/message")
     private String messageTopic;
 
-    /**
-     * 获取设备消息主题
-     */
     public String getDeviceMessageTopic(String deviceSerialNumber) {
         return deviceTopic + "/" + deviceSerialNumber;
-//        return deviceTopic;
     }
 
-    /**
-     * 发送成功结果
-     */
     public void sendMessage(String deviceSerialNumber, WebSocketResponseVO data) {
         try {
-
-
             data.setCurrentTime(LocalDateTime.now());
-
             Result<Object> result = Result.ok(data);
-            messagingTemplate.convertAndSend(getDeviceMessageTopic(deviceSerialNumber),
-                    result);
-
+            messagingTemplate.convertAndSend(getDeviceMessageTopic(deviceSerialNumber), result);
         } catch (Exception e) {
             log.error("发送消息失败: {} {}", deviceTopic, data, e);
         }
     }
 
-    /**
-     * 发送通用消息
-     */
     private void sendOperationResult(String deviceSerialNumber, Object message) {
         WebSocketResponseVO result = new WebSocketResponseVO();
         result.setData(message);
@@ -72,72 +57,119 @@ public class WebSocketSendUtil {
         sendMessage(deviceSerialNumber, result);
     }
 
-    /**
-     * 发送错误消息
-     */
+    @Deprecated
     public void sendErrorMessage(String deviceSerialNumber, String operation, String errorMessage) {
-
         try {
+            String locale = localeProvider.getSystemLocale();
+            String translatedMessage = i18nMessageUtil.getMessageWithDefault(errorMessage, errorMessage);
+
             WebSocketResponseVO error = new WebSocketResponseVO();
             if (operation != null) {
                 error.setOperation(operation);
             }
-
-            error.setErrorMsg(errorMessage);
-            Result<WebSocketResponseVO> errorResult = Result.fail(errorMessage);
-
-            messagingTemplate.convertAndSend(getDeviceMessageTopic(deviceSerialNumber),
-                    errorResult);
-
+            error.setErrorMsg(translatedMessage);
+            Result<WebSocketResponseVO> errorResult = Result.fail(translatedMessage);
+            messagingTemplate.convertAndSend(getDeviceMessageTopic(deviceSerialNumber), errorResult);
         } catch (Exception e) {
             log.error("发送消息失败: {} {}", deviceSerialNumber, errorMessage, e);
         }
     }
 
-    /**
-     * 发送错误消息
-     */
+    public void sendErrorMessageWithCode(String deviceSerialNumber, String operation, String messageCode, Object... args) {
+        try {
+            String locale = localeProvider.getSystemLocale();
+
+            LocaleContext.executeWithLocale(locale, () -> {
+                String localizedMessage = i18nMessageUtil.getMessage(messageCode, args);
+
+                WebSocketResponseVO error = new WebSocketResponseVO();
+                if (operation != null) {
+                    error.setOperation(operation);
+                }
+                error.setErrorMsg(localizedMessage);
+
+                Result<WebSocketResponseVO> errorResult = Result.fail(messageCode, args);
+                messagingTemplate.convertAndSend(getDeviceMessageTopic(deviceSerialNumber), errorResult);
+                return null;
+            });
+        } catch (Exception e) {
+            log.error("发送国际化错误消息失败: device={}, code={}", deviceSerialNumber, messageCode, e);
+        }
+    }
+
     public void sendDeviceDisConnectMessage(String deviceSerialNumber) {
         JSONObject errorMsg = new JSONObject();
         try {
+            String locale = localeProvider.getSystemLocale();
 
+            LocaleContext.executeWithLocale(locale, () -> {
+                errorMsg.put("error", i18nMessageUtil.getMessage("00610001"));
+                errorMsg.put("disconnect", i18nMessageUtil.getMessage("00610001"));
 
-            errorMsg.put("error", "仪器无响应！");
-            errorMsg.put("disconnect", "仪器无响应，请检查仪器状态和网线连接后，重新查找并联接仪器！");
-            Result<JSONObject> errorResult = Result.fail(ResultCodeEnum.DEVICE_DISCONNECT.getCode(), errorMsg.toString());
-
-            messagingTemplate.convertAndSend(getDeviceMessageTopic(deviceSerialNumber),
-                    errorResult);
-
+                Result<JSONObject> errorResult = Result.fail(ResultCodeEnum.DEVICE_DISCONNECT.getCode(), errorMsg.toString());
+                messagingTemplate.convertAndSend(getDeviceMessageTopic(deviceSerialNumber), errorResult);
+                return null;
+            });
         } catch (Exception e) {
             log.error("发送消息失败: {} {}", deviceSerialNumber, errorMsg, e);
         }
     }
 
-    //新消息通知
     public void newMessageReport(String updateBy, MessageReport message) {
-//        JSONObject message = new JSONObject();
-//        message.put("newMessageReport", "新消息提醒");
-
         WebSocketResponseVO messageVO = new WebSocketResponseVO();
         messageVO.setOperation(WebSocketOperationEnum.Message.getOperation());
         messageVO.setData(message);
         messagingTemplate.convertAndSend(messageTopic + "/" + updateBy, messageVO);
-
     }
 
-    public void reportMessage(String updateBy, WebSocketResponseVO data) {
+    public void sendI18nMessage(String userId, String messageCode, Object... args) {
         try {
+            String locale = localeProvider.getUserLocale(userId);
 
+            LocaleContext.executeWithLocale(locale, () -> {
+                String localizedMessage = i18nMessageUtil.getMessage(messageCode, args);
 
-            data.setCurrentTime(LocalDateTime.now());
+                MessageReport message = new MessageReport();
+                message.setMessageType(1);
+                message.setMessageSource(i18nMessageUtil.getMessage("00610002"));
+                message.setMessageSummary(localizedMessage);
+                message.setReceiveTime(LocalDateTime.now());
 
-            Result<Object> result = Result.ok(data);
-            messagingTemplate.convertAndSend(messageTopic + "/" + updateBy,
-                    result);
+                WebSocketResponseVO messageVO = new WebSocketResponseVO();
+                messageVO.setOperation(WebSocketOperationEnum.Message.getOperation());
+                messageVO.setData(message);
 
+                messagingTemplate.convertAndSend(messageTopic + "/" + userId, messageVO);
+                return null;
+            });
         } catch (Exception e) {
-            log.error("发送消息失败: {} {}", deviceTopic, data, e);
+            log.error("发送国际化消息失败: user={}, code={}", userId, messageCode, e);
+        }
+    }
+
+    public void sendI18nMessageCustom(String userId, Integer messageType, String sourceCode, String summaryCode, Object... args) {
+        try {
+            String locale = localeProvider.getUserLocale(userId);
+
+            LocaleContext.executeWithLocale(locale, () -> {
+                String source = i18nMessageUtil.getMessage(sourceCode);
+                String summary = i18nMessageUtil.getMessage(summaryCode, args);
+
+                MessageReport message = new MessageReport();
+                message.setMessageType(messageType);
+                message.setMessageSource(source);
+                message.setMessageSummary(summary);
+                message.setReceiveTime(LocalDateTime.now());
+
+                WebSocketResponseVO messageVO = new WebSocketResponseVO();
+                messageVO.setOperation(WebSocketOperationEnum.Message.getOperation());
+                messageVO.setData(message);
+
+                messagingTemplate.convertAndSend(messageTopic + "/" + userId, messageVO);
+                return null;
+            });
+        } catch (Exception e) {
+            log.error("发送国际化消息失败: user={}, sourceCode={}, summaryCode={}", userId, sourceCode, summaryCode, e);
         }
     }
 }

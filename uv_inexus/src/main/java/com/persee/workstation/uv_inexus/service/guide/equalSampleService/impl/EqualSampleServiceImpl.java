@@ -15,7 +15,7 @@ import com.persee.workstation.uv_inexus.dao.guide.equalSampleMapper.EqualSampleM
 import com.persee.workstation.uv_inexus.dto.concise.common.EqualAndSample;
 import com.persee.workstation.uv_inexus.dto.concise.common.EqualSampleDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.EqualSampleParam;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
@@ -72,7 +72,7 @@ public class EqualSampleServiceImpl extends ServiceImpl<EqualSampleMapper, Equal
             int insert = equalSampleMapper.insertin(equalAndSample);
             if (insert == 0) {
                 //创建平行样失败
-                return Result.fail(YamlMessageSource.getMessageStatic("00801001"));
+                return Result.fail("00801001");
             }
             EqualSampleDto equalSampleDto = new EqualSampleDto();
             equalSampleDto.setEqualSampleKey(equalSampleKey);
@@ -83,7 +83,7 @@ public class EqualSampleServiceImpl extends ServiceImpl<EqualSampleMapper, Equal
             return Result.ok(equalSamplePool);
         } catch (Exception e) {
             //平行样名称存在
-            return Result.fail(YamlMessageSource.getMessageStatic("00801002"));
+            return Result.fail("00801002");
         }
     }
 }

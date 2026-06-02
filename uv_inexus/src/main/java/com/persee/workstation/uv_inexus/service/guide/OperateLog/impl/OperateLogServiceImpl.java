@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.service.guide.OperateLog.impl;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,49 +40,78 @@ public class OperateLogServiceImpl implements OperateLogService {
     // 表t_sys_operate_log中存在的有效查询字段（白名单）
     // 请根据你的实际表结构修改此列表
     private static final List<String> VALID_FIELDS = Arrays.asList(
-        "username",    // 操作用户名
-        "module",      // 操作模块
-        "description", // 操作描述
-        "ip",          // 操作IP
-        "status",      // 操作状态
-        "log_type",
-        "method"       // 调用方法
+            "username",    // 操作用户名
+            "module",      // 操作模块
+            "description", // 操作描述
+            "change_content", // 变更内容
+            "ip",          // 操作IP
+            "status",      // 操作状态
+            "log_type",
+            "method"       // 调用方法
     );
+
+    // 参数名到数据库字段名的映射（支持驼峰转下划线）
+    private static final Map<String, String> FIELD_MAPPING = new HashMap<>();
+    static {
+        FIELD_MAPPING.put("changeContent", "change_content");
+        FIELD_MAPPING.put("logType", "log_type");
+    }
 
     @Override
     public IPage<OperateLogPO> findLogPage(Page<OperateLogPO> page, Map<String, String> params) {
         QueryWrapper<OperateLogPO> queryWrapper = new QueryWrapper<>();
-        
+
         // 遍历参数，只处理白名单中的字段
         for (Map.Entry<String, String> entry : params.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
-            
+
             // 1. 跳过分页参数和无效字段
-            if ("pageNum".equals(key) || "pageSize".equals(key) || !VALID_FIELDS.contains(key)) {
-                // 记录无效字段（便于调试）
-                if (!VALID_FIELDS.contains(key) && !"pageNum".equals(key) && !"pageSize".equals(key)) {
-                    log.warn("忽略无效查询字段: {}", key);
+            if ("pageNum".equals(key) || "pageSize".equals(key)) {
+                continue;
+            }
+
+            // 2. 处理时间区间查询
+            if ("startTime".equals(key)) {
+                if (StringUtils.isNotBlank(value)) {
+                    queryWrapper.ge("create_time", value);
+                    log.info("添加时间区间查询: create_time >= {}", value);
                 }
                 continue;
             }
-            
-            // 2. 有效字段且值非空时，添加模糊查询条件
-            if (StringUtils.isNotBlank(value)) {
-                queryWrapper.like(key, value);
-                log.info("添加查询条件: {} LIKE %{}%", key, value);
+
+            if ("endTime".equals(key)) {
+                if (StringUtils.isNotBlank(value)) {
+                    queryWrapper.le("create_time", value);
+                    log.info("添加时间区间查询: create_time <= {}", value);
+                }
+                continue;
+            }
+
+            // 3. 检查是否有字段映射（驼峰转下划线）
+            String dbField = FIELD_MAPPING.getOrDefault(key, key);
+
+            // 4. 处理白名单中的字段（模糊查询）
+            if (VALID_FIELDS.contains(dbField)) {
+                if (StringUtils.isNotBlank(value)) {
+                    queryWrapper.like(dbField, value);
+                    log.info("添加查询条件: {} LIKE %{}%", dbField, value);
+                }
+            } else {
+                // 记录无效字段（便于调试）
+                log.warn("忽略无效查询字段: {}", key);
             }
         }
-        
-        // 3. 按创建时间倒序
+
+        // 4. 按创建时间倒序
         queryWrapper.orderByDesc("create_time");
-        
-        // 4. 执行分页查询
+
+        // 5. 执行分页查询
         IPage<OperateLogPO> resultPage = operateLogMapper.selectPage(page, queryWrapper);
-        
-        log.info("日志查询结果: 总记录数={}, 当前页={}", 
+
+        log.info("日志查询结果: 总记录数={}, 当前页={}",
                 resultPage.getTotal(), resultPage.getCurrent());
-        
+
         return resultPage;
     }
 }

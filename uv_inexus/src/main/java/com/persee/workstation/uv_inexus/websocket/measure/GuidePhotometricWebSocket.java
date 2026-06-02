@@ -420,7 +420,7 @@ public class GuidePhotometricWebSocket {
 
         if (!countedData.getSuccess()) {
             log.info(countedData.getMessage());
-            sendError(deviceSerialNumber, "请检查公式配置");
+            sendAndNoStopError(deviceSerialNumber, "请检查公式配置");
             return R.fail(countedData.getMessage());
         }
 
@@ -459,7 +459,7 @@ public class GuidePhotometricWebSocket {
 
             if (!operation.getSuccess()) {
                 log.info("设置样品池位置出错");
-                return R.fail("设置样品池位置出错！");
+                return R.fail("00301001");
             }
 
             JSONObject object = new JSONObject();
@@ -474,7 +474,7 @@ public class GuidePhotometricWebSocket {
             operation = operationUtilService.operation(inputParam);
             if (!operation.getSuccess()) {
                 log.info("测量出错");
-                return R.fail("测量出错！");
+                return R.fail("00301002");
             }
             OperationResultEntity data = operation.getData();
             ChangeParam changeParam = data.getSingMeasureResult();
@@ -532,7 +532,7 @@ public class GuidePhotometricWebSocket {
 
                 if (!operation.getSuccess()) {
                     log.info("设置样品池位置出错");
-                    return R.fail("设置样品池位置出错！");
+                    return R.fail("00301001");
                 }
 
                 JSONObject object = new JSONObject();
@@ -567,7 +567,7 @@ public class GuidePhotometricWebSocket {
 
                     if (!operation.getSuccess()) {
                         log.info("测量出错");
-                        return R.fail("测量出错！");
+                        return R.fail("00301002");
                     }
                     OperationResultEntity data = operation.getData();
 
@@ -702,7 +702,7 @@ public class GuidePhotometricWebSocket {
         }
         catch (Exception e) {
             status = 0;
-            return R.fail("测量出错");
+            return R.fail("00301002");
         }
     }
 
@@ -925,6 +925,12 @@ public class GuidePhotometricWebSocket {
         vo.setData(jsonObject);
         webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
    }
+
+    private void sendAndNoStopError(String deviceSerialNumber, String message) {
+
+        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConcisePhotoMetric.getOperation(), message);
+    }
+
     private static void initParams() {
      //初始化测量参数
      isAvg = false;

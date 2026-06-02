@@ -9,9 +9,26 @@
 
 package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
+import java.util.List;
+import java.util.Map;
+
+import javax.validation.Valid;
+
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
+import org.apache.ibatis.annotations.Param;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.alibaba.fastjson2.JSONArray;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PasswordUpdateDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserQueryDTO;
@@ -19,18 +36,13 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.LogContext;
 import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
-import org.apache.ibatis.annotations.Param;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
-import javax.validation.Valid;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/user")
@@ -59,33 +71,79 @@ public class UserController {
     }
 
 //    @ButtonPermission("catEditUserAddUser")
-    @OperateLog(module = "用户管理-用户权限管理-新增用户", description = "执行用户管理-用户权限管理-新增用户操作", recordParams = true)
     @PostMapping("/addUser")
     @ApiOperation("新增用户")
     public Result<String> addUser(@RequestBody @Valid UserSaveDTO saveDTO) {
-        return sysUserService.addUser(saveDTO);
+        // 执行新增
+        Result<String> result = sysUserService.addUser(saveDTO);
+
+        // 如果新增成功，记录日志
+        if (result != null && result.getCode() != null && result.getCode() == 200) {
+            String username = saveDTO.getUsername() != null ? saveDTO.getUsername() : "未命名用户";
+            String realName = saveDTO.getRealName() != null ? saveDTO.getRealName() : "";
+            String userDesc = realName.isEmpty() ? username : (username + "(" + realName + ")");
+            LogManualUtil.saveAddLog(
+                    "用户管理-用户权限管理",
+                    "用户名：" + userDesc,
+                    saveDTO
+            );
+        }
+
+        return result;
     }
 
 //    @ButtonPermission("catEditUserDeleteGroup")
-    @OperateLog(module = "用户管理-用户权限管理-新增角色", description = "执行用户管理-用户权限管理-新增角色操作", recordParams = true)
     @PutMapping("/updateUser")
     @ApiOperation("修改用户")
     public Result<String> updateUser(@RequestBody @Valid UserSaveDTO saveDTO) {
-        return sysUserService.updateUser(saveDTO);
+        // 1. 查询【修改前】数据
+        SysUserPO oldUser = sysUserService.getById(saveDTO.getId());
+
+        // 2. 执行修改
+        Result<String> result = sysUserService.updateUser(saveDTO);
+
+        // 3. 如果修改成功，记录日志
+        if (result != null && result.getCode() != null && result.getCode() == 200 && oldUser != null) {
+            LogManualUtil.saveUpdateLog(
+                    "用户管理-用户权限管理",
+                    oldUser,
+                    saveDTO,
+                    saveDTO
+            );
+        }
+
+        return result;
     }
 
     /**
      * 根据ID删除单个用户
      */
 //    @ButtonPermission("catEditUserDeleteOrDisableUser")
-    @OperateLog(module = "用户管理-用户权限管理-删除用户", description = "执行用户管理-用户权限管理-删除用户操作", recordParams = true)
     @DeleteMapping("/{id}")  // 使用HTTP DELETE方法，符合RESTful风格
     @ApiOperation("根据ID删除单个用户")
-    public Result<String> deleteById(@PathVariable String id, 
+    public Result<String> deleteById(@PathVariable String id,
                                      @ApiParam(value = "操作人ID", required = true)
                                      @RequestParam String updateById) {
-        // 调用Service的删除方法（需在Service中新增实现）
-        return sysUserService.deleteById(id, updateById);
+        // 1. 查询要删除的用户数据（用于日志记录）
+        SysUserPO oldUser = sysUserService.getById(id);
+
+        // 2. 执行删除
+        Result<String> result = sysUserService.deleteById(id, updateById);
+
+        // 3. 如果删除成功，记录日志
+        if (result != null && result.getCode() != null && result.getCode() == 200 && oldUser != null) {
+            String username = oldUser.getUsername() != null ? oldUser.getUsername() : "未命名用户";
+            String realName = oldUser.getRealName() != null ? oldUser.getRealName() : "";
+            String userDesc = realName.isEmpty() ? username : (username + "(" + realName + ")");
+            LogManualUtil.saveDeleteLog(
+                    "用户管理-用户权限管理",
+                    "用户：" + userDesc,
+                    oldUser,
+                    id
+            );
+        }
+
+        return result;
     }
 
     @PostMapping("/deleteBatch")
@@ -112,9 +170,9 @@ public class UserController {
     @ApiOperation("添加快捷导航")
     public Result<String> addQuickNavigation(@RequestBody Map<String, Object> quickNavigation) {
         if (sysUserService.addQuickNavigation(quickNavigation)) {
-            return Result.ok("快捷导航添加成功");
+            return Result.ok("00D03002");
         } else {
-            return Result.fail("快捷导航添加失败");
+            return Result.fail("00D03001");
         }
     }
 

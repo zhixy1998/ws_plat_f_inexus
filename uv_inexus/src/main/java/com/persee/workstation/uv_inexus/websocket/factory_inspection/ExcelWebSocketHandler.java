@@ -25,7 +25,8 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.InputTranslator;
+import com.persee.workstation.uv_inexus.i18n.OutputTranslator;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.factory_inspection.*;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
@@ -170,6 +171,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     private PythonPathConstant pythonPathConstant;
     @Autowired
+    private I18nMessageUtil i18nMessageUtil;
+    @Autowired
+    private OutputTranslator outputTranslator;
+    @Autowired
+    private InputTranslator inputTranslator;
     private DeviceController deviceController;
     @Autowired
     private TaskExecutionDetailMapper taskExecutionDetailMapper;
@@ -326,11 +332,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
     private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
-//        log.info("我被调用了" + payload.toString());
         try {
+            JSONObject translatedPayload = outputTranslator.translate(payload);
+
             if (originalSession != null && !isSessionValid(originalSession)) {
-                // 【修改】克隆 payload 对象，避免修改传入的对象导致线程安全问题
-                JSONObject payloadCopy = (JSONObject) payload.clone();
+                JSONObject payloadCopy = (JSONObject) translatedPayload.clone();
                 payloadCopy.put("taskId", taskId);
 
                 originalSession.sendMessage(new TextMessage(payloadCopy.toJSONString()));
@@ -342,28 +348,19 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 while (iterator.hasNext()) {
                     WebSocketSession session = iterator.next();
                     if (isSessionValid(session)) {
-                        // 【修改】克隆 payload 对象，避免修改传入的对象导致线程安全问题
-                        JSONObject payloadCopy = (JSONObject) payload.clone();
+                        JSONObject payloadCopy = (JSONObject) translatedPayload.clone();
                         payloadCopy.put("taskId", taskId);
 
-                        log.info("准备发送消息到 sessionId: {}, 前端地址：{}, 消息内容：{}",
-                                session.getId(), getFrontendAddress(session), payloadCopy.toJSONString());
-
                         session.sendMessage(new TextMessage(payloadCopy.toJSONString()));
-                        log.info("消息发送成功到 sessionId: {}", session.getId());
                     } else {
-                        // 移除无效 session 时，也要清理对应的前端地址
                         String frontendAddress = getFrontendAddress(session);
                         Set<String> frontendAddresses = taskToFrontendAddresses.get(taskId);
                         if (frontendAddresses != null) {
                             frontendAddresses.remove(frontendAddress);
                         }
                         iterator.remove();
-                        log.warn("WebSocket 消息发送失败：taskId={}, 源会话已关闭，前端地址={}", taskId, frontendAddress);
                     }
                 }
-                log.info("消息已发送到 {} 个 session，sessionId 列表：{}", sessions.size(),
-                        sessions.stream().map(WebSocketSession::getId).collect(Collectors.toList()));
             } else {
                 log.warn("没有找到活跃的 session: taskId={}", taskId);
             }
@@ -412,11 +409,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         JSONObject jsonObject = new JSONObject();
                         jsonObject.put("taskId", taskId);
                         jsonObject.put("data", payload);
-                        session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-                        log.info("消息发送给了：" + session.getId());
+                        JSONObject translated = outputTranslator.translate(jsonObject);
+                        session.sendMessage(new TextMessage(translated.toJSONString()));
                     } else {
                         iterator.remove();
-                        log.warn("WebSocket消息发送失败: taskId={}, 源会话已关闭", taskId);
                     }
                 }
 
@@ -1125,9 +1121,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         if (SET_MEASUREMENT_QUALITY_LINE.getCode().equals(type)){
             log.info("收到设置测量质量线指令");
             taskStopFlag.put(taskId, false);
-            String x = root.get("x").asText();
-            String y = root.get("y").asText();
-            String sheetName = root.get("sheetName").asText();
+            String x = inputTranslator.toChinese(root.get("x").asText());
+            String y = inputTranslator.toChinese(root.get("y").asText());
+            String sheetName = inputTranslator.toChinese(root.get("sheetName").asText());
             String passingLineValue = root.get("passingLineValue").asText();
 
             Workbook taskWorkbook = workbookCacheManager.getTaskWorkbook(taskId);
@@ -1243,6 +1239,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 taskService.update(updateWrapper);
                 // 记录任务 - 设备绑定关系
                 taskDeviceBindingMap.put(taskId, deviceSerialNumber);
+                // 重新查询获取最新的任务信息
+                management1 = taskService.getById(taskId);
             }
 
             if (StringUtils.isNotBlank(management1 != null ? management1.getOperationInstrument() : null)) {
@@ -1315,8 +1313,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     });
             StdMaterialSelectionDto selectionDto = messageWrapper.getData();
             taskId = selectionDto.getTaskId();
-            String groupName = selectionDto.getGroupName();
-            String itemName = selectionDto.getItemName();
+            String groupName = inputTranslator.toChinese(selectionDto.getGroupName());
+            String itemName = inputTranslator.toChinese(selectionDto.getItemName());
             String standardId = selectionDto.getStandardId();
             String standardType = selectionDto.getStandardType();
             String itemId = selectionDto.getItemId();
@@ -1519,14 +1517,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         R<String> device = deviceManageService.getConnectDevice(updateBy);
 
         if(!string.equals(device.getData())){
-            throw new BusinessException("当前任务与仪器序列号不匹配，请新建任务！！！");
-        }
+            throw BusinessException.withCode("00613001");        }
         if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
 //            JSONObject jsonObject = new JSONObject();
 //            jsonObject.put("error", "请检查当前仪器是否连接");
 //            sendToActiveSession(null, taskId, jsonObject);
-            throw new BusinessException("请检查当前仪器是否连接！！！");
-        }
+            throw BusinessException.withCode("00613002");        }
 //        if (!StringUtils.equals(device.getData(), string)) {
 ////            JSONObject jsonObject = new JSONObject();
 ////            jsonObject.put("error", "设备已切换,请检查当前仪器与任务是否匹配！！！");
@@ -1534,13 +1530,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //            throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
 //        }
         if (info.getIsActivated() == 0) {
-            throw new BusinessException("设备未激活！！！");
+            throw BusinessException.withCode("00613003");
         }
         if (info.getIsInited() != 1 && info.getIsInited() != 3) {
-            throw new BusinessException("请检查当前仪器是否初始化！！！");
+            throw BusinessException.withCode("00613004");
         }
         if (info.getIsInited() == 3) {
-            throw new BusinessException("设备正在初始化！！！");
+            throw BusinessException.withCode("00613005");
         }
 
         halt.put(taskId, false);
@@ -1697,7 +1693,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             try {
                 control.semaphore.acquire();
             } catch (Exception e) {
-                throw new BusinessException("暂停任务失败！" + e);
+                throw BusinessException.withCode("00613006");
             }
 
             log.info("任务 {} 已标记为暂停", taskId);
@@ -1817,17 +1813,17 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             //获取序列号
                             String string = taskManagement.getOperationInstrument();
                             if (StringUtils.isBlank(string)) {
-                                throw new BusinessException("请检查是否连接仪器！！！");
+                                throw BusinessException.withCode("00613007");
                             }
                             R<String> device = deviceManageService.getConnectDevice(updateBy);
 
                             if(!string.equals(device.getData())){
-                                throw new BusinessException("当前任务与仪器序列号不匹配，请新建任务！！！");
+                                throw BusinessException.withCode("00613001");
                             }
                             DeviceInfoPO info = deviceInfoService.getInfo(string);
 
                             if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
-                                throw new BusinessException("请检查当前仪器是否连接！！！");
+                                throw BusinessException.withCode("00613002");
                             }
 
 
@@ -1835,13 +1831,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                                throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
 //                            }
                             if (info.getIsActivated() == 0) {
-                                throw new BusinessException("设备未激活！！！");
+                                throw BusinessException.withCode("00613003");
                             }
                             if (info.getIsInited() != 1 && info.getIsInited() != 3) {
-                                throw new BusinessException("请检查当前仪器是否初始化！！！");
+                                throw BusinessException.withCode("00613004");
                             }
                             if (info.getIsInited() == 3) {
-                                throw new BusinessException("设备正在初始化！！！");
+                                throw BusinessException.withCode("00613005");
                             }
                             //获取具体的样品池信息
                             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(string);
@@ -1903,20 +1899,25 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                         if (d == 0) {
                                             JSONObject json1 = new JSONObject();
                                             json1.put("itemName", category + "--" + projectName);
-                                            sendToActiveSession(null, taskId, json1);
+//                                            sendToActiveSession(null, taskId, json1);
 
 
                                             JSONObject jsonObject1 = new JSONObject();
                                             jsonObject1.put("itemId", itemId);
-                                            sendToActiveSession(null, taskId, jsonObject1);
+//                                            sendToActiveSession(null, taskId, jsonObject1);
                                         }
                                         map = sendBatchDataPoints(session, taskId, itemId, dataMap, updateBy, operationInstrument, list, samplePoolNum, d);
                                     }
                                 } catch (Exception e) {
+                                    setTaskMeasuring(taskId, false);
                                     return false;
                                 }
-                                Map<String, List<JSONObject>> data = Objects.requireNonNull(map).getData();
-                                List<JSONObject> line = Objects.requireNonNull(data).get("line");
+                                if (map == null || !map.getSuccess() || map.getData() == null) {
+                                    setTaskMeasuring(taskId, false);
+                                    break;
+                                }
+                                Map<String, List<JSONObject>> data = map.getData();
+                                List<JSONObject> line = data.get("line");
                                 if (CollectionUtils.isNotEmpty(line)) {
                                     lists.add(data.get("line"));
                                 }
@@ -2106,19 +2107,30 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         }
                         return futureResult;
                     } catch (Exception e) {
+                        String errorMsg;
+                        if (e instanceof BusinessException) {
+                            BusinessException be = (BusinessException) e;
+                            if (be.getErrorCode() != null) {
+                                errorMsg = i18nMessageUtil.getMessage(be.getErrorCode(), be.getArgs());
+                            } else {
+                                errorMsg = i18nMessageUtil.getMessage(be.getMessage());
+                            }
+                        } else {
+                            errorMsg = e.getMessage();
+                        }
                         if (!isAutoInspection) {
                             log.error("测量任务执行异常", e);
                             JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("error", e.getMessage());
+                            jsonObject.put("error", errorMsg);
                             sendToActiveSession(null, taskId, jsonObject);
                             setTaskMeasuring(taskId, false);
-//                            saveAndSendJudgeResult(taskId, itemId, projectName, sheet, MEASUREMENT_STATUS_FAILED.getCode());
                         }
                         if (isAutoInspection) {
                             log.error("测量任务执行异常", e);
                             JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("warn", "检测项：[" + projectName + "] 出现问题:" + e.getMessage() + "跳过");
+                            jsonObject.put("warn", "检测项：[" + projectName + "] 出现问题:" + errorMsg + "跳过");
                             sendToActiveSession(null, taskId, jsonObject);
+                            setTaskMeasuring(taskId, false);
 //                            saveAndSendJudgeResult(taskId, itemId, projectName, sheet, MEASUREMENT_STATUS_FAILED.getCode());
                         }
                         return false;
@@ -2231,7 +2243,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     private void sendBlackBlockNotFoundError(String taskId, String blackBlockDesc) throws BusinessException {
         log.info("样品池中未找到：{}", blackBlockDesc);
-        throw new BusinessException("样品池中未找到：" + blackBlockDesc);
+        throw BusinessException.withCode("00613008", blackBlockDesc);
 //        JSONObject jsonObject = new JSONObject();
 //        jsonObject.put("error", "样品池中未找到：" + blackBlockDesc);
 //        sendToActiveSession(null, taskId, jsonObject);
@@ -2284,7 +2296,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         }
                     }
                     if (materialManager.getActionPosition(taskId, StandardMaterialManager.MaterialType.BASELINE) == null) {
-                        throw new BusinessException("样品池中，未找到基线所需的空气");
+                        throw BusinessException.withCode("00613009");
                     }
                 }
             }
@@ -2296,10 +2308,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     .filter(Objects::nonNull)            // 过滤 null 值
                     .collect(Collectors.toMap(
                             TaskCheckItemDto.Standard::getStandardId,   // key: standardId
-                            TaskCheckItemDto.Standard::getStandardName  // value: standardName
+                            TaskCheckItemDto.Standard::getStandardName, // value: standardName
+                            (existing, replacement) -> existing          // 遇到重复key时保留第一个
                     ));
         } else {
-            throw new BusinessException("样品池为空");
+            throw BusinessException.withCode("0061300A");
         }
 
         log.info("222222222222222222>>>>>>>>>>>>");
@@ -2326,7 +2339,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
                             String id = dtoList.get(i).getStandard().getStandardId();
-                            if (id == null) return;
+                            if (id == null) continue;
 
                             // 检查 CalStdCats
                             CalStdCats cats = calStdCatsService.getById(id);
@@ -2391,7 +2404,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                        JSONObject jsonObject = new JSONObject();
 //                        jsonObject.put("error", "样品池中未找到：" + standardName);
 //                        sendToActiveSession(null, taskId, jsonObject);
-                        throw new BusinessException("样品池中未找到：" + standardName);
+                        throw BusinessException.withCode("00613008", standardName);
                     } else {
                         materialManager.addZeroMaterial(taskId, zero.getStandardId());
                         for (SetSamplePoolDto sample : dtoList) {
@@ -2421,7 +2434,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                        JSONObject jsonObject = new JSONObject();
 //                        jsonObject.put("error", "样品池中未找到：" + standardName);
 //                        sendToActiveSession(null, taskId, jsonObject);
-                        throw new BusinessException("样品池中未找到：" + standardName);
+                        throw BusinessException.withCode("00613008", standardName);
                     } else {
                         materialManager.addMeasureMaterial(taskId, measurement.getStandardId());
                         for (SetSamplePoolDto sample : dtoList) {
@@ -2480,7 +2493,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                     } catch (Exception e) {
                         log.error("Python服务调用异常：", e);
-                        throw new BusinessException("Python服务调用异常");
+                        throw BusinessException.withCode("0061300B");
                     }
                     break;
                 case FIND_HALF_PEAK_WIDTH:
@@ -2557,7 +2570,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         }
                     } catch (Exception e) {
                         log.error("Python服务调用异常：", e);
-                        throw new BusinessException("Python服务调用异常");
+                        throw BusinessException.withCode("0061300B");
                     }
                     break;
                 case FIND_MAX_OFFSET:
@@ -3487,36 +3500,35 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                             String luminosityMode) throws BusinessException {
         if (deviceTypeInfo == null) {
             log.error("设备类型配置信息为空，无法校验参数");
-            throw new BusinessException("设备类型配置信息不存在");
+            throw BusinessException.withCode("0061300C");
         }
 
         String devType = deviceTypeInfo.getDevType();
         List<String> errorMessages = new ArrayList<>();
 
         // 1. 校验波长范围
-        try {
-            double minWavelength = Double.parseDouble(deviceTypeInfo.getMinWavelength());
-            double maxWavelength = Double.parseDouble(deviceTypeInfo.getMaxWavelength());
+        if (startWavelength != null || endWavelength != null) {
+            try {
+                double minWavelength = Double.parseDouble(deviceTypeInfo.getMinWavelength());
+                double maxWavelength = Double.parseDouble(deviceTypeInfo.getMaxWavelength());
 
-            if (startWavelength == null || startWavelength < minWavelength || startWavelength > maxWavelength) {
-                errorMessages.add(String.format("起始波长 %s 超出设备支持范围 [%s, %s]nm",
-                        startWavelength, deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength()));
+                if (startWavelength != null && (startWavelength < minWavelength || startWavelength > maxWavelength)) {
+                    errorMessages.add(String.format("起始波长 %s 超出设备支持范围 [%s, %s]nm",
+                            startWavelength, deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength()));
+                }
+                if (endWavelength != null && (endWavelength < minWavelength || endWavelength > maxWavelength)) {
+                    errorMessages.add(String.format("终止波长 %s 超出设备支持范围 [%s, %s]nm",
+                            endWavelength, deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength()));
+                }
+            } catch (NumberFormatException e) {
+                log.error("波长范围配置格式错误: min={}, max={}",
+                        deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength());
+                errorMessages.add("设备波长范围配置格式错误，请联系管理员");
             }
-            if (endWavelength == null || endWavelength < minWavelength || endWavelength > maxWavelength) {
-                errorMessages.add(String.format("终止波长 %s 超出设备支持范围 [%s, %s]nm",
-                        endWavelength, deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength()));
-            }
-//            if (startWavelength != null && endWavelength != null && startWavelength > endWavelength) {
-//                errorMessages.add(String.format("起始波长(%.1fnm)不能大于终止波长(%.1fnm)", startWavelength, endWavelength));
-//            }
-        } catch (NumberFormatException e) {
-            log.error("波长范围配置格式错误: min={}, max={}",
-                    deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength());
-            errorMessages.add("设备波长范围配置格式错误，请联系管理员");
         }
 
         // 2. 校验扫描间隔
-        if (deviceTypeInfo.getScanInterval() != null && !deviceTypeInfo.getScanInterval().isEmpty()) {
+        if (scanInterval != null && deviceTypeInfo.getScanInterval() != null && !deviceTypeInfo.getScanInterval().isEmpty()) {
             String intervalStr = String.valueOf(scanInterval);
             if (!deviceTypeInfo.getScanInterval().contains(intervalStr)) {
                 errorMessages.add(String.format("扫描间隔 %s 不在设备支持范围内: %s",
@@ -3524,40 +3536,36 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
         }
 
-        // 3. 校验增益
-        if (deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
-            if (gain == null || !deviceTypeInfo.getGain().contains(gain)) {
+        // 3. 校验增益 - 只有T%和Abs模式不需要校验增益，其他模式都需要校验
+        boolean isTPercentOrAbs = "T%".equalsIgnoreCase(luminosityMode) || "Abs".equalsIgnoreCase(luminosityMode);
+        if (!isTPercentOrAbs && gain != null && deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
+            if (!deviceTypeInfo.getGain().contains(gain)) {
                 errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
                         gain, deviceTypeInfo.getGain()));
             }
         }
 
+
         // 4. 校验扫描速度
-        if (deviceTypeInfo.getScanSpeed() != null && !deviceTypeInfo.getScanSpeed().isEmpty()) {
-//            String speedCode = ScanSpeedEnum.getCodeByName(scanSpeed);
-
-            // 4. 校验扫描速度
-                String speedCode = ScanSpeedEnum.getCodeByName(scanSpeed);
-                if (speedCode == null) {
-                    errorMessages.add(String.format("扫描速度 %s 无法转换为设备识别码", scanSpeed));
-                } else {
-                    // 【修复】应该判断 value 是否包含 speedCode，而不是判断 key
-                    boolean speedSupported = false;
-                    for (Object value : deviceTypeInfo.getScanSpeed().values()) {
-                        if (value != null && speedCode.equals(value.toString())) {
-                            speedSupported = true;
-                            break;
-                        }
+        if (scanSpeed != null && deviceTypeInfo.getScanSpeed() != null && !deviceTypeInfo.getScanSpeed().isEmpty()) {
+            String speedCode = ScanSpeedEnum.getCodeByName(scanSpeed);
+            if (speedCode == null) {
+                errorMessages.add(String.format("扫描速度 %s 无法转换为设备识别码", scanSpeed));
+            } else {
+                // 应该判断 value 是否包含 speedCode，而不是判断 key
+                boolean speedSupported = false;
+                for (Object value : deviceTypeInfo.getScanSpeed().values()) {
+                    if (value != null && speedCode.equals(value.toString())) {
+                        speedSupported = true;
+                        break;
                     }
+                }
 
-                    if (!speedSupported) {
-                        errorMessages.add(String.format("扫描速度 %s(code:%s) 不在设备支持范围内: %s",
-                                scanSpeed, speedCode, deviceTypeInfo.getScanSpeed()));
-                    }
-
+                if (!speedSupported) {
+                    errorMessages.add(String.format("扫描速度 %s(code:%s) 不在设备支持范围内: %s",
+                            scanSpeed, speedCode, deviceTypeInfo.getScanSpeed()));
+                }
             }
-
-
         }
 
 //        // 5. 校验光度模式
@@ -3580,7 +3588,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         // 如果有任何校验错误，抛出异常
         if (!errorMessages.isEmpty()) {
-            String errorMsg = String.format("[%s] 参数校验失败：\n%s", devType, String.join("\n", errorMessages));
+            String errorMsg = String.format("参数校验失败：\n%s",  String.join("\n", errorMessages));
             log.error(errorMsg);
             throw new BusinessException(errorMsg);
         }
@@ -3646,14 +3654,26 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //        log.info("p.getTimestamp()：{}", p.getTimestamp());
         //获取枚举，看看是哪个
         WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
+        if (anEnum == null) {
+            throw BusinessException.withCode("0061B001", luminosityMode);
+        }
         log.info("光度模式：{}", anEnum.getName());
-//获取起始波长
         Double startWavelength = MapUtils.getDouble(dataMap, START_WAVELENGTH.getDescription());
-        //获取终止波长
         Double endWavelength = MapUtils.getDouble(dataMap, END_WAVELENGTH.getDescription());
-        //扫描间隔
         Double scanInterval = MapUtils.getDouble(dataMap, SCAN_INTERVAL.getDescription());
-        Double scanCount = MapUtils.getDouble(dataMap, SCAN_COUNT.getDescription());
+        Double scanCount = null;
+        if (startWavelength != null && endWavelength != null && scanInterval != null && scanInterval > 0) {
+            scanCount = Math.abs(endWavelength - startWavelength) / scanInterval + 1;
+        }
+
+//        int actualTotalPoints;
+//        if (timeInterval != null && scanCount != null && timeInterval > 0) {
+//            actualTotalPoints = (int) (timeInterval * (scanCount + 1));
+//        } else if (scanCount != null) {
+//            actualTotalPoints = scanCount.intValue();
+//        } else {
+//            throw new BusinessException("扫描参数缺失：scanCount 和 timeInterval 均为空");
+//        }
         if (anEnum == abs) {
             if (ObjectUtils.isNotEmpty(p)) {
                 JSONObject payload = new JSONObject();
@@ -3958,20 +3978,20 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 response = future.get(30, java.util.concurrent.TimeUnit.SECONDS);
             } catch (java.util.concurrent.TimeoutException e) {
                 future.cancel(true);
-                throw new BusinessException("算法服务调用超时");
+                throw BusinessException.withCode("0061300D");
             } catch (java.util.concurrent.ExecutionException e) {
-                throw new BusinessException("算法服务调用失败: " + e.getCause().getMessage());
+                throw BusinessException.withCode("0061300E", e.getCause().getMessage());
             } catch (InterruptedException e) {
                 future.cancel(true);
                 Thread.currentThread().interrupt();
-                throw new BusinessException("算法服务调用被中断");
+                throw BusinessException.withCode("0061300F");
             }
 
             Map<String, Object> responseBody = response.getBody();
 
             // 检查响应体是否为空
             if (responseBody == null) {
-                throw new BusinessException(YamlMessageSource.getMessageStatic("00000032")); // "算法服务返回异常"
+                throw BusinessException.withCode("00000032");
             }
 
             Integer code = (Integer) responseBody.get("code");
@@ -3987,7 +4007,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             throw e;
         } catch (Exception e) {
             log.error("算法服务异常", e);
-            throw new BusinessException("算法服务异常,请重启服务");
+            throw BusinessException.withCode("00613010");
         }
     }
 
@@ -4089,52 +4109,51 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                         String lampStatusName) throws BusinessException {
         if (deviceTypeInfo == null) {
             log.error("设备类型配置信息为空，无法校验参数");
-            throw new BusinessException("设备类型配置信息不存在");
+            throw BusinessException.withCode("0061300C");
         }
 
         String devType = deviceTypeInfo.getDevType();
         List<String> errorMessages = new ArrayList<>();
 
+        // 判断是否需要校验增益：只有T%和Abs可以不校验增益，其他的都要校验
+        boolean needValidateGain = true;
+        if (luminosityMode != null) {
+            String upperMode = luminosityMode.toUpperCase();
+            if ("T%".equals(upperMode) || "ABS".equals(upperMode)) {
+                needValidateGain = false;
+            }
+        }
+
         // 1. 校验增益
-        if (deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
-            if (gain != null && !deviceTypeInfo.getGain().contains(gain)) {
+        if (needValidateGain && gain != null && deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
+            if (!deviceTypeInfo.getGain().contains(gain)) {
                 errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
                         gain, deviceTypeInfo.getGain()));
             }
         }
 
-        // 2. 校验狭缝/光谱带宽（如果配置了该字段）
-        // 注意：DeviceTypeInfoPO 中可能没有 scanInterval 字段用于狭缝校验
-        // 如果有专门的 slit 字段，可以在这里添加校验
-
-
-        // 3. 校验响应时间
-        if (deviceTypeInfo.getResponseTime() != null && !deviceTypeInfo.getResponseTime().isEmpty()) {
-            if (responseTime != null) {
-                boolean timeSupported = false;
-                for (String configVal : deviceTypeInfo.getResponseTime()) {
-                    try {
-                        // 【修复】使用 Double.valueOf 进行装箱，然后使用 equals 比较
-                        // 或者直接使用 Double.parseDouble(configVal) == responseTime.doubleValue()
-                        if (Double.parseDouble(configVal) == responseTime) {
-                            timeSupported = true;
-                            break;
-                        }
-                    } catch (NumberFormatException e) {
-                        log.warn("解析响应时间配置失败: {}", configVal);
+        // 2. 校验响应时间
+        if (responseTime != null && deviceTypeInfo.getResponseTime() != null && !deviceTypeInfo.getResponseTime().isEmpty()) {
+            boolean timeSupported = false;
+            for (String configVal : deviceTypeInfo.getResponseTime()) {
+                try {
+                    if (Double.parseDouble(configVal) == responseTime) {
+                        timeSupported = true;
+                        break;
                     }
+                } catch (NumberFormatException e) {
+                    log.warn("解析响应时间配置失败: {}", configVal);
                 }
-                if (!timeSupported) {
-                    errorMessages.add(String.format("响应时间 %s 不在设备支持范围内: %s",
-                            responseTime, deviceTypeInfo.getResponseTime()));
-                }
+            }
+            if (!timeSupported) {
+                errorMessages.add(String.format("响应时间 %s 不在设备支持范围内: %s",
+                        responseTime, deviceTypeInfo.getResponseTime()));
             }
         }
 
 
-
-        // 4. 校验光度模式
-        if (deviceTypeInfo.getLuminosity() != null && !deviceTypeInfo.getLuminosity().isEmpty()) {
+        // 3. 校验光度模式
+        if (luminosityMode != null && deviceTypeInfo.getLuminosity() != null && !deviceTypeInfo.getLuminosity().isEmpty()) {
             String code = WaveLengthEnum.getCode(luminosityMode);
             if (code == null) {
                 errorMessages.add(String.format("不支持的光度模式: %s", luminosityMode));
@@ -4151,11 +4170,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
         }
 
-        if (StringUtils.isNotBlank(lampStatusName)) {
+        // 4. 校验灯状态
+        if (StringUtils.isNotBlank(lampStatusName) && deviceTypeInfo.getLampType() != null && !deviceTypeInfo.getLampType().isEmpty()) {
             String lampIdentity = EnergyLampEnums.getIdentityByName(lampStatusName);
             if (lampIdentity == null) {
                 errorMessages.add(String.format("不支持的灯状态: %s", lampStatusName));
-            } else if (deviceTypeInfo.getLampType() != null && !deviceTypeInfo.getLampType().isEmpty()) {
+            } else {
                 try {
                     int lampValue = Integer.parseInt(lampIdentity);
                     if (!deviceTypeInfo.getLampType().contains(lampValue)) {
@@ -4170,13 +4190,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         // 如果有任何校验错误，抛出异常
         if (!errorMessages.isEmpty()) {
-            String errorMsg = String.format("[%s] 时间扫描参数校验失败：\n%s", devType, String.join("\n", errorMessages));
+            String errorMsg = String.format("时间扫描参数校验失败：\n%s", String.join("\n", errorMessages));
             log.error(errorMsg);
             throw new BusinessException(errorMsg);
         }
 
-        log.info("设备 [{}] 时间扫描参数校验通过: 增益={}, 狭缝={}, 响应时间={}, 光度模式={}, 灯状态={}",
-                devType, gain, narrow, responseTime, luminosityMode, lampStatusName);
+        log.info("设备时间扫描参数校验通过: 增益={}, 响应时间={}, 光度模式={}, 灯状态={}",
+                devType, gain, responseTime, luminosityMode, lampStatusName);
     }
 
 
@@ -4185,6 +4205,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * 改进：边测量边推送数据，让前端时间显示更准确
      */
     private R<Map<String, List<JSONObject>>> timeScan(String taskId, Map<String, Object> dataMap, String deviceSerialNumber, Integer scanCount, String luminosityMode, boolean isMultiProductPool, String itemId, Integer d) throws BusinessException {
+        // 清理上次时间扫描可能残留的控制标志，防止第二次测量被误停止
+        timeScanStopControl.remove(taskId);
+        taskStopFlag.put(taskId, false);
+        try {
         Map<String, List<JSONObject>> map = new HashMap<>();
         // 线数据列表
         ArrayList<JSONObject> line = new ArrayList<>();
@@ -4214,7 +4238,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         List<DeviceTypeInfoPO> pos = deviceTypeInfoDAO.selectByMap(devType11);
         if (CollectionUtils.isEmpty(pos)) {
             log.error("时间扫描-未找到设备类型配置: devType={}", s);
-            throw new BusinessException("未找到设备类型[" + s + "]的配置信息，请联系管理员");
+            throw BusinessException.withCode("00613011", s);
         }
 
         DeviceTypeInfoPO deviceTypeInfoPO = pos.get(0);
@@ -4641,20 +4665,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         R<OperationResultEntity> measure = devOperationUtilService.operation(param1);
         int i = 0;
-        waveformCache.clear();
+        waveformCache.remove(taskId);
 
-        // 在循环开始前发送总点数给前端（时间扫描）
-//        int totalPoints = calculateTimeScanPoints(totalTime, timeInterval);
-//        JSONObject jsonObject = new JSONObject();
-//        jsonObject.put("xCount", totalPoints);
-//        sendToActiveSession(null, taskId, jsonObject);
-//        log.info("时间扫描总点数：{}, 总时间：{}秒，时间间隔：{}秒", totalPoints, totalTime, timeInterval);
-//
+        int totalPoints = totalTime.intValue();
+        log.info("时间扫描总点数：{}, 总时间：{}秒，时间间隔：{}秒", totalPoints, totalTime, timeInterval);
 
         HashMap<String, String> map1 = new HashMap<>();
         map1.put("type", "timeScan");
         map1.put("totalTime", totalTime.toString());
         map1.put("timeInterval", timeInterval.toString());
+        map1.put("totalPoints", String.valueOf(totalPoints));
         JSONObject horizontalAxis = new JSONObject();
         horizontalAxis.put("horizontalAxis", map1);
         sendToActiveSession(null, taskId, horizontalAxis);
@@ -4763,6 +4783,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         map.put("line", line);
         map.put("res", res);
         return R.ok(map);
+        } finally {
+            // 无论正常结束还是异常退出，都清理时间扫描控制标志
+            timeScanStopControl.remove(taskId);
+            taskStopFlag.put(taskId, false);
+        }
     }
 
 
@@ -4807,17 +4832,32 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                              String lampStatusName*/) throws BusinessException {
         if (deviceTypeInfo == null) {
             log.error("光度扫描-设备类型配置信息为空，无法校验参数");
-            throw new BusinessException("设备类型配置信息不存在");
+            throw BusinessException.withCode("0061300C");
         }
 
         String devType = deviceTypeInfo.getDevType();
         List<String> errorMessages = new ArrayList<>();
 
         // 1. 校验增益
-        if (deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
-            if (gain != null && !deviceTypeInfo.getGain().contains(gain)) {
-                errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
-                        gain, deviceTypeInfo.getGain()));
+        // 光度模式为Abs或T%时，增益可以为null；其他光度模式下必须校验增益
+        boolean isAbsOrTPercent = "Abs".equalsIgnoreCase(luminosityMode) || "T%".equalsIgnoreCase(luminosityMode);
+        if (isAbsOrTPercent) {
+            // Abs或T%模式下，如果增益不为null，仍需校验是否在支持范围内
+            if (gain != null && deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
+                if (!deviceTypeInfo.getGain().contains(gain)) {
+                    errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
+                            gain, deviceTypeInfo.getGain()));
+                }
+            }
+        } else {
+            // 其他光度模式下，增益必须存在且在支持范围内
+            if (deviceTypeInfo.getGain() != null && !deviceTypeInfo.getGain().isEmpty()) {
+                if (gain == null) {
+                    errorMessages.add("增益不能为空");
+                } else if (!deviceTypeInfo.getGain().contains(gain)) {
+                    errorMessages.add(String.format("增益 %s 不在设备支持范围内: %s",
+                            gain, deviceTypeInfo.getGain()));
+                }
             }
         }
 
@@ -4826,16 +4866,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         // 如果有专门的配置，可以在这里添加校验
 
         // 3. 校验响应时间
-        if (responseTime!=null&&deviceTypeInfo.getResponseTime() != null && !deviceTypeInfo.getResponseTime().isEmpty()) {
+        if (responseTime != null && deviceTypeInfo.getResponseTime() != null && !deviceTypeInfo.getResponseTime().isEmpty()) {
             String responseTimeStr = String.valueOf(responseTime);
-            if (responseTimeStr!=null&&!deviceTypeInfo.getResponseTime().contains(responseTimeStr)) {
+            if (responseTimeStr != null && !deviceTypeInfo.getResponseTime().contains(responseTimeStr)) {
                 errorMessages.add(String.format("响应时间 %s 不在设备支持范围内: %s",
                         responseTime, deviceTypeInfo.getResponseTime()));
             }
         }
 
         // 4. 校验光度模式
-        if (deviceTypeInfo.getLuminosity() != null && !deviceTypeInfo.getLuminosity().isEmpty()) {
+        if (luminosityMode != null && deviceTypeInfo.getLuminosity() != null && !deviceTypeInfo.getLuminosity().isEmpty()) {
             String code = WaveLengthEnum.getCode(luminosityMode);
             if (code == null) {
                 errorMessages.add(String.format("不支持的光度模式: %s", luminosityMode));
@@ -4872,7 +4912,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         // 如果有任何校验错误，抛出异常
         if (!errorMessages.isEmpty()) {
-            String errorMsg = String.format("光度扫描参数校验失败：\n%s",  String.join("\n", errorMessages));
+            String errorMsg = String.format("光度扫描参数校验失败：\n%s", String.join("\n", errorMessages));
             log.error(errorMsg);
             throw new BusinessException(errorMsg);
         }
@@ -4921,7 +4961,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         List<DeviceTypeInfoPO> pos = deviceTypeInfoDAO.selectByMap(devType111);
         if (CollectionUtils.isEmpty(pos)) {
             log.error("光度扫描-未找到设备类型配置: devType={}", s);
-            throw new BusinessException("未找到设备类型[" + s + "]的配置信息，请联系管理员");
+//            throw new BusinessException("未找到设备的配置信息，请联系管理员");
+            throw BusinessException.withCode("00613011", s);
         }
 
         DeviceTypeInfoPO deviceTypeInfoPO = pos.get(0);
@@ -5857,7 +5898,7 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
             log.info("任务 {} 已停止", taskId);
         } catch (Exception e) {
             log.error("停止任务 {} 时发生异常", taskId, e);
-            throw new BusinessException("停止任务失败: " + e.getMessage());
+            throw BusinessException.withCode("00613012", e.getMessage());
         }
     }
 

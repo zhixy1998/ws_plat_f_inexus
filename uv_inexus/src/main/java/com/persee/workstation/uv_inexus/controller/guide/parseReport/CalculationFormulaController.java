@@ -11,7 +11,7 @@ package com.persee.workstation.uv_inexus.controller.guide.parseReport;
 
 import java.util.Map;
 
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,7 +54,7 @@ public class CalculationFormulaController {
         CalculationFormula calculationFormula = calculationFormulaService.findById(id); // 修改服务方法调用
         if (calculationFormula == null) {
             //"未找到ID为" + id + "的计算公式记录"
-            return Result.fail(404, YamlMessageSource.getMessageStatic("00401001",id)); // 修改错误消息
+            return Result.fail("00401001", id); // 修改错误消息
         } else {
             return Result.ok(calculationFormula);
         }

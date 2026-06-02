@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -102,7 +102,7 @@ public class FileCryptoController {
         resultData.put("updateDescription", txtContent);          // 返回新版本的更新说明
         resultData.put("fileName", fileName);
         //版本解析成功
-        return ResponseEntity.ok(Result.ok(resultData).message(YamlMessageSource.getMessageStatic("00901001")));
+        return ResponseEntity.ok(Result.okCode(resultData, "00901001"));
     }
 
 
@@ -162,7 +162,7 @@ public class FileCryptoController {
             Result.fail(errorData)
                 .code(400)
                     //当前版本已存在，请核实升级版本
-                .message(YamlMessageSource.getMessageStatic("00901002"))
+                .message("00901002")
             );
         }
 
@@ -180,7 +180,7 @@ public class FileCryptoController {
         resultData.put("newVersion", parsedVersion);
         resultData.put("updateDescription", updateDescription);
         //导入并存储版本信息成功
-        return ResponseEntity.ok(Result.ok(resultData).message(YamlMessageSource.getMessageStatic("00901003")));
+        return ResponseEntity.ok(Result.okCode(resultData, "00901003"));
     }
 
 

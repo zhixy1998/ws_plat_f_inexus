@@ -9,17 +9,6 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
@@ -34,6 +23,15 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.RoleGroupUserTreeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
@@ -62,21 +60,21 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
             SysUserPO userPO = getUserByUserId(userId);
             if (userPO == null) {
                 //用户不存在或已禁用
-                return Result.fail(YamlMessageSource.getMessageStatic("00604001"));
+                return Result.fail("00D04001");
             }
 
             Integer userRoleId = userPO.getRoleId();
             if (userRoleId == null) {
                 log.warn("用户未分配角色，userId={}", userId);
                 //该用户未分配任何角色
-                return Result.fail(YamlMessageSource.getMessageStatic("00604002"));
+                return Result.fail("00D04002");
             }
 
             // -------------------------- 2. 查询用户所属角色，判断是否为超级管理员 --------------------------
             SysRolePO userRolePO = getRoleByRoleId(userRoleId);
             if (userRolePO == null) {
                 //用户所属角色不存在或已禁用
-                return Result.fail(YamlMessageSource.getMessageStatic("00604003"));
+                return Result.fail("00D04003");
             }
 
             // -------------------------- 3. 分场景处理：超级管理员 vs 普通用户 --------------------------
@@ -97,7 +95,7 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
         } catch (Exception e) {
             log.error("获取角色-组-用户树形异常：userId={}", userId, e);
             //"查询失败：" + e.getMessage()
-            return Result.fail(YamlMessageSource.getMessageStatic("0060300B",e.getMessage()));
+            return Result.fail("00D0300B",e.getMessage());
         }
     }
 

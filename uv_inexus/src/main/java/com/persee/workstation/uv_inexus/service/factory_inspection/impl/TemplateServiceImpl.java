@@ -94,19 +94,18 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             ExcelTemplate template = this.getOne(queryWrapper);
 
             if (template == null) {
-                return Result.fail("未找到模板: " + templateCode);
+                return Result.fail("0061301A", templateCode);
             }
 
-            // 从模板中获取字段列表（假设字段以逗号分隔存储在field_config字段中）
             String fieldConfig = template.getColumnConfig();
             if (fieldConfig == null || fieldConfig.isEmpty()) {
-                return Result.fail("模板字段配置为空");
+                return Result.fail("00613022");
             }
 
             List<String> headers = Arrays.asList(fieldConfig.split(","));
             return Result.ok(headers);
         } catch (Exception e) {
-            return Result.fail("获取字段列表失败: " + e.getMessage());
+            return Result.fail("00613023", e.getMessage());
         }
     }
 
@@ -124,7 +123,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 wrapper1.eq(ExcelTemplate::getTemplateName, request.getTemplateName());
                 ExcelTemplate one = this.getOne(wrapper1);
                 if (one != null) {
-                    return Result.fail("模板名称重复！！");
+                    return Result.fail("00613024");
                 }
 
                 // 创建新模板
@@ -204,12 +203,12 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 buildResultTemplate(template.getTemplateCode(), rowsNotInTemplate);
 
                 if (saved) {
-                    return Result.ok("模板创建成功");
+                    return Result.ok("00613025");
                 } else {
-                    return Result.fail("模板创建失败");
+                    return Result.fail("00613026");
                 }
             } catch (Exception e) {
-                return Result.fail("模板创建失败: " + e.getMessage());
+                return Result.fail("00613017", e.getMessage());
             }
         }
         if (StringUtils.equals(request.getType(), TEMPLATE_UPDATE.getCode())) {
@@ -217,16 +216,15 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             try {
                 // 参数校验
                 if (StringUtils.isBlank(request.getId())) {
-                    return Result.fail("模板ID不能为空");
+                    return Result.fail("00613027");
                 }
 
-                // 查找现有模板
                 ExcelTemplate existingTemplate = this.getById(request.getId());
                 if (existingTemplate == null) {
-                    return Result.fail("未找到要编辑的模板");
+                    return Result.fail("00613028");
                 }
                 if (StringUtils.equals(existingTemplate.getCategory(), TEMPLATE_BUILT_IN.getCode())) {
-                    return Result.fail("内置模板不允许编辑");
+                    return Result.fail("00613029");
                 }
                 // 更新模板信息
                 ExcelTemplate template = new ExcelTemplate();
@@ -262,15 +260,15 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                     }
                     excelDataAssetService.saveBatch(list);
 
-                    return Result.ok("模板编辑成功");
+                    return Result.ok("0061302A");
                 } else {
-                    return Result.fail("模板编辑失败");
+                    return Result.fail("0061302B");
                 }
             } catch (Exception e) {
-                return Result.fail("模板编辑失败: " + e.getMessage());
+                return Result.fail("0061302C", e.getMessage());
             }
         }
-        return Result.fail("未知错误");
+        return Result.fail("0061302D");
     }
 
     @Override
@@ -278,20 +276,19 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         try {
             // 参数校验
             if (request.getTemplateCode() == null || request.getTemplateCode().isEmpty()) {
-                return Result.fail("模板编码不能为空");
+                return Result.fail("00613018");
             }
 
             if (request.getSelectedFields() == null || request.getSelectedFields().isEmpty()) {
-                return Result.fail("选中字段不能为空");
+                return Result.fail("00613019");
             }
 
-            // 查找现有模板
             QueryWrapper<ExcelTemplate> queryWrapper = new QueryWrapper<>();
             queryWrapper.eq("template_code", request.getTemplateCode());
             ExcelTemplate existingTemplate = this.getOne(queryWrapper);
 
             if (existingTemplate == null) {
-                return Result.fail("未找到模板: " + request.getTemplateCode());
+                return Result.fail("0061301A", request.getTemplateCode());
             }
 
             // 更新字段配置（JSON格式）
@@ -308,12 +305,12 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             // 更新数据库
             boolean updated = this.updateById(existingTemplate);
             if (updated) {
-                return Result.ok("模板更新成功");
+                return Result.ok("0061302E");
             } else {
-                return Result.fail("模板更新失败");
+                return Result.fail("0061302F");
             }
         } catch (Exception e) {
-            return Result.fail("模板更新失败: " + e.getMessage());
+            return Result.fail("0061301B", e.getMessage());
         }
     }
 
@@ -527,7 +524,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         } finally {
             IOUtils.closeQuietly(workbook);
         }
-        return Result.fail("文件处理失败");
+        return Result.fail("00613030");
     }
 // ... existing code ...
 
@@ -818,7 +815,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         ExcelTemplate template = this.getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getTemplateCode, templateCode));
         TaskManagement one = taskManagementService.getOne(new LambdaQueryWrapper<TaskManagement>().eq(TaskManagement::getUseTemplate, template.getId()));
         if (one != null) {
-            return Result.fail("此模板正在使用中，请先删除任务！！！");
+            return Result.fail("00613031");
         }
 
         LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
@@ -845,7 +842,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 log.info("删除模板成功");
             }
         }
-        return b ? Result.ok() : Result.fail("内置模板，不可删除");
+        return b ? Result.ok() : Result.fail("00613032");
     }
 
     @Override
@@ -884,7 +881,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         wrapper.in(ExcelTemplate::getTemplateCode, list);
 
         boolean b = this.remove(wrapper);
-        return b ? Result.ok("删除成功") : Result.fail("删除失败");
+        return b ? Result.ok("00613033") : Result.fail("00613034");
     }
 
 
@@ -1023,7 +1020,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         } finally {
             IOUtils.closeQuietly(workbook);
         }
-        return Result.fail("文件处理失败");
+        return Result.fail("00613030");
     }
 
     // ... existing code ...
@@ -1059,10 +1056,9 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             // 【修复】先检查模板是否存在
             if (template == null) {
                 log.error("模板不存在，templateCode: {}", templateCode);
-                return Result.fail("模板不存在");
+                return Result.fail("00613020");
             }
 
-            // 【新增】如果是子模板，先从父模板复制黄色高亮列信息
             if (StringUtils.isNotBlank(template.getParentId())) {
                 log.info("检测到子模板，开始从父模板{}复制黄色高亮列信息", template.getParentId());
                 copyYellowColumnsFromParent(template.getParentId(), templateCode);
@@ -1070,7 +1066,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 
             // 直接加载当前模板的WorkbookData（每个模板创建时都有完整的初始数据）
             LambdaQueryWrapper<WorkbookData> workbookQueryWrapper = new LambdaQueryWrapper<>();
-            workbookQueryWrapper.eq(WorkbookData::getTaskId, templateCode)
+            workbookQueryWrapper.eq(WorkbookData::getTaskId, template.getParentId())
                     .orderByDesc(WorkbookData::getCreateTime)
                     .last("LIMIT 1");
 
@@ -1078,10 +1074,9 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 
             if (workbookData == null || workbookData.getWorkbookData() == null || workbookData.getWorkbookData().length == 0) {
                 log.error("模板{}没有有效的WorkbookData", templateCode);
-                return Result.fail("模板数据不存在");
+                return Result.fail("00613035");
             }
 
-            // 从字节数组创建workbook
             Workbook workbook;
             try (ByteArrayInputStream inputStream = new ByteArrayInputStream(workbookData.getWorkbookData())) {
                 workbook = new XSSFWorkbook(inputStream);
@@ -1089,7 +1084,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                         templateCode, workbookData.getWorkbookData().length, workbookData.getYellowHighlightedColumns());
             } catch (IOException e) {
                 log.error("转换字节数组到Workbook失败，templateCode: {}", templateCode, e);
-                return Result.fail("模板数据解析失败");
+                return Result.fail("00613036");
             }
 
             // 调用editExcel进行过滤和编辑
@@ -1097,7 +1092,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 
         } catch (Exception e) {
             log.error("构建结果模板失败", e);
-            return Result.fail("文件处理失败: " + e.getMessage());
+            return Result.fail("00613030", e.getMessage());
         }
     }
 
@@ -1518,23 +1513,20 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             templateQuery.eq("template_code", templateCode);
             ExcelTemplate template = getOne(templateQuery);
             if (template == null) {
-                return Result.fail("模板不存在");
+                return Result.fail("00613020");
             }
 
-            // 查询数据
-            // 查询数据时按 batchNo 排序
             QueryWrapper<ExcelDataAsset> dataQuery = new QueryWrapper<>();
             dataQuery.eq("template_code", templateCode);
             dataQuery.orderBy(true, true, "CAST(batch_no AS UNSIGNED)");
             List<ExcelDataAsset> dataList = excelDataAssetService.list(dataQuery);
             if (dataList.isEmpty()) {
-                return Result.fail("没有数据可以导出");
+                return Result.fail("00613037");
             }
 
-            // 获取列配置
             List<ExcelTemplate.ColumnConfig> columnConfigs = template.getColumnConfigList();
             if (columnConfigs == null || columnConfigs.isEmpty()) {
-                return Result.fail("模板列配置为空");
+                return Result.fail("00613038");
             }
 
             // 构建表头
@@ -1568,10 +1560,10 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             excelWriter.write(dataRows, writeSheet);
             excelWriter.finish();
 
-            return Result.ok("导出成功");
+            return Result.ok("00613039");
         } catch (Exception e) {
             log.error("导出Excel失败", e);
-            return Result.fail("导出失败: " + e.getMessage());
+            return Result.fail("0061303A", e.getMessage());
         }
     }
 
@@ -1583,10 +1575,9 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             templateQuery.eq("template_code", templateCode);
             ExcelTemplate template = getOne(templateQuery);
             if (template == null) {
-                return Result.fail("模板不存在");
+                return Result.fail("00613020");
             }
 
-            // 查询数据
             QueryWrapper<ExcelDataAsset> dataQuery = new QueryWrapper<>();
             dataQuery.eq("template_code", templateCode);
             List<ExcelDataAsset> dataList = excelDataAssetService.list(dataQuery);
@@ -1616,7 +1607,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             return Result.ok(structuredData);
         } catch (Exception e) {
             log.error("获取结构化数据失败", e);
-            return Result.fail("获取结构化数据失败: " + e.getMessage());
+            return Result.fail("0061303B", e.getMessage());
         }
     }
 
@@ -1651,12 +1642,11 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 // 获取结构化数据
                 Result<List<Map<String, Object>>> structuredDataResult = getStructuredData(excelTemplate.getTemplateCode());
                 if (structuredDataResult.getCode() != 200) {
-                    return Result.fail("获取数据失败: " + structuredDataResult.getMessage());
+                    return Result.fail("0061303C", structuredDataResult.getMessage());
                 }
 
                 List<Map<String, Object>> dataList = structuredDataResult.getData();
 
-                // 按指定字段分组
                 Map<String, List<Map<String, Object>>> groupedData = dataList.stream()
                         .collect(Collectors.groupingBy(
                                 map -> String.valueOf(map.getOrDefault(groupByField, "未知")),
@@ -1673,11 +1663,11 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 result.setCode(200);
                 return result;
             } else {
-                return Result.fail("未找到模板");
+                return Result.fail("0061303D");
             }
         } catch (Exception e) {
             log.error("获取分组数据失败", e);
-            return Result.fail("获取分组数据失败: " + e.getMessage());
+            return Result.fail("0061303E", e.getMessage());
         }
     }
 
@@ -1692,12 +1682,11 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             // 获取结构化数据
             Result<List<Map<String, Object>>> structuredDataResult = getStructuredData(templateCode);
             if (structuredDataResult.getCode() != 200) {
-                return Result.fail("获取数据失败: " + structuredDataResult.getMessage());
+                return Result.fail("0061303C", structuredDataResult.getMessage());
             }
 
             List<Map<String, Object>> dataList = structuredDataResult.getData();
 
-            // 按指定字段分组
             Map<String, List<Map<String, Object>>> groupedData = dataList.stream()
                     .collect(Collectors.groupingBy(
                             map -> String.valueOf(map.getOrDefault(TEST_CATEGORY.getDescription(), "未知")),
@@ -1731,7 +1720,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             return result;
         } catch (Exception e) {
             log.error("获取分组数据失败", e);
-            return Result.fail("获取分组数据失败: " + e.getMessage());
+            return Result.fail("0061303E", e.getMessage());
         }
     }
 
