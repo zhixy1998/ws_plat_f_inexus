@@ -12,10 +12,12 @@
 
 package com.persee.workstation.uv_inexus.controller.factory_inspection;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.component.ExcelDynamicMerger;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
 import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelImportService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.WorkbookDataService;
@@ -72,6 +74,12 @@ public class TemplateController {
         return excelImportService.importExcel(file);
     }
 
+//    //展示默认检定校准模板内容
+//    @GetMapping("/defaultTemplate")
+//    @ApiOperation("获取默认模板")
+//    public Result<TemplateDTO> getDefaultTemplate() {
+//        return templateService.getDefaultTemplate();
+//    }
     // 根据自定义检测模板code值来依据完整结果模板创建自定义检测结果模板
     @GetMapping("/buildResultTemplate")
     @ApiOperation("构建结果模板")
@@ -118,6 +126,15 @@ public class TemplateController {
         }else {
             return templateService.getGroupedData(templateCode, TEST_CATEGORY.getDescription(),checkCategory);
         }
+    }
+    @GetMapping("/defaultTemplate")
+    @ApiOperation("查看默认模板")
+    public Result<Map<String, List<Map<String, Object>>>> getGroupedData() {
+        LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ExcelTemplate::getStatus, "1")
+                .eq(ExcelTemplate::getCategory, "0");
+        ExcelTemplate template = templateService.getOne(queryWrapper);
+        return templateService.getGroupedData(template.getId(), TEST_CATEGORY.getDescription(),"checkCategory");
     }
 
 //    @GetMapping("/headers")
