@@ -33,17 +33,17 @@ spring:
         guide:
           url: jdbc:mysql://localhost:33066/t800_uv_inexus?useSSL=false&serverTimezone=UTC
           username: root
-          password: 123456
+          password: Px@13579!
           driver-class-name: com.mysql.cj.jdbc.Driver
         concise:
           url: jdbc:mysql://localhost:33066/t800_uv_inexus_concise?useSSL=false&serverTimezone=UTC
           username: root
-          password: 123456
+          password: Px@13579!
           driver-class-name: com.mysql.cj.jdbc.Driver
         factory_inspection:
           url: jdbc:mysql://localhost:33066/t800_uv_inexus_factory_inspection?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
           username: root
-          password: 123456
+          password: Px@13579!
           driver-class-name: com.mysql.cj.jdbc.Driver
   cache:
     type: jcache # 指定使用JSR-107标准缓存[3](@ref)[4](@ref)
