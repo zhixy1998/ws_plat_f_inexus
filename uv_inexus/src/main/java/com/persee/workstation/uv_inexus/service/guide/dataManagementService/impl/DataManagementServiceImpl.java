@@ -30,7 +30,6 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
@@ -999,7 +998,7 @@ public class DataManagementServiceImpl implements DataManagementService {
                     .le("create_time", now);
         }
         wrapper1.eq("is_delete", "0");
-//        wrapper1.ne("task_status", Constants.PARAM_TWO);  // 使用 ne 表示不等于
+        wrapper1.ne("task_status", Constants.PARAM_TWO);
         Long count = taskManagementMapper.selectCount(wrapper1);
 
         // 第二个查询：task_status == Constants.PARAM_TWO
