@@ -1109,7 +1109,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 // 发送错误响应而不是让异常传播
                 try {
                     JSONObject errorMsg = new JSONObject();
-                    errorMsg.put("error", "停止任务失败: " + e.getMessage());
+                    errorMsg.put("error", i18nMessageUtil.getMessage(e.getMessage()));
                     sendToActiveSession(session, taskId, errorMsg);
                 } catch (Exception sendError) {
                     log.error("发送错误消息也失败", sendError);
@@ -1153,7 +1153,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             } catch (Exception e) {
                 log.error("设置测量质量线失败", e);
                 JSONObject errorMsg = new JSONObject();
-                errorMsg.put("error", "设置测量质量线失败: " + e.getMessage());
+                errorMsg.put("error", i18nMessageUtil.getMessage(e.getMessage()));
                 sendToActiveSession(session, taskId, errorMsg);
             }
         }
@@ -1301,7 +1301,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 handleAutoInspection(session, taskId, updateBy);
             } catch (Exception e) {
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", e.getMessage());
+                jsonObject.put("error", i18nMessageUtil.getMessage(e.getMessage()));
                 sendToActiveSession(null, taskId, jsonObject);
                 setTaskMeasuring(taskId, false);
             }
@@ -1561,7 +1561,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         } catch (BusinessException e) {
                             log.error("设置任务测量状态失败，任务ID: {}", taskId, e);
                             JSONObject errorMsg = new JSONObject();
-                            errorMsg.put("error", "设置任务测量状态失败: " + e.getMessage());
+                            errorMsg.put("error", i18nMessageUtil.getMessage(e.getMessage()));
                             sendToActiveSession(session, taskId, errorMsg);
                         }
                         log.info("任务 {} 已被暂停，停止自动检测流程", taskId);
@@ -1631,10 +1631,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         }
 
                     } catch (Exception e) {
-                        //检测项。。。跳过，进行下一项测量
                         log.error("检测项: {},检测失败，进行下一个检测项测量>>>>>>>>>", asset.getId(), e);
                         JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("error", e.getMessage());
+                        jsonObject.put("error", i18nMessageUtil.getMessage(e.getMessage()));
                         sendToActiveSession(null, taskId, jsonObject);
                     }
                 }
@@ -2915,10 +2914,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     if (!operationDark1.getSuccess()) {
                         setTaskMeasuring(taskId, false);
                         JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("error", operationDark1.getMessage());
+                        jsonObject.put("error", i18nMessageUtil.getMessage(operationDark1.getMessage()));
                         sendToActiveSession(null, taskId, jsonObject);
                         return R.fail(map);
-//                        throw new BusinessException(operationDark1.getMessage());
                     }
                 } else {
 //                JSONObject jsonObject = new JSONObject();
@@ -2954,13 +2952,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     log.info("暗电流矫正结果-光谱：{}", operationDark);
                     this.realTimeEcho(taskId, "光谱-暗电流矫正结束");
                 } else {
-//                this.realTimeEcho(taskId, "光谱-"+operationDark.getMessage());
                     setTaskMeasuring(taskId, false);
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", operationDark.getMessage());
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operationDark.getMessage()));
                     sendToActiveSession(null, taskId, jsonObject);
                     return R.fail(map);
-//                    throw new BusinessException(operationDark.getMessage());
                 }
 
             }
@@ -3084,7 +3080,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             log.warn("设备测量失败-基线-切换样品池: {}, 错误: {}", deviceSerialNumber, operationDark1.getMessage());
                             setTaskMeasuring(taskId, false);
                             JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("error", "切换样品池失败-基线" + operationDark1.getMessage());
+                            jsonObject.put("error", i18nMessageUtil.getMessage(operationDark1.getMessage()));
                             sendToActiveSession(null, taskId, jsonObject);
                             return R.fail(map);
                         }
@@ -3305,7 +3301,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     log.warn("光谱扫描失败: {}, 错误: {}", deviceSerialNumber, operation.getMessage());
                     setTaskMeasuring(taskId, false);
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", "光谱扫描失败" + operation.getMessage());
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operation.getMessage()));
                     sendToActiveSession(null, taskId, jsonObject);
                     return R.fail(map);
                 }
@@ -3434,7 +3430,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             log.error("任务执行失败：", e);
             JSONObject jsonObject = new JSONObject();
-            jsonObject.put("error", e.getMessage());
+            jsonObject.put("error", i18nMessageUtil.getMessage(e.getMessage()));
             sendToActiveSession(null, taskId, jsonObject);
             map.put("line", list);
             return R.fail(map);
@@ -4053,10 +4049,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             e.printStackTrace();
             log.info("fsdgfasdgfsdgdsgdegtrg");
+            String translatedError = i18nMessageUtil.getMessage(e.getMessage());
             JSONObject jsonObject = new JSONObject();
-            jsonObject.put("error", e.getMessage());
+            jsonObject.put("error", translatedError);
             this.sendToActiveSession(null, taskId, jsonObject);
-            this.realTimeEcho(taskId, e.getMessage());
+            this.realTimeEcho(taskId, translatedError);
             setTaskMeasuring(taskId, false);
             throw new BusinessException(e.getMessage());
         }
@@ -4333,7 +4330,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 } else {
                     log.warn("时间扫描-切换样品池到黑挡块失败！");
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", operationDark3.getMessage());
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operationDark3.getMessage()));
                     sendToActiveSession(null, taskId, jsonObject);
                     setTaskMeasuring(taskId, false);
 //                    stopTask(taskId);
@@ -4410,10 +4407,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                isOk=false;
                     log.warn("时间扫描-暗电流矫正出错！");
                     setTaskMeasuring(taskId, false);
-//            stopTask(taskId);
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", operationDark.getMessage());
-                    errorMsg = operationDark.getMessage();
+                    String translatedMsg = i18nMessageUtil.getMessage(operationDark.getMessage());
+                    jsonObject.put("error", translatedMsg);
+                    errorMsg = translatedMsg;
                     boolean b = sendToActiveSession(null, taskId, jsonObject);
                     return R.fail(map);
                 }
@@ -4430,10 +4427,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             if (!operation.getSuccess()) {
                 log.warn("时间扫描-参数设置出错！");
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", operation.getMessage());
+                jsonObject.put("error", i18nMessageUtil.getMessage(operation.getMessage()));
                 sendToActiveSession(null, taskId, jsonObject);
                 setTaskMeasuring(taskId, false);
-//            stopTask(taskId);
                 return R.fail(map);
             } else {
                 realTimeEcho(taskId, "时间扫描-参数设置成功");
@@ -4526,7 +4522,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             } else {
                 log.warn("时间扫描-切换样品池到校零物质失败！");
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", operation4.getMessage());
+                jsonObject.put("error", i18nMessageUtil.getMessage(operation4.getMessage()));
                 sendToActiveSession(null, taskId, jsonObject);
                 setTaskMeasuring(taskId, false);
 //            stopTask(taskId);
@@ -4544,7 +4540,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             if (!zero.getSuccess()) {
                 log.warn("时间扫描-校零失败！");
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", zero.getMessage());
+                jsonObject.put("error", i18nMessageUtil.getMessage(zero.getMessage()));
                 sendToActiveSession(null, taskId, jsonObject);
                 setTaskMeasuring(taskId, false);
 //            stopTask(taskId);
@@ -5016,7 +5012,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 } else {
                     log.warn("切换样品池到黑挡块失败！");
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", operation3.getMessage());
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operation3.getMessage()));
                     sendToActiveSession(null, taskId, jsonObject);
                     setTaskMeasuring(taskId, false);
 //            stopTask(taskId);
@@ -5081,11 +5077,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 log.info("暗电流矫正结果：{}", operationDark);
                 if (!operationDark.getSuccess()) {
                     log.warn("暗电流矫正出错！");
-                    realTimeEcho(taskId, "暗电流矫正出错：" + operationDark.getMessage());
+                    realTimeEcho(taskId, "暗电流矫正出错：" + i18nMessageUtil.getMessage(operationDark.getMessage()));
                     setTaskMeasuring(taskId, false);
-//                stopTask(taskId);
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", operationDark.getMessage());
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operationDark.getMessage()));
                     boolean b = sendToActiveSession(null, taskId, jsonObject);
                     return R.fail(map);
                 }
@@ -5114,7 +5109,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             if (!operation.getSuccess()) {
                 log.warn("参数设置出错！");
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", operation.getMessage());
+                jsonObject.put("error", i18nMessageUtil.getMessage(operation.getMessage()));
                 sendToActiveSession(null, taskId, jsonObject);
                 setTaskMeasuring(taskId, false);
                 return R.fail(map);
@@ -5281,7 +5276,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         if (!measure.getSuccess()) {
             log.warn("测量出错！");
             JSONObject jsonObject = new JSONObject();
-            jsonObject.put("error", measure.getMessage());
+            jsonObject.put("error", i18nMessageUtil.getMessage(measure.getMessage()));
             sendToActiveSession(null, taskId, jsonObject);
             setTaskMeasuring(taskId, false);
             return R.fail(map);
