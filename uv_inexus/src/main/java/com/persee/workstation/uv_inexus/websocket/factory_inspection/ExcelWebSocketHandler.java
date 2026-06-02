@@ -3658,15 +3658,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             throw BusinessException.withCode("0061B001", luminosityMode);
         }
         log.info("光度模式：{}", anEnum.getName());
-//获取起始波长
         Double startWavelength = MapUtils.getDouble(dataMap, START_WAVELENGTH.getDescription());
-        //获取终止波长
         Double endWavelength = MapUtils.getDouble(dataMap, END_WAVELENGTH.getDescription());
-        //扫描间隔
         Double scanInterval = MapUtils.getDouble(dataMap, SCAN_INTERVAL.getDescription());
-        // 根据起始波长、终止波长和扫描间隔计算扫描点数
-        // 公式：总点数 = |终止波长 - 起始波长| / 扫描间隔 + 1
-        Double scanCount = Math.abs(endWavelength - startWavelength) / scanInterval + 1;
+        Double scanCount = null;
+        if (startWavelength != null && endWavelength != null && scanInterval != null && scanInterval > 0) {
+            scanCount = Math.abs(endWavelength - startWavelength) / scanInterval + 1;
+        }
 
 //        int actualTotalPoints;
 //        if (timeInterval != null && scanCount != null && timeInterval > 0) {
