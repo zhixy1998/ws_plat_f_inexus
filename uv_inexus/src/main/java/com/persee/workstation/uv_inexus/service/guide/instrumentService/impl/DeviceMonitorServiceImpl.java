@@ -20,7 +20,7 @@ import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceUsageCountDTO;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceMonitorEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceTaskStatusEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
@@ -315,7 +315,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
         }
         if (queryDto.getStartDateTime() != null && queryDto.getEndDateTime() != null && queryDto.getStartDateTime().isAfter(queryDto.getEndDateTime())) {
             log.warn("查询历史任务失败：开始时间不能大于结束时间");
-            throw new BusinessException("00205008");
+            throw BusinessException.withCode("00205008");
         }
 
         IPage<HistoryTaskVO> resultPage = tMeasureTaskMapper.selectHistoryTaskPage(page, queryDto);

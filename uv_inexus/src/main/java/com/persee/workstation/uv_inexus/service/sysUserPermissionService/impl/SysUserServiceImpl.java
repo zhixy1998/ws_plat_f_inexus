@@ -35,7 +35,7 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PasswordUpdateD
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
@@ -87,7 +87,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
         queryWrapper.eq("username", saveDTO.getUsername());
         if (baseMapper.selectCount(queryWrapper) > 0) {
             //用户名已存在
-            return Result.fail("00601001");
+            return Result.fail("00D01001");
         }
 
         saveDTO.setPassword(HmacMD5Util.hmacMD5(saveDTO.getPassword()));
@@ -100,7 +100,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
         SysGroupPO groupPO = sysGroupMapper.selectById(groupId);
         if (groupPO == null) {
             //该小组不存在，请刷新重试！
-            return Result.fail("00601002");
+            return Result.fail("00D01002");
         }
 
         // 3. 封装用户信息并保存
@@ -128,7 +128,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
         userGroupPO.setGroupId(groupId);  // 绑定小组ID
         sysUserGroupMapper.insert(userGroupPO);  // 保存关联关系
         //用户创建成功，已关联小组
-        return Result.ok("00601003");
+        return Result.ok("00D01003");
     }
 
 
@@ -151,7 +151,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
         SysGroupPO groupPO = sysGroupMapper.selectById(groupId);
         if (groupPO == null) {
             //该小组不存在，请刷新重试！
-            return Result.fail("00601002");
+            return Result.fail("00D01002");
         }
 
         // 3. 更新用户基本信息
@@ -178,7 +178,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
         userGroupPO.setGroupId(groupId);
         sysUserGroupMapper.insert(userGroupPO);  // 保存新关联
         //用户更新成功，已同步更新小组关联
-        return Result.ok("00601004");
+        return Result.ok("00D01004");
     }
 
     @Override
@@ -186,7 +186,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
     public Result<String> deleteBatch(List<String> ids) {
         if (ids == null || ids.isEmpty()) {
             //请选择需要删除的用户
-            return Result.fail("00601005");
+            return Result.fail("00D01005");
         }
 
         // 1. 先删除用户的小组关联（避免冗余数据）
@@ -199,7 +199,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
         // 2. 再删除用户
         baseMapper.deleteBatchIds(ids);
         //用户删除成功
-        return Result.ok("00601006");
+        return Result.ok("00D01006");
     }
 
     @Override
@@ -255,12 +255,12 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
         SysUserPO userPO = baseMapper.selectById(id);
         if (userPO == null) {
             //用户不存在，删除失败
-            return Result.fail("00601007");
+            return Result.fail("00D01007");
         }
 
         // 2. 校验不能删除自己
         if (id.equals(updateById)) {
-            return Result.fail("不能删除当前登录用户");
+            return Result.fail("00000050");
         }
 
         // 3. 先删除该用户的小组关联
@@ -271,7 +271,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
         // 4. 再删除用户
         baseMapper.deleteById(id);
         //用户删除成功
-        return Result.ok("00601006");
+        return Result.ok("00D01006");
     }
 
     @Override
@@ -286,19 +286,19 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
 
         // 2. 验证旧密码是否正确
         if (!StringUtils.equals(HmacMD5Util.hmacMD5(updateDTO.getOldPassword()), userPO.getPassword())) {
-            return Result.fail("00601008");
+            return Result.fail("00D01008");
         }
 
         // 3. 检查新密码是否与旧密码相同
         if (StringUtils.equals(HmacMD5Util.hmacMD5(updateDTO.getNewPassword()), userPO.getPassword())) {
             //新密码不能与旧密码相同
-            return Result.fail("00601009");
+            return Result.fail("00D01009");
         }
 
         // 4. 校验确认密码与新密码是否一致
         if (!updateDTO.getNewPassword().equals(updateDTO.getConfirmNewPassword())) {
             //新密码与确认密码不一致，请重新输入
-            return Result.fail("0060100A");
+            return Result.fail("00D0100A");
         }
 
         // 5. 更新密码
@@ -307,7 +307,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
         userPO.setUpdated(LocalDateTime.now());
         baseMapper.updateById(userPO);
         //密码修改成功
-        return Result.ok("0060100B");
+        return Result.ok("00D0100B");
     }
 
     @Override
@@ -326,7 +326,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
         // 3. 检查默认密码是否与当前密码相同
         if (StringUtils.equals(HmacMD5Util.hmacMD5(defaultPassword), userPO.getPassword())) {
             //当前密码已是默认密码，无需重置
-            return Result.fail("0060100C");
+            return Result.fail("00D0100C");
         }
 
         // 4. 更新密码（加密存储）
@@ -335,7 +335,7 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
         userPO.setUpdated(LocalDateTime.now());
         baseMapper.updateById(userPO);
         //密码已重置为默认值123456，请提醒用户及时修改
-        return Result.ok("0060100D");
+        return Result.ok("00D0100D");
     }
 
     @Override

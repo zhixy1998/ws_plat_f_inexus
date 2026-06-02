@@ -18,7 +18,7 @@ import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceTypeInfoDA
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInitEntryInfo;
@@ -182,7 +182,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
     @Override
     public R<Boolean> useDevice(String deviceSerialNumber, Integer status) {
         if (!StringUtils.hasText(deviceSerialNumber)){
-            return R.fail("仪器未连接");
+            return R.fail("00208008");
         }
         //
 
@@ -247,7 +247,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
     @Override
     public R<Boolean> newUseDevice(String deviceSerialNumber, Integer status) {
         if (!StringUtils.hasText(deviceSerialNumber)){
-            return R.fail("仪器未连接");
+            return R.fail("00208008");
         }
         //
 
@@ -472,15 +472,15 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
         DeviceMeasureVO ans = new DeviceMeasureVO();
 
-        ans.setBandWidth(deviceModelInfoPO.getSpacingWidth() == null ? null : deviceModelInfoPO.getSpacingWidth());
-        ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength() == null ? null : deviceModelInfoPO.getFilterWavelength());
-
         Integer devTypeId = deviceModelInfoPO.getDevTypeId();
 
         DeviceTypeInfoPO deviceTypeInfoPO = deviceTypeInfoDAO.selectById(devTypeId);
         ans = changeType(deviceTypeInfoPO);
-        ans.setBandWidth(deviceModelInfoPO.getSpacingWidth());
-        ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength());
+        BeanUtils.copyProperties(deviceModelInfoPO, ans);
+
+        ans.setBandWidth(deviceModelInfoPO.getSpacingWidth() == null ? null : deviceModelInfoPO.getSpacingWidth());
+        ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength() == null ? null : deviceModelInfoPO.getFilterWavelength());
+
         return R.ok(ans);
     }
 

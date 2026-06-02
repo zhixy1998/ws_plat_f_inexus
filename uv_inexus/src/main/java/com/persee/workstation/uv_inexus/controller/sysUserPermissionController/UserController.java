@@ -170,9 +170,9 @@ public class UserController {
     @ApiOperation("添加快捷导航")
     public Result<String> addQuickNavigation(@RequestBody Map<String, Object> quickNavigation) {
         if (sysUserService.addQuickNavigation(quickNavigation)) {
-            return Result.ok("快捷导航添加成功");
+            return Result.ok("00D03002");
         } else {
-            return Result.fail("快捷导航添加失败");
+            return Result.fail("00D03001");
         }
     }
 

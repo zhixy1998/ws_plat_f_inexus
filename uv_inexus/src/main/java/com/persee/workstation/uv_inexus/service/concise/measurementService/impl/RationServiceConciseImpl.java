@@ -557,7 +557,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             return R.fail("00102004",waveLengths.size());
         }
         if(!StringUtils.hasText(parameter.getChangeLampWaveLength())){
-            return R.fail("换灯波长不能为空");
+            return R.fail("00B08006");
         }
 
         if (StringUtils.hasText(parameter.getChangeLampWaveLength())) {
@@ -1116,19 +1116,19 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         if (!StringUtils.hasText(deviceSerialNumber)) {
             log.info("设备未连接,无需下发参数");
-            return R.fail("设备未连接,无需下发参数");
+            return R.fail("00B0A001");
         }
 
         FMeasureMethod fMeasureMethod = fMeasureMethodService.getById(methodId);
         if (fMeasureMethod == null) {
             log.warn("找不到对应的测量方法: methodId={}", methodId);
-            return R.fail("找不到对应的测量方法");
+            return R.fail("00B0A002");
         }
 
         FRationParameter parameter = JSON.parseObject(fMeasureMethod.getMeasurementParamInfo(), FRationParameter.class);
         if (parameter == null) {
             log.warn("解析测量参数失败: methodId={}, json={}", methodId, fMeasureMethod.getMeasurementParamInfo());
-            return R.fail("解析测量参数失败");
+            return R.fail("00B0A003");
         }
         DeviceInfoPO info = deviceInfoService.getInfo(deviceSerialNumber);
         if (info != null && info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
@@ -1156,7 +1156,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                 if (!operation.getSuccess()) {
                     log.info("设置参数失败");
-                    return R.fail("设置参数失败");
+                    return R.fail("00B0800E");
                 }
             } catch (Exception e) {
                 log.info("参数设置异常");
@@ -1517,10 +1517,10 @@ public class RationServiceConciseImpl implements RationConciseService {
             String jsonString = JSON.toJSONString(map);
             FSampleVO sampleDto = JSON.parseObject(jsonString, FSampleVO.class);
             if (sampleDto.getSampleNumber()!=null&&sampleDto.getSampleNumber().length()>256){
-                return Result.fail("新增样品编号超出限制");
+                return Result.fail("00B0800F");
             }
             if (sampleDto.getSampleName()!=null&&sampleDto.getSampleName().length()>256){
-                return Result.fail("新增样品名称超出限制");
+                return Result.fail("00B08010");
             }
         }
 
@@ -2048,7 +2048,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         R<OperationResultEntity> r = operationUtilService.operation(inputParam);
 
         if (r.getSuccess()) {
-            return Result.ok("设置参数成功");
+            return Result.ok("00B08010");
         } else {
             return Result.fail(r.getMessage());
         }
@@ -3175,7 +3175,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
             if (value == Double.MIN_VALUE) {
                 //未找到对应波长数据
-                return R.fail("0030300E");
+                return R.fail("00B0300E");
             }
             if (i < lengthParams.size()) {
                 value = value * Double.parseDouble(lengthParams.get(i));
@@ -3208,7 +3208,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
             if (value == Double.MIN_VALUE) {
                 //未找到对应波长数据
-                return R.fail("0030300E");
+                return R.fail("00B0300E");
             }
             if (i < lengthParams.size()) {
                 value = value * Double.parseDouble(lengthParams.get(i));
@@ -4115,7 +4115,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (equation == null) {
             log.info("数据拟合失败");
             //曲线拟合失败
-            return R.fail("0030300F");
+            return R.fail("00B0300F");
         }
 
         //修约
@@ -5077,7 +5077,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (!StringUtils.hasText(task.getSampleKey())) {
             log.info("没有样品");
             //"没有样品"
-            return R.fail("00303010");
+            return R.fail("00B03010");
         }
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
@@ -5168,7 +5168,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                     FRationCountDataInfo value = getAbsValue(taskId, sample.getId(), data.getId(), empty);
                     if (value == null) {
                         //数据处理出错且没有找到旧数据，处理失败
-                        return R.fail("00303010");
+                        return R.fail("00B03010");
                     }
                     fitCurveData.add(value);
                     fitCurveParams.add(sample.getNormalConcentration());
@@ -5185,7 +5185,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                     FRationCountDataInfo value = getAbsValue(taskId, sample.getId(), data.getId(), empty);
                     if (value == null) {
                         //数据处理出错且没有找到旧数据，处理失败
-                        return R.fail("00303011");
+                        return R.fail("00B03011");
                     }
                     fitCurveData.add(value);
                     fitCurveParams.add(sample.getNormalConcentration());
@@ -5304,7 +5304,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (!StringUtils.hasText(task.getSampleKey())) {
             log.info("没有样品");
             //没有样品
-            return R.fail("00303010");
+            return R.fail("00B03010");
         }
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
@@ -5843,7 +5843,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
         if (!StringUtils.hasText(sampleKind)) {
             //未选择样品种类
-            return R.fail("00303012");
+            return R.fail("00B03012");
         }
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
@@ -5877,7 +5877,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
         if (!StringUtils.hasText(snapshotDTO.getSampleKind())) {
             //未选择样品种类
-            return R.fail("00303012");
+            return R.fail("00B03012");
         }
 
         FMeasureTask task = fMeasureTaskService.getById(snapshotDTO.getTaskId());
@@ -5913,7 +5913,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         } else {
             log.info("样品种类有误");
             //样品种类有误
-            return R.fail("00303013");
+            return R.fail("00B03013");
         }
 
         task.setTableInfo(JSON.toJSONString(shot));
@@ -5997,12 +5997,12 @@ public class RationServiceConciseImpl implements RationConciseService {
         Result<FRationSampleDataVO> sampleDataResult = querySampleData(queryDataDTO);
         if (!sampleDataResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
             //"查询样品数据失败：" + sampleDataResult.getMessage()
-            return R.fail("00303014", sampleDataResult.getMessage());
+            return R.fail("00B03014", sampleDataResult.getMessage());
         }
         FRationSampleDataVO dataVO = sampleDataResult.getData();
         if (dataVO == null) {
             //样品数据为空
-            return R.fail("00303015");
+            return R.fail("00B03015");
         }
 
         // 4. 数据处理（仅加类型标识）
@@ -6049,7 +6049,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 file.delete();
             }
             //"文件生成失败：" + e.getMessage()
-            return R.fail("00302006",e.getMessage());
+            return R.fail("00B02006",e.getMessage());
         }
     }
 
@@ -6131,12 +6131,12 @@ public class RationServiceConciseImpl implements RationConciseService {
         Result<FRationSampleDataVO> sampleDataResult = querySampleData(queryDataDTO);
         if (!sampleDataResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
             //"查询样品数据失败：" + sampleDataResult.getMessage()
-            return R.fail("00303014", sampleDataResult.getMessage());
+            return R.fail("00B03014", sampleDataResult.getMessage());
         }
         FRationSampleDataVO dataVO = sampleDataResult.getData();
         if (dataVO == null) {
             //样品数据为空
-            return R.fail("00303015");
+            return R.fail("00B03015");
         }
 
         // 4. 处理children数据（展开children到主数据中）
@@ -6232,7 +6232,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 file.delete();
             }
             //"文件生成失败：" + e.getMessage()
-            return R.fail("00302006",e.getMessage());
+            return R.fail("00B02006",e.getMessage());
         }
     }
 

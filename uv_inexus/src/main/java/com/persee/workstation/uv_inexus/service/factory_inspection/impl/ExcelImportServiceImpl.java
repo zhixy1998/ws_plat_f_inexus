@@ -1150,7 +1150,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
             return Result.ok(result);
         } catch (Exception e) {
             log.error("导入Excel失败", e);
-            return Result.fail("导入失败: " + e.getMessage());
+            return Result.fail("0061A001", e.getMessage());
         }
     }
 // ... existing code ...

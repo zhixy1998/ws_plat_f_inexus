@@ -11,7 +11,7 @@ package com.persee.workstation.uv_inexus.controller.guide.parseReport;
 
 import java.io.IOException;
 
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

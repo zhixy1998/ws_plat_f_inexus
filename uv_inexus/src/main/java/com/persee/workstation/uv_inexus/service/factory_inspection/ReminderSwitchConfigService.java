@@ -39,7 +39,7 @@ public interface ReminderSwitchConfigService extends IService<ReminderSwitchConf
      * @param reminderType 1-期间核查提醒 4-标准物质效期提醒
      */
     boolean isReminderTypeEnabled(Integer reminderType);
-
+    Integer getNotificationMode(Integer reminderType);
     /**
      * 初始化默认配置
      */

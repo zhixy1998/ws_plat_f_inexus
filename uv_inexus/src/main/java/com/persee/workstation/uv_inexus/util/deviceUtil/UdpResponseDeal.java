@@ -208,7 +208,7 @@ public class UdpResponseDeal {
         if (responses == null || responses.isEmpty()) {
             result = "false"; // 设置全局变量
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("回应报文为空！");
+            resultEntity.setErrorCode("0020A015");
             return resultEntity;
         }
 
@@ -369,14 +369,15 @@ public class UdpResponseDeal {
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("无响应");
+            resultEntity.setErrorCode("0020A016");
             return resultEntity;
         }
 
         if (sendBytes == null || sendBytes.length < 5) {
             System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("发送报文长度不足5字节，实际长度: " + sendBytes.length);
+            resultEntity.setErrorCode("0020A017");
+            resultEntity.setErrorArgs(new Object[]{sendBytes.length});
             return resultEntity;
         }
 
@@ -384,7 +385,8 @@ public class UdpResponseDeal {
         if (lastResponse == null || lastResponse.length < 5) {
             System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("回应报文长度不足5字节，实际长度: " + sendBytes.length);
+            resultEntity.setErrorCode("0020A018");
+            resultEntity.setErrorArgs(new Object[]{sendBytes.length});
             return resultEntity;
         }
 
@@ -486,7 +488,7 @@ public class UdpResponseDeal {
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("回应列表为空");
+            resultEntity.setErrorCode("0020A019");
             return resultEntity;
         }
 
@@ -516,7 +518,7 @@ public class UdpResponseDeal {
             if (resultList.isEmpty()) {
                 System.out.println("未解析到有效 StepPoint 数据");
                 resultEntity.setIsSuccess(false);
-                resultEntity.setErrorMsg("未解析到有效 StepPoint 数据");
+                resultEntity.setErrorCode("0020A01A");
             } else {
                 System.out.println("WlList 解析结果：" + resultList);
                 resultEntity.setIsSuccess(true);
@@ -529,7 +531,8 @@ public class UdpResponseDeal {
         } catch (Exception e) {
             System.out.println("WlList 解析异常: " + e.getMessage());
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("解析异常: " + e.getMessage());
+            resultEntity.setErrorCode("0020A01B");
+            resultEntity.setErrorArgs(new Object[]{e.getMessage()});
             return resultEntity;
         }
     }
@@ -540,7 +543,7 @@ public class UdpResponseDeal {
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("回应列表为空");
+            resultEntity.setErrorCode("0020A019");
             return resultEntity;
         }
 
@@ -553,10 +556,9 @@ public class UdpResponseDeal {
                     continue;
                 }
 
-                int cmdType1 = resp[2] & 0xFF; // 第3个字节（索引2）
-                int cmdType = resp[3] & 0xFF;   // 第4个字节（索引3）
+                int cmdType1 = resp[2] & 0xFF;
+                int cmdType = resp[3] & 0xFF;
 
-                // 满足条件：第3字节为19 或 第4字节为10 时解析
                 if (cmdType1 == 19 || cmdType == 10) {
                     int n = resp[5] & 0xFF;
 
@@ -570,12 +572,12 @@ public class UdpResponseDeal {
             if (resultList.isEmpty()) {
                 System.out.println("未解析到有效 StepPoint 数据");
                 resultEntity.setIsSuccess(false);
-                resultEntity.setErrorMsg("未解析到有效 StepPoint 数据");
+                resultEntity.setErrorCode("0020A01A");
             } else {
                 System.out.println("WlList 解析结果：" + resultList);
                 resultEntity.setIsSuccess(true);
                 resultEntity.setErrorMsg(null);
-                resultEntity.setStepPoints(resultList);  // 使用新增字段 stepPoints
+                resultEntity.setStepPoints(resultList);
             }
 
             return resultEntity;
@@ -583,7 +585,8 @@ public class UdpResponseDeal {
         } catch (Exception e) {
             System.out.println("WlList 解析异常: " + e.getMessage());
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("解析异常: " + e.getMessage());
+            resultEntity.setErrorCode("0020A01B");
+            resultEntity.setErrorArgs(new Object[]{e.getMessage()});
             return resultEntity;
         }
     }
@@ -597,7 +600,7 @@ public class UdpResponseDeal {
         if (responses == null || responses.isEmpty()) {
             result = "false"; // 设置全局变量
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("回应报文为空！");
+            resultEntity.setErrorCode("0020A015");
             return resultEntity;
         }
 
@@ -725,7 +728,7 @@ public class UdpResponseDeal {
 
         if (responses == null || responses.isEmpty()) {
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("回应为空，无法解析 Zero");
+            resultEntity.setErrorCode("0020A01C");
             return resultEntity;
         }
 
@@ -785,7 +788,7 @@ public class UdpResponseDeal {
 
             if (!hasWlS && !hasDR) {
                 resultEntity.setIsSuccess(false);
-                resultEntity.setErrorMsg("未解析到 Zero 测量数据");
+                resultEntity.setErrorCode("0020A01D");
                 return resultEntity;
             }
 
@@ -795,7 +798,8 @@ public class UdpResponseDeal {
 
         } catch (Exception e) {
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("Zero 解析异常：" + e.getMessage());
+            resultEntity.setErrorCode("0020A01B");
+            resultEntity.setErrorArgs(new Object[]{e.getMessage()});
             return resultEntity;
         }
     }
@@ -806,7 +810,7 @@ public class UdpResponseDeal {
 
         if (responses == null || responses.isEmpty()) {
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("回应报文为空，无法解析 Scan");
+            resultEntity.setErrorCode("0020A01E");
             return resultEntity;
         }
 
@@ -856,7 +860,7 @@ public class UdpResponseDeal {
 
             if (param.isEmpty()) {
                 resultEntity.setIsSuccess(false);
-                resultEntity.setErrorMsg("未解析到有效 Scan 数据");
+                resultEntity.setErrorCode("0020A01F");
                 return resultEntity;
             }
 
@@ -866,7 +870,8 @@ public class UdpResponseDeal {
 
         } catch (Exception e) {
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("解析 Scan 报文异常：" + e.getMessage());
+            resultEntity.setErrorCode("0020A020");
+            resultEntity.setErrorArgs(new Object[]{e.getMessage()});
             return resultEntity;
         }
     }
@@ -953,7 +958,7 @@ public class UdpResponseDeal {
 
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应为空，无法解析 measure");
-            resultEntity.setErrorMsg("回应为空，无法解析 measure");
+            resultEntity.setErrorCode("0020A021");
             resultEntity.setIsSuccess(false);
             return resultEntity;
         }
@@ -1019,7 +1024,7 @@ public class UdpResponseDeal {
             if (hasWlS || hasDR) {
                 resultEntity.setMeasureResult(param);
             } else {
-                resultEntity.setErrorMsg("未解析到 measure 测量数据");
+                resultEntity.setErrorCode("0020A022");
                 resultEntity.setIsSuccess(false);
             }
 
@@ -1038,7 +1043,7 @@ public class UdpResponseDeal {
 
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应为空，无法解析 measure");
-            resultEntity.setErrorMsg("回应为空，无法解析 measure");
+            resultEntity.setErrorCode("0020A021");
             resultEntity.setIsSuccess(false);
             return resultEntity;
         }
@@ -1104,7 +1109,7 @@ public class UdpResponseDeal {
             if (hasWlS || hasDR) {
                 resultEntity.setMeasureResult(param);
             } else {
-                resultEntity.setErrorMsg("未解析到 measure 测量数据");
+                resultEntity.setErrorCode("0020A022");
                 resultEntity.setIsSuccess(false);
             }
 
@@ -1121,7 +1126,7 @@ public class UdpResponseDeal {
 
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应为空，无法解析 measure");
-            resultEntity.setErrorMsg("回应为空，无法解析 measure");
+            resultEntity.setErrorCode("0020A021");
             resultEntity.setIsSuccess(false);
             return resultEntity;
         }
@@ -1189,7 +1194,7 @@ public class UdpResponseDeal {
             if (hasWlS || hasDR) {
                 resultEntity.setMeasureResult(param);
             } else {
-                resultEntity.setErrorMsg("未解析到 measure 测量数据");
+                resultEntity.setErrorCode("0020A022");
                 resultEntity.setIsSuccess(false);
             }
 
@@ -1321,14 +1326,15 @@ public class UdpResponseDeal {
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("无响应");
+            resultEntity.setErrorCode("0020A016");
             return resultEntity;
         }
 
         if (sendBytes == null || sendBytes.length < 5) {
             System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("发送报文长度不足5字节，实际长度: " + sendBytes.length);
+            resultEntity.setErrorCode("0020A017");
+            resultEntity.setErrorArgs(new Object[]{sendBytes.length});
             return resultEntity;
         }
 
@@ -1336,7 +1342,8 @@ public class UdpResponseDeal {
         if (lastResponse == null || lastResponse.length < 5) {
             System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            resultEntity.setErrorCode("0020A018");
+            resultEntity.setErrorArgs(new Object[]{lastResponse == null ? 0 : lastResponse.length});
             return resultEntity;
         }
 
@@ -1350,21 +1357,19 @@ public class UdpResponseDeal {
         return resultEntity;
     }
 
-    /**
-     * 设置光度模式
-     */
     private static OperationResultEntity parseMode(List<byte[]> responses, byte[] sendBytes) {
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("无响应");
+            resultEntity.setErrorCode("0020A016");
             return resultEntity;
         }
 
         if (sendBytes == null || sendBytes.length < 5) {
             System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("发送报文长度不足5字节，实际长度: " + sendBytes.length);
+            resultEntity.setErrorCode("0020A017");
+            resultEntity.setErrorArgs(new Object[]{sendBytes.length});
             return resultEntity;
         }
 
@@ -1372,14 +1377,14 @@ public class UdpResponseDeal {
         if (lastResponse == null || lastResponse.length < 5) {
             System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
             resultEntity.setIsSuccess(false);
-            resultEntity.setErrorMsg("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            resultEntity.setErrorCode("0020A018");
+            resultEntity.setErrorArgs(new Object[]{lastResponse == null ? 0 : lastResponse.length});
             return resultEntity;
         }
 
         boolean isEqual = lastResponse[2] == sendBytes[2] &&
                 lastResponse[3] == sendBytes[3] &&
                 lastResponse[4] == sendBytes[4];
-        //设置光度模式时，实时更新共享变量
         int mode = lastResponse[4] & 0xFF;
         if (!String.valueOf(mode).equals(DetectionConstants.luminosity)) {
             DetectionConstants.luminosity = String.valueOf(mode);

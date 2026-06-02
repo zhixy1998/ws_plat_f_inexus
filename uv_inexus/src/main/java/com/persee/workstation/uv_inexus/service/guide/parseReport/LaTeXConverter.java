@@ -80,7 +80,7 @@ public class LaTeXConverter {
 
             } catch (Exception e) {
                 // 捕获处理单个公式时可能发生的任何意外错误
-                return R.fail("处理 " + currentFormulaIdentifier + " 时出错: " + e.getMessage());
+                return R.fail("00520001", currentFormulaIdentifier, e.getMessage());
             }
         }
 

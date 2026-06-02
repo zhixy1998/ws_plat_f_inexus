@@ -30,7 +30,7 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupSaveDTO;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPermissionPO;
@@ -89,19 +89,19 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
                 .eq("role_id", saveDTO.getRoleId());Long count = baseMapper.selectCount(nameCheckWrapper);
         if (count > 0) {
             //小组名已存在，请更改
-            return Result.fail("00602001");
+            return Result.fail("00D02001");
         }
 
         // 2. 校验角色是否存在
         String roleId = saveDTO.getRoleId();
         if (roleId == null || roleId.isEmpty()) {
             //角色ID不能为空
-            return Result.fail("00602002");
+            return Result.fail("00D02002");
         }
         SysRolePO rolePO = sysRoleMapper.selectById(roleId);
         if (rolePO == null) {
             //该角色不存在，请刷新重试！
-            return Result.fail("00602003");
+            return Result.fail("00D02003");
         }
 
         // 3. 封装小组信息并保存
@@ -137,7 +137,7 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         // ========== 新增逻辑结束 ==========
 
         //小组创建成功，已关联角色
-        return Result.ok("00602004");
+        return Result.ok("00D02004");
     }
 
     // 修改小组：校验角色存在性并更新关联
@@ -148,19 +148,19 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         SysGroupPO groupPO = baseMapper.selectById(saveDTO.getId());
         if (groupPO == null) {
             //小组不存在
-            return Result.fail("00602005");
+            return Result.fail("00D02005");
         }
 
         // 2. 校验角色是否存在
         String roleId = saveDTO.getRoleId();
         if (roleId == null || roleId.isEmpty()) {
             //角色ID不能为空
-            return Result.fail("00602002");
+            return Result.fail("00D02002");
         }
         SysRolePO rolePO = sysRoleMapper.selectById(roleId);
         if (rolePO == null) {
             //该角色不存在，请刷新重试！
-            return Result.fail("00602003");
+            return Result.fail("00D02003");
         }
 
         // 3. 更新小组信息（包含角色ID）
@@ -175,7 +175,7 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
             boolean b=sysUserService.updateUserStatusByGroupStatus(userIds, saveDTO.getStatus());
         }
         //小组更新成功，已同步更新角色关联
-        return Result.ok("00602006");
+        return Result.ok("00D02006");
     }
 
     // 批量删除小组
@@ -184,7 +184,7 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
     public Result<String> deleteBatch(List<String> ids) {
         if (ids == null || ids.isEmpty()) {
             //请选择需要删除的小组
-            return Result.fail("00602007");
+            return Result.fail("00D02007");
         }
 
         // 1. 查询这些组下的所有用户ID
@@ -204,7 +204,7 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         
         baseMapper.deleteBatchIds(ids);
         //小组删除成功
-        return Result.ok("00602008");
+        return Result.ok("00D02008");
     }
 
     // 根据ID查询小组
@@ -213,7 +213,7 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         SysGroupPO groupPO = baseMapper.selectById(id);
         if (groupPO == null) {
             //小组不存在
-            return Result.fail("00602005");
+            return Result.fail("00D02005");
         }
         return Result.ok(groupPO);
     }
@@ -224,7 +224,7 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
     public Result<String> deleteById(String id) {
         SysGroupPO groupPO = baseMapper.selectById(id);
         if (groupPO == null) {
-            return Result.fail("00602009");
+            return Result.fail("00D02009");
         }
 
         // 1. 查询该组下的所有用户ID
@@ -244,6 +244,6 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         
         baseMapper.deleteById(id);
         //小组删除成功
-        return Result.ok("00602008");
+        return Result.ok("00D02008");
     }
 }

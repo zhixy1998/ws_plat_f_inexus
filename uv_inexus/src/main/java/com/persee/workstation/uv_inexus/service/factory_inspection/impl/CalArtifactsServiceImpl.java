@@ -55,13 +55,13 @@ public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, Cal
 
                     // 使用正则表达式严格校验数字格式
                     if (!value.matches("^-?\\d+(\\.\\d+)?([eE][+-]?\\d+)?$")) {
-                        return Result.fail("特征值第" + (i + 1) + "项格式不正确，请检查输入格式是否正确");
+                        return Result.fail("00619002", i + 1);
                     }
 
                     try {
                         characteristicValue[i] = String.valueOf(Double.parseDouble(value));
                     } catch (Exception e) {
-                        return Result.fail("特征值第" + (i + 1) + "项不是数字，请检查输入格式是否正确");
+                        return Result.fail("00616001", i + 1);
                     }
                 }
             }
@@ -76,13 +76,13 @@ public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, Cal
 
                     // 使用正则表达式严格校验数字格式
                     if (!value.matches("^-?\\d+(\\.\\d+)?([eE][+-]?\\d+)?$")) {
-                        return Result.fail("标准值第" + (i + 1) + "项格式不正确，请检查输入格式是否正确");
+                        return Result.fail("00619003", i + 1);
                     }
 
                     try {
                         standardValue[i] = String.valueOf(Double.parseDouble(value));
                     } catch (Exception e) {
-                        return Result.fail("标准值第" + (i + 1) + "项不是数字，请检查输入格式是否正确");
+                        return Result.fail("00616002", i + 1);
                     }
                 }
             }
@@ -138,13 +138,13 @@ public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, Cal
         try {
             List<String> list = ids.getIds();
             if (CollectionUtils.isEmpty(list)) {
-                return Result.warn("请选择要删除的记录");
+                return Result.warn("00619005");
             }
             boolean b = this.removeByIds(list);
             if (b) {
-                return Result.ok("删除成功");
+                return Result.ok("00D01011");
             } else {
-                return Result.warn("删除失败");
+                return Result.warn("00619004");
             }
         } catch (Exception e) {
             log.error("删除失败", e);

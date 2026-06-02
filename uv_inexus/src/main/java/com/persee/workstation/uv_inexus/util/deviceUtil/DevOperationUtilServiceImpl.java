@@ -296,33 +296,33 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     public R<OperationResultEntity> operation(DevOperationInputParam inputParam) {
 
         if (inputParam == null) {
-            return R.fail("缺少入参！");
+            return R.fail("00209001");
         }
 
         if (inputParam.getOperationType() == null) {
-            return R.fail("缺少操作类型！");
+            return R.fail("00209002");
         }
         OperationTypeEnums anEnum = OperationTypeEnums.getEnum(inputParam.getOperationType());
         if (anEnum == null) {
-            return R.fail("未找到该操作！");
+            return R.fail("00209003");
         }
 
         String deviceSerialNumber = inputParam.getDeviceSerialNumber();
 
         if (!StringUtils.hasText(deviceSerialNumber)) {
             if (!inputParam.getOperationType().equals(OperationTypeEnums.Find.getType()) && !inputParam.getOperationType().equals(OperationTypeEnums.Connect.getType())) {
-                return R.fail("请先连接仪器！");
+                return R.fail("00209004");
             }
         } else {
 
             DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
             if (info == null || !StringUtils.hasText(info.getDeviceId())) {
-                return R.fail("请先连接仪器！");
+                return R.fail("00209004");
             }
 
             DeviceConnectInfo device = deviceManager.getDevice(info.getDeviceId());
             if (device == null) {
-                return R.fail("请先连接仪器！");
+                return R.fail("00209004");
             }
 
             Integer devStatus = OperationTypeEnums.getEnum(inputParam.getOperationType()).getStatus();
@@ -475,7 +475,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             if (!calibration.getSuccess()) {
                 //TODO 国际化待定
 
-                return R.fail("汞灯定位失败");
+                return R.fail("00209005");
             }
 
             resultEntity = (OperationResultEntity) calibration.getData();
@@ -573,7 +573,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             if (!calibration.getSuccess()) {
                 //TODO 国际化待定
 
-                return R.fail("设置波长列表失败");
+                return R.fail("00209006");
             }
 
 
@@ -589,7 +589,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         result.setDeviceSerialNumber(inputParam.getDeviceSerialNumber());
         List<WorkTimeInfo> workTimeInfo = inputParam.getWorkTimeInfo();
         if (workTimeInfo == null || workTimeInfo.isEmpty()) {
-            return R.fail("当前仪器无法统计时间！");
+            return R.fail("00209007");
         }
 
 
@@ -774,7 +774,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 stop = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
             }
             if (!stop.getSuccess()) {
-                return R.fail("停止失败！");
+                return R.fail("00209008");
             }
         }
         return R.ok();
@@ -801,48 +801,41 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         // 校验连接状态
         String macAddress = "";
         if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(inputParam.getConnectType())) {
-            // 串口
         } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(inputParam.getConnectType())) {
             macAddress = connectUtil.getWifiMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查 WIFI 连接！");
+                return R.fail("00209009");
             }
         } else {
             macAddress = connectUtil.getEthernetMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查网线连接！");
+                return R.fail("0020900A");
             }
         }
 
         Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
 
-        /* ================= 2. 参数 → Command 自动转换 ================= */
-
         List<Command> commandList = new ArrayList<>();
 
         for (GetParam e : GetParam.values()) {
             Object value = getFieldValueByGetter(inputParam.getParam(), e.getParamField());
-//            Object value = getFieldValueByGetter(inputParam.getReadValue(), e.getParamField());
             if (value != null) {
 
                 Object[] paramArray = new Object[]{value};
-                // 构造 Command
                 commandList.add(new Command(e.getCmdId(), paramArray));
             }
         }
 
         if (commandList.isEmpty()) {
-            return R.fail("未传入任何可读取参数");
+            return R.fail("0020900B");
         }
 
-
-        /* ================= 3. 顺序下发指令 ================= */
 
         for (Command command : commandList) {
 
             Transition transition = xml.get(command.getCmdId());
             if (transition == null) {
-                return R.fail("未找到指令定义：" + command.getCmdId());
+                return R.fail("0020900C", command.getCmdId());
             }
 
             byte[] sendBytes = protocolItemUtil.calcSendBytes(
@@ -877,7 +870,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
 
             if (!result.getSuccess()) {
-                return R.fail("，指令：" + command.getCmdId());
+                return R.fail("0020900D", command.getCmdId());
             }
         }
 
@@ -885,14 +878,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         return R.ok(resultEntity);
     }
 
-    //     修改 executeAction 方法中的线程管理逻辑
     private R<OperationResultEntity> executeAction(
             DevOperationInputParam inputParam
     ) {
 
         boolean isDealOnTime = false;
-
-        /* ================= 1. 设备上下文准备（与 setParam 统一） ================= */
 
         String deviceSerialNumber = inputParam.getDeviceSerialNumber();
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
@@ -905,14 +895,13 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             inputParam.setConnectType(DeviceConnectTypeEnum.ETHERNET.getConnectType());
         }
 
-        // 连接校验
         if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(connectType)) {
             if (!StringUtils.hasText(connectUtil.getWifiMacAddress())) {
-                return R.fail("请检查 WIFI 连接！");
+                return R.fail("00209009");
             }
         } else if (DeviceConnectTypeEnum.ETHERNET.getConnectType().equals(connectType)) {
             if (!StringUtils.hasText(connectUtil.getEthernetMacAddress())) {
-                return R.fail("请检查网线连接！");
+                return R.fail("0020900A");
             }
         }
 
@@ -924,7 +913,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         Transition transition = xml.get(cmdId);
         if (transition == null) {
-            return R.fail("未找到指令定义：" + cmdId);
+            return R.fail("0020900C", cmdId);
         }
 
         // 无参数动作
@@ -982,10 +971,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         SetParam setParam = inputParam.getParam();
 
         if (setParam == null) {
-            return R.fail("请设置参数！");
+            return R.fail("0020900E");
         }
-
-        /* ================= 1. 设备上下文准备 ================= */
 
         String deviceSerialNumber = inputParam.getDeviceSerialNumber();
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
@@ -994,24 +981,21 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         Integer connectType = device.getConnectType();
         String xmlKey = device.getXmlKey();
 
-        // 默认连接方式：网口
         if (inputParam.getConnectType() == null) {
             inputParam.setConnectType(DeviceConnectTypeEnum.ETHERNET.getConnectType());
         }
 
-        // 校验连接状态
         String macAddress = "";
         if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(connectType)) {
-            // 串口
         } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(connectType)) {
             macAddress = connectUtil.getWifiMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查 WIFI 连接！");
+                return R.fail("00209009");
             }
         } else {
             macAddress = connectUtil.getEthernetMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查网线连接！");
+                return R.fail("0020900A");
             }
         }
 
@@ -1075,16 +1059,14 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
 
         if (commandList.isEmpty()) {
-            return R.fail("未传入任何可设置参数");
+            return R.fail("0020900F");
         }
-
-        /* ================= 3. 顺序下发指令 ================= */
 
         for (Command command : commandList) {
 
             Transition transition = xml.get(command.getCmdId());
             if (transition == null) {
-                return R.fail("未找到指令定义：" + command.getCmdId());
+                return R.fail("0020900C", command.getCmdId());
             }
 
             byte[] sendBytes = protocolItemUtil.calcSendBytes(
@@ -1119,7 +1101,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
 
             if (!result.getSuccess()) {
-                return R.fail("参数设置失败，指令：" + command.getCmdId());
+                return R.fail("00209010", command.getCmdId());
             }
         }
 
@@ -1154,20 +1136,19 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(inputParam.getConnectType())) {
             //串口
             log.info("串口连接");
-            return R.fail("串口连接暂不支持！");
+            return R.fail("00209011");
 
         } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(inputParam.getConnectType())) {
-            //wifi
             macAddress = connectUtil.getWifiMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查wifi连接和仪器电源是否开启！");
+                return R.fail("00209012");
             }
 
         } else {
 
             macAddress = connectUtil.getEthernetMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查网线连接和仪器电源是否开启！");
+                return R.fail("00209013");
             }
 
         }
@@ -1248,14 +1229,14 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         SearchInfo deviceInfo = inputParam.getDeviceInfo();
         if (deviceInfo == null || !StringUtils.hasText(deviceInfo.getDeviceId())) {
-            return R.fail("请先查找仪器！");
+            return R.fail("00209014");
         }
 
         boolean a = xmlManage.containsKeyInDeviceMap(deviceInfo.getDeviceIp());
         boolean b = xmlManage.containsKeyInDeviceMap(deviceInfo.getDeviceMac());
 
         if (!a && !b) {
-            return R.fail("请先查找仪器！");
+            return R.fail("00209014");
         }
         if (a) {
             devType = xmlManage.getDevType(deviceInfo.getDeviceIp());
@@ -1268,11 +1249,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         DeviceConnectInfo device = deviceManager.getDevice(deviceInfo.getDeviceId());
         if (device == null) {
-            return R.fail("当前仪器已被连接！");
+            return R.fail("00209015");
         }
         synchronized (device) {
             if (device.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS) || device.getConnectStatus().equals(Constants.CONNECT_DEVICE_ING)) {
-                return R.fail("当前仪器已被连接！");
+                return R.fail("00209015");
             }
             deviceManager.updateDeviceInfo(deviceInfo.getDeviceId(), Constants.CONNECT_DEVICE_ING, deviceInfo.getDeviceMac(), devType);
 
@@ -1287,12 +1268,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
             //串口
-            return R.fail("串口连接暂未实现！");
+            return R.fail("00209016");
         } else if (connectType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
-            //wifi
             macAddress = connectUtil.getWifiMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查wifi连接！");
+                return R.fail("00209017");
             }
             connectPort = connectUtil.getWifiPort();
             localhostIp = connectUtil.getWifiLocalIp();
@@ -1301,7 +1281,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
             macAddress = connectUtil.getEthernetMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查网线连接！");
+                return R.fail("00209018");
             }
             connectPort = connectUtil.getEthernetPort();
             localhostIp = connectUtil.getEthernetLocalIp();
@@ -1344,7 +1324,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 Integer s = allocateIp(baseIp, connectPort, deviceInfo.getDeviceMac());
                 if (s == null) {
                     deviceManager.removeDevice(deviceInfo.getDeviceId());
-                    return R.fail("仪器连接超数量！");
+                    return R.fail("00209019");
                 }
 
                 param[param.length - 1] = String.valueOf(s);
@@ -1361,7 +1341,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 R<String> r = udpSendUtil.deviceNewIp(deviceInfo.getDeviceId(), comId, bytes, ReplyNumber, Timeout, connectType, newIp.toString(), headReceiveBytes);
                 if (!r.getSuccess()) {
                     deviceManager.removeDevice(deviceInfo.getDeviceId());
-                    return R.fail("当前仪器无法连接！");
+                    return R.fail("0020901A");
                 }
                 sendIp = newIp.toString();
                 deviceInfo.setDeviceId(r.getData());
@@ -1435,7 +1415,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                     deviceManager.removeDevice(deviceId);
 
-                    return R.fail("当前仪器无法连接！");
+                    return R.fail("0020901A");
                 }
 
                 if (comId.equals(ConnectEnum.Connect.getComId()) || comId.equals(ConnectEnum.TestConnect.getComId())) {
@@ -1466,13 +1446,13 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (!entity.getIsSuccess()) {
                     log.error("指令[{}]解析出错，错误原因：{}", comId, entity.getErrorMsg());
                     deviceManager.removeDevice(deviceId);
-                    return R.fail("指令" + comId + "，解析出错！");
+                    return R.fail("0020901B", comId);
                 }
                 BeanUtils.copyProperties(entity, result, getNullPropertyNames(entity));
             } catch (Exception e) {
                 log.error("指令{}，操作过程中数据转换错误，错误信息：{}", comId, e.getMessage());
                 deviceManager.removeDevice(deviceId);
-                return R.fail("数据转换错误");
+                return R.fail("0020901C");
             }
 
             param = new Object[]{};
@@ -1789,7 +1769,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 OperationResultEntity entity = (OperationResultEntity) data;
                 if (!entity.getIsSuccess()) {
                     log.error("指令[{}]解析出错，错误原因：{}", comId, entity.getErrorMsg());
-                    return R.fail("指令" + comId + "，解析出错！");
+                    return R.fail("0020901B", comId);
                 }
                 BeanUtils.copyProperties(entity, resultEntity, getNullPropertyNames(entity));
 
@@ -1823,7 +1803,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 param = new Object[]{};
             } catch (Exception e) {
                 log.error("指令{}，操作过程中数据转换错误，错误信息：{}", comId, e.getMessage());
-                return R.fail("数据转换错误");
+                return R.fail("0020901C");
             }
         }
 
@@ -2039,7 +2019,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 zero = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
 
                 if (!zero.getSuccess()) {
-                    return R.fail("零点失败");
+                    return R.fail("00209021");
                 }
                 deviceManager.setZeroWavelength(deviceId, s);
                 deviceManager.setCurrentWavelength(deviceId, s);
@@ -2053,7 +2033,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 headReceiveBytes = transition.getHeadReceiveBytes();
                 zero = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
                 if (!zero.getSuccess()) {
-                    return R.fail("零点失败");
+                    return R.fail("00209021");
                 } else {
                     Object data = zero.getData();
                     resultEntity = (OperationResultEntity) data;
@@ -2107,7 +2087,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             zero = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
 
             if (!zero.getSuccess()) {
-                return R.fail("零点失败");
+                return R.fail("00209021");
             }
 
             deviceManager.setZeroWavelength(deviceId, wavelength);
@@ -2123,7 +2103,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             headReceiveBytes = transition.getHeadReceiveBytes();
             zero = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
             if (!zero.getSuccess()) {
-                return R.fail("零点失败");
+                return R.fail("00209021");
             } else {
                 Object data = zero.getData();
                 resultEntity = (OperationResultEntity) data;
@@ -2143,7 +2123,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         List<String> wavelength = inputParam.getWavelength();
 
         if (wavelength == null || wavelength.isEmpty()) {
-            return R.fail("请选择测量的波长");
+            return R.fail("00209020");
         }
 
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
@@ -2177,7 +2157,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
 
                 if (!mesure.getSuccess()) {
-                    return R.fail("零点失败");
+                    return R.fail("00209022");
                 }
                 deviceManager.setCurrentWavelength(deviceId, s);
 
@@ -2190,7 +2170,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 headReceiveBytes = transition.getHeadReceiveBytes();
                 mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
                 if (!mesure.getSuccess()) {
-                    return R.fail("零点失败");
+                    return R.fail("00209022");
                 } else {
                     Object data = mesure.getData();
                     resultEntity = (OperationResultEntity) data;
@@ -2290,7 +2270,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
 
             if (!mesure.getSuccess()) {
-                return R.fail("测量失败");
+                return R.fail("00209022");
             }
             deviceManager.setCurrentWavelength(deviceId, wavelength);
             device = deviceManager.getDevice(deviceId);
@@ -2304,7 +2284,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             headReceiveBytes = transition.getHeadReceiveBytes();
             mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
             if (!mesure.getSuccess()) {
-                return R.fail("测量失败");
+                return R.fail("00209022");
             } else {
                 Object data = mesure.getData();
                 resultEntity = (OperationResultEntity) data;
@@ -2499,11 +2479,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         Double totalTime = inputParam.getTotalTime();
 
         if (intervalSeconds == null || intervalSeconds <= 0) {
-            return R.fail("时间间隔必须大于 0");
+            return R.fail("0020901D");
         }
 
         if (totalTime == null || totalTime <= 0) {
-            return R.fail("时间必须大于 0");
+            return R.fail("0020901E");
         }
 
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
@@ -2515,7 +2495,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         // ========= 当前波长 & zero =========
         String wl = deviceManager.getCurrentWavelength(deviceId);
         if (wl == null) {
-            return R.fail("当前波长未设置，请先校零");
+            return R.fail("0020901F");
         }
 
         ChangeParam zeroRsd = deviceManager.getZeroResult(deviceId, wl);
@@ -2530,16 +2510,15 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         // 校验连接状态
         String macAddress = "";
         if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(connectType)) {
-            // 串口
         } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(connectType)) {
             macAddress = connectUtil.getWifiMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查 WIFI 连接！");
+                return R.fail("00209009");
             }
         } else {
             macAddress = connectUtil.getEthernetMacAddress();
             if (!StringUtils.hasText(macAddress)) {
-                return R.fail("请检查网线连接！");
+                return R.fail("0020900A");
             }
         }
         Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
@@ -2648,7 +2627,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 MessageStoreManager.getInstance().clearDevice(deviceId);
 
                 deviceManager.removeDevice(deviceId);
-                return R.fail("断开失败！");
+                return R.fail("00209023");
             }
         }
         MessageStoreManager.getInstance().clearDevice(deviceId);
@@ -2712,15 +2691,14 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
             if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
                 log.info("串口默认");
-                //Todo 串口初始化待做
                 R<Object> r = udpSendUtil.knowTotalReceiveSend(deviceId, comId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
                 if (!r.getSuccess()) {
-                    return R.fail("处理失败！");
+                    return R.fail("00209024");
                 }
             } else {
                 R<Object> r = udpSendUtil.knowTotalReceiveSend(deviceId, comId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
                 if (!r.getSuccess()) {
-                    return R.fail("处理失败！");
+                    return R.fail("00209024");
                 }
             }
             if (comId.equals(DefaultStatusCmdEnum.SetPhotoMode.getComId())) {

@@ -106,7 +106,7 @@ public class SpectrumController {
                 return spectrumService.updateMethod(measureMethod);
             } catch (Exception e) {
                 log.error("测量参数序列化失败", e);
-                return Result.fail("参数序列化失败：" + e.getMessage());
+                return Result.fail("00300025", e.getMessage());
             }
         }
         return Result.fail();
@@ -254,7 +254,7 @@ public class SpectrumController {
             String errorMsg = bindingResult.getFieldErrors().stream()
                     .map(error -> error.getDefaultMessage())
                     .collect(Collectors.joining("; "));
-            return Result.fail("参数校验失败: " + errorMsg);
+            return Result.fail("00300024", errorMsg);
         }
         return spectrumService.peakSearchingPort(paramDto);
     }

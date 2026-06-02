@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.controller.systemConfig;
 
 import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemManageDAO;
 import com.persee.workstation.uv_inexus.i18n.LocaleContext;
+import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemManagePO;
 import io.swagger.annotations.Api;
@@ -30,6 +31,8 @@ import java.util.*;
 public class I18nController {
     @Autowired
     SystemManageDAO systemManageDao;
+    @Autowired
+    LocaleProvider localeProvider;
     @Value("${sys-manage-default.defaultId}")
     String defaultId;
     @PostMapping("/setLocale")
@@ -45,6 +48,7 @@ public class I18nController {
 
         // 3. 立即更新当前线程上下文，让本次响应生效
         LocaleContext.setLocale(locale);
+        localeProvider.evictCache();
 
         return Result.ok();
     }
@@ -66,9 +70,9 @@ public class I18nController {
         // 定义语言列表
         Map<String, String> localeLabels = new LinkedHashMap<>();
         localeLabels.put("zh-CN", "中文");
-//        localeLabels.put("en-US", "English");
+        localeLabels.put("en-US", "English");
 //        localeLabels.put("ja-JP", "日本語");
-//        localeLabels.put("ru-RU", "Русский");
+        localeLabels.put("ru-RU", "Русский");
 
         // 构建返回结果
         for (Map.Entry<String, String> entry : localeLabels.entrySet()) {

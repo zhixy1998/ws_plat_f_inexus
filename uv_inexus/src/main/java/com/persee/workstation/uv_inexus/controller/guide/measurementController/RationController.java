@@ -210,7 +210,7 @@ public class RationController {
 
         rationService.test(a, b);
 
-        return Result.ok("测试成功");
+        return Result.ok("00B08011");
     }
 
     @ApiOperation("查询可绑定的表头")

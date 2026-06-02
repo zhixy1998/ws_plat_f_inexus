@@ -23,6 +23,8 @@ public class ReminderSwitchConfigVo {
     private Boolean isEnabled;
     @ApiModelProperty("排序号")
     private Integer sortOrder;
+    @ApiModelProperty("通知模式：0-正常提醒，1-仅通知不提醒")
+    private Integer notificationMode;
 
     @ApiModelProperty("描述说明")
     private String description;

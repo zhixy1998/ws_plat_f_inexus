@@ -63,7 +63,7 @@ public class ReminderSwitchConfigServiceImpl extends ServiceImpl<ReminderSwitchC
             return Result.ok(listVo);
         } catch (Exception e) {
             log.error("获取提醒配置列表异常", e);
-            return Result.fail("获取提醒配置列表异常：" + e.getMessage());
+            return Result.fail("00615001", e.getMessage());
         }
     }
 
@@ -75,16 +75,27 @@ public class ReminderSwitchConfigServiceImpl extends ServiceImpl<ReminderSwitchC
             ReminderSwitchConfigPO config = this.getOne(wrapper);
 
             if (config == null) {
-                return Result.fail("未找到该类型的提醒配置");
+                return Result.fail("00615002");
             }
 
             return Result.ok(convertToVo(config));
         } catch (Exception e) {
             log.error("获取提醒配置异常", e);
-            return Result.fail("获取提醒配置异常：" + e.getMessage());
+            return Result.fail("00615003", e.getMessage());
         }
     }
+    @Override
+    public Integer getNotificationMode(Integer reminderType) {
+        LambdaQueryWrapper<ReminderSwitchConfigPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ReminderSwitchConfigPO::getReminderType, reminderType);
+        ReminderSwitchConfigPO config = this.getOne(wrapper);
 
+        if (config == null) {
+            return 0;
+        }
+
+        return config.getNotificationMode() != null ? config.getNotificationMode() : 0;
+    }
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Result<Boolean> updateConfig(ReminderSwitchConfigDto dto) {
@@ -95,7 +106,7 @@ public class ReminderSwitchConfigServiceImpl extends ServiceImpl<ReminderSwitchC
 
             if (config == null) {
                 log.error("未找到提醒配置，type: {}", dto.getReminderType());
-                return Result.fail("未找到该类型的提醒配置");
+                return Result.fail("00615002");
             }
 
             // 更新字段
@@ -119,11 +130,11 @@ public class ReminderSwitchConfigServiceImpl extends ServiceImpl<ReminderSwitchC
                 return Result.ok(true);
             } else {
                 log.error("提醒配置更新失败");
-                return Result.fail("更新提醒配置失败");
+                return Result.fail("00615004");
             }
         } catch (Exception e) {
             log.error("更新提醒配置异常", e);
-            return Result.fail("更新提醒配置异常：" + e.getMessage());
+            return Result.fail("00615005", e.getMessage());
         }
     }
 
@@ -132,7 +143,7 @@ public class ReminderSwitchConfigServiceImpl extends ServiceImpl<ReminderSwitchC
     public Result<Boolean> batchUpdateConfigs(ReminderSwitchConfigListVo configList) {
         try {
             if (configList == null) {
-                return Result.fail("配置列表不能为空");
+                return Result.fail("00615006");
             }
 
             int updateCount = 0;
@@ -171,7 +182,7 @@ public class ReminderSwitchConfigServiceImpl extends ServiceImpl<ReminderSwitchC
             return Result.ok(true);
         } catch (Exception e) {
             log.error("批量更新提醒配置异常", e);
-            return Result.fail("批量更新提醒配置异常：" + e.getMessage());
+            return Result.fail("00615007", e.getMessage());
         }
     }
 

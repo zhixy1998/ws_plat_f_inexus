@@ -300,7 +300,7 @@ public class DeviceController {
         if (r) {
             return Result.ok(true);
         } else {
-            return Result.fail("更新失败");
+            return Result.fail("00208020");
         }
     }
 

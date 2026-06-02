@@ -87,7 +87,7 @@ public class T800MessageUtil{
 //        }
 //
 //        String localIp = getEthernetIPv4();
-//        if (localIp == null) return R.fail("未找到可用的IP");
+//        if (localIp == null) return R.fail("0020A027");
 //
 //        try {
 //            socket = new DatagramSocket(localPort, InetAddress.getByName(localIp));
@@ -117,7 +117,7 @@ public class T800MessageUtil{
         }
 
         String localIp = getEthernetIPv4();
-        if (localIp == null) return R.fail("未找到可用的IP");
+        if (localIp == null) return R.fail("0020A027");
 
         int attemptPort = localPort;
         final int MAX_ATTEMPTS = 10; // 最多尝试10个端口
@@ -144,11 +144,11 @@ public class T800MessageUtil{
                 attemptPort += 1000; // 尝试下一个端口
             } catch (Exception e) {
                 e.printStackTrace();
-                return R.fail("创建 DatagramSocket 失败: " + e.getMessage());
+                return R.fail("0020A028", e.getMessage());
             }
         }
 
-        return R.fail("无法绑定任何可用端口，从 " + localPort + " 起连续尝试 " + MAX_ATTEMPTS + " 个端口失败");
+        return R.fail("0020A029", localPort, MAX_ATTEMPTS);
     }
 
 

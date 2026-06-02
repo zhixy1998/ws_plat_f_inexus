@@ -1,11 +1,13 @@
 package com.persee.workstation.uv_inexus.web;
 
-import com.persee.workstation.uv_inexus.i18n.LocaleContext;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
-import com.persee.workstation.uv_inexus.model.Result;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
+import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
+import com.persee.workstation.uv_inexus.i18n.OutputTranslator;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.MessageSource;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -14,16 +16,25 @@ import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
-import java.util.Locale;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice(basePackages = "com.persee.workstation.uv_inexus")
 public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
 
     @Autowired
-    private MessageSource messageSource;
+    private I18nMessageSource i18nMessageSource;
 
     @Autowired
-    private YamlMessageSource yamlMessageSource;
+    private LocaleProvider localeProvider;
+
+    @Autowired
+    private OutputTranslator outputTranslator;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
@@ -39,79 +50,98 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
             return null;
         }
 
-        // 从 LocaleContext 获取当前用户的语言设置
-        String localeStr = LocaleContext.getLocale();
-        System.out.println("🌍 [ResultMessageAdvice] 准备翻译消息，当前语言: " + localeStr);
-
-//        Locale locale = parseLocale(localeStr);
+        String locale = localeProvider.getSystemLocale();
+        boolean needTranslate = !"zh-CN".equals(locale) && !"zh_CN".equals(locale) && locale != null;
 
         if (body instanceof Result) {
             Result<?> result = (Result<?>) body;
-            String messageCode = result.getMessageCode();
-
-            if (messageCode != null && !messageCode.trim().isEmpty()) {
-                System.out.println("🔍 [ResultMessageAdvice] 正在查找消息码: " + messageCode);
-                // 使用当前用户的语言进行翻译
-                String yamlMessage = yamlMessageSource.getMessage(messageCode, localeStr, result.getObj(), null);
-                System.out.println("📝 [ResultMessageAdvice] 翻译结果: " + yamlMessage);
-
-                if (!messageCode.equals(yamlMessage)) {
-                    result.setMessage(yamlMessage);
-                    return result;
-                }
+            translateMessage(result, locale);
+            if (needTranslate && result.getData() != null) {
+                Object translatedData = translateData(result.getData());
+                Result rawResult = result;
+                rawResult.setData(translatedData);
             }
+            return result;
         }
-
 
         if (body instanceof R) {
             R<?> r = (R<?>) body;
-            String messageCode = r.getMessageCode();
-            Object[] obj = r.getObj();
-
-            if (messageCode != null && !messageCode.trim().isEmpty()) {
-                // 使用当前用户的语言进行翻译
-                String yamlMessage = yamlMessageSource.getMessage(messageCode, localeStr, obj, null);
-                if (!messageCode.equals(yamlMessage)) {
-                    r.setMessage(yamlMessage);
-                    return r;
-                }
-                System.out.println("DEBUG: Message code " + messageCode + " not found in YAML for locale " + localeStr + ", returned: " + yamlMessage);
+            translateMessageR(r, locale);
+            if (needTranslate && r.getData() != null) {
+                Object translatedData = translateData(r.getData());
+                R rawR = r;
+                rawR.setData(translatedData);
             }
-
-//            try {
-////                String message = messageSource.getMessage(r.getMessage(), obj, locale);
-//                r.setMessage(message);
-//            } catch (Exception e) {
-//                // 忽略异常，保留原始消息
-//            }
             return r;
         }
 
         return body;
     }
 
-    /**
-     * 解析语言字符串为 Locale 对象
-     *
-     * @param localeStr 语言字符串，如 "zh-CN", "en-US", "ja-JP"
-     * @return Locale 对象
-     */
-    private Locale parseLocale(String localeStr) {
-        if (localeStr == null || localeStr.isEmpty()) {
-            return Locale.SIMPLIFIED_CHINESE;
+    @SuppressWarnings("unchecked")
+    private Object translateData(Object data) {
+        if (data instanceof CharSequence || data instanceof Number || data instanceof Boolean || data instanceof Date) {
+            return data;
         }
-
         try {
-            String[] parts = localeStr.split("-");
-            if (parts.length == 2) {
-                return new Locale(parts[0], parts[1]);
-            } else if (parts.length == 3) {
-                return new Locale(parts[0], parts[1], parts[2]);
+            Object converted = objectMapper.convertValue(data, Object.class);
+            if (converted instanceof Map) {
+                return outputTranslator.translate((Map<String, Object>) converted);
+            } else if (converted instanceof List) {
+                return outputTranslator.translate((List<Object>) converted);
             }
+            return data;
         } catch (Exception e) {
-            // 解析失败，使用默认语言
+            log.debug("data 翻译跳过: {}", e.getMessage());
+            return data;
+        }
+    }
+
+    private void translateMessage(Result<?> result, String locale) {
+        String messageCode = result.getMessageCode();
+        if (messageCode != null && !messageCode.trim().isEmpty()) {
+            String translated = i18nMessageSource.getMessage(messageCode, locale, result.getObj(), null);
+            if (translated != null && !messageCode.equals(translated)) {
+                result.setMessage(translated);
+            }
+            return;
         }
 
-        return Locale.SIMPLIFIED_CHINESE;
+        String message = result.getMessage();
+        if (message != null && containsChinese(message)) {
+            String translated = i18nMessageSource.getMessage(message, locale);
+            if (translated != null && !message.equals(translated)) {
+                result.setMessage(translated);
+            }
+        }
+    }
+
+    private void translateMessageR(R<?> r, String locale) {
+        String messageCode = r.getMessageCode();
+        Object[] obj = r.getObj();
+
+        if (messageCode != null && !messageCode.trim().isEmpty()) {
+            String translated = i18nMessageSource.getMessage(messageCode, locale, obj, null);
+            if (translated != null && !messageCode.equals(translated)) {
+                r.setMessage(translated);
+            }
+            return;
+        }
+
+        String message = r.getMessage();
+        if (message != null && containsChinese(message)) {
+            String translated = i18nMessageSource.getMessage(message, locale);
+            if (translated != null && !message.equals(translated)) {
+                r.setMessage(translated);
+            }
+        }
+    }
+
+    private boolean containsChinese(String value) {
+        if (value == null) return false;
+        for (char c : value.toCharArray()) {
+            if (c >= '\u4e00' && c <= '\u9fff') return true;
+        }
+        return false;
     }
 }

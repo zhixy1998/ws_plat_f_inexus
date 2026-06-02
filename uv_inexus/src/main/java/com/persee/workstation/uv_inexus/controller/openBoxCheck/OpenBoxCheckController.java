@@ -45,7 +45,7 @@ public class OpenBoxCheckController {
         try {
             // 参数校验
             if (request == null) {
-                return Result.fail("请求参数不能为空");
+                return Result.fail("00618005");
             }
             // 调用服务创建模板
             Result<String> result = openBoxCheckService.editUnboxingTemplate(request);
@@ -60,7 +60,7 @@ public class OpenBoxCheckController {
             return result;
         } catch (Exception e) {
             log.error("创建模板时发生异常: {}", request.getTemplateCode(), e);
-            return Result.fail("创建模板失败: " + e.getMessage());
+            return Result.fail("00618006", e.getMessage());
         }
     }
 
