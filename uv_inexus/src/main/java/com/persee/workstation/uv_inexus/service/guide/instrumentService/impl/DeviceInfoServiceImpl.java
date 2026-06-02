@@ -472,15 +472,15 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
         DeviceMeasureVO ans = new DeviceMeasureVO();
 
-        ans.setBandWidth(deviceModelInfoPO.getSpacingWidth() == null ? null : deviceModelInfoPO.getSpacingWidth());
-        ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength() == null ? null : deviceModelInfoPO.getFilterWavelength());
-
         Integer devTypeId = deviceModelInfoPO.getDevTypeId();
 
         DeviceTypeInfoPO deviceTypeInfoPO = deviceTypeInfoDAO.selectById(devTypeId);
         ans = changeType(deviceTypeInfoPO);
-        ans.setBandWidth(deviceModelInfoPO.getSpacingWidth());
-        ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength());
+        BeanUtils.copyProperties(deviceModelInfoPO, ans);
+
+        ans.setBandWidth(deviceModelInfoPO.getSpacingWidth() == null ? null : deviceModelInfoPO.getSpacingWidth());
+        ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength() == null ? null : deviceModelInfoPO.getFilterWavelength());
+
         return R.ok(ans);
     }
 

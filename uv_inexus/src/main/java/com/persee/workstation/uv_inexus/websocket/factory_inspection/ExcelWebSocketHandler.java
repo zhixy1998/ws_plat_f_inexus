@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.util.DateUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
@@ -16,6 +17,7 @@ import com.persee.workstation.uv_inexus.component.*;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.controller.guide.instrumentController.DeviceController;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
+import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceModelInfoDAO;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceTypeInfoDAO;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
@@ -30,6 +32,7 @@ import com.persee.workstation.uv_inexus.i18n.OutputTranslator;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.factory_inspection.*;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceModelInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceTypeInfoPO;
 import com.persee.workstation.uv_inexus.service.factory_inspection.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -198,6 +201,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     //任务 id 和仪器型号关联关系 - 使用自定义缓存包装类
     private DeviceTypeInfoDAO deviceTypeInfoDAO;
 
+    @Autowired
+    private DeviceModelInfoDAO deviceModelInfoDAO;
     // 在类中添加缓存存储
     private final Map<String, List<JSONObject>> waveformCache = new ConcurrentHashMap<>();
     // 在类中添加任务管理Map
@@ -2986,7 +2991,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         scanInterval,
                         gain,
                         scanSpeed,
-                        luminosityMode
+                        luminosityMode,
+                        deviceSerialNumber
                 );
 
                 com.alibaba.fastjson.JSONObject speedJson = deviceTypeInfoPO.getScanSpeed();
@@ -3478,13 +3484,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     /**
      * 校验光谱扫描参数是否在设备支持范围内
      *
-     * @param deviceTypeInfo 设备类型配置信息
+     * @param deviceTypeInfo  设备类型配置信息
      * @param startWavelength 起始波长
-     * @param endWavelength 终止波长
-     * @param scanInterval 扫描间隔
-     * @param gain 增益
-     * @param scanSpeed 扫描速度
-     * @param luminosityMode 光度模式
+     * @param endWavelength   终止波长
+     * @param scanInterval    扫描间隔
+     * @param gain            增益
+     * @param scanSpeed       扫描速度
+     * @param luminosityMode  光度模式
      * @throws BusinessException 参数校验失败时抛出
      */
     private void validateSpectrumScanParams(DeviceTypeInfoPO deviceTypeInfo,
@@ -3493,32 +3499,42 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                             Double scanInterval,
                                             Integer gain,
                                             String scanSpeed,
-                                            String luminosityMode) throws BusinessException {
+                                            String luminosityMode, String deviceSerialNumber) throws BusinessException {
         if (deviceTypeInfo == null) {
             log.error("设备类型配置信息为空，无法校验参数");
             throw BusinessException.withCode("0061300C");
         }
 
-        String devType = deviceTypeInfo.getDevType();
-        List<String> errorMessages = new ArrayList<>();
+        ArrayList<String> errorMessages = new ArrayList<>();
+        DeviceModelInfoPO modelInfoPO = null;
 
         // 1. 校验波长范围
         if (startWavelength != null || endWavelength != null) {
             try {
-                double minWavelength = Double.parseDouble(deviceTypeInfo.getMinWavelength());
-                double maxWavelength = Double.parseDouble(deviceTypeInfo.getMaxWavelength());
+
+                String[] split = deviceSerialNumber.split("-");
+                if (split != null && split.length > 1) {
+                    String s = split[1];
+                    List<DeviceModelInfoPO> devModel = deviceModelInfoDAO.selectList(new QueryWrapper<DeviceModelInfoPO>().eq("dev_model", s));
+                    if (CollectionUtils.isNotEmpty(devModel)) {
+                        modelInfoPO = devModel.get(0);
+                    }
+                }
+
+                double minWavelength = Double.parseDouble(modelInfoPO.getMinWavelength());
+                double maxWavelength = Double.parseDouble(modelInfoPO.getMaxWavelength());
 
                 if (startWavelength != null && (startWavelength < minWavelength || startWavelength > maxWavelength)) {
                     errorMessages.add(String.format("起始波长 %s 超出设备支持范围 [%s, %s]nm",
-                            startWavelength, deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength()));
+                            startWavelength, modelInfoPO.getMinWavelength(), modelInfoPO.getMaxWavelength()));
                 }
                 if (endWavelength != null && (endWavelength < minWavelength || endWavelength > maxWavelength)) {
                     errorMessages.add(String.format("终止波长 %s 超出设备支持范围 [%s, %s]nm",
-                            endWavelength, deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength()));
+                            endWavelength, modelInfoPO.getMinWavelength(), modelInfoPO.getMaxWavelength()));
                 }
             } catch (NumberFormatException e) {
                 log.error("波长范围配置格式错误: min={}, max={}",
-                        deviceTypeInfo.getMinWavelength(), deviceTypeInfo.getMaxWavelength());
+                        modelInfoPO.getMinWavelength(), modelInfoPO.getMaxWavelength());
                 errorMessages.add("设备波长范围配置格式错误，请联系管理员");
             }
         }
@@ -3562,7 +3578,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             scanSpeed, speedCode, deviceTypeInfo.getScanSpeed()));
                 }
             }
-        }
+
 
 //        // 5. 校验光度模式
 //        if (deviceTypeInfo.getLuminosity() != null && !deviceTypeInfo.getLuminosity().isEmpty()) {
@@ -3582,15 +3598,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //            }
 //        }
 
-        // 如果有任何校验错误，抛出异常
-        if (!errorMessages.isEmpty()) {
-            String errorMsg = String.format("参数校验失败：\n%s",  String.join("\n", errorMessages));
-            log.error(errorMsg);
-            throw new BusinessException(errorMsg);
-        }
+            // 如果有任何校验错误，抛出异常
+            if (!errorMessages.isEmpty()) {
+                String errorMsg = String.format("参数校验失败：\n%s", String.join("\n", errorMessages));
+                log.error(errorMsg);
+                throw new BusinessException(errorMsg);
+            }
 
-        log.info("设备 [{}] 光谱扫描参数校验通过: 波长[{}-{}]nm, 间隔={}nm, 增益={}, 速度={}, 光度模式={}",
-                devType, startWavelength, endWavelength, scanInterval, gain, scanSpeed, luminosityMode);
+            log.info("设备光谱扫描参数校验通过: 波长[{}-{}]nm, 间隔={}nm, 增益={}, 速度={}, 光度模式={}",
+                    startWavelength, endWavelength, scanInterval, gain, scanSpeed, luminosityMode);
+        }
     }
 
 
@@ -4918,7 +4935,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
 
-    private R<Map<String, List<JSONObject>>> intensityScan(String taskId, Map<String, Object> dataMap, String deviceSerialNumber, boolean isMultiProductPool, String itemId, Integer d) throws BusinessException {
+    private R<Map<String, List<JSONObject>>> intensityScan(String taskId, Map<String, Object> dataMap, String
+            deviceSerialNumber, boolean isMultiProductPool, String itemId, Integer d) throws BusinessException {
         //光度模式
         String luminosityMode = MapUtils.getString(dataMap, LUMINOSITY_MODE.getDescription());
         //增益

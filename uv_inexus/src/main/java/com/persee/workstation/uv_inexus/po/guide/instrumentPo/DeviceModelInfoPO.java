@@ -54,6 +54,14 @@ public class DeviceModelInfoPO {
     @TableField(value = "dev_name")
     private String devName;
 
+    @ApiModelProperty("最小波长")
+    @TableField(value = "min_wavelength")
+    private String minWavelength;
+
+    @ApiModelProperty("最大波长")
+    @TableField(value = "max_wavelength")
+    private String maxWavelength;
+
     @ApiModelProperty("狭缝宽度")
     @TableField(value = "spacing_width", typeHandler = JacksonTypeHandler.class)
     private List<String> spacingWidth;
