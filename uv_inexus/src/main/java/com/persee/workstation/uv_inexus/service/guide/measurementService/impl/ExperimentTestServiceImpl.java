@@ -27,7 +27,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConf
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNumConfig;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.MappingParamEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -832,27 +832,25 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     public Result setUpParametersPort(String taskId, String deviceSerialNumber, String measureType) {
         // 校验参数
         if (!StringUtils.hasText(taskId)) {
-            return Result.fail("请先新建任务");
+            return Result.fail("00300001");
         }
         if (!StringUtils.hasText(deviceSerialNumber)) {
-            return Result.fail("请先连接仪器");
+            return Result.fail("00300002");
         }
         if (!StringUtils.hasText(measureType)) {
-            return Result.fail("请选择测量类型");
+            return Result.fail("00300003");
         }
-        // 根据任务id查询任务信息
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("任务不存在");
+            return Result.fail("00000004");
         }
         if (task.getTaskStatus().equals(Constants.PARAM_ONE)&&!task.getDeviceSerialNumber().equals(deviceSerialNumber)){
-            return Result.fail("当前设备与任务测量设备不匹配");
+            return Result.fail("00300004");
         }
         if (task.getTaskStatus().equals(Constants.PARAM_TWO)){
-            return Result.fail("任务已结束,无法测量");
+            return Result.fail("00300005");
         }
         String methodId = task.getMethodKey();
-        // 根据测量类型获取对应的测量服务
         MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
         switch (measureTypeEnum) {
             case PHOTOMETRIC_MEASUREMENT:
@@ -864,9 +862,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             case TIME_SCAN:
                 return timeSweepService.setMethodParameters(methodId, deviceSerialNumber);
             case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
-                return Result.fail("暂不支持双组份定量分析");
+                return Result.fail("00300006");
             default:
-                return Result.fail("测量类型不存在");
+                return Result.fail("00300007");
         }
     }
 
@@ -1596,12 +1594,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     public Result queryAllProject(String updateBy) {
         SysUserPO user = userService.getOne(new QueryWrapper<SysUserPO>().eq("username", updateBy));
         if (user == null) {
-            return Result.fail("用户不存在");
+            return Result.fail("00000001");
         }
-        // 根据用户查询用户所在的组
         SysUserGroupPO userGroupPO = userGroupMapper.selectOne(new QueryWrapper<SysUserGroupPO>().eq("user_id", user.getId()));
         if (userGroupPO == null) {
-            return Result.fail("用户未加入任何组");
+            return Result.fail("00300008");
         }
         // 根据查询到的组id条件查询协作组中所有的组内的协作项目id
         List<TMeasureProjectCollaboratorGroup> projectList = collaboratorGroupService.list(new QueryWrapper<TMeasureProjectCollaboratorGroup>().eq("group_id", userGroupPO.getGroupId()));
@@ -1633,7 +1630,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     public Result queryMethodProt(String projectId, String measureType, String updateBy, Integer pageNum, Integer pageSize) {
         // 校验所有的参数
         if (projectId == null || projectId.isEmpty()) {
-            return Result.fail("项目不存在");
+            return Result.fail("00300009");
         }
         if (measureType == null || measureType.isEmpty()) {
             return Result.fail("00307003");
@@ -1814,9 +1811,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             RationReportDataVO vo = new RationReportDataVO();
             rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), false, task.getDeviceSerialNumber());
 
-            return Result.ok("暂未开放");
+            return Result.ok("0030000A");
         } else if (reportName.equals("定量测定原始记录表格")) {
-            return Result.ok("暂未开放");
+            return Result.ok("0030000A");
         } else if (reportName.equals("光谱扫描表格")) {
 
             // 根据任务id测量数据表
@@ -2401,7 +2398,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail("00000007");
         }
         if (dto.getTaskName() == null || dto.getTaskName().isEmpty()) {
-            return Result.fail("任务名称不可为空");
+            return Result.fail("0000004D");
         }
         // 根据项目id查询任务名称是否在当前项目下重复,如果重复则返回错误
         QueryWrapper<TMeasureTask> wq = new QueryWrapper<>();
@@ -3976,9 +3973,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 }
             }
 
-            return Result.ok("成功导入 " + methodList.size() + " 个方法");
+            return Result.ok("0030000B", methodList.size());
         } catch (Exception e) {
-            return Result.fail("导入方法失败: " + e.getMessage());
+            return Result.fail("0030000C", e.getMessage());
         }
     }
 
@@ -4052,7 +4049,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 }
             }
         }
-        return Result.ok("成功导入 " + methodList.size() + " 个方法");
+        return Result.ok("0030000B", methodList.size());
     }
 
 
@@ -4413,11 +4410,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Override
     public Result saveDataInfo(SaveDataVO vo) {
         if (!StringUtils.hasText(vo.getTaskId())) {
-            return Result.fail("请创建任务");
+            return Result.fail("0030000D");
         }
 
         if (!StringUtils.hasText(vo.getSampleId())) {
-            return Result.fail("缺少样品id");
+            return Result.fail("0000001C");
         }
 
         if (vo.getData() == null || vo.getData().isEmpty()) {
@@ -4599,7 +4596,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         if (b) {
             return Result.ok();
         }else{
-            return Result.fail("任务结束失败");
+            return Result.fail("0030000E");
         }
 
     }
@@ -4609,13 +4606,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
         // 分开校验入参
         if (measureType==null||measureType.equals("")){
-            return Result.fail("测量类型不能为空");
+            return Result.fail("0030000F");
         }
         if (projectId==null||projectId.equals("")){
-            return Result.fail("项目不能为空");
+            return Result.fail("00300010");
         }
         if (standardId==null||standardId.equals("")){
-            return Result.fail("参考标准不能为空");
+            return Result.fail("00300011");
         }
 
         LambdaQueryWrapper<TMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();

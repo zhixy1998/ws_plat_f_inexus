@@ -459,7 +459,7 @@ public class GuidePhotometricWebSocket {
 
             if (!operation.getSuccess()) {
                 log.info("设置样品池位置出错");
-                return R.fail("设置样品池位置出错！");
+                return R.fail("00301001");
             }
 
             JSONObject object = new JSONObject();
@@ -474,7 +474,7 @@ public class GuidePhotometricWebSocket {
             operation = operationUtilService.operation(inputParam);
             if (!operation.getSuccess()) {
                 log.info("测量出错");
-                return R.fail("测量出错！");
+                return R.fail("00301002");
             }
             OperationResultEntity data = operation.getData();
             ChangeParam changeParam = data.getSingMeasureResult();
@@ -532,7 +532,7 @@ public class GuidePhotometricWebSocket {
 
                 if (!operation.getSuccess()) {
                     log.info("设置样品池位置出错");
-                    return R.fail("设置样品池位置出错！");
+                    return R.fail("00301001");
                 }
 
                 JSONObject object = new JSONObject();
@@ -567,7 +567,7 @@ public class GuidePhotometricWebSocket {
 
                     if (!operation.getSuccess()) {
                         log.info("测量出错");
-                        return R.fail("测量出错！");
+                        return R.fail("00301002");
                     }
                     OperationResultEntity data = operation.getData();
 
@@ -702,7 +702,7 @@ public class GuidePhotometricWebSocket {
         }
         catch (Exception e) {
             status = 0;
-            return R.fail("测量出错");
+            return R.fail("00301002");
         }
     }
 

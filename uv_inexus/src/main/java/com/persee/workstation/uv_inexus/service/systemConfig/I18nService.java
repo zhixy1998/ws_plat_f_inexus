@@ -20,8 +20,8 @@ import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Component
 @Slf4j
+@Deprecated
 public class I18nService {
 
     private static final String DICT_FILE = "i18n/i18n-dictionary.yaml";

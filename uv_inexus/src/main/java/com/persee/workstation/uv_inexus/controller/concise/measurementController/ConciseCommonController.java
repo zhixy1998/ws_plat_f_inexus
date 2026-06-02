@@ -211,7 +211,7 @@ public class ConciseCommonController {
             String errorMsg = bindingResult.getFieldErrors().stream()
                     .map(error -> error.getDefaultMessage())
                     .collect(Collectors.joining("; "));
-            return Result.fail("参数校验失败: " + errorMsg);
+            return Result.fail("00300024", errorMsg);
         }
         return conciseCommonService.isAddSample(addSampleDTO);
     }

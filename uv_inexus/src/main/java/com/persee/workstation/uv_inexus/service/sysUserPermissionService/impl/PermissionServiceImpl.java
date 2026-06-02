@@ -55,7 +55,7 @@ public class PermissionServiceImpl implements PermissionService {
             QueryWrapper<SysPermissionPO> queryWrapper = new QueryWrapper<>();
             queryWrapper.eq("perm_code", saveDTO.getPermCode());
             if (sysPermissionMapper.selectCount(queryWrapper) > 0) {
-                return Result.fail("权限编码已存在");
+                return Result.fail("00D02004");
             }
         }
 
@@ -64,7 +64,7 @@ public class PermissionServiceImpl implements PermissionService {
             QueryWrapper<SysPermissionPO> queryWrapper = new QueryWrapper<>();
             queryWrapper.eq("perm_name", saveDTO.getPermName());
             if (sysPermissionMapper.selectCount(queryWrapper) > 0) {
-                return Result.fail("权限名称已存在");
+                return Result.fail("00D02005");
             }
         }
 
@@ -73,7 +73,7 @@ public class PermissionServiceImpl implements PermissionService {
             QueryWrapper<SysPermissionPO> queryWrapper = new QueryWrapper<>();
             queryWrapper.eq("path", saveDTO.getPath());
             if (sysPermissionMapper.selectCount(queryWrapper) > 0) {
-                return Result.fail("路由路径已存在");
+                return Result.fail("00D02006");
             }
         }
 
@@ -82,7 +82,7 @@ public class PermissionServiceImpl implements PermissionService {
             QueryWrapper<SysPermissionPO> queryWrapper = new QueryWrapper<>();
             queryWrapper.eq("component", saveDTO.getComponent());
             if (sysPermissionMapper.selectCount(queryWrapper) > 0) {
-                return Result.fail("前端组件路径已存在");
+                return Result.fail("00D02007");
             }
         }
 
@@ -111,7 +111,7 @@ public class PermissionServiceImpl implements PermissionService {
         // 7. 更新SUPER_ADMIN角色的权限列表
         updateSuperAdminPermission(po.getId());
 
-        return Result.ok("新增权限成功");
+        return Result.ok("00D02009");
     }
 
     private void updateSuperAdminPermission(String permissionId) {
@@ -171,7 +171,7 @@ public class PermissionServiceImpl implements PermissionService {
         // 1. 检查记录是否存在
         SysPermissionPO existingPo = sysPermissionMapper.selectById(updateDTO.getId());
         if (existingPo == null) {
-            return Result.fail("权限记录不存在");
+            return Result.fail("00D02008");
         }
 
         // 2. 检查权限编码是否已存在 (排除自身)
@@ -180,7 +180,7 @@ public class PermissionServiceImpl implements PermissionService {
             queryWrapper.eq("perm_code", updateDTO.getPermCode())
                     .ne("id", updateDTO.getId());
             if (sysPermissionMapper.selectCount(queryWrapper) > 0) {
-                return Result.fail("权限编码已存在");
+                return Result.fail("00D02004");
             }
         }
 
@@ -190,7 +190,7 @@ public class PermissionServiceImpl implements PermissionService {
             queryWrapper.eq("perm_name", updateDTO.getPermName())
                     .ne("id", updateDTO.getId());
             if (sysPermissionMapper.selectCount(queryWrapper) > 0) {
-                return Result.fail("权限名称已存在");
+                return Result.fail("00D02005");
             }
         }
 
@@ -200,7 +200,7 @@ public class PermissionServiceImpl implements PermissionService {
             queryWrapper.eq("path", updateDTO.getPath())
                     .ne("id", updateDTO.getId());
             if (sysPermissionMapper.selectCount(queryWrapper) > 0) {
-                return Result.fail("路由路径已存在");
+                return Result.fail("00D02006");
             }
         }
 
@@ -210,7 +210,7 @@ public class PermissionServiceImpl implements PermissionService {
             queryWrapper.eq("component", updateDTO.getComponent())
                     .ne("id", updateDTO.getId());
             if (sysPermissionMapper.selectCount(queryWrapper) > 0) {
-                return Result.fail("前端组件路径已存在");
+                return Result.fail("00D02007");
             }
         }
         // 6. 转换并处理默认值
@@ -230,7 +230,7 @@ public class PermissionServiceImpl implements PermissionService {
         // 7. 执行更新
         sysPermissionMapper.updateById(po);
 
-        return Result.ok("更新权限成功");
+        return Result.ok("00D02010");
     }
 
     @Override
@@ -239,13 +239,13 @@ public class PermissionServiceImpl implements PermissionService {
         // 1. 检查记录是否存在
         SysPermissionPO existingPo = sysPermissionMapper.selectById(deleteDTO.getId());
         if (existingPo == null) {
-            return Result.fail("权限记录不存在");
+            return Result.fail("00D02008");
         }
 
         // 2. 递归删除当前节点及其所有子节点
         deletePermissionAndChildren(deleteDTO.getId());
 
-        return Result.ok("删除权限成功");
+        return Result.ok("00D02011");
     }
 
     private void deletePermissionAndChildren(Integer parentId) {

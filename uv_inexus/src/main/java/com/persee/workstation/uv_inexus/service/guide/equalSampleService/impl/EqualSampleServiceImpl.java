@@ -15,7 +15,7 @@ import com.persee.workstation.uv_inexus.dao.guide.equalSampleMapper.EqualSampleM
 import com.persee.workstation.uv_inexus.dto.concise.common.EqualAndSample;
 import com.persee.workstation.uv_inexus.dto.concise.common.EqualSampleDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.EqualSampleParam;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;

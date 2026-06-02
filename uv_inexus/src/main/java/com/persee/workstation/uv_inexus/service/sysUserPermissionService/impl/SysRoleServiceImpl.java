@@ -101,7 +101,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         queryWrapper.eq("role_code", saveDTO.getRoleCode());
         if (baseMapper.selectCount(queryWrapper) > 0) {
             //角色编码已存在
-            return Result.fail("00603001");
+            return Result.fail("00D03001");
         }
         
         SysRolePO rolePO = new SysRolePO();
@@ -112,7 +112,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         rolePO.setCreated(LocalDateTime.now());
         baseMapper.insert(rolePO);
         //角色创建成功
-        return Result.ok("00603002");
+        return Result.ok("00D03002");
     }
 
     @Override
@@ -121,7 +121,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         SysRolePO rolePO = baseMapper.selectById(saveDTO.getId());
         if (rolePO == null) {
             //角色不存在
-            return Result.fail("00603003");
+            return Result.fail("00D03003");
         }
         
         // 检查角色编码是否重复（排除当前角色）
@@ -130,7 +130,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
                    .ne("id", saveDTO.getId());
         if (baseMapper.selectCount(queryWrapper) > 0) {
             //角色编码已存在
-            return Result.fail("00603001");
+            return Result.fail("00D03001");
         }
         
         BeanUtils.copyProperties(saveDTO, rolePO);
@@ -139,7 +139,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         rolePO.setUpdated(LocalDateTime.now());
         baseMapper.updateById(rolePO);
         //角色更新成功
-        return Result.ok("00603004");
+        return Result.ok("00D03004");
     }
 
     @Override
@@ -147,7 +147,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
     public Result<String> deleteBatch(List<String> ids) {
         if (ids == null || ids.isEmpty()) {
             //请选择需要删除的角色
-            return Result.fail("00603005");
+            return Result.fail("00D03005");
         }
 
         // 1. 查询这些角色下的所有组ID
@@ -167,7 +167,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         
         baseMapper.deleteBatchIds(ids);
         //角色删除成功
-        return Result.ok("00603006");
+        return Result.ok("00D03006");
     }
 
     @Override
@@ -175,7 +175,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         SysRolePO rolePO = baseMapper.selectById(id);
         if (rolePO == null) {
             //角色不存在
-            return Result.fail("00603003");
+            return Result.fail("00D03003");
         }
         return Result.ok(rolePO);
     }
@@ -187,7 +187,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         SysRolePO rolePO = baseMapper.selectById(id);
         if (rolePO == null) {
             //角色不存在，删除失败
-            return Result.fail("00603007");
+            return Result.fail("00D03007");
         }
 
         // 2. 查询该角色下的所有组ID
@@ -208,7 +208,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         // 4. 执行删除
         baseMapper.deleteById(id);
         //角色删除成功
-        return Result.ok("00603006");  // 修正描述错误
+        return Result.ok("00D03006");  // 修正描述错误
     }
 
     @Override
@@ -221,7 +221,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             
             if (userGroups == null || userGroups.isEmpty()) {
                 //该用户未分配任何组
-                return Result.fail("00603008");
+                return Result.fail("00D03008");
             }
             
             // 2. 从用户组中获取第一个组的角色ID（假设用户只属于同一角色的组）
@@ -229,20 +229,20 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             SysGroupPO firstGroup = sysGroupMapper.selectById(firstGroupId);
             if (firstGroup == null) {
                 //用户所属组不存在
-                return Result.fail("00603009");
+                return Result.fail("00D03009");
             }
             
             String roleId = firstGroup.getRoleId();
             if (roleId == null) {
                 //用户所属组未分配角色
-                return Result.fail("0060300A");
+                return Result.fail("00D0300A");
             }
             
             // 3. 查询角色信息
             SysRolePO role = baseMapper.selectById(roleId);
             if (role == null) {
                 //角色不存在
-                return Result.fail("00603003");
+                return Result.fail("00D03003");
             }
             
             // 4. 转换为RoleTreeDTO
@@ -306,7 +306,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         } catch (Exception e) {
             log.error("查询用户角色组树形结构失败", e);
             //"查询失败：" + e.getMessage()
-            return Result.fail("0060300B",e.getMessage());
+            return Result.fail("00D0300B",e.getMessage());
         }
     }
 
@@ -320,13 +320,13 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             SysRolePO rolePO = baseMapper.selectById(roleId);
             if (rolePO == null) {
                 //角色不存在
-                return Result.fail("00603003");
+                return Result.fail("00D03003");
             }
             
             // 2. 校验角色状态（只查询启用的角色）
             if (rolePO.getStatus() != 1) {
                 //该角色已禁用，无法查询下属组
-                return Result.fail("0060300C");
+                return Result.fail("00D0300C");
             }
 
             // 3. 使用MyBatis-Plus的LambdaQueryWrapper查询
@@ -341,7 +341,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             return Result.ok(groupList);
         } catch (Exception e) {
             //"查询失败：" + e.getMessage()
-            return Result.fail("0060300B",e.getMessage());
+            return Result.fail("00D0300B",e.getMessage());
         }
     }
 
@@ -350,7 +350,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         try {
             SysRolePO rolePO = baseMapper.selectById(roleId);
             if (rolePO == null) {
-                return Result.fail("00603003");
+                return Result.fail("00D03003");
             }
 
             String permIdsStr = rolePO.getPermIds();
@@ -452,7 +452,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         SysRolePO rolePO = baseMapper.selectById(roleId);
         if (rolePO == null) {
             //角色不存在
-            return Result.fail("00603003");
+            return Result.fail("00D03003");
         }
 
         // 2. 更新权限字段（直接存储逗号分隔的字符串，去除空格）
@@ -472,6 +472,6 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         baseMapper.updateById(rolePO);
         
         // 角色更新成功
-        return Result.ok("00603004");
+        return Result.ok("00D03004");
     }
 }

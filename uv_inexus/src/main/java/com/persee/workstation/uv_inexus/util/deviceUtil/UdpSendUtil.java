@@ -82,7 +82,7 @@ public class UdpSendUtil {
             socket = connectUtil.getSocket(connectType, ethernetReceivePort);
 
             if (socket == null) {
-                return R.fail("请检查"+ DeviceConnectTypeEnum.getEnum(connectType).getDesc()+"连接！");
+                return R.fail("0020A023", DeviceConnectTypeEnum.getEnum(connectType).getDesc());
             }
             receivePort = connectUtil.getSocketPort(connectType);
 
@@ -162,7 +162,7 @@ public class UdpSendUtil {
             return R.ok(ans);
         } catch (Exception e) {
             log.error("查找仪器出错：{}", e.getMessage(), e);
-            return R.fail("请检查仪器！");
+            return R.fail("0020A024");
         }
     }
 
@@ -185,7 +185,7 @@ public class UdpSendUtil {
             socket = connectUtil.getSocket(connectType, ethernetReceivePort);
 
             if (socket == null) {
-                return R.fail("请检查"+ DeviceConnectTypeEnum.getEnum(connectType).getDesc()+"连接！");
+                return R.fail("0020A023", DeviceConnectTypeEnum.getEnum(connectType).getDesc());
             }
             receivePort = connectUtil.getSocketPort(connectType);
 
@@ -232,7 +232,7 @@ public class UdpSendUtil {
 
                     if (!start) {
                         log.info("多收07报文！退出");
-                        return R.fail("报文不足!");
+                        return R.fail("0020A025");
                     }
                     byte[] message = store.getMessage(deviceId);
                     responses.add(message);
@@ -304,7 +304,7 @@ public class UdpSendUtil {
     public R<Object> knowTotalReceiveSend(String deviceId, String cmdId, byte[] sendBytes, int replyNumber, int timeout, Integer connectType, List<String> headReceiveBytes) {
 
         if (replyNumber < 1) {
-            return R.fail("回应报文字节数大于 1 ！");
+            return R.fail("0020A026");
         }
 
         DatagramSocket socket;
@@ -316,7 +316,7 @@ public class UdpSendUtil {
             socket = connectUtil.getSocket(connectType, ethernetReceivePort);
 
             if (socket == null) {
-                return R.fail("请检查"+ DeviceConnectTypeEnum.getEnum(connectType).getDesc()+"连接！");
+                return R.fail("0020A023", DeviceConnectTypeEnum.getEnum(connectType).getDesc());
             }
             receivePort = connectUtil.getSocketPort(connectType);
             isReceiveRunning = udpReceiveThread.isRunning(connectType);
@@ -368,7 +368,7 @@ public class UdpSendUtil {
             OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
 
             if (!parse.getIsSuccess()) {
-                return R.fail("解析失败！");
+                return R.fail("0020A027");
             }
 
             if (parse.getCurrentMeasure() != null){
@@ -382,7 +382,7 @@ public class UdpSendUtil {
         } catch (Exception e) {
 
             log.info("仪器信息出错：{}", e.getMessage());
-            return R.fail("报文接收不足！");
+            return R.fail("0020A028");
         }
     }
 
@@ -491,7 +491,7 @@ public class UdpSendUtil {
 //
 //            R<List<byte[]>> r = messageDeal(deviceId, timeout, Integer.MAX_VALUE, endBytes);
 //            if (!r.getSuccess()) {
-//                return R.fail("报文接收不足！");
+//                return R.fail("0020A028");
 //            }
 //            List<byte[]> responses = r.getData();
 //
@@ -518,7 +518,7 @@ public class UdpSendUtil {
             socket = connectUtil.getSocket(connectType, ethernetReceivePort);
 
             if (socket == null) {
-                return R.fail("请检查"+ DeviceConnectTypeEnum.getEnum(connectType).getDesc()+"连接！");
+                return R.fail("0020A023", DeviceConnectTypeEnum.getEnum(connectType).getDesc());
             }
             Integer receivePort = connectUtil.getSocketPort(connectType);
             isReceiveRunning = udpReceiveThread.isRunning(connectType);
@@ -567,6 +567,9 @@ public class UdpSendUtil {
 
             OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
             if (!parse.getIsSuccess()){
+                if (parse.getErrorCode() != null) {
+                    return R.failCode(parse.getErrorCode(), parse.getErrorArgs());
+                }
                 return R.fail(parse.getErrorMsg());
             }
             return R.ok(parse);
@@ -581,7 +584,7 @@ public class UdpSendUtil {
     public R<Object> TimeMeasure(String deviceId, String cmdId, byte[] sendBytes, int replyNumber, int timeout, Integer connectType, Double intervalTime, Double totalTime, String deviceSerialNumber, List<String> headReceiveBytes) {
 
         if (replyNumber < 1) {
-            return R.fail("回应报文字节数大于 1 ！");
+            return R.fail("0020A026");
         }
 
         try {
@@ -589,7 +592,7 @@ public class UdpSendUtil {
             DatagramSocket socket = connectUtil.getSocket(connectType, ethernetReceivePort);
 
             if (socket == null) {
-                return R.fail("请检查"+ DeviceConnectTypeEnum.getEnum(connectType).getDesc()+"连接！");
+                return R.fail("0020A023", DeviceConnectTypeEnum.getEnum(connectType).getDesc());
             }
             int receivePort = connectUtil.getSocketPort(connectType);
             boolean isReceiveRunning = udpReceiveThread.isRunning(connectType);
@@ -619,7 +622,7 @@ public class UdpSendUtil {
                 );
             } else {
                 scheduler = null;
-                return R.fail("请选择测量间隔时间和测量总时间！");
+                return R.fail("0020A029");
             }
 
             /* ================= 4. 立即返回 ================= */
@@ -630,7 +633,7 @@ public class UdpSendUtil {
         } catch (Exception e) {
 
             log.info("仪器信息出错：{}", e.getMessage());
-            return R.fail("报文接收不足！");
+            return R.fail("0020A028");
         }
     }
 
@@ -668,7 +671,7 @@ public class UdpSendUtil {
                     start = !start;
                     if (!start) {
                         log.info("多收07报文！退出");
-                        return R.fail("报文不足!");
+                        return R.fail("0020A025");
                     }
                     timeoutMs = timeout;
                     byte[] message = store.getMessage(deviceId);
@@ -726,11 +729,11 @@ public class UdpSendUtil {
             }
             if (i < totalByteNumber && totalByteNumber != Integer.MAX_VALUE) {
                 log.info("报文不足！");
-                return R.fail("报文不足!");
+                return R.fail("0020A025");
             }
         } catch (Exception e) {
             log.info("处理消息出错：{}", e.getMessage());
-            return R.fail("处理消息出错！");
+            return R.fail("0020A02A");
         }
         return R.ok(responses);
     }

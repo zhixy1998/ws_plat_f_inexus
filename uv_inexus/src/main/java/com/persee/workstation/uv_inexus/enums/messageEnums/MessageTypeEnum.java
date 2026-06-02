@@ -39,6 +39,8 @@ public enum MessageTypeEnum {
     TYPE_UNKNOWN(4,"未知"),
     //提醒消息（智能助手使用）
     TYPE_REMIND_MESSAGE(5,"提醒消息"),
+    //通知但不提醒
+    TYPE_NOTICE_MESSAGE(6,"通知但不提醒"),
 
     OTHER(999, "其他,参与使用，仅作枚举类end标志");
 

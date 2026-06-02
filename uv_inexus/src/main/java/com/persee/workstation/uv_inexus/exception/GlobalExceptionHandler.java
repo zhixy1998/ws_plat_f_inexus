@@ -67,11 +67,23 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Result<String>> handleBusinessException(
             BusinessException ex,
             HttpServletRequest request) {
-        // 检查是否为 SSE 请求
-        if (isSseRequest(request)) {
-            return handleSseError(ex.getErrorMessage());
+        String errorCode = ex.getErrorCode();
+        Object[] args = ex.getArgs();
+
+        Result<String> result;
+        if (errorCode != null && !errorCode.isEmpty()) {
+            result = Result.failCode(errorCode, args);
+        } else {
+            result = Result.fail(ex.getErrorMessage());
         }
-        return ResponseEntity.status(HttpStatus.OK).body(Result.fail(ex.getErrorMessage()));
+
+        if (isSseRequest(request)) {
+            return ResponseEntity
+                    .status(HttpStatus.OK)
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body(result);
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(result);
     }
     
     /**

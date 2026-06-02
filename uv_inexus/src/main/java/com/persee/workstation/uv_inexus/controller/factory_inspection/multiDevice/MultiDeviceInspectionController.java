@@ -80,7 +80,7 @@ public class MultiDeviceInspectionController {
         String updateBy = batchConnectDto.getUpdateBy();
         String templateCode = batchConnectDto.getTemplateCode();
         if (searchInfos == null || searchInfos.isEmpty()) {
-            return Result.fail("设备列表不能为空");
+            return Result.fail("00613013");
         }
 
         // 统一设置用户信息
@@ -103,7 +103,7 @@ public class MultiDeviceInspectionController {
             }
 
             if (connectedDevices.isEmpty()) {
-                return Result.fail("所有设备连接失败");
+                return Result.fail("00613014");
             }
 
             return Result.ok(connectedDevices);
@@ -163,7 +163,7 @@ public class MultiDeviceInspectionController {
             if (allSuccess) {
                 return Result.ok(true);
             } else {
-                return Result.fail("部分设备断开失败：" + failedDevice);
+                return Result.fail("00613015", failedDevice);
             }
         }
         return Result.fail(false);

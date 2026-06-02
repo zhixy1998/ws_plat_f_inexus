@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.systemManageController;
 
 import com.persee.workstation.uv_inexus.dto.systemManageDto.*;
+import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemLogSwitchPO;
@@ -46,6 +47,8 @@ public class SystemManageController {
     @Autowired
     SystemManageService systemManageService;
     @Autowired
+    private LocaleProvider localeProvider;
+    @Autowired
     private SystemctlDatabaseConfService systemctlDatabaseConfService;
 
     @ApiOperation(value = "系统管理首页--保存系统管理")
@@ -64,6 +67,7 @@ public class SystemManageController {
     public Result<Boolean> changeLanguage(@RequestParam String language) {
         Boolean b = systemManageService.changeLanguage(language);
         if (b) {
+            localeProvider.evictCache();
             return Result.ok();
         } else {
             return Result.fail();
@@ -77,7 +81,7 @@ public class SystemManageController {
         if (StringUtils.hasText(language)) {
             return Result.ok(language);
         } else {
-            return Result.ok("简体中文");
+            return Result.ok("00C01005");
         }
     }
 

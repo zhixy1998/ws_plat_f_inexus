@@ -105,7 +105,7 @@ public class RemoteAccessServiceImpl extends ServiceImpl<RemoteAccessMapper, Enc
             boolean b = updateById(po);
             return Result.ok(b);
         } catch (Exception e) {
-            return Result.fail("保存配置失败: " + e.getMessage());
+            return Result.fail("00605001", e.getMessage());
         }
     }
 

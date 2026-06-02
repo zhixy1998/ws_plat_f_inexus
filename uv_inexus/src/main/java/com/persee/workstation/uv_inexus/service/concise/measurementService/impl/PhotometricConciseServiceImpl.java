@@ -205,7 +205,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return R.fail("00103005");
         }
         if(!StringUtils.hasText(parameter.getChangeLampWaveLength())){
-            return R.fail("换灯波长不能为空");
+            return R.fail("00B08006");
         }
         if (StringUtils.hasText(parameter.getChangeLampWaveLength())) {
             double v = Double.parseDouble(parameter.getChangeLampWaveLength());
@@ -972,19 +972,19 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (!StringUtils.hasText(deviceSerialNumber)) {
             log.info("设备未连接,无需下发参数");
-            return R.fail("设备未连接,无需下发参数");
+            return R.fail("00B0800D");
         }
 
         FMeasureMethod fMeasureMethod = fMeasureMethodService.getById(methodId);
         if (fMeasureMethod == null) {
             log.warn("找不到对应的测量方法: methodId={}", methodId);
-            return R.fail("找不到对应的测量方法");
+            return R.fail("00B08004");
         }
 
         FPhotometricParameter parameter = JSON.parseObject(fMeasureMethod.getMeasurementParamInfo(), FPhotometricParameter.class);
         if (parameter == null) {
             log.warn("解析测量参数失败: methodId={}, json={}", methodId, fMeasureMethod.getMeasurementParamInfo());
-            return R.fail("解析测量参数失败");
+            return R.fail("00B08005");
         }
         DeviceInfoPO info = deviceInfoService.getInfo(deviceSerialNumber);
         if (info != null && info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
@@ -1023,7 +1023,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                 if (!operation.getSuccess()) {
                     log.info("设置参数失败");
-                    return R.fail("设置参数失败");
+                    return R.fail("00B04009");
                 }
 
             } catch (Exception e) {
@@ -1290,10 +1290,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 String jsonString = JSON.toJSONString(map);
                 SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
                 if (sample.getSampleNumber()!=null&&sample.getSampleNumber().length()>256){
-                    return Result.fail("新增样品编号超出限制");
+                    return Result.fail("00B02003");
                 }
                 if (sample.getSampleName()!=null&&sample.getSampleName().length()>256){
-                    return Result.fail("新增样品名称超出限制");
+                    return Result.fail("00B02004");
                 }
 
             }
@@ -2114,7 +2114,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (parameter.getResultParams() == null || parameter.getResultParams().isEmpty()) {
             //缺少结果参数
-            return R.fail("00302002");
+            return R.fail("00B02002");
         }
 
         List<FHeadVO> heads = new ArrayList<>();
@@ -2840,7 +2840,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (!StringUtils.hasText(task.getSampleKey())) {
             //没有样品
-            return R.fail("00303010");
+            return R.fail("00B03010");
         }
 
         Integer digit = fMeasureTaskAttachmentService.queryLastDigit(taskId);
@@ -3273,7 +3273,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (countData.getCountData() == null || countData.getCountData().isEmpty()) {
             //没有要保存的数据
-            return R.fail("00302003");
+            return R.fail("00B02003");
         }
         String taskId = countData.getTaskId();
         String sampleId = countData.getSampleId();
@@ -3901,7 +3901,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 file.delete();
             }
             //文件生成失败：e.getMessage()
-            return R.fail("00302006", e.getMessage());
+            return R.fail("00B02006", e.getMessage());
         }
     }
 
@@ -4029,7 +4029,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 file.delete();
             }
             //文件生成失败：e.getMessage()
-            return R.fail("00302006", e.getMessage());
+            return R.fail("00B02006", e.getMessage());
         }
     }
 
@@ -4111,7 +4111,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
 
         if (r.getSuccess()) {
-            return Result.ok("设置参数成功");
+            return Result.ok("00B02002");
         } else {
             return Result.fail(r.getMessage());
         }
@@ -4399,7 +4399,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         boolean a = deviceMeasureVO.getLuminosity().stream()
                 .anyMatch(obj -> obj.getParamValue().equals(param.getLuminosity()));
         if (!a) {
-            return R.fail("当前仪器不支持该光度模式");
+            return R.fail("00B04001");
         }
         // 2. 波长范围是否超出限制
         List<String> waveLengths = param.getWaveLength();
@@ -4409,23 +4409,23 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             Double wavelength = Double.parseDouble(waveLength);
             if (wavelength > maxWavelength || wavelength < minWavelength) {
                 result = result ? false : result;
-                errorMessages.add("波长"+ waveLength+"超出限制, 最大值: " + maxWavelength + "  最小值: " + minWavelength);
+                errorMessages.add("00B04002");
             }
         }
         // 3. 光谱带宽是否存在
         if (!deviceMeasureVO.getBandWidth().contains(param.getSpectralBandwidth())) {
-            return R.fail("当前仪器不支持该光谱带宽");
+            return R.fail("00B04003");
         }
         // 4. 响应时间是否存在
         if (!deviceMeasureVO.getResponseTime().contains(param.getResponseTime())) {
-            return R.fail("当前仪器不支持该响应时间");
+            return R.fail("00B04004");
         }
         // 5. 换灯波长是否超出限制
         Double lampWaveLength = Double.parseDouble(param.getChangeLampWaveLength());
         Double maxLampWavelength =  Double.parseDouble(deviceMeasureVO.getMaxLampWavelength());
         Double minLampWavelength =  Double.parseDouble(deviceMeasureVO.getMinLampWavelength());
         if (lampWaveLength > maxLampWavelength || lampWaveLength < minLampWavelength) {
-            return R.fail("换灯波长超出限制, 换灯波长最大值: " + maxLampWavelength + "  换灯波长最小值: " + minLampWavelength);
+            return R.fail("00B04008", maxLampWavelength, minLampWavelength);
         }
         // 7. 在光度模式为Es/Er模式下的情况
         if (param.getLuminosity().equals(Constants.PARAM_THREE)|| param.getLuminosity().equals(Constants.PARAM_FOUR)) {
@@ -4433,12 +4433,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             boolean b = deviceMeasureVO.getLampType().stream()
                     .anyMatch(obj -> obj.getParamValue().equals(param.getEnergyLamp()));
             if (!b) {
-                return R.fail("当前仪器不支持该能量灯");
+                return R.fail("00B04006");
             }
 
             // 7.2 增益是否存在
             if (!deviceMeasureVO.getGain().contains(param.getGain())) {
-                return R.fail("当前仪器不支持该增益");
+                return R.fail("00B04007");
             }
         }
 

@@ -11,7 +11,7 @@ package com.persee.workstation.uv_inexus.controller.guide.parseReport;
 
 import java.util.Map;
 
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;

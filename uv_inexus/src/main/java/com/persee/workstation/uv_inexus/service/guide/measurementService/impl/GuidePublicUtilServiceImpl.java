@@ -14,7 +14,7 @@ import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMap
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
