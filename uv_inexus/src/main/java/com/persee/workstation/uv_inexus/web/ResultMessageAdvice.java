@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
+import com.persee.workstation.uv_inexus.i18n.NoI18n;
 import com.persee.workstation.uv_inexus.i18n.OutputTranslator;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -16,9 +17,8 @@ import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.lang.reflect.Field;
+import java.util.*;
 
 @Slf4j
 @RestControllerAdvice(basePackages = "com.persee.workstation.uv_inexus")
@@ -83,17 +83,49 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
         if (data instanceof CharSequence || data instanceof Number || data instanceof Boolean || data instanceof Date) {
             return data;
         }
+        Set<String> noI18nFields = collectNoI18nFields(data);
         try {
             Object converted = objectMapper.convertValue(data, Object.class);
             if (converted instanceof Map) {
-                return outputTranslator.translate((Map<String, Object>) converted);
+                return outputTranslator.translate((Map<String, Object>) converted, noI18nFields);
             } else if (converted instanceof List) {
-                return outputTranslator.translate((List<Object>) converted);
+                return outputTranslator.translate((List<Object>) converted, noI18nFields);
             }
             return data;
         } catch (Exception e) {
             log.debug("data 翻译跳过: {}", e.getMessage());
             return data;
+        }
+    }
+
+    private Set<String> collectNoI18nFields(Object data) {
+        if (data == null) {
+            return Collections.emptySet();
+        }
+        Set<String> fieldNames = new HashSet<>();
+        if (data instanceof List) {
+            List<?> list = (List<?>) data;
+            if (!list.isEmpty()) {
+                collectFromClassHierarchy(list.get(0).getClass(), fieldNames);
+            }
+        } else {
+            collectFromClassHierarchy(data.getClass(), fieldNames);
+        }
+        return fieldNames;
+    }
+
+    private void collectFromClassHierarchy(Class<?> clazz, Set<String> fieldNames) {
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            for (Field field : current.getDeclaredFields()) {
+                if (field.isAnnotationPresent(NoI18n.class)) {
+                    fieldNames.add(field.getName());
+                }
+            }
+            for (Class<?> iface : current.getInterfaces()) {
+                collectFromClassHierarchy(iface, fieldNames);
+            }
+            current = current.getSuperclass();
         }
     }
 
