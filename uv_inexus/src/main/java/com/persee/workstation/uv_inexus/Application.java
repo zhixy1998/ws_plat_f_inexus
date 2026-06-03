@@ -43,7 +43,8 @@ public class Application implements ApplicationRunner {
         }
         System.out.println("===========================================");
         System.out.println("应用启动成功！");
-        System.out.println("当前版本: v" + version);
+        System.out.println("当前版本: UV-iNexus-1.0.1.260529-INS-TST");
+        System.out.println("当前时间:" + version);
         System.out.println("===========================================");
     }
 }
