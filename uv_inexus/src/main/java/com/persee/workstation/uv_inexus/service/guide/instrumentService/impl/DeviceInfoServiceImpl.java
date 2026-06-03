@@ -18,7 +18,6 @@ import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceTypeInfoDA
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
-import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInitEntryInfo;
@@ -131,7 +130,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
         if (currentStatus.equals(Constants.DEVICE_STATUS_IDLE)) {
             String deviceId = deviceInfoPO.getDeviceId();
-            deviceManager.setDevCurrentUseType(deviceId, null);
+             deviceManager.setDevCurrentUseType(deviceId, null);
             deviceManager.setDevCurrentTaskId(deviceId, null);
         }
 

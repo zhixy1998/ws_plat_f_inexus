@@ -48,6 +48,10 @@ public class OutputTranslator {
     }
 
     public Map<String, Object> translate(Map<String, Object> map) {
+        return translate(map, Collections.emptySet());
+    }
+
+    public Map<String, Object> translate(Map<String, Object> map, Set<String> dynamicSkipKeys) {
         if (map == null) {
             return null;
         }
@@ -55,10 +59,14 @@ public class OutputTranslator {
         if (isDefaultLocale(locale)) {
             return map;
         }
-        return translateMap(map, locale);
+        return translateMap(map, locale, dynamicSkipKeys);
     }
 
     public List<Object> translate(List<Object> list) {
+        return translate(list, Collections.emptySet());
+    }
+
+    public List<Object> translate(List<Object> list, Set<String> dynamicSkipKeys) {
         if (list == null) {
             return null;
         }
@@ -66,7 +74,7 @@ public class OutputTranslator {
         if (isDefaultLocale(locale)) {
             return list;
         }
-        return translateList(list, locale);
+        return translateList(list, locale, dynamicSkipKeys);
     }
 
     public String translateString(String text) {
@@ -81,23 +89,23 @@ public class OutputTranslator {
         return text.equals(translated) ? text : translated;
     }
 
-    private Map<String, Object> translateMap(Map<String, Object> map, String locale) {
+    private Map<String, Object> translateMap(Map<String, Object> map, String locale, Set<String> dynamicSkipKeys) {
         Map<String, Object> result = new LinkedHashMap<>(map.size());
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
-            result.put(key, translateJavaValue(key, value, locale));
+            result.put(key, translateJavaValue(key, value, locale, dynamicSkipKeys));
         }
         return result;
     }
 
-    private Object translateJavaValue(String key, Object value, String locale) {
+    private Object translateJavaValue(String key, Object value, String locale, Set<String> dynamicSkipKeys) {
         if (value == null) {
             return null;
         }
         if (value instanceof String) {
             String str = (String) value;
-            if (shouldTranslate(key, str)) {
+            if (shouldTranslate(key, str, dynamicSkipKeys)) {
                 String translated = messageSource.getMessage(str, locale);
                 if (!str.equals(translated)) {
                     return translated;
@@ -108,23 +116,23 @@ public class OutputTranslator {
         if (value instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<String, Object> childMap = (Map<String, Object>) value;
-            return translateMap(childMap, locale);
+            return translateMap(childMap, locale, dynamicSkipKeys);
         }
         if (value instanceof List) {
             @SuppressWarnings("unchecked")
             List<Object> childList = (List<Object>) value;
-            return translateList(childList, locale);
+            return translateList(childList, locale, dynamicSkipKeys);
         }
         return value;
     }
 
-    private List<Object> translateList(List<Object> list, String locale) {
+    private List<Object> translateList(List<Object> list, String locale, Set<String> dynamicSkipKeys) {
         List<Object> result = new ArrayList<>(list.size());
         for (Object item : list) {
             if (item instanceof Map) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> childMap = (Map<String, Object>) item;
-                result.add(translateMap(childMap, locale));
+                result.add(translateMap(childMap, locale, dynamicSkipKeys));
             } else if (item instanceof String) {
                 String str = (String) item;
                 if (containsChinese(str)) {
@@ -136,7 +144,7 @@ public class OutputTranslator {
             } else if (item instanceof List) {
                 @SuppressWarnings("unchecked")
                 List<Object> childList = (List<Object>) item;
-                result.add(translateList(childList, locale));
+                result.add(translateList(childList, locale, dynamicSkipKeys));
             } else {
                 result.add(item);
             }
@@ -248,7 +256,11 @@ public class OutputTranslator {
     }
 
     private boolean shouldTranslate(String key, String value) {
-        if (SKIP_KEYS.contains(key)) {
+        return shouldTranslate(key, value, Collections.emptySet());
+    }
+
+    private boolean shouldTranslate(String key, String value, Set<String> dynamicSkipKeys) {
+        if (SKIP_KEYS.contains(key) || (dynamicSkipKeys != null && dynamicSkipKeys.contains(key))) {
             return false;
         }
         return containsChinese(value);
