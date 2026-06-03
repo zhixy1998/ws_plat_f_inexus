@@ -35,7 +35,7 @@ public class LocaleProvider {
 
     @PostConstruct
     public void init() {
-        refreshCache();
+        refreshLocaleOnly();
     }
 
     public void evictCache() {
@@ -56,6 +56,23 @@ public class LocaleProvider {
 
     public String resolveFromRequest(HttpServletRequest request) {
         return getSystemLocale();
+    }
+
+    /**
+     * 仅刷新语言配置，不触发 InputTranslator 索引重建
+     * 用于 @PostConstruct 避免循环依赖
+     */
+    private void refreshLocaleOnly() {
+        try {
+            SystemManagePO config = systemManageDAO.selectById(defaultId);
+            if (config != null && StringUtils.isNotBlank(config.getLanguage())) {
+                String newLocale = normalize(config.getLanguage());
+                cachedLocale.set(newLocale);
+            }
+        } catch (Exception e) {
+            log.error("获取系统语言配置失败", e);
+        }
+        lastRefreshTime = System.currentTimeMillis();
     }
 
     @Scheduled(fixedDelay = CACHE_REFRESH_INTERVAL_MS)
