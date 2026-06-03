@@ -95,6 +95,8 @@ public class DataManagementServiceImpl implements DataManagementService {
     private SysUserGroupMapper userGroupMapper ;
     @Autowired
     private TMeasureProjectCollaboratorGroupService collaboratorGroupService;
+    @Autowired
+    private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
 
     // Excel列索引
     private static final int COL_PROJECT_NAME = 0;
@@ -360,7 +362,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 
             // 1. 参数校验
             if (projectIds == null || projectIds.isEmpty()) {
-                writeErrorResponse(response, "请选择要导出的项目");
+                writeErrorResponse(response, i18nExcelHelper.t("请选择要导出的项目"));
                 return;
             }
 
@@ -370,7 +372,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             );
 
             if (projects.isEmpty()) {
-                writeErrorResponse(response, "未找到要导出的项目");
+                writeErrorResponse(response, i18nExcelHelper.t("未找到要导出的项目"));
                 return;
             }
 
@@ -385,7 +387,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             try (Workbook workbook = new XSSFWorkbook();
                  OutputStream os = response.getOutputStream()) {
 
-                Sheet sheet = workbook.createSheet("项目数据");
+                Sheet sheet = workbook.createSheet(i18nExcelHelper.t("项目数据"));
 
                 // 创建标题行
                 createHeaderRow(sheet);
@@ -415,7 +417,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 
         } catch (Exception e) {
             log.error("导出项目失败", e);
-            writeErrorResponse(response, "导出失败：" + e.getMessage());
+            writeErrorResponse(response, i18nExcelHelper.t("导出失败") + "：" + e.getMessage());
         }
     }
 
@@ -465,7 +467,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 
                 Sheet sheet = workbook.getSheetAt(0);
                 if (sheet == null) {
-                    return Result.fail("Excel文件中没有数据");
+                    return Result.fail("00B0900D");
                 }
 
                 // 从第2行开始读取（跳过标题行）
@@ -563,7 +565,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             try (Workbook workbook = new XSSFWorkbook();
                  OutputStream os = response.getOutputStream()) {
 
-                Sheet sheet = workbook.createSheet("项目导入模板");
+                Sheet sheet = workbook.createSheet(i18nExcelHelper.t("项目导入模板"));
 
                 // 创建标题行
                 createHeaderRow(sheet);
@@ -588,7 +590,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 
         } catch (Exception e) {
             log.error("下载模板失败", e);
-            writeErrorResponse(response, "下载模板失败：" + e.getMessage());
+            writeErrorResponse(response, i18nExcelHelper.t("下载模板失败") + "：" + e.getMessage());
         }
     }
 
@@ -597,12 +599,12 @@ public class DataManagementServiceImpl implements DataManagementService {
      */
     private void createHeaderRow(Sheet sheet) {
         Row headerRow = sheet.createRow(0);
-        headerRow.createCell(COL_PROJECT_NAME).setCellValue("项目名称");
-        headerRow.createCell(COL_REMARK).setCellValue("备注");
-        headerRow.createCell(COL_CREATOR).setCellValue("创建人");
-        headerRow.createCell(COL_CREATE_TIME).setCellValue("创建时间");
-        headerRow.createCell(COL_OWNER_GROUP).setCellValue("归属组ID");
-        headerRow.createCell(COL_FIELD5).setCellValue("预留字段5");
+        headerRow.createCell(COL_PROJECT_NAME).setCellValue(i18nExcelHelper.t("项目名称"));
+        headerRow.createCell(COL_REMARK).setCellValue(i18nExcelHelper.t("备注"));
+        headerRow.createCell(COL_CREATOR).setCellValue(i18nExcelHelper.t("创建人"));
+        headerRow.createCell(COL_CREATE_TIME).setCellValue(i18nExcelHelper.t("创建时间"));
+        headerRow.createCell(COL_OWNER_GROUP).setCellValue(i18nExcelHelper.t("归属组ID"));
+        headerRow.createCell(COL_FIELD5).setCellValue(i18nExcelHelper.t("预留字段5"));
 
         // 设置标题行样式
         CellStyle style = sheet.getWorkbook().createCellStyle();
