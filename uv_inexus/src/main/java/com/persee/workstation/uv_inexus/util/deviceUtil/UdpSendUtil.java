@@ -915,7 +915,8 @@ public class UdpSendUtil {
         List<byte[]> responses = new ArrayList<>();
         boolean start = false;
         int i = 0;
-        while ((System.currentTimeMillis() - firstTimeMillis) < intervalTime && i < replyNumber) {
+        long endTimeMillis = firstTimeMillis + intervalTime;
+        while (System.currentTimeMillis() <= endTimeMillis && i < replyNumber) {
             byte[] bytes = store.peekMessage(deviceId);
             if (bytes == null || bytes.length == 0) {
                 continue;
