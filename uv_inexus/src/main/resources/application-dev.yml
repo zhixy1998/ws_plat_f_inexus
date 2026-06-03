@@ -1,7 +1,12 @@
 server:
-  port: 8081  # 开发端口
+#  port: 8081  # 开发端口
   #  port: 25319  # 线上端口
-  #  port: 41082
+  port: 41082
+  tomcat:
+    # 允许的特殊字符
+    relaxed-query-chars: '[,]'
+    relaxed-path-chars: '[,]'
+    uri-encoding: UTF-8
 
 #  ssl:
 #    key-store: classpath:keystore.p12  # 证书路径
@@ -14,47 +19,51 @@ spring:
     pathmatch:
       matching-strategy: ant_path_matcher
 
+
+#  datasource:
+#    dynamic:
+#      primary: guide #设置默认的数据源
+#      strict: false #设置严格模式，默认false的情况下，如果配置了数据源，但是没有对应的数据源，则使用默认的数据源
+#      datasource:
+#        guide:
+#          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus?useSSL=false&serverTimezone=UTC
+#          username: root
+#          password: px123456
+#          driver-class-name: com.mysql.cj.jdbc.Driver
+#        concise:
+#          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus_concise?useSSL=false&serverTimezone=UTC
+#          username: root
+#          password: px123456
+#          driver-class-name: com.mysql.cj.jdbc.Driver
+#        factory_inspection:
+#          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus_factory_inspection?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
+#          username: root
+#          password: px123456
+#          driver-class-name: com.mysql.cj.jdbc.Driver
+
   datasource:
     dynamic:
       primary: guide #设置默认的数据源
       strict: false #设置严格模式，默认false的情况下，如果配置了数据源，但是没有对应的数据源，则使用默认的数据源
       datasource:
         guide:
-          url: jdbc:mysql://127.0.0.1:3306/t800_uv_inexus?useSSL=false&serverTimezone=UTC
+#          url: jdbc:mysql://192.168.61.12:3308/t800_uv_inexus?useSSL=false&serverTimezone=UTC
+          url: jdbc:mysql://localhost:3307/t800_uv_inexus?useSSL=false&serverTimezone=UTC
           username: root
-          password: 123456
+          password: px123456
           driver-class-name: com.mysql.cj.jdbc.Driver
         concise:
-          url: jdbc:mysql://127.0.0.1:3306/t800_uv_inexus_concise?useSSL=false&serverTimezone=UTC
+          url: jdbc:mysql://localhost:3307/t800_uv_inexus_concise?useSSL=false&serverTimezone=UTC
           username: root
-          password: 123456
+          password: px123456
           driver-class-name: com.mysql.cj.jdbc.Driver
         factory_inspection:
-          url: jdbc:mysql://127.0.0.1:3306/deploy_db_usage?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
+          url: jdbc:mysql://localhost:3307/t800_uv_inexus_factory_inspection?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
           username: root
-          password: 123456
+          password: px123456
           driver-class-name: com.mysql.cj.jdbc.Driver
-  cache:
-    type: jcache # 指定使用JSR-107标准缓存[3](@ref)[4](@ref)
-#
-# 自定义Ehcache参数
-ehcache:
-  disk-store-path: ./data/cache # 磁盘持久化目录，确保应用有读写权限
-  caches:
-    calibrationCache: # 检定校准缓存
-      heap: 200 # 堆内存最多存储条目数
-      offheap: 50 # 堆外内存大小，单位MB
-      ttl: 20m    # 生存时间  2小时
-    defaultCache: # 默认缓存
-      heap: 500 # 堆内存最多存储条目数
-      offheap: 10 # 堆外内存大小，单位MB
-      disk: 50   # 磁盘持久化大小，单位MB。必须大于offheap
-      ttl: 30m    # 生存时间
-    mqIdempotentCache: # MQ幂等性缓存
-      heap: 1000  # 堆内存最多存储条目数
-      offheap: 10 # 堆外内存大小，单位MB
-      disk: 50  # 磁盘持久化大小，单位MB。必须大于offheap
-      ttl: 10m  # 生存时间
+
+
 
 #服务器
 #  datasource:
@@ -107,8 +116,28 @@ ehcache:
 #          username: root
 #          password: px123456
 #          driver-class-name: com.mysql.cj.jdbc.Driver
+  cache:
+    type: jcache # 指定使用JSR-107标准缓存[3](@ref)[4](@ref)
 
-
+# 自定义Ehcache参数
+ehcache:
+  disk-store-path: ./data/cache # 磁盘持久化目录，确保应用有读写权限
+  caches:
+    calibrationCache: # 检定校准缓存
+      heap: 1000 # 堆内存最多存储条目数
+      offheap: 100 # 堆外内存大小，单位MB
+      disk: 500   # 磁盘持久化大小，单位MB。必须大于offheap
+      ttl: 2h    # 生存时间  2小时
+    defaultCache: # 默认缓存
+      heap: 500 # 堆内存最多存储条目数
+      offheap: 10 # 堆外内存大小，单位MB
+      disk: 50   # 磁盘持久化大小，单位MB。必须大于offheap
+      ttl: 30m    # 生存时间
+    mqIdempotentCache: # MQ幂等性缓存
+      heap: 1000  # 堆内存最多存储条目数
+      offheap: 10 # 堆外内存大小，单位MB
+      disk: 50  # 磁盘持久化大小，单位MB。必须大于offheap
+      ttl: 10m  # 生存时间
 
 
 mybatis:
@@ -117,10 +146,10 @@ mybatis:
     - classpath*:com/**/mapper/*.xml
 device:
   default:
-    sendPort: 8000
-    receivePort: 6500
+    sendPort: 5000
+    receivePort: 6000
     machineIP: 169.254.110.67
-    T600xmlPath: "newFile/T600.1.xml"
+    T600xmlPath: "file/T600.1.xml"
     T800xmlPath: "file/T800新.1.xml"
 # 鉴定校准Excel 文件保存路径配置
 excel:
@@ -133,10 +162,12 @@ sys-manage-default:
 remote-access:
   enabled: true
 python-code:
-#  baseUrl: http://8.147.134.239:8000/
+#  baseUrl: http://192.168.61.12:42082/
+#  baseUrl: http://192.168.35.50:42082/
 #  baseUrl: http://192.168.61.46:8000/
 #  baseUrl: http://localhost:10029/
-  baseUrl: http://127.0.0.1:42083/
+  baseUrl: http://192.168.61.82:8002/
+#  baseUrl: http://172.20.10.4:8002/
 
 
 staircase-elimination:
