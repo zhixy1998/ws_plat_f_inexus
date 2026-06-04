@@ -115,18 +115,34 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
     }
 
     private void collectFromClassHierarchy(Class<?> clazz, Set<String> fieldNames) {
-        Class<?> current = clazz;
-        while (current != null && current != Object.class) {
-            for (Field field : current.getDeclaredFields()) {
-                if (field.isAnnotationPresent(NoI18n.class)) {
-                    fieldNames.add(field.getName());
-                }
-            }
-            for (Class<?> iface : current.getInterfaces()) {
-                collectFromClassHierarchy(iface, fieldNames);
-            }
-            current = current.getSuperclass();
+        Set<Class<?>> visited = new HashSet<>();
+        doCollectFromClassHierarchy(clazz, fieldNames, visited);
+    }
+
+    private void doCollectFromClassHierarchy(Class<?> clazz, Set<String> fieldNames, Set<Class<?>> visited) {
+        if (clazz == null || clazz == Object.class || !visited.add(clazz)) {
+            return;
         }
+        for (Field field : clazz.getDeclaredFields()) {
+            if (field.isAnnotationPresent(NoI18n.class)) {
+                fieldNames.add(field.getName());
+            }
+            // 递归检查嵌套对象的类型
+            Class<?> fieldType = field.getType();
+            if (!fieldType.isPrimitive() && !fieldType.isArray()
+                    && !CharSequence.class.isAssignableFrom(fieldType)
+                    && !Number.class.isAssignableFrom(fieldType)
+                    && !Boolean.class.equals(fieldType)
+                    && !Date.class.isAssignableFrom(fieldType)
+                    && !Collection.class.isAssignableFrom(fieldType)
+                    && !Map.class.isAssignableFrom(fieldType)) {
+                doCollectFromClassHierarchy(fieldType, fieldNames, visited);
+            }
+        }
+        for (Class<?> iface : clazz.getInterfaces()) {
+            doCollectFromClassHierarchy(iface, fieldNames, visited);
+        }
+        doCollectFromClassHierarchy(clazz.getSuperclass(), fieldNames, visited);
     }
 
     private void translateMessage(Result<?> result, String locale) {

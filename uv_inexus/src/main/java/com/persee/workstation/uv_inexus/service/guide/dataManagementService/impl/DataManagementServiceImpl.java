@@ -377,7 +377,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             }
 
             // 3. 创建Excel文件
-            String fileName = "projects_export_" +
+            String fileName = i18nExcelHelper.t("项目导出") + "_" +
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".xlsx";
 
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -556,7 +556,7 @@ public class DataManagementServiceImpl implements DataManagementService {
     @Override
     public void downloadTemplate(HttpServletResponse response) {
         try {
-            String fileName = "project_import_template.xlsx";
+            String fileName = i18nExcelHelper.t("项目导入模板") + ".xlsx";
 
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setHeader("Content-Disposition",
