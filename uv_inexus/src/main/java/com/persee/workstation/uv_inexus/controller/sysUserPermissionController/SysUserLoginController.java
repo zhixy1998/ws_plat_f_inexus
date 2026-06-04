@@ -49,14 +49,14 @@ public class SysUserLoginController {
 //    @OperateLog(module = "用户登录", description = "用户登录", recordParams = true) // 默认logType = 2
     public Result<LoginUserInfoVO> login(@RequestBody UserLoginDTO loginDTO) {
 
-        if (loginDTO.getIsFastLogin() != null && loginDTO.getIsFastLogin() == 1) {
-            log.info("触发快捷登录，使用默认用户");
-
-            loginDTO.setUserName("admin");
-            loginDTO.setPassword("Px@13579!");
-        }
-
-        log.info("接收登录请求，username={}", loginDTO.getUserName());
+//        if (loginDTO.getIsFastLogin() != null && loginDTO.getIsFastLogin() == 1) {
+//            log.info("触发快捷登录，使用默认用户");
+//
+//            loginDTO.setUserName("admin");
+//            loginDTO.setPassword("Px@13579!");
+//        }
+//
+//        log.info("接收登录请求，username={}", loginDTO.getUserName());
         // 调用Service层逻辑
         R<LoginUserInfoVO> loginResult = loginService.login(loginDTO);
         // 适配原有Result响应格式（R→Result）
