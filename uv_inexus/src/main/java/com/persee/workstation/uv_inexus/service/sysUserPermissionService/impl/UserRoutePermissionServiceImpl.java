@@ -9,31 +9,25 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import javax.servlet.http.HttpServletRequest;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupPermissionMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
-import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
+import com.persee.workstation.uv_inexus.i18n.NoI18n;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPermissionPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysPermissionPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.UserRoutePermissionService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import javax.servlet.http.HttpServletRequest;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class UserRoutePermissionServiceImpl implements UserRoutePermissionService {
@@ -253,6 +247,7 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
     
     // 路由元数据类
     private static class RouteMeta {
+        @NoI18n
         private String title;
         private String icon;
         private Integer hidden;
