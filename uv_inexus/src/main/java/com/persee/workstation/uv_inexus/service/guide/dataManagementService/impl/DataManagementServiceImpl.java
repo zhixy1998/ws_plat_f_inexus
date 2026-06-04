@@ -998,7 +998,7 @@ public class DataManagementServiceImpl implements DataManagementService {
                     .le("create_time", now);
         }
         wrapper1.eq("is_delete", "0");
-//        wrapper1.ne("task_status", Constants.PARAM_TWO);  // 使用 ne 表示不等于
+        wrapper1.ne("task_status", Constants.PARAM_TWO);
         Long count = taskManagementMapper.selectCount(wrapper1);
 
         // 第二个查询：task_status == Constants.PARAM_TWO
