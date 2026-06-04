@@ -195,10 +195,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         vo.setDeviceModelName(deviceInfoPO.getDeviceModelName());
         vo.setIsActivated(deviceInfoPO.getIsActivated() == null ? 0 : deviceInfoPO.getIsActivated());
 
-        String connect = DeviceConnectMessageEnum.getName(deviceInfoPO.getConnectStatus()) + " IP="
-                + deviceInfoPO.getIp() + " port=" + sendPort;
-
-        vo.setConnectMessage(connect);
+        String ip = deviceInfoPO.getIp();
+        if (StringUtils.hasText(ip)) {
+            vo.setConnectMessage("IP=" + ip + " port=" + sendPort);
+        }
 
         String attachmentType = infoService.getAttachmentType(deviceSerialNumber);
         vo.setAppendMessage(attachmentType);
