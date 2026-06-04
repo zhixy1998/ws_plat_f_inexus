@@ -915,8 +915,9 @@ public class UdpSendUtil {
         List<byte[]> responses = new ArrayList<>();
         boolean start = false;
         int i = 0;
-        long endTime = firstTimeMillis + intervalTime;
-        while (System.currentTimeMillis() <= endTime && i < replyNumber) {
+        long endTime = firstTimeMillis + intervalTime + 100;
+        while (System.currentTimeMillis() <= endTime) {
+//        while (System.currentTimeMillis() <= endTime && i < replyNumber) {
             byte[] bytes = store.peekMessage(deviceId);
             if (bytes == null || bytes.length == 0) {
                 continue;
@@ -958,11 +959,11 @@ public class UdpSendUtil {
         }
         log.info("接收完成，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
 
-        if (i < replyNumber) {
-            log.info("接收超时");
-            timeMeasureIsStop.put(deviceId, true);
-            return;
-        }
+//        if (i < replyNumber) {
+//            log.info("接收超时");
+//            timeMeasureIsStop.put(deviceId, true);
+//            return;
+//        }
         OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, null);
         if (!parse.getIsSuccess()) {
             log.info("时间扫描数据处理失败");
