@@ -923,7 +923,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
             }
 
             if (headList.isEmpty() || headList.get(0).isEmpty()) {
-                return Result.fail("Excel文件没有表头信息");
+                return Result.fail("00B0900E");
             }
 
 

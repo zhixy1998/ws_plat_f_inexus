@@ -132,6 +132,9 @@ public class PhotometricServiceImpl implements PhotometricService {
     RestUtil restUtil;
 
     @Autowired
+    private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
+
+    @Autowired
     LaTeXConverter latexConverter;
 
     @Value("默认任务")
@@ -3088,7 +3091,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         for (HeadVO head : heads) {
             List<String> singleHead = new ArrayList<>();
             // 表头空值时显示“未命名列”，避免Excel表头为空
-            singleHead.add(StringUtils.hasText(head.getName()) ? head.getName() : "未命名列");
+            singleHead.add(StringUtils.hasText(head.getName()) ? i18nExcelHelper.t(head.getName()) : i18nExcelHelper.t("未命名列"));
             excelHeads.add(singleHead);
         }
 

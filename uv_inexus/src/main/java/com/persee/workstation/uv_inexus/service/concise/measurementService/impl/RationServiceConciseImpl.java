@@ -149,6 +149,9 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Autowired
     private DeviceManageService deviceManageService;
 
+    @Autowired
+    private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
+
 
     @Value("1")
     private String deleteType;
@@ -6747,7 +6750,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         // 2. 处理标准样品表头（添加序号列作为第0列）
         List<List<String>> standExcelHeads = new ArrayList<>();
         // 第0列：固定添加"序号"表头
-        standExcelHeads.add(Collections.singletonList("序号"));
+        standExcelHeads.add(Collections.singletonList(i18nExcelHelper.t("序号")));
         // 后续列：添加原有standHeads（跳过可能存在的序号列，避免重复）
         for (int i = 0; i < standHeads.size(); i++) {
             FHeadVO head = standHeads.get(i);
@@ -6756,10 +6759,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                 continue;
             }
             // 处理表头名称
-            String headName = head != null && head.getName() != null ? head.getName().trim() : "未命名列_" + i;
+            String headName = head != null && head.getName() != null ? head.getName().trim() : i18nExcelHelper.t("未命名列") + "_" + i;
             if (headName.isEmpty()) {
                 String identity = head != null && head.getIdentity() != null ? head.getIdentity() : "unknown_" + i;
-                headName = "未命名列（" + identity + "）";
+                headName = i18nExcelHelper.t("未命名列") + "（" + identity + "）";
+            } else {
+                headName = i18nExcelHelper.t(headName);
             }
             standExcelHeads.add(Collections.singletonList(headName));
         }
@@ -6798,7 +6803,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                             }
                             // 样品位置特殊处理
                             if ("sampleLocation".equals(head.getIdentity())) {
-                                cellData = "样品" + strValue;
+                                cellData = i18nExcelHelper.t("样品") + strValue;
                             }
                         }
                     }
@@ -6811,9 +6816,9 @@ public class RationServiceConciseImpl implements RationConciseService {
         // 4. 处理未知样品表头（修复序号列显示）
         List<List<String>> unknownExcelHeads = new ArrayList<>();
         // 第0列：固定添加"序号"表头（与标准样品对齐）
-        unknownExcelHeads.add(Collections.singletonList("序号"));
+        unknownExcelHeads.add(Collections.singletonList(i18nExcelHelper.t("序号")));
         // 第1列：固定添加"样品类型"表头（与Word/TXT逻辑一致）
-        unknownExcelHeads.add(Collections.singletonList("样品类型"));
+        unknownExcelHeads.add(Collections.singletonList(i18nExcelHelper.t("样品类型")));
         // 后续列：添加原有unknownHeads（跳过可能存在的序号和样品类型列）
         for (int i = 0; i < unknownHeads.size(); i++) {
             FHeadVO head = unknownHeads.get(i);
@@ -6825,10 +6830,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                 continue;
             }
             // 处理表头名称
-            String headName = head != null && head.getName() != null ? head.getName().trim() : "未命名列_" + i;
+            String headName = head != null && head.getName() != null ? head.getName().trim() : i18nExcelHelper.t("未命名列") + "_" + i;
             if (headName.isEmpty()) {
                 String identity = head != null && head.getIdentity() != null ? head.getIdentity() : "unknown_" + i;
-                headName = "未命名列（" + identity + "）";
+                headName = i18nExcelHelper.t("未命名列") + "（" + identity + "）";
+            } else {
+                headName = i18nExcelHelper.t(headName);
             }
             unknownExcelHeads.add(Collections.singletonList(headName));
         }
@@ -6845,7 +6852,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             // 第0列：添加序号（修复原逻辑中显示为"-"的问题）
             row.add(unknownRowIndex);
             // 第1列：固定显示"未知样品"（与Word/TXT逻辑一致）
-            row.add("未知样品");
+            row.add(i18nExcelHelper.t("未知样品"));
             // 后续列：按unknownHeads填充数据（跳过原有序号和样品类型列）
             for (FHeadVO head : unknownHeads) {
                 // 跳过原表头中的序号列或样品类型列，避免重复填充
@@ -6874,7 +6881,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                             }
                             // 样品位置特殊处理
                             if ("sampleLocation".equals(head.getIdentity())) {
-                                cellData = "样品" + strValue;
+                                cellData = i18nExcelHelper.t("样品") + strValue;
                             }
                         }
                     }
@@ -6888,10 +6895,10 @@ public class RationServiceConciseImpl implements RationConciseService {
         try (OutputStream out = new FileOutputStream(file)) {
             ExcelWriter writer = EasyExcel.write(out).build();
             // 标准样品Sheet（即使无数据也创建Sheet，保持结构完整）
-            writer.write(standExcelData, EasyExcel.writerSheet(0, "标准样品").head(standExcelHeads).build());
+            writer.write(standExcelData, EasyExcel.writerSheet(0, i18nExcelHelper.t("标准样品")).head(standExcelHeads).build());
             // 未知样品Sheet（有数据才创建，避免空Sheet）
             if (!unknownExcelData.isEmpty()) {
-                writer.write(unknownExcelData, EasyExcel.writerSheet(1, "未知样品").head(unknownExcelHeads).build());
+                writer.write(unknownExcelData, EasyExcel.writerSheet(1, i18nExcelHelper.t("未知样品")).head(unknownExcelHeads).build());
             }
             writer.finish();
             log.info("Excel生成成功：{}，标准样品{}行，未知样品{}行",

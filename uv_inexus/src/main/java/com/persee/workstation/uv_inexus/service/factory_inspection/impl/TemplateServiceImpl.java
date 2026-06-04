@@ -82,6 +82,8 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     private WorkbookDataService workbookDataService;
     @Autowired
     private ExcelDynamicMerger excelDynamicMerger;
+    @Autowired
+    private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
     private final Map<String, Integer> operationCount = new ConcurrentHashMap<>();
 
 
@@ -1556,7 +1558,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 
             // 写入Excel
             ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).head(headList).build();
-            WriteSheet writeSheet = EasyExcel.writerSheet("数据").build();
+            WriteSheet writeSheet = EasyExcel.writerSheet(i18nExcelHelper.t("数据")).build();
             excelWriter.write(dataRows, writeSheet);
             excelWriter.finish();
 

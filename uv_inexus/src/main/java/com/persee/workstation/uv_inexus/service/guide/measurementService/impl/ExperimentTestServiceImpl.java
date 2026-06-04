@@ -165,6 +165,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private SysUserGroupMapper userGroupMapper;
 
     @Autowired
+    private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
+
+    @Autowired
     private TMeasureProjectCollaboratorGroupService collaboratorGroupService;
 
     @Autowired
@@ -3838,15 +3841,15 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Override
     public byte[] exportMethodToExcel(List<TMeasureMethod> methods) {
         try (Workbook workbook = new XSSFWorkbook()) {
-            Sheet sheet = workbook.createSheet("测量方法");
+            Sheet sheet = workbook.createSheet(i18nExcelHelper.t("测量方法"));
 
             // 创建表头
             Row headerRow = sheet.createRow(0);
-            String[] headers = {
+            String[] headers = i18nExcelHelper.t(new String[]{
                     "方法ID", "前处理Key", "多个计算公式Key", "所属项目Key", "方法名称",
                     "测量类型", "测量参数信息", "是否共享方法", "方法创建时间", "方法创建人",
                     "预留字段2", "预留字段3", "预留字段4", "预留字段5"
-            };
+            });
 
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
@@ -3888,7 +3891,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             workbook.write(outputStream);
             return outputStream.toByteArray();
         } catch (IOException e) {
-            throw new RuntimeException("导出Excel失败: " + e.getMessage(), e);
+            throw new RuntimeException(i18nExcelHelper.t("导出Excel失败") + ": " + e.getMessage(), e);
         }
     }
 

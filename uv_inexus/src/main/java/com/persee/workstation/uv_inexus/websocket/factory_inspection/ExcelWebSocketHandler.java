@@ -1083,20 +1083,20 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             log.info("时间扫描>>>>>停止");
                             while (true) {
                                 if (timeScanStopControl.get(taskId)) {
-//                            setTaskMeasuring(taskId, false);
                                     TaskManagement management = taskService.getById(taskId);
-//                            if (device.getSuccess()) {
                                     ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
                                     DeviceInfoPO info = infoService.getInfo(management.getOperationInstrument());
-                                    Boolean put = timeMeasureIsStop.put(info.getDeviceId(), true);
+                                    timeMeasureIsStop.put(info.getDeviceId(), true);
                                     stopTask(taskId);
-                                    // 发送确认消息
-                                    JSONObject confirmMsg = new JSONObject();
-                                    confirmMsg.put("isMeasuring", false);
-                                    sendToActiveSession(session, taskId, confirmMsg);
+                                    // 清理设备消息队列，防止残留数据影响下次扫描
+                                    queue.clearCommand(management.getOperationInstrument(), T600ComIdEnums.Measure.getComId());
                                     deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
-//                                    this.realTimeEcho(taskId, "已停止111111");
+                                    // 不再直接发送isMeasuring:false，由timeScan方法退出后外层统一通过setTaskMeasuring处理
                                     break;
+                                }
+                                try {
+                                    Thread.sleep(50);
+                                } catch (InterruptedException ignored) {
                                 }
                             }
 //                            }
@@ -2981,7 +2981,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             Map<String, Object> devType = new HashMap<>();
             devType.put("dev_type", s);
             List<DeviceTypeInfoPO> pos = deviceTypeInfoDAO.selectByMap(devType);
-
             if (CollectionUtils.isNotEmpty(pos)) {
                 DeviceTypeInfoPO deviceTypeInfoPO = pos.get(0);
 
@@ -3657,10 +3656,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
     //根据不同的光度模式得到点
-    private void getPointsByLuminosityMode(String luminosityMode, SpectrumPoint
-            p, List<Double> xList, List<BigDecimal> yList, String taskId, Integer
-                                                   i, List<JSONObject> cachedDataPoints, List<JSONObject> list, Map<String, Object> dataMap) throws
-            BusinessException {
+    private void getPointsByLuminosityMode(String luminosityMode, SpectrumPoint p, List<Double> xList, List<BigDecimal> yList, String taskId, Integer i, List<JSONObject> cachedDataPoints, List<JSONObject> list, Map<String, Object> dataMap) throws BusinessException {
 // 将时间戳转换为相对于第一个点的秒数
 //        long aaTimestamp = waveformCache.getOrDefault(taskId, new ArrayList<>()).stream()
 //                .findFirst()
@@ -3979,8 +3975,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * @param requestBody
      * @return
      */
-    private Map<String, Object> callPythonService(String url, Map<String, Object> requestBody) throws
-            BusinessException {
+    private Map<String, Object> callPythonService(String url, Map<String, Object> requestBody) throws BusinessException {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -4045,9 +4040,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
     // 修改 sendBatchDataPoints 方法
-    private R<Map<String, List<JSONObject>>> sendBatchDataPoints(WebSocketSession originalSession, String
-            taskId, String itemId, Map<String, Object> dataMap, String updateBy, String
-                                                                         deviceSerialNumber, List<String> list, Integer samplePoolNum, Integer d) throws BusinessException {
+    private R<Map<String, List<JSONObject>>> sendBatchDataPoints(WebSocketSession originalSession, String taskId, String itemId, Map<String, Object> dataMap, String updateBy, String deviceSerialNumber, List<String> list, Integer samplePoolNum, Integer d) throws BusinessException {
         boolean b = samplePoolNum > 1;
         //是不是光谱扫描
         String res = MapUtils.getString(dataMap, SPECTRAL_SCAN_TYPE.getDescription());
@@ -4226,12 +4219,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * 使用高精度计时器实现完美准确的时间扫描
      * 改进：边测量边推送数据，让前端时间显示更准确
      */
-    private R<Map<String, List<JSONObject>>> timeScan(String taskId, Map<String, Object> dataMap, String
-            deviceSerialNumber, Integer scanCount, String luminosityMode, boolean isMultiProductPool, String itemId, Integer
-                                                              d) throws BusinessException {
+    private R<Map<String, List<JSONObject>>> timeScan(String taskId, Map<String, Object> dataMap, String deviceSerialNumber, Integer scanCount, String luminosityMode, boolean isMultiProductPool, String itemId, Integer d) throws BusinessException {
         // 清理上次时间扫描可能残留的控制标志，防止第二次测量被误停止
         timeScanStopControl.remove(taskId);
         taskStopFlag.put(taskId, false);
+        // 清理设备消息队列中可能残留的上次测量数据，防止下次扫描时读到历史数据
+        queue.clearCommand(deviceSerialNumber, T600ComIdEnums.Measure.getComId());
         try {
             Map<String, List<JSONObject>> map = new HashMap<>();
             // 线数据列表
@@ -4353,13 +4346,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     if (operationDark3.getSuccess()) {
                         realTimeEcho(taskId, "时间扫描-切换样品池到暗电流物质成功");
 
-                    log.info("时间扫描-切换样品池到黑挡块成功>>>>>>>>>>>>>>>>");
-                } else {
-                    log.warn("时间扫描-切换样品池到黑挡块失败！");
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", i18nMessageUtil.getMessage(operationDark3.getMessage()));
-                    sendToActiveSession(null, taskId, jsonObject);
-                    setTaskMeasuring(taskId, false);
+                        log.info("时间扫描-切换样品池到黑挡块成功>>>>>>>>>>>>>>>>");
+                    } else {
+                        log.warn("时间扫描-切换样品池到黑挡块失败！");
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("error", i18nMessageUtil.getMessage(operationDark3.getMessage()));
+                        sendToActiveSession(null, taskId, jsonObject);
+                        setTaskMeasuring(taskId, false);
 //                    stopTask(taskId);
                         map.put("line", line);
                         return R.fail(map);
@@ -4432,35 +4425,35 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         realTimeEcho(taskId, "时间扫描-暗电流矫正成功");
                     } else {
 //                isOk=false;
-                    log.warn("时间扫描-暗电流矫正出错！");
-                    setTaskMeasuring(taskId, false);
-                    JSONObject jsonObject = new JSONObject();
-                    String translatedMsg = i18nMessageUtil.getMessage(operationDark.getMessage());
-                    jsonObject.put("error", translatedMsg);
-                    errorMsg = translatedMsg;
-                    boolean b = sendToActiveSession(null, taskId, jsonObject);
-                    return R.fail(map);
+                        log.warn("时间扫描-暗电流矫正出错！");
+                        setTaskMeasuring(taskId, false);
+                        JSONObject jsonObject = new JSONObject();
+                        String translatedMsg = i18nMessageUtil.getMessage(operationDark.getMessage());
+                        jsonObject.put("error", translatedMsg);
+                        errorMsg = translatedMsg;
+                        boolean b = sendToActiveSession(null, taskId, jsonObject);
+                        return R.fail(map);
+                    }
+                } else {
+                    isOk = true;
                 }
-            } else {
-                isOk = true;
-            }
 
 //            if (halt.get(taskId)) {
 //                return R.fail(map);
 //            }
-            realTimeEcho(taskId, "时间扫描-开始设置参数");
-            // 设置参数
-            R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
-            if (!operation.getSuccess()) {
-                log.warn("时间扫描-参数设置出错！");
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", i18nMessageUtil.getMessage(operation.getMessage()));
-                sendToActiveSession(null, taskId, jsonObject);
-                setTaskMeasuring(taskId, false);
-                return R.fail(map);
-            } else {
-                realTimeEcho(taskId, "时间扫描-参数设置成功");
-            }
+                realTimeEcho(taskId, "时间扫描-开始设置参数");
+                // 设置参数
+                R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
+                if (!operation.getSuccess()) {
+                    log.warn("时间扫描-参数设置出错！");
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operation.getMessage()));
+                    sendToActiveSession(null, taskId, jsonObject);
+                    setTaskMeasuring(taskId, false);
+                    return R.fail(map);
+                } else {
+                    realTimeEcho(taskId, "时间扫描-参数设置成功");
+                }
 
 
                 // 解析特征波长
@@ -4545,31 +4538,31 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 if (operation4.getSuccess()) {
                     realTimeEcho(taskId, "时间扫描-切换样品池到校零物质成功");
 
-                log.info("时间扫描-切换样品池到校零物质成功>>>>>>>>>>>>>>>>");
-            } else {
-                log.warn("时间扫描-切换样品池到校零物质失败！");
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", i18nMessageUtil.getMessage(operation4.getMessage()));
-                sendToActiveSession(null, taskId, jsonObject);
-                setTaskMeasuring(taskId, false);
+                    log.info("时间扫描-切换样品池到校零物质成功>>>>>>>>>>>>>>>>");
+                } else {
+                    log.warn("时间扫描-切换样品池到校零物质失败！");
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operation4.getMessage()));
+                    sendToActiveSession(null, taskId, jsonObject);
+                    setTaskMeasuring(taskId, false);
 //            stopTask(taskId);
                     return R.fail(map);
                 }
                 // 执行校零操作
                 realTimeEcho(taskId, "时间扫描-执行校零操作");
 
-            inputParam.setOperationType(OperationTypeEnums.Zero.getType());
-            if (halt.get(taskId)) {
-                realTimeEcho(taskId, "已停止");
-                return R.fail(map);
-            }
-            R<OperationResultEntity> zero = devOperationUtilService.operation(inputParam);
-            if (!zero.getSuccess()) {
-                log.warn("时间扫描-校零失败！");
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", i18nMessageUtil.getMessage(zero.getMessage()));
-                sendToActiveSession(null, taskId, jsonObject);
-                setTaskMeasuring(taskId, false);
+                inputParam.setOperationType(OperationTypeEnums.Zero.getType());
+                if (halt.get(taskId)) {
+                    realTimeEcho(taskId, "已停止");
+                    return R.fail(map);
+                }
+                R<OperationResultEntity> zero = devOperationUtilService.operation(inputParam);
+                if (!zero.getSuccess()) {
+                    log.warn("时间扫描-校零失败！");
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("error", i18nMessageUtil.getMessage(zero.getMessage()));
+                    sendToActiveSession(null, taskId, jsonObject);
+                    setTaskMeasuring(taskId, false);
 //            stopTask(taskId);
                     return R.fail(map);
 
@@ -4702,16 +4695,25 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             horizontalAxis.put("horizontalAxis", map1);
             sendToActiveSession(null, taskId, horizontalAxis);
 
+            long timeScanStartTime = System.currentTimeMillis();
+            // 超时时间 = 总扫描时间 + 30秒缓冲
+            long timeScanTimeoutMs = (long) (totalTime * 1000) + 30000;
             while (true) {
                 try {
                     taskStopFlag.put(taskId, true);
-// 在等待消息之前先检查是否已停止
                     if (halt.get(taskId)) {
                         realTimeEcho(taskId, "已停止");
                         map.put("line", line);
                         return R.fail(map);
                     }
-                    Object o = queue.pollMessage(deviceSerialNumber, T600ComIdEnums.Measure.getComId());
+                    // 超时检测：防止设备异常停止后循环无限空转
+                    if (System.currentTimeMillis() - timeScanStartTime > timeScanTimeoutMs) {
+                        log.warn("时间扫描超时，已等待{}ms，超过总时间+30s", System.currentTimeMillis() - timeScanStartTime);
+                        map.put("line", line);
+                        return R.fail(map);
+                    }
+                    // 使用带超时的pollMessage，避免CPU空转
+                    Object o = queue.pollMessage(deviceSerialNumber, T600ComIdEnums.Measure.getComId(), 200);
                     if (o instanceof SpectrumPoint || o == null) {
                         if (o != null) {
                             i++;
@@ -4744,18 +4746,15 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 log.info("设备 {} 的时间扫描正常结束", deviceSerialNumber);
                                 break;
                             } else if (marker.getReason() == EndMarker.Reason.TIME_STOP) {
-                                setTaskMeasuring(taskId, false);
+                                // 不在此处调用setTaskMeasuring(false)，统一由外层处理
                                 realTimeEcho(taskId, "停止-时间扫描");
-//                            JSONObject jsonObject = new JSONObject();
-//                            jsonObject.put("error", "时间扫描-超时");
-//                            sendToActiveSession(null, taskId, jsonObject);
                                 map.put("line", line);
                                 log.info("时间扫描停止标志");
                                 this.realTimeEcho(taskId, "已停止");
                                 return R.fail(map);
                             } else if (marker.getReason() == EndMarker.Reason.UN_NORMAL) {
                                 log.info("时间扫描停止标志");
-                                setTaskMeasuring(taskId, false);
+                                // 不在此处调用setTaskMeasuring(false)，统一由外层处理
                                 map.put("line", line);
                                 this.realTimeEcho(taskId, "已停止");
                                 return R.fail(map);
@@ -4768,7 +4767,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                 } catch (Exception e) {
                     log.error("错误111：", e);
-                    setTaskMeasuring(taskId, false);
+                    // 不在此处调用setTaskMeasuring(false)，统一由外层处理
                     map.put("line", line);
                     return R.fail(map);
                 }
@@ -4807,9 +4806,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             map.put("res", res);
             return R.ok(map);
         } finally {
-            // 无论正常结束还是异常退出，都清理时间扫描控制标志
             timeScanStopControl.remove(taskId);
             taskStopFlag.put(taskId, false);
+            // 清理设备消息队列中可能残留的数据，防止下次扫描时读到历史数据
+            queue.clearCommand(deviceSerialNumber, T600ComIdEnums.Measure.getComId());
+            waveformCache.remove(taskId);
         }
     }
 
@@ -4935,7 +4936,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         // 如果有任何校验错误，抛出异常
         if (!errorMessages.isEmpty()) {
-            String errorMsg = String.format("光度扫描参数校验失败：\n%s", java.lang.String.join("\n", errorMessages));
+            String errorMsg = String.format("光度扫描参数校验失败：\n%s", String.join("\n", errorMessages));
             log.error(errorMsg);
             throw new BusinessException(errorMsg);
         }
@@ -5820,7 +5821,7 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
     }
 
 
-// 在连接关闭时清理队列
+    // 在连接关闭时清理队列
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {

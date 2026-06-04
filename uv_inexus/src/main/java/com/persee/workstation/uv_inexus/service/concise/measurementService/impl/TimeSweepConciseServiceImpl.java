@@ -175,6 +175,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     @Autowired
     private DeviceManageService deviceManageService;
 
+    @Autowired
+    private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
+
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Value("文件数据")
@@ -3626,14 +3629,16 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             // 防护：当前表头为null
             if (head == null) {
                 log.warn("表头列表第{}个元素为null，使用默认表头", i);
-                excelHeads.add(Collections.singletonList("未命名列_" + i));
+                excelHeads.add(Collections.singletonList(i18nExcelHelper.t("未命名列") + "_" + i));
                 continue; // 修复原代码此处缺少的分号，确保逻辑正常跳转
             }
             // 防护：表头名称为null/空
             String headName = head.getName();
             if (headName == null || headName.trim().isEmpty()) {
-                headName = "未命名列（" + head.getIdentity() + "）";
+                headName = i18nExcelHelper.t("未命名列") + "（" + head.getIdentity() + "）";
                 log.warn("表头第{}列名称为空，使用默认名称：{}", i, headName);
+            } else {
+                headName = i18nExcelHelper.t(headName);
             }
             excelHeads.add(Collections.singletonList(headName));
         }

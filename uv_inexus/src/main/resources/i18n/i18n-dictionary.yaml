@@ -4429,6 +4429,16 @@ messages:
     en-US: 'User has not joined any group: {0}'
     ru-RU: 'Пользователь не присоединён ни к одной группе: {0}'
 
+  '00B0900D':
+    zh-CN: 'Excel文件中没有数据'
+    en-US: 'No data in Excel file'
+    ru-RU: 'Нет данных в файле Excel'
+
+  '00B0900E':
+    zh-CN: 'Excel文件没有表头信息'
+    en-US: 'Excel file has no header information'
+    ru-RU: 'Файл Excel не содержит информации заголовка'
+
   # ========== 设备通信-UDP响应 (0020A) ==========
   '0020A015':
     zh-CN: '回应报文为空'
