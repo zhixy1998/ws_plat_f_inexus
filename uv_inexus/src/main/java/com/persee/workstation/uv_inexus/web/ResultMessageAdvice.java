@@ -39,7 +39,11 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
         Class<?> type = returnType.getParameterType();
-        return Result.class.isAssignableFrom(type) || R.class.isAssignableFrom(type);
+        boolean supported = Result.class.isAssignableFrom(type) || R.class.isAssignableFrom(type);
+        if (supported) {
+            log.info("[i18n] supports 匹配成功: type={}, method={}", type.getSimpleName(), returnType.getMethod().getName());
+        }
+        return supported;
     }
 
     @Override
@@ -52,6 +56,7 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
 
         String locale = localeProvider.getSystemLocale();
         boolean needTranslate = !"zh-CN".equals(locale) && !"zh_CN".equals(locale) && locale != null;
+        log.info("[i18n] ResultMessageAdvice 触发: locale={}, needTranslate={}, path={}", locale, needTranslate, request.getURI().getPath());
 
         if (body instanceof Result) {
             Result<?> result = (Result<?>) body;
@@ -60,6 +65,7 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
                 Object translatedData = translateData(result.getData());
                 Result rawResult = result;
                 rawResult.setData(translatedData);
+                log.info("[i18n] 最终返回 data 类型: {}", rawResult.getData().getClass().getSimpleName());
             }
             return result;
         }
@@ -86,14 +92,21 @@ public class ResultMessageAdvice implements ResponseBodyAdvice<Object> {
         Set<String> noI18nFields = collectNoI18nFields(data);
         try {
             Object converted = objectMapper.convertValue(data, Object.class);
+            log.info("[i18n] translateData: dataType={}, convertedType={}, noI18nFields={}", 
+                    data.getClass().getSimpleName(), converted.getClass().getSimpleName(), noI18nFields);
             if (converted instanceof Map) {
-                return outputTranslator.translate((Map<String, Object>) converted, noI18nFields);
+                Map<String, Object> map = (Map<String, Object>) converted;
+                log.info("[i18n] translateData map内容: {}", map);
+                Map<String, Object> result = outputTranslator.translate(map, noI18nFields);
+                log.info("[i18n] translateData 翻译后: {}", result);
+                return result;
             } else if (converted instanceof List) {
                 return outputTranslator.translate((List<Object>) converted, noI18nFields);
             }
+            log.info("[i18n] translateData 未匹配Map/List, 原样返回");
             return data;
         } catch (Exception e) {
-            log.debug("data 翻译跳过: {}", e.getMessage());
+            log.warn("[i18n] data 翻译异常: {}", e.getMessage());
             return data;
         }
     }
