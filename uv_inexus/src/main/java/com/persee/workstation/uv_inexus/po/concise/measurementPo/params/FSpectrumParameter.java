@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.po.concise.measurementPo.params;
 
+import com.persee.workstation.uv_inexus.i18n.NoI18n;
 import lombok.Data;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class FSpectrumParameter extends FMeasurePublicParameters {
     // 波长间隔
     private String waveLengthInterval;
     // 重复模式(0.不重复 1.单池重复)
+    @NoI18n
     private String repetitionPattern;
     // 重复次数
     private String repetitionTime;
