@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
+import com.persee.workstation.uv_inexus.i18n.NoI18n;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.QualityConfVO;
@@ -71,6 +72,7 @@ public class RationParameter extends MeasurePublicParameters{
     @ApiModelProperty("零点方式名称")
     private String zeroMethodName;
     // 重复模式
+    @NoI18n
     @ApiModelProperty("重复模式")
     private String repeatMode;
     // 重复次数

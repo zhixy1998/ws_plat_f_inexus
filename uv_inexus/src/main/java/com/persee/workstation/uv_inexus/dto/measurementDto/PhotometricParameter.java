@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
+import com.persee.workstation.uv_inexus.i18n.NoI18n;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.QualityConfVO;
@@ -35,6 +36,7 @@ public class PhotometricParameter extends MeasurePublicParameters {
     @ApiModelProperty("重复模式")
     private String repetitionPattern;
     // 重复次数
+    @NoI18n
     @ApiModelProperty("重复次数")
     private String repetitionTime;
     // 时间间隔

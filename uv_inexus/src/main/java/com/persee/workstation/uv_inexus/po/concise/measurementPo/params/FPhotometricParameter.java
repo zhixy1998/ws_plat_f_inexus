@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.po.concise.measurementPo.params;
 
+import com.persee.workstation.uv_inexus.i18n.NoI18n;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -28,6 +29,7 @@ public class FPhotometricParameter extends FMeasurePublicParameters {
     @ApiModelProperty("波长值")
     private List<String> waveLength;
     // 重复模式
+    @NoI18n
     @ApiModelProperty("重复模式")
     private String repetitionPattern;
     // 重复次数

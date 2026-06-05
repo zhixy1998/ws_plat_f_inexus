@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.vo.concise.spectrum;
 
+import com.persee.workstation.uv_inexus.i18n.NoI18n;
 import lombok.Data;
 
 import javax.validation.constraints.Min;
@@ -37,6 +38,7 @@ public class FSpectrumParameterVo {
     @Pattern(regexp = "^\\d+(\\.\\d+)?$", message = "波长间隔必须是数字")
     private String waveLengthInterval;
     // 重复模式(0.不重复 1.单池重复)
+    @NoI18n
     private String repetitionPattern;
     // 重复次数
     @NotNull(message = "重复次数不能为空")
