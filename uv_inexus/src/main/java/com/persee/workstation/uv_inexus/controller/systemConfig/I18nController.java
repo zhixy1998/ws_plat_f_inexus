@@ -9,11 +9,10 @@ package com.persee.workstation.uv_inexus.controller.systemConfig;
  *
 */
 
-import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemManageDAO;
 import com.persee.workstation.uv_inexus.i18n.LocaleContext;
 import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemManagePO;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemManageService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -29,8 +28,11 @@ import java.util.*;
 @Api(tags = "国际化管理")
 @Slf4j
 public class I18nController {
+//    @Autowired
+//    SystemManageDAO systemManageDao;
+
     @Autowired
-    SystemManageDAO systemManageDao;
+    SystemManageService systemManageService;
     @Autowired
     LocaleProvider localeProvider;
     @Value("${sys-manage-default.defaultId}")
@@ -41,10 +43,12 @@ public class I18nController {
 
         String locale = MapUtils.getString(ll, "locale");
         // 2. 构造对象并更新数据库
-        SystemManagePO updatePO = new SystemManagePO();
-        updatePO.setId(defaultId);
-        updatePO.setLanguage(locale);
-        systemManageDao.updateById(updatePO);
+//        SystemManagePO updatePO = new SystemManagePO();
+//        updatePO.setId(defaultId);
+//        updatePO.setLanguage(locale);
+//        systemManageDao.updateById(updatePO);
+
+        systemManageService.changeLanguage(locale);
 
         // 3. 立即更新当前线程上下文，让本次响应生效
         LocaleContext.setLocale(locale);
@@ -57,9 +61,11 @@ public class I18nController {
     @GetMapping("/getLocale")
     @ApiOperation("获取当前语言")
     public Result<HashMap<String, String>> getLocale() {
-        SystemManagePO systemManagePO = systemManageDao.selectById(defaultId);
+//        SystemManagePO systemManagePO = systemManageDao.selectById(defaultId);
+        String s = systemManageService.queryLanguage();
         HashMap<String, String> map = new HashMap<>();
-        map.put("locale", systemManagePO.getLanguage());
+        map.put("locale", s);
+
         return Result.ok(map);
     }
     @GetMapping("/getLocaleList")
