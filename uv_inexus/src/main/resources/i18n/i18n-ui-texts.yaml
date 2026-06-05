@@ -14,6 +14,16 @@
 # =====================================================
 
 messages:
+  # ========== 文件导出相关 ==========
+  '项目导出':
+    zh-CN: '项目导出'
+    en-US: 'project_export'
+    ru-RU: 'project_export'
+  '项目导入模板':
+    zh-CN: '项目导入模板'
+    en-US: 'project_import_template'
+    ru-RU: 'project_import_template'
+
   # ========== 判定结果 ==========
   '合格':
     zh-CN: '合格'
@@ -386,6 +396,64 @@ messages:
     zh-CN: '仪器连接超数量！'
     en-US: 'Instrument connection limit exceeded'
     ru-RU: 'Превышен лимит подключений приборов'
+
+  # ========== 联机状态 ==========
+  '未联机':
+    zh-CN: '未联机'
+    en-US: 'Disconnected'
+    ru-RU: 'Не подключено'
+  '联机中':
+    zh-CN: '联机中'
+    en-US: 'Connecting'
+    ru-RU: 'Подключение'
+  '联机成功':
+    zh-CN: '联机成功'
+    en-US: 'Connected'
+    ru-RU: 'Подключено'
+  '联机失败':
+    zh-CN: '联机失败'
+    en-US: 'Connection failed'
+    ru-RU: 'Ошибка подключения'
+  '联机断开':
+    zh-CN: '联机断开'
+    en-US: 'Disconnected'
+    ru-RU: 'Отключено'
+
+  # ========== 附件类型 ==========
+  'T600A八联池':
+    zh-CN: 'T600A八联池'
+    en-US: 'T600A 8-Cell Holder'
+    ru-RU: 'T600A 8-позиционный кюветодержатель'
+
+  # ========== 自检项目 ==========
+  '附件初始化':
+    zh-CN: '附件初始化'
+    en-US: 'Accessory initialization'
+    ru-RU: 'Инициализация аксессуаров'
+  '初始化滤色片':
+    zh-CN: '初始化滤色片'
+    en-US: 'Filter initialization'
+    ru-RU: 'Инициализация фильтра'
+  '初始化光源电机':
+    zh-CN: '初始化光源电机'
+    en-US: 'Light source motor initialization'
+    ru-RU: 'Инициализация двигателя источника света'
+  '初始化波长':
+    zh-CN: '初始化波长'
+    en-US: 'Wavelength initialization'
+    ru-RU: 'Инициализация длины волны'
+  '检查钨灯能量':
+    zh-CN: '检查钨灯能量'
+    en-US: 'Tungsten lamp energy check'
+    ru-RU: 'Проверка энергии вольфрамовой лампы'
+  '检查氘灯能量':
+    zh-CN: '检查氘灯能量'
+    en-US: 'Deuterium lamp energy check'
+    ru-RU: 'Проверка энергии дейтериевой лампы'
+  '检查波长':
+    zh-CN: '检查波长'
+    en-US: 'Wavelength check'
+    ru-RU: 'Проверка длины волны'
 
   '任务ID不能为空':
     zh-CN: '任务ID不能为空'
@@ -3150,7 +3218,7 @@ messages:
   # ========== 测量方法 JSON 参数 (f_t_measure_method / excel_data_asset) ==========
   '不重复':
     zh-CN: '不重复'
-    en-US: 'No Repeat'
+    en-US: 'Do not Repeat'
     ru-RU: 'Без повторения'
 
   '平均值':
@@ -3347,10 +3415,10 @@ messages:
     en-US: 'Project Data'
     ru-RU: 'Данные проекта'
 
-  '项目导入模板':
-    zh-CN: '项目导入模板'
-    en-US: 'Project Import Template'
-    ru-RU: 'Шаблон импорта проекта'
+#  '项目导入模板':
+#    zh-CN: '项目导入模板'
+#    en-US: 'Project Import Template'
+#    ru-RU: 'Шаблон импорта проекта'
 
   '检测项信息':
     zh-CN: '检测项信息'
@@ -4099,15 +4167,15 @@ messages:
     ru-RU: 'Безымянный столбец'
 
   # ========== 测量数据导出 - 数据值翻译 ==========
-  '标准样品':
-    zh-CN: '标准样品'
-    en-US: 'Standard Sample'
-    ru-RU: 'Стандартный образец'
-
-  '未知样品':
-    zh-CN: '未知样品'
-    en-US: 'Unknown Sample'
-    ru-RU: 'Неизвестный образец'
+#  '标准样品':
+#    zh-CN: '标准样品'
+#    en-US: 'Standard Sample'
+#    ru-RU: 'Стандартный образец'
+#
+#  '未知样品':
+#    zh-CN: '未知样品'
+#    en-US: 'Unknown Sample'
+#    ru-RU: 'Неизвестный образец'
 
   '样品':
     zh-CN: '样品'

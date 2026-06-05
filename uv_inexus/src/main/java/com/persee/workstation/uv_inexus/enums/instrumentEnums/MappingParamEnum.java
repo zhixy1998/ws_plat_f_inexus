@@ -43,9 +43,9 @@ public enum MappingParamEnum {
 
     MAX_LAMP_WAVELENGTH("maxLampWavelength", "最大灯波长", "390"),
 
-    SCAN_INTERVAL("scanInterval", "扫描间隔", Arrays.asList("0.02","0.04","0.1", "0.2", "0.5", "1.0", "2.0", "5.0")),
+    SCAN_INTERVAL("scanInterval", "扫描间隔", Arrays.asList("0.025","0.05","0.1", "0.2", "0.5", "1.0", "2.0", "5.0")),
 
-    BAND_WIDTH("bandWidth", "带宽", generateBandWidthList(0.1, 5.0, 0.1));
+    BAND_WIDTH("bandWidth", "带宽", generateBandWidthList(0.0, 5.0, 0.1));
 
     private final String key;           // 参数key
     private final String name;          // 参数中文名

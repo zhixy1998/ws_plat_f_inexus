@@ -40,7 +40,7 @@ public class UserLoginDTO {
     public void completeFastLogin() {
         if (this.isFastLogin != null && this.isFastLogin == 1) {
             this.userName = "admin"; // 建议在Constants类定义默认值，此处先硬编码示例
-            this.password = "123456";
+            this.password = "1234561";
         }
     }
 }
