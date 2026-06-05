@@ -88,12 +88,12 @@ public class WebSocketSendUtil {
                 }
                 error.setErrorMsg(localizedMessage);
 
-                Result<WebSocketResponseVO> errorResult = Result.fail(messageCode, args);
+                Result<WebSocketResponseVO> errorResult = Result.fail(localizedMessage, args);
                 messagingTemplate.convertAndSend(getDeviceMessageTopic(deviceSerialNumber), errorResult);
                 return null;
             });
         } catch (Exception e) {
-            log.error("发送国际化错误消息失败: device={}, code={}", deviceSerialNumber, messageCode, e);
+            log.error("发送国际化错误消息失败: device={}, code={}", deviceSerialNumber, i18nMessageUtil.getMessage(messageCode, args), e);
         }
     }
 
