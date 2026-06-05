@@ -65,6 +65,9 @@ public class ManageDataServiceImpl implements ManageDataService {
     @Autowired
     private SysUserService userService;
 
+    @Autowired
+    private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
+
     
     // 日期格式化器
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -327,15 +330,16 @@ public class ManageDataServiceImpl implements ManageDataService {
     @Override
     public byte[] exportMethodToExcel(List<FMeasureMethod> methods) {
         try (Workbook workbook = new XSSFWorkbook()) {
-            Sheet sheet = workbook.createSheet("测量方法");
+            Sheet sheet = workbook.createSheet(i18nExcelHelper.t("测量方法"));
             
             // 创建表头
             Row headerRow = sheet.createRow(0);
-            String[] headers = {
+            String[] rawHeaders = {
                     "方法 ID", "前处理 Key", "多个计算公式 Key", "所属项目 Key", "方法名称",
                     "测量类型", "测量参数信息", "是否共享方法", "方法创建时间", "方法创建人",
                     "方法使用时间", "是否草稿", "使用状态", "预留字段 5"
             };
+            String[] headers = i18nExcelHelper.t(rawHeaders);
             
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);

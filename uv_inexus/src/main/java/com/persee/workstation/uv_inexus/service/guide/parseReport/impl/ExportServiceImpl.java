@@ -39,6 +39,7 @@ import com.persee.workstation.uv_inexus.dao.guide.parseReport.RoundingRulesMappe
 import com.persee.workstation.uv_inexus.dao.guide.parseReport.StandardPretreatmentMapper;
 import com.persee.workstation.uv_inexus.excel.CalculationFormulaExcelModel;
 import com.persee.workstation.uv_inexus.excel.ExcelImageExportUtils;
+import com.persee.workstation.uv_inexus.excel.I18nHeadWriteHandler;
 import com.persee.workstation.uv_inexus.excel.QualityControlExcelModel;
 import com.persee.workstation.uv_inexus.excel.RoundingRulesExcelModel;
 import com.persee.workstation.uv_inexus.excel.StandardDetectionExcelModel;
@@ -53,6 +54,7 @@ import com.persee.workstation.uv_inexus.po.guide.parseReport.StandardPretreatmen
 
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.ExportService;
+import com.persee.workstation.uv_inexus.util.I18nExcelHelper;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -70,6 +72,8 @@ public class ExportServiceImpl implements ExportService {
     private DetectionDao detectionDao;
     @Autowired
     private StandardPretreatmentMapper standardPretreatmentMapper;
+    @Autowired
+    private I18nExcelHelper i18nExcelHelper;
 
     // 核心优化1：缓存图片数据（key=Excel行索引，value=Base64字符串），不写入单元格
     private Map<Integer, String> formulaImageCache = new HashMap<>();
@@ -254,42 +258,43 @@ public class ExportServiceImpl implements ExportService {
 
         ExcelWriter excelWriter = EasyExcel.write(outputStream)
                 .registerWriteHandler(new FormulaImageHandler()) // 注册图片处理器
+                .registerWriteHandler(new I18nHeadWriteHandler(i18nExcelHelper)) // 注册表头翻译处理器
                 .build();
 
-        WriteSheet sheet1 = EasyExcel.writerSheet(0, "标准信息表")
+        WriteSheet sheet1 = EasyExcel.writerSheet(0, i18nExcelHelper.t("标准信息表"))
                 .head(StandardDetectionExcelModel.class)
                 .build();
         excelWriter.write(convertToStandardModels(targetDetections), sheet1);
 
-        WriteSheet sheet2 = EasyExcel.writerSheet(1, "前处理信息表")
+        WriteSheet sheet2 = EasyExcel.writerSheet(1, i18nExcelHelper.t("前处理信息表"))
                 .head(StandardPretreatmentExcelModel.class)
                 .build();
         excelWriter.write(convertToPretreatmentModels(standardPretreatments), sheet2);
 
-        WriteSheet sheet3 = EasyExcel.writerSheet(2, "计算公式表")
+        WriteSheet sheet3 = EasyExcel.writerSheet(2, i18nExcelHelper.t("计算公式表"))
                 .head(CalculationFormulaExcelModel.class)
                 .build();
         // 核心优化3：写入的模型中formulaImage已为空，避免Base64写入单元格
         excelWriter.write(convertToFormulaModels(calculationFormulas), sheet3);
 
-        WriteSheet sheet4 = EasyExcel.writerSheet(3, "质量控制表")
+        WriteSheet sheet4 = EasyExcel.writerSheet(3, i18nExcelHelper.t("质量控制表"))
                 .head(QualityControlExcelModel.class)
                 .build();
         excelWriter.write(convertToQualityModels(qualityControls), sheet4);
 
-        WriteSheet sheet5 = EasyExcel.writerSheet(4, "修约表")
+        WriteSheet sheet5 = EasyExcel.writerSheet(4, i18nExcelHelper.t("修约表"))
                 .head(RoundingRulesExcelModel.class)
                 .build();
         excelWriter.write(convertToRoundingModels(roundingRules), sheet5);
 
         // 导出UV-VIS-光度测量-检测参数表
-        WriteSheet sheet6 = EasyExcel.writerSheet(5, "UV-VIS-光度测量-检测参数表")
+        WriteSheet sheet6 = EasyExcel.writerSheet(5, i18nExcelHelper.t("UV-VIS-光度测量-检测参数表"))
                 .head(StandardDetectionUVVISPhotometryExcelModel.class)
                 .build();
         excelWriter.write(convertToPhotometryModels(targetDetections), sheet6);
 
         // 导出UV-VIS-光谱扫描-检测参数表
-        WriteSheet sheet7 = EasyExcel.writerSheet(6, "UV-VIS-光谱扫描-检测参数表")
+        WriteSheet sheet7 = EasyExcel.writerSheet(6, i18nExcelHelper.t("UV-VIS-光谱扫描-检测参数表"))
                 .head(StandardDetectionUVVISSpectrumScanExcelModel.class)
                 .build();
         excelWriter.write(convertToSpectrumScanModels(targetDetections), sheet7);
@@ -511,8 +516,8 @@ public class ExportServiceImpl implements ExportService {
                                     WriteTableHolder writeTableHolder,
                                     Row row, Integer relativeRowIndex,
                                     Boolean isHead) { // 修复参数类型：Boolean -> boolean
-            // 只处理"计算公式表"的非表头行
-            if (isHead || row == null || !"计算公式表".equals(writeSheetHolder.getSheetName())) {
+            // 只处理"计算公式表"的非表头行（计算公式表是第3个sheet，索引2）
+            if (isHead || row == null || writeSheetHolder.getSheetNo() != 2) {
                 return;
             }
 

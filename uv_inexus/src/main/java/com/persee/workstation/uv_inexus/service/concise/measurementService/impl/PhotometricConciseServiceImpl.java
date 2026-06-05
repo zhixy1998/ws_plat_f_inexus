@@ -144,6 +144,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Autowired
     private DeviceManageService deviceManageService;
 
+    @Autowired
+    private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
+
     @Value("1")
     String deleteType;
 
@@ -3697,7 +3700,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         cellData = SampleTypeEnum.getName(cellData);
                     }
                     if (head.getIdentity().equals("sampleLocation")) {
-                        cellData = "样品"+cellData;
+                        cellData = i18nExcelHelper.t("样品")+cellData;
                     }
                     if (i == 0) {
                         headerRow.addNewTableCell().setText(head.getName());
@@ -4301,7 +4304,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         for (FHeadVO head : heads) {
             List<String> singleHead = new ArrayList<>();
             // 表头空值时显示“未命名列”，避免Excel表头为空
-            singleHead.add(StringUtils.hasText(head.getName()) ? head.getName() : "未命名列");
+            singleHead.add(StringUtils.hasText(head.getName()) ? i18nExcelHelper.t(head.getName()) : i18nExcelHelper.t("未命名列"));
             excelHeads.add(singleHead);
         }
 

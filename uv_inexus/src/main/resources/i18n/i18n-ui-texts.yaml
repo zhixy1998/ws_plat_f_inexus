@@ -2683,3 +2683,1433 @@ messages:
     zh-CN: '设置'
     en-US: 'Add'
     ru-RU: 'Добавление'
+
+  # =====================================================
+  # 以下为数据库初始化数据 (SQL) 中提取的中文词条补充
+  # 来源: t800_uv_inexus / t800_uv_inexus_concise / t800_uv_inexus_factory_inspection
+  # =====================================================
+
+  # ========== 测量类型 (t_measure_method / t_measure_task / t_measure_preset_head) ==========
+  '光度测量':
+    zh-CN: '光度测量'
+    en-US: 'Photometric Measurement'
+    ru-RU: 'Фотометрическое измерение'
+
+  '定量测定':
+    zh-CN: '定量测定'
+    en-US: 'Quantitative Determination'
+    ru-RU: 'Количественное определение'
+
+  '光谱扫描':
+    zh-CN: '光谱扫描'
+    en-US: 'Spectral Scan'
+    ru-RU: 'Спектральное сканирование'
+
+  '时间扫描':
+    zh-CN: '时间扫描'
+    en-US: 'Time Scan'
+    ru-RU: 'Сканирование по времени'
+
+  '默认方法':
+    zh-CN: '默认方法'
+    en-US: 'Default Method'
+    ru-RU: 'Метод по умолчанию'
+
+  # ========== 预设表头名称 (t_measure_preset_head) ==========
+  '样品编号':
+    zh-CN: '样品编号'
+    en-US: 'Sample No.'
+    ru-RU: 'Номер образца'
+
+  '样品名称':
+    zh-CN: '样品名称'
+    en-US: 'Sample Name'
+    ru-RU: 'Название образца'
+
+  '样品类型':
+    zh-CN: '样品类型'
+    en-US: 'Sample Type'
+    ru-RU: 'Тип образца'
+
+  '标准浓度':
+    zh-CN: '标准浓度'
+    en-US: 'Standard Concentration'
+    ru-RU: 'Стандартная концентрация'
+
+  '光度测量预留':
+    zh-CN: '光度测量预留'
+    en-US: 'Photometric Reserved'
+    ru-RU: 'Фотометрия зарезервировано'
+
+  # ========== 项目/任务 (t_measure_project / t_measure_task) ==========
+  '默认项目':
+    zh-CN: '默认项目'
+    en-US: 'Default Project'
+    ru-RU: 'Проект по умолчанию'
+
+  '测试项目':
+    zh-CN: '测试项目'
+    en-US: 'Test Project'
+    ru-RU: 'Тестовый проект'
+
+  # ========== 提醒配置 (t_reminder_switch_config) ==========
+  '总开关':
+    zh-CN: '总开关'
+    en-US: 'Master Switch'
+    ru-RU: 'Главный переключатель'
+
+  '提醒功能总开关，关闭后所有提醒将停止':
+    zh-CN: '提醒功能总开关，关闭后所有提醒将停止'
+    en-US: 'Master reminder switch, all reminders will stop when off'
+    ru-RU: 'Главный переключатель напоминаний, при выключении все напоминания остановятся'
+
+  '期间核查任务提醒':
+    zh-CN: '期间核查任务提醒'
+    en-US: 'Periodic inspection task reminder'
+    ru-RU: 'Напоминание о задаче периодической проверки'
+
+  '标准物质有效期到期提醒':
+    zh-CN: '标准物质有效期到期提醒'
+    en-US: 'Standard material expiry reminder'
+    ru-RU: 'Напоминание об истечении срока стандартного материала'
+
+  # ========== 样品池附件 (t_measure_pool / f_t_measure_pool) ==========
+  'T700固体样品池':
+    zh-CN: 'T700固体样品池'
+    en-US: 'T700 Solid Sample Cell'
+    ru-RU: 'T700 Твёрдая кювета'
+
+  'T700镜面反射附件':
+    zh-CN: 'T700镜面反射附件'
+    en-US: 'T700 Specular Reflectance Accessory'
+    ru-RU: 'T700 Зеркальный отражательный аксессуар'
+
+  'T700固定100mm长样池':
+    zh-CN: 'T700固定100mm长样池'
+    en-US: 'T700 Fixed 100mm Long Path Cell'
+    ru-RU: 'T700 Фиксированная кювета 100 мм'
+
+  'T700标准及微量样品池':
+    zh-CN: 'T700标准及微量样品池'
+    en-US: 'T700 Standard & Micro Sample Cell'
+    ru-RU: 'T700 Стандартная и микрокювета'
+
+  'T700五联恒温池':
+    zh-CN: 'T700五联恒温池'
+    en-US: 'T700 5-Position Thermostatic Cell'
+    ru-RU: 'T700 5-позиционная термокювета'
+
+  'T700五联100mm长样池':
+    zh-CN: 'T700五联100mm长样池'
+    en-US: 'T700 5-Position 100mm Long Path Cell'
+    ru-RU: 'T700 5-позиционная кювета 100 мм'
+
+  'T700可变角度样品架':
+    zh-CN: 'T700可变角度样品架'
+    en-US: 'T700 Variable Angle Sample Holder'
+    ru-RU: 'T700 Держатель образца с переменным углом'
+
+  'T700超微量样品池':
+    zh-CN: 'T700超微量样品池'
+    en-US: 'T700 Ultra-Micro Sample Cell'
+    ru-RU: 'T700 Ультрамикрокювета'
+
+  'T700八联池':
+    zh-CN: 'T700八联池'
+    en-US: 'T700 8-Position Cell'
+    ru-RU: 'T700 8-позиционная кювета'
+
+  'T700试管架':
+    zh-CN: 'T700试管架'
+    en-US: 'T700 Test Tube Rack'
+    ru-RU: 'T700 Штатив для пробирок'
+
+  'T700固定恒温池':
+    zh-CN: 'T700固定恒温池'
+    en-US: 'T700 Fixed Thermostatic Cell'
+    ru-RU: 'T700 Фиксированная термокювета'
+
+  'T700积分椭球':
+    zh-CN: 'T700积分椭球'
+    en-US: 'T700 Integrating Sphere'
+    ru-RU: 'T700 Интегрирующая сфера'
+
+  'T600标准及微量样品池':
+    zh-CN: 'T600标准及微量样品池'
+    en-US: 'T600 Standard & Micro Sample Cell'
+    ru-RU: 'T600 Стандартная и микрокювета'
+
+  'T600固定100mm长样池':
+    zh-CN: 'T600固定100mm长样池'
+    en-US: 'T600 Fixed 100mm Long Path Cell'
+    ru-RU: 'T600 Фиксированная кювета 100 мм'
+
+  'T600固定恒温池':
+    zh-CN: 'T600固定恒温池'
+    en-US: 'T600 Fixed Thermostatic Cell'
+    ru-RU: 'T600 Фиксированная термокювета'
+
+  'T600五联恒温池':
+    zh-CN: 'T600五联恒温池'
+    en-US: 'T600 5-Position Thermostatic Cell'
+    ru-RU: 'T600 5-позиционная термокювета'
+
+  'T600固体样品池':
+    zh-CN: 'T600固体样品池'
+    en-US: 'T600 Solid Sample Cell'
+    ru-RU: 'T600 Твёрдая кювета'
+
+  'T600试管架':
+    zh-CN: 'T600试管架'
+    en-US: 'T600 Test Tube Rack'
+    ru-RU: 'T600 Штатив для пробирок'
+
+  'T600可变角度样品架':
+    zh-CN: 'T600可变角度样品架'
+    en-US: 'T600 Variable Angle Sample Holder'
+    ru-RU: 'T600 Держатель образца с переменным углом'
+
+  'T600超微量样品池':
+    zh-CN: 'T600超微量样品池'
+    en-US: 'T600 Ultra-Micro Sample Cell'
+    ru-RU: 'T600 Ультрамикрокювета'
+
+  'T600积分椭球':
+    zh-CN: 'T600积分椭球'
+    en-US: 'T600 Integrating Sphere'
+    ru-RU: 'T600 Интегрирующая сфера'
+
+  'T600镜面反射附件':
+    zh-CN: 'T600镜面反射附件'
+    en-US: 'T600 Specular Reflectance Accessory'
+    ru-RU: 'T600 Зеркальный отражательный аксессуар'
+
+  # ========== 用户组 (t_sys_group) ==========
+  '研发组':
+    zh-CN: '研发组'
+    en-US: 'R&D Group'
+    ru-RU: 'Группа НИОКР'
+
+  '维修组':
+    zh-CN: '维修组'
+    en-US: 'Maintenance Group'
+    ru-RU: 'Группа обслуживания'
+
+  '产线管理员':
+    zh-CN: '产线管理员'
+    en-US: 'Production Line Admin'
+    ru-RU: 'Администратор производственной линии'
+
+  '装调员':
+    zh-CN: '装调员'
+    en-US: 'Assembly & Tuning Staff'
+    ru-RU: 'Сборщик-наладчик'
+
+  '检验员':
+    zh-CN: '检验员'
+    en-US: 'Inspector'
+    ru-RU: 'Инспектор'
+
+  '管理组':
+    zh-CN: '管理组'
+    en-US: 'Management Group'
+    ru-RU: 'Группа управления'
+
+  '系统一组':
+    zh-CN: '系统一组'
+    en-US: 'System Team 1'
+    ru-RU: 'Системная группа 1'
+
+  '测试一组':
+    zh-CN: '测试一组'
+    en-US: 'Test Team 1'
+    ru-RU: 'Тестовая группа 1'
+
+  '调试工具组':
+    zh-CN: '调试工具组'
+    en-US: 'Debug Tool Group'
+    ru-RU: 'Группа отладки'
+
+  '售后组':
+    zh-CN: '售后组'
+    en-US: 'After-Sales Group'
+    ru-RU: 'Группа послепродажного обслуживания'
+
+  # ========== 菜单权限名称 - 一级菜单 (t_sys_permission) ==========
+  '仪器管理':
+    zh-CN: '仪器管理'
+    en-US: 'Instrument Management'
+    ru-RU: 'Управление приборами'
+
+  '仪器配置':
+    zh-CN: '仪器配置'
+    en-US: 'Instrument Configuration'
+    ru-RU: 'Конфигурация прибора'
+
+  '自动进样器配置':
+    zh-CN: '自动进样器配置'
+    en-US: 'Autosampler Configuration'
+    ru-RU: 'Конфигурация автосамплера'
+
+  '仪器校正':
+    zh-CN: '仪器校正'
+    en-US: 'Instrument Calibration'
+    ru-RU: 'Калибровка прибора'
+
+  '历史检测任务':
+    zh-CN: '历史检测任务'
+    en-US: 'Historical Test Tasks'
+    ru-RU: 'История задач тестирования'
+
+  '仪器使用统计':
+    zh-CN: '仪器使用统计'
+    en-US: 'Instrument Usage Statistics'
+    ru-RU: 'Статистика использования прибора'
+
+  '软件激活':
+    zh-CN: '软件激活'
+    en-US: 'Software Activation'
+    ru-RU: 'Активация ПО'
+
+  '实验测试':
+    zh-CN: '实验测试'
+    en-US: 'Experiment & Test'
+    ru-RU: 'Эксперимент и тестирование'
+
+  '方法调优':
+    zh-CN: '方法调优'
+    en-US: 'Method Optimization'
+    ru-RU: 'Оптимизация метода'
+
+  '报告设计':
+    zh-CN: '报告设计'
+    en-US: 'Report Design'
+    ru-RU: 'Дизайн отчёта'
+
+  '报告模板设计':
+    zh-CN: '报告模板设计'
+    en-US: 'Report Template Design'
+    ru-RU: 'Дизайн шаблона отчёта'
+
+  '校准模板设计':
+    zh-CN: '校准模板设计'
+    en-US: 'Calibration Template Design'
+    ru-RU: 'Дизайн шаблона калибровки'
+
+  '安装验收模板设计':
+    zh-CN: '安装验收模板设计'
+    en-US: 'Installation Acceptance Template Design'
+    ru-RU: 'Дизайн шаблона приёмки'
+
+  '模板编辑':
+    zh-CN: '模板编辑'
+    en-US: 'Template Editing'
+    ru-RU: 'Редактирование шаблона'
+
+  '系统管理':
+    zh-CN: '系统管理'
+    en-US: 'System Management'
+    ru-RU: 'Управление системой'
+
+  '系统面板配置':
+    zh-CN: '系统面板配置'
+    en-US: 'System Panel Configuration'
+    ru-RU: 'Конфигурация системной панели'
+
+  '系统管理配置':
+    zh-CN: '系统管理配置'
+    en-US: 'System Management Configuration'
+    ru-RU: 'Конфигурация управления системой'
+
+  '数据库配置':
+    zh-CN: '数据库配置'
+    en-US: 'Database Configuration'
+    ru-RU: 'Конфигурация базы данных'
+
+  '系统日志管理':
+    zh-CN: '系统日志管理'
+    en-US: 'System Log Management'
+    ru-RU: 'Управление системными журналами'
+
+  '算法配置':
+    zh-CN: '算法配置'
+    en-US: 'Algorithm Configuration'
+    ru-RU: 'Конфигурация алгоритмов'
+
+  '业务参数配置':
+    zh-CN: '业务参数配置'
+    en-US: 'Business Parameter Configuration'
+    ru-RU: 'Конфигурация бизнес-параметров'
+
+  '标准管理':
+    zh-CN: '标准管理'
+    en-US: 'Standard Management'
+    ru-RU: 'Управление стандартами'
+
+  '用户管理':
+    zh-CN: '用户管理'
+    en-US: 'User Management'
+    ru-RU: 'Управление пользователями'
+
+  '系统用户管理':
+    zh-CN: '系统用户管理'
+    en-US: 'System User Management'
+    ru-RU: 'Управление системными пользователями'
+
+  '产线用户管理':
+    zh-CN: '产线用户管理'
+    en-US: 'Production Line User Management'
+    ru-RU: 'Управление пользователями линии'
+
+  '用户和组':
+    zh-CN: '用户和组'
+    en-US: 'Users & Groups'
+    ru-RU: 'Пользователи и группы'
+
+  '欢迎页':
+    zh-CN: '欢迎页'
+    en-US: 'Welcome'
+    ru-RU: 'Добро пожаловать'
+
+  '调试工具':
+    zh-CN: '调试工具'
+    en-US: 'Debug Tools'
+    ru-RU: 'Инструменты отладки'
+
+  '开发调试工具':
+    zh-CN: '开发调试工具'
+    en-US: 'Development Debug Tools'
+    ru-RU: 'Инструменты разработки и отладки'
+
+  '产线生产工具':
+    zh-CN: '产线生产工具'
+    en-US: 'Production Line Tools'
+    ru-RU: 'Инструменты производственной линии'
+
+  '出厂检验模板管理':
+    zh-CN: '出厂检验模板管理'
+    en-US: 'Factory Inspection Template Management'
+    ru-RU: 'Управление шаблонами заводского контроля'
+
+  '便捷维修':
+    zh-CN: '便捷维修'
+    en-US: 'Convenient Repair'
+    ru-RU: 'Удобный ремонт'
+
+  '仪器状态监测':
+    zh-CN: '仪器状态监测'
+    en-US: 'Instrument Status Monitor'
+    ru-RU: 'Мониторинг состояния прибора'
+
+  '客户向导':
+    zh-CN: '客户向导'
+    en-US: 'Customer Guide'
+    ru-RU: 'Мастер для клиентов'
+
+  '维修人员向导':
+    zh-CN: '维修人员向导'
+    en-US: 'Repair Personnel Guide'
+    ru-RU: 'Мастер ремонтного персонала'
+
+  '检定':
+    zh-CN: '检定'
+    en-US: 'Verification'
+    ru-RU: 'Поверка'
+
+  '通知管理':
+    zh-CN: '通知管理'
+    en-US: 'Notification Management'
+    ru-RU: 'Управление уведомлениями'
+
+  '设计模式':
+    zh-CN: '设计模式'
+    en-US: 'Design Pattern'
+    ru-RU: 'Шаблон проектирования'
+
+  # ========== 权限名称 - 带路径的详细权限 ==========
+  '仪器管理-历史检测任务-详情':
+    zh-CN: '仪器管理-历史检测任务-详情'
+    en-US: 'Instrument - Historical Tasks - Detail'
+    ru-RU: 'Приборы - История - Подробности'
+
+  '仪器管理-软件激活-激活设备':
+    zh-CN: '仪器管理-软件激活-激活设备'
+    en-US: 'Instrument - Software Activation - Activate Device'
+    ru-RU: 'Приборы - Активация ПО - Активировать устройство'
+
+  '仪器管理-软件激活-删除仪器':
+    zh-CN: '仪器管理-软件激活-删除仪器'
+    en-US: 'Instrument - Software Activation - Delete Instrument'
+    ru-RU: 'Приборы - Активация ПО - Удалить прибор'
+
+  '仪器管理-软件激活-批量删除':
+    zh-CN: '仪器管理-软件激活-批量删除'
+    en-US: 'Instrument - Software Activation - Batch Delete'
+    ru-RU: 'Приборы - Активация ПО - Пакетное удаление'
+
+  # ========== 测量方法 JSON 参数 (f_t_measure_method / excel_data_asset) ==========
+  '不重复':
+    zh-CN: '不重复'
+    en-US: 'No Repeat'
+    ru-RU: 'Без повторения'
+
+  '平均值':
+    zh-CN: '平均值'
+    en-US: 'Average'
+    ru-RU: 'Среднее значение'
+
+  '一次曲线':
+    zh-CN: '一次曲线'
+    en-US: 'Linear Curve'
+    ru-RU: 'Линейная кривая'
+
+  '标准曲线法':
+    zh-CN: '标准曲线法'
+    en-US: 'Standard Curve Method'
+    ru-RU: 'Метод стандартной кривой'
+
+  '不微分':
+    zh-CN: '不微分'
+    en-US: 'No Derivative'
+    ru-RU: 'Без производной'
+
+  # ========== 出厂检验 excel_data_asset JSON 中文值补充 ==========
+  '360nm杂散光':
+    zh-CN: '360nm杂散光'
+    en-US: '360nm Stray Light'
+    ru-RU: 'Рассеянный свет 360 нм'
+
+  '0.02间隔_氘灯0.2':
+    zh-CN: '0.02间隔_氘灯0.2'
+    en-US: '0.02 Interval_D2 0.2'
+    ru-RU: '0.02 интервал_D2 0.2'
+
+  '仪器预热1小时之后进行检验':
+    zh-CN: '仪器预热1小时之后进行检验'
+    en-US: 'Please warm up the instrument for 1 hour before testing'
+    ru-RU: 'Прогрейте прибор в течение 1 часа перед проверкой'
+
+  '亚硝酸钠空白溶液':
+    zh-CN: '亚硝酸钠空白溶液'
+    en-US: 'Sodium Nitrite Blank Solution'
+    ru-RU: 'Холостой раствор нитрита натрия'
+
+  '亚硝酸钠溶液':
+    zh-CN: '亚硝酸钠溶液'
+    en-US: 'Sodium Nitrite Solution'
+    ru-RU: 'Раствор нитрита натрия'
+
+  # ========== excel_data_asset JSON 中文 key 补充 ==========
+  '特征值':
+    zh-CN: '特征值'
+    en-US: 'Characteristic Value'
+    ru-RU: 'Характеристическое значение'
+
+  '光度模式':
+    zh-CN: '光度模式'
+    en-US: 'Photometric Mode'
+    ru-RU: 'Фотометрический режим'
+
+
+
+  '分析方法':
+    zh-CN: '分析方法'
+    en-US: 'Analysis Method'
+    ru-RU: 'Метод анализа'
+
+
+
+  '校零物质':
+    zh-CN: '校零物质'
+    en-US: 'Zero Calibration Material'
+    ru-RU: 'Калибровочный материал нуля'
+
+  '测量物质':
+    zh-CN: '测量物质'
+    en-US: 'Measurement Material'
+    ru-RU: 'Измеряемое вещество'
+
+  '暗电流物质':
+    zh-CN: '暗电流物质'
+    en-US: 'Dark Current Material'
+    ru-RU: 'Материал темнового тока'
+
+  '重复次数':
+    zh-CN: '重复次数'
+    en-US: 'Repeat Count'
+    ru-RU: 'Количество повторений'
+
+  '重复时间间隔':
+    zh-CN: '重复时间间隔'
+    en-US: 'Repeat Interval'
+    ru-RU: 'Интервал повторения'
+
+
+
+  '增益':
+    zh-CN: '增益'
+    en-US: 'Gain'
+    ru-RU: 'Усиление'
+
+  '灯状态':
+    zh-CN: '灯状态'
+    en-US: 'Lamp Status'
+    ru-RU: 'Состояние лампы'
+
+  '标准值':
+    zh-CN: '标准值'
+    en-US: 'Standard Value'
+    ru-RU: 'Стандартное значение'
+
+  '误差范围（%）':
+    zh-CN: '误差范围（%）'
+    en-US: 'Error Range (%)'
+    ru-RU: 'Диапазон погрешности (%)'
+
+  '响应时间':
+    zh-CN: '响应时间'
+    en-US: 'Response Time'
+    ru-RU: 'Время отклика'
+
+  '扫描个数':
+    zh-CN: '扫描个数'
+    en-US: 'Scan Count'
+    ru-RU: 'Количество сканирований'
+
+  '指标要求':
+    zh-CN: '指标要求'
+    en-US: 'Specification Requirement'
+    ru-RU: 'Требование спецификации'
+
+  '时间间隔':
+    zh-CN: '时间间隔'
+    en-US: 'Time Interval'
+    ru-RU: 'Интервал времени'
+
+  '测量信息':
+    zh-CN: '测量信息'
+    en-US: 'Measurement Info'
+    ru-RU: 'Информация об измерении'
+
+  '提示':
+    zh-CN: '提示'
+    en-US: 'Tip'
+    ru-RU: 'Подсказка'
+
+  # ========== Excel 导出 - Sheet 名称 ==========
+  '标准信息表':
+    zh-CN: '标准信息表'
+    en-US: 'Standard Information'
+    ru-RU: 'Стандартная информация'
+
+  '前处理信息表':
+    zh-CN: '前处理信息表'
+    en-US: 'Pretreatment Information'
+    ru-RU: 'Информация о предварительной обработке'
+
+  '计算公式表':
+    zh-CN: '计算公式表'
+    en-US: 'Calculation Formula'
+    ru-RU: 'Расчётные формулы'
+
+  '质量控制表':
+    zh-CN: '质量控制表'
+    en-US: 'Quality Control'
+    ru-RU: 'Контроль качества'
+
+  '修约表':
+    zh-CN: '修约表'
+    en-US: 'Rounding Rules'
+    ru-RU: 'Правила округления'
+
+  'UV-VIS-光度测量-检测参数表':
+    zh-CN: 'UV-VIS-光度测量-检测参数表'
+    en-US: 'UV-VIS Photometric Detection Parameters'
+    ru-RU: 'UV-VIS Фотометрические параметры'
+
+  'UV-VIS-光谱扫描-检测参数表':
+    zh-CN: 'UV-VIS-光谱扫描-检测参数表'
+    en-US: 'UV-VIS Spectral Scan Detection Parameters'
+    ru-RU: 'UV-VIS Параметры спектрального сканирования'
+
+  '测量方法':
+    zh-CN: '测量方法'
+    en-US: 'Measurement Methods'
+    ru-RU: 'Методы измерения'
+
+  '数据':
+    zh-CN: '数据'
+    en-US: 'Data'
+    ru-RU: 'Данные'
+
+  '项目数据':
+    zh-CN: '项目数据'
+    en-US: 'Project Data'
+    ru-RU: 'Данные проекта'
+
+  '项目导入模板':
+    zh-CN: '项目导入模板'
+    en-US: 'Project Import Template'
+    ru-RU: 'Шаблон импорта проекта'
+
+  '检测项信息':
+    zh-CN: '检测项信息'
+    en-US: 'Inspection Items'
+    ru-RU: 'Информация об элементах проверки'
+
+  # ========== Excel 导出 - 表头列名 (StandardDetectionExcelModel) ==========
+  '标准标识':
+    zh-CN: '标准标识'
+    en-US: 'Standard ID'
+    ru-RU: 'Идентификатор стандарта'
+
+  '行业':
+    zh-CN: '行业'
+    en-US: 'Industry'
+    ru-RU: 'Отрасль'
+
+  '检测类型':
+    zh-CN: '检测类型'
+    en-US: 'Detection Type'
+    ru-RU: 'Тип проверки'
+
+  '检测仪器':
+    zh-CN: '检测仪器'
+    en-US: 'Instrument'
+    ru-RU: 'Прибор'
+
+  '标准号':
+    zh-CN: '标准号'
+    en-US: 'Standard No.'
+    ru-RU: 'Номер стандарта'
+
+  '标准名称':
+    zh-CN: '标准名称'
+    en-US: 'Standard Name'
+    ru-RU: 'Название стандарта'
+
+  '检测项目':
+    zh-CN: '检测项目'
+    en-US: 'Detection Item'
+    ru-RU: 'Элемент проверки'
+
+  '第几法':
+    zh-CN: '第几法'
+    en-US: 'Method No.'
+    ru-RU: 'Номер метода'
+
+  '检测参数':
+    zh-CN: '检测参数'
+    en-US: 'Detection Parameters'
+    ru-RU: 'Параметры проверки'
+
+  '发布时间':
+    zh-CN: '发布时间'
+    en-US: 'Release Date'
+    ru-RU: 'Дата публикации'
+
+  '废止日期':
+    zh-CN: '废止日期'
+    en-US: 'Expiration Date'
+    ru-RU: 'Дата отмены'
+
+  '实施日期':
+    zh-CN: '实施日期'
+    en-US: 'Effective Date'
+    ru-RU: 'Дата вступления в силу'
+
+  '状态':
+    zh-CN: '状态'
+    en-US: 'Status'
+    ru-RU: 'Статус'
+
+  '类型':
+    zh-CN: '类型'
+    en-US: 'Type'
+    ru-RU: 'Тип'
+
+  # ========== Excel 导出 - 表头列名 (CalculationFormulaExcelModel) ==========
+  '结果标识':
+    zh-CN: '结果标识'
+    en-US: 'Result ID'
+    ru-RU: 'Идентификатор результата'
+
+  '结果名称':
+    zh-CN: '结果名称'
+    en-US: 'Result Name'
+    ru-RU: 'Название результата'
+
+  '单位':
+    zh-CN: '单位'
+    en-US: 'Unit'
+    ru-RU: 'Единица'
+
+  '输入参数1名称':
+    zh-CN: '输入参数1名称'
+    en-US: 'Input Param 1 Name'
+    ru-RU: 'Имя входного параметра 1'
+
+  '输入参数1标识':
+    zh-CN: '输入参数1标识'
+    en-US: 'Input Param 1 ID'
+    ru-RU: 'Идентификатор входного параметра 1'
+
+  '参数1单位':
+    zh-CN: '参数1单位'
+    en-US: 'Param 1 Unit'
+    ru-RU: 'Единица параметра 1'
+
+  '是否为样品输入参数1':
+    zh-CN: '是否为样品输入参数1'
+    en-US: 'Is Sample Input Param 1'
+    ru-RU: 'Входной параметр образца 1'
+
+  '软件绑定标识1':
+    zh-CN: '软件绑定标识1'
+    en-US: 'Software Binding ID 1'
+    ru-RU: 'Идентификатор привязки ПО 1'
+
+  '输入参数2名称':
+    zh-CN: '输入参数2名称'
+    en-US: 'Input Param 2 Name'
+    ru-RU: 'Имя входного параметра 2'
+
+  '输入参数2标识':
+    zh-CN: '输入参数2标识'
+    en-US: 'Input Param 2 ID'
+    ru-RU: 'Идентификатор входного параметра 2'
+
+  '参数2单位':
+    zh-CN: '参数2单位'
+    en-US: 'Param 2 Unit'
+    ru-RU: 'Единица параметра 2'
+
+  '是否为样品输入参数2':
+    zh-CN: '是否为样品输入参数2'
+    en-US: 'Is Sample Input Param 2'
+    ru-RU: 'Входной параметр образца 2'
+
+  '软件绑定标识2':
+    zh-CN: '软件绑定标识2'
+    en-US: 'Software Binding ID 2'
+    ru-RU: 'Идентификатор привязки ПО 2'
+
+  '公式文本':
+    zh-CN: '公式文本'
+    en-US: 'Formula Text'
+    ru-RU: 'Текст формулы'
+
+  '公式图片':
+    zh-CN: '公式图片'
+    en-US: 'Formula Image'
+    ru-RU: 'Изображение формулы'
+
+  '检出限':
+    zh-CN: '检出限'
+    en-US: 'Detection Limit'
+    ru-RU: 'Предел обнаружения'
+
+  # ========== Excel 导出 - 表头列名 (StandardDetectionUVVISPhotometryExcelModel) ==========
+  '波长1':
+    zh-CN: '波长1'
+    en-US: 'Wavelength 1'
+    ru-RU: 'Длина волны 1'
+
+  '波长2':
+    zh-CN: '波长2'
+    en-US: 'Wavelength 2'
+    ru-RU: 'Длина волны 2'
+
+  '波长3':
+    zh-CN: '波长3'
+    en-US: 'Wavelength 3'
+    ru-RU: 'Длина волны 3'
+
+  '波长4':
+    zh-CN: '波长4'
+    en-US: 'Wavelength 4'
+    ru-RU: 'Длина волны 4'
+
+  '波长5':
+    zh-CN: '波长5'
+    en-US: 'Wavelength 5'
+    ru-RU: 'Длина волны 5'
+
+  '波长6':
+    zh-CN: '波长6'
+    en-US: 'Wavelength 6'
+    ru-RU: 'Длина волны 6'
+
+  '是否重复':
+    zh-CN: '是否重复'
+    en-US: 'Repeat'
+    ru-RU: 'Повторение'
+
+  '重复时间间隔(s)':
+    zh-CN: '重复时间间隔(s)'
+    en-US: 'Repeat Interval (s)'
+    ru-RU: 'Интервал повторения (с)'
+
+  # ========== Excel 导出 - 表头列名 (ManageDataServiceImpl 方法导出) ==========
+  '方法 ID':
+    zh-CN: '方法 ID'
+    en-US: 'Method ID'
+    ru-RU: 'ID метода'
+
+  '前处理 Key':
+    zh-CN: '前处理 Key'
+    en-US: 'Pretreatment Key'
+    ru-RU: 'Ключ предварительной обработки'
+
+  '多个计算公式 Key':
+    zh-CN: '多个计算公式 Key'
+    en-US: 'Calculation Formula Key'
+    ru-RU: 'Ключ формулы расчёта'
+
+  '所属项目 Key':
+    zh-CN: '所属项目 Key'
+    en-US: 'Project Key'
+    ru-RU: 'Ключ проекта'
+
+  '方法名称':
+    zh-CN: '方法名称'
+    en-US: 'Method Name'
+    ru-RU: 'Название метода'
+
+  '测量类型':
+    zh-CN: '测量类型'
+    en-US: 'Measurement Type'
+    ru-RU: 'Тип измерения'
+
+  '测量参数信息':
+    zh-CN: '测量参数信息'
+    en-US: 'Measurement Parameters'
+    ru-RU: 'Параметры измерения'
+
+  '是否共享方法':
+    zh-CN: '是否共享方法'
+    en-US: 'Shared Method'
+    ru-RU: 'Общий метод'
+
+  '方法创建时间':
+    zh-CN: '方法创建时间'
+    en-US: 'Method Created At'
+    ru-RU: 'Время создания метода'
+
+  '方法创建人':
+    zh-CN: '方法创建人'
+    en-US: 'Method Creator'
+    ru-RU: 'Создатель метода'
+
+  '方法使用时间':
+    zh-CN: '方法使用时间'
+    en-US: 'Method Used At'
+    ru-RU: 'Время использования метода'
+
+  '是否草稿':
+    zh-CN: '是否草稿'
+    en-US: 'Is Draft'
+    ru-RU: 'Черновик'
+
+  '使用状态':
+    zh-CN: '使用状态'
+    en-US: 'Usage Status'
+    ru-RU: 'Статус использования'
+
+  '预留字段 5':
+    zh-CN: '预留字段 5'
+    en-US: 'Reserved Field 5'
+    ru-RU: 'Зарезервированное поле 5'
+
+
+  # ========== Excel 导出 - 文件名 ==========
+  '检测报告':
+    zh-CN: '检测报告'
+    en-US: 'Inspection Report'
+    ru-RU: 'Отчёт о проверке'
+
+  # ========== Excel 导出 - DataManagement 补充 ==========
+  '备注':
+    zh-CN: '备注'
+    en-US: 'Remark'
+    ru-RU: 'Примечание'
+
+  '创建人':
+    zh-CN: '创建人'
+    en-US: 'Creator'
+    ru-RU: 'Создатель'
+
+  '创建时间':
+    zh-CN: '创建时间'
+    en-US: 'Created At'
+    ru-RU: 'Время создания'
+
+  '归属组ID':
+    zh-CN: '归属组ID'
+    en-US: 'Owner Group ID'
+    ru-RU: 'ID группы-владельца'
+
+  '预留字段5':
+    zh-CN: '预留字段5'
+    en-US: 'Reserved Field 5'
+    ru-RU: 'Зарезервированное поле 5'
+
+  '方法ID':
+    zh-CN: '方法ID'
+    en-US: 'Method ID'
+    ru-RU: 'ID метода'
+
+  '前处理Key':
+    zh-CN: '前处理Key'
+    en-US: 'Pretreatment Key'
+    ru-RU: 'Ключ предобработки'
+
+  '多个计算公式Key':
+    zh-CN: '多个计算公式Key'
+    en-US: 'Calculation Formulas Key'
+    ru-RU: 'Ключ формул расчёта'
+
+  '所属项目Key':
+    zh-CN: '所属项目Key'
+    en-US: 'Project Key'
+    ru-RU: 'Ключ проекта'
+
+  '预留字段2':
+    zh-CN: '预留字段2'
+    en-US: 'Reserved Field 2'
+    ru-RU: 'Зарезервированное поле 2'
+
+  '预留字段3':
+    zh-CN: '预留字段3'
+    en-US: 'Reserved Field 3'
+    ru-RU: 'Зарезервированное поле 3'
+
+  '预留字段4':
+    zh-CN: '预留字段4'
+    en-US: 'Reserved Field 4'
+    ru-RU: 'Зарезервированное поле 4'
+
+  # ========== Excel 导出 - 表头列名 (其余 ExcelModel 补充) ==========
+  '前处理描述':
+    zh-CN: '前处理描述'
+    en-US: 'Pretreatment Description'
+    ru-RU: 'Описание предварительной обработки'
+
+  '质控类型':
+    zh-CN: '质控类型'
+    en-US: 'QC Type'
+    ru-RU: 'Тип контроля качества'
+
+  '质控描述':
+    zh-CN: '质控描述'
+    en-US: 'QC Description'
+    ru-RU: 'Описание контроля качества'
+
+  '质控公式':
+    zh-CN: '质控公式'
+    en-US: 'QC Formula'
+    ru-RU: 'Формула контроля качества'
+
+  '修约类型':
+    zh-CN: '修约类型'
+    en-US: 'Rounding Type'
+    ru-RU: 'Тип округления'
+
+  '修约条件':
+    zh-CN: '修约条件'
+    en-US: 'Rounding Condition'
+    ru-RU: 'Условие округления'
+
+  '位数':
+    zh-CN: '位数'
+    en-US: 'Digits'
+    ru-RU: 'Разрядность'
+
+  '起始波长':
+    zh-CN: '起始波长'
+    en-US: 'Start Wavelength'
+    ru-RU: 'Начальная длина волны'
+
+  '终止波长':
+    zh-CN: '终止波长'
+    en-US: 'End Wavelength'
+    ru-RU: 'Конечная длина волны'
+
+  '扫描间隔':
+    zh-CN: '扫描间隔'
+    en-US: 'Scan Interval'
+    ru-RU: 'Интервал сканирования'
+
+  '扫描速度':
+    zh-CN: '扫描速度'
+    en-US: 'Scan Speed'
+    ru-RU: 'Скорость сканирования'
+
+  '系数1':
+    zh-CN: '系数1'
+    en-US: 'Coefficient 1'
+    ru-RU: 'Коэффициент 1'
+
+  '系数2':
+    zh-CN: '系数2'
+    en-US: 'Coefficient 2'
+    ru-RU: 'Коэффициент 2'
+
+  '系数3':
+    zh-CN: '系数3'
+    en-US: 'Coefficient 3'
+    ru-RU: 'Коэффициент 3'
+
+  '光谱带宽':
+    zh-CN: '光谱带宽'
+    en-US: 'Spectral Bandwidth'
+    ru-RU: 'Спектральная полоса пропускания'
+
+  '拟合公式':
+    zh-CN: '拟合公式'
+    en-US: 'Fitting Formula'
+    ru-RU: 'Формула аппроксимации'
+
+  '推荐标样浓度':
+    zh-CN: '推荐标样浓度'
+    en-US: 'Recommended Standard Concentration'
+    ru-RU: 'Рекомендуемая концентрация стандарта'
+
+  '推荐单位':
+    zh-CN: '推荐单位'
+    en-US: 'Recommended Unit'
+    ru-RU: 'Рекомендуемая единица'
+
+  '曲线方程':
+    zh-CN: '曲线方程'
+    en-US: 'Curve Equation'
+    ru-RU: 'Уравнение кривой'
+
+  '是否需要扣空白':
+    zh-CN: '是否需要扣空白'
+    en-US: 'Blank Subtraction'
+    ru-RU: 'Вычитание холостой пробы'
+
+  '加入零点':
+    zh-CN: '加入零点'
+    en-US: 'Include Zero Point'
+    ru-RU: 'Включить нулевую точку'
+
+  '强制过零点':
+    zh-CN: '强制过零点'
+    en-US: 'Force Through Zero'
+    ru-RU: 'Принудительно через ноль'
+
+  '斜率':
+    zh-CN: '斜率'
+    en-US: 'Slope'
+    ru-RU: 'Наклон'
+
+  '截距':
+    zh-CN: '截距'
+    en-US: 'Intercept'
+    ru-RU: 'Пересечение'
+
+  # ========== Excel 导出 - 表头列名 (CalculationFormula 参数3~10) ==========
+  '输入参数3名称':
+    zh-CN: '输入参数3名称'
+    en-US: 'Input Param 3 Name'
+    ru-RU: 'Имя входного параметра 3'
+
+  '输入参数3标识':
+    zh-CN: '输入参数3标识'
+    en-US: 'Input Param 3 ID'
+    ru-RU: 'Идентификатор входного параметра 3'
+
+  '参数3单位':
+    zh-CN: '参数3单位'
+    en-US: 'Param 3 Unit'
+    ru-RU: 'Единица параметра 3'
+
+  '是否为样品输入参数3':
+    zh-CN: '是否为样品输入参数3'
+    en-US: 'Is Sample Input Param 3'
+    ru-RU: 'Входной параметр образца 3'
+
+  '软件绑定标识3':
+    zh-CN: '软件绑定标识3'
+    en-US: 'Software Binding ID 3'
+    ru-RU: 'Идентификатор привязки ПО 3'
+
+  '输入参数4名称':
+    zh-CN: '输入参数4名称'
+    en-US: 'Input Param 4 Name'
+    ru-RU: 'Имя входного параметра 4'
+
+  '输入参数4标识':
+    zh-CN: '输入参数4标识'
+    en-US: 'Input Param 4 ID'
+    ru-RU: 'Идентификатор входного параметра 4'
+
+  '参数4单位':
+    zh-CN: '参数4单位'
+    en-US: 'Param 4 Unit'
+    ru-RU: 'Единица параметра 4'
+
+  '是否为样品输入参数4':
+    zh-CN: '是否为样品输入参数4'
+    en-US: 'Is Sample Input Param 4'
+    ru-RU: 'Входной параметр образца 4'
+
+  '软件绑定标识4':
+    zh-CN: '软件绑定标识4'
+    en-US: 'Software Binding ID 4'
+    ru-RU: 'Идентификатор привязки ПО 4'
+
+  '输入参数5名称':
+    zh-CN: '输入参数5名称'
+    en-US: 'Input Param 5 Name'
+    ru-RU: 'Имя входного параметра 5'
+
+  '输入参数5标识':
+    zh-CN: '输入参数5标识'
+    en-US: 'Input Param 5 ID'
+    ru-RU: 'Идентификатор входного параметра 5'
+
+  '参数5单位':
+    zh-CN: '参数5单位'
+    en-US: 'Param 5 Unit'
+    ru-RU: 'Единица параметра 5'
+
+  '是否为样品输入参数5':
+    zh-CN: '是否为样品输入参数5'
+    en-US: 'Is Sample Input Param 5'
+    ru-RU: 'Входной параметр образца 5'
+
+  '软件绑定标识5':
+    zh-CN: '软件绑定标识5'
+    en-US: 'Software Binding ID 5'
+    ru-RU: 'Идентификатор привязки ПО 5'
+
+  '输入参数6名称':
+    zh-CN: '输入参数6名称'
+    en-US: 'Input Param 6 Name'
+    ru-RU: 'Имя входного параметра 6'
+
+  '输入参数6标识':
+    zh-CN: '输入参数6标识'
+    en-US: 'Input Param 6 ID'
+    ru-RU: 'Идентификатор входного параметра 6'
+
+  '参数6单位':
+    zh-CN: '参数6单位'
+    en-US: 'Param 6 Unit'
+    ru-RU: 'Единица параметра 6'
+
+  '是否为样品输入参数6':
+    zh-CN: '是否为样品输入参数6'
+    en-US: 'Is Sample Input Param 6'
+    ru-RU: 'Входной параметр образца 6'
+
+  '软件绑定标识6':
+    zh-CN: '软件绑定标识6'
+    en-US: 'Software Binding ID 6'
+    ru-RU: 'Идентификатор привязки ПО 6'
+
+  '输入参数7名称':
+    zh-CN: '输入参数7名称'
+    en-US: 'Input Param 7 Name'
+    ru-RU: 'Имя входного параметра 7'
+
+  '输入参数7标识':
+    zh-CN: '输入参数7标识'
+    en-US: 'Input Param 7 ID'
+    ru-RU: 'Идентификатор входного параметра 7'
+
+  '参数7单位':
+    zh-CN: '参数7单位'
+    en-US: 'Param 7 Unit'
+    ru-RU: 'Единица параметра 7'
+
+  '是否为样品输入参数7':
+    zh-CN: '是否为样品输入参数7'
+    en-US: 'Is Sample Input Param 7'
+    ru-RU: 'Входной параметр образца 7'
+
+  '软件绑定标识7':
+    zh-CN: '软件绑定标识7'
+    en-US: 'Software Binding ID 7'
+    ru-RU: 'Идентификатор привязки ПО 7'
+
+  '输入参数8名称':
+    zh-CN: '输入参数8名称'
+    en-US: 'Input Param 8 Name'
+    ru-RU: 'Имя входного параметра 8'
+
+  '输入参数8标识':
+    zh-CN: '输入参数8标识'
+    en-US: 'Input Param 8 ID'
+    ru-RU: 'Идентификатор входного параметра 8'
+
+  '参数8单位':
+    zh-CN: '参数8单位'
+    en-US: 'Param 8 Unit'
+    ru-RU: 'Единица параметра 8'
+
+  '是否为样品输入参数8':
+    zh-CN: '是否为样品输入参数8'
+    en-US: 'Is Sample Input Param 8'
+    ru-RU: 'Входной параметр образца 8'
+
+  '软件绑定标识8':
+    zh-CN: '软件绑定标识8'
+    en-US: 'Software Binding ID 8'
+    ru-RU: 'Идентификатор привязки ПО 8'
+
+  '输入参数9名称':
+    zh-CN: '输入参数9名称'
+    en-US: 'Input Param 9 Name'
+    ru-RU: 'Имя входного параметра 9'
+
+  '输入参数9标识':
+    zh-CN: '输入参数9标识'
+    en-US: 'Input Param 9 ID'
+    ru-RU: 'Идентификатор входного параметра 9'
+
+  '参数9单位':
+    zh-CN: '参数9单位'
+    en-US: 'Param 9 Unit'
+    ru-RU: 'Единица параметра 9'
+
+  '是否为样品输入参数9':
+    zh-CN: '是否为样品输入参数9'
+    en-US: 'Is Sample Input Param 9'
+    ru-RU: 'Входной параметр образца 9'
+
+  '软件绑定标识9':
+    zh-CN: '软件绑定标识9'
+    en-US: 'Software Binding ID 9'
+    ru-RU: 'Идентификатор привязки ПО 9'
+
+  '输入参数10名称':
+    zh-CN: '输入参数10名称'
+    en-US: 'Input Param 10 Name'
+    ru-RU: 'Имя входного параметра 10'
+
+  '输入参数10标识':
+    zh-CN: '输入参数10标识'
+    en-US: 'Input Param 10 ID'
+    ru-RU: 'Идентификатор входного параметра 10'
+
+  '参数10单位':
+    zh-CN: '参数10单位'
+    en-US: 'Param 10 Unit'
+    ru-RU: 'Единица параметра 10'
+
+  '是否为样品输入参数10':
+    zh-CN: '是否为样品输入参数10'
+    en-US: 'Is Sample Input Param 10'
+    ru-RU: 'Входной параметр образца 10'
+
+  '软件绑定标识10':
+    zh-CN: '软件绑定标识10'
+    en-US: 'Software Binding ID 10'
+    ru-RU: 'Идентификатор привязки ПО 10'
+
+  # ========== Excel 导出/导入 - writeErrorResponse 提示信息 ==========
+  '请选择要导出的项目':
+    zh-CN: '请选择要导出的项目'
+    en-US: 'Please select projects to export'
+    ru-RU: 'Пожалуйста, выберите проекты для экспорта'
+
+  '未找到要导出的项目':
+    zh-CN: '未找到要导出的项目'
+    en-US: 'No projects found to export'
+    ru-RU: 'Проекты для экспорта не найдены'
+
+  '导出失败':
+    zh-CN: '导出失败'
+    en-US: 'Export failed'
+    ru-RU: 'Ошибка экспорта'
+
+  '下载模板失败':
+    zh-CN: '下载模板失败'
+    en-US: 'Download template failed'
+    ru-RU: 'Ошибка загрузки шаблона'
+
+  # ========== 测量数据导出 - 动态表头 (generateExcelFile) ==========
+  '波长nm':
+    zh-CN: '波长nm'
+    en-US: 'Wavelength (nm)'
+    ru-RU: 'Длина волны (нм)'
+
+  '编号':
+    zh-CN: '编号'
+    en-US: 'No.'
+    ru-RU: 'Номер'
+
+  '时长(s)':
+    zh-CN: '时长(s)'
+    en-US: 'Duration (s)'
+    ru-RU: 'Длительность (с)'
+
+  '峰谷/标记点':
+    zh-CN: '峰谷/标记点'
+    en-US: 'Peak/Valley/Marker'
+    ru-RU: 'Пик/Впадина/Маркер'
+
+  '峰/谷':
+    zh-CN: '峰/谷'
+    en-US: 'Peak/Valley'
+    ru-RU: 'Пик/Впадина'
+
+  '序号':
+    zh-CN: '序号'
+    en-US: 'Serial No.'
+    ru-RU: 'Серийный номер'
+
+  '稀释比':
+    zh-CN: '稀释比'
+    en-US: 'Dilution Ratio'
+    ru-RU: 'Коэффициент разбавления'
+
+  '样品体积':
+    zh-CN: '样品体积'
+    en-US: 'Sample Volume'
+    ru-RU: 'Объём образца'
+
+  '样品位置':
+    zh-CN: '样品位置'
+    en-US: 'Sample Position'
+    ru-RU: 'Положение образца'
+
+  '采集时间':
+    zh-CN: '采集时间'
+    en-US: 'Collection Time'
+    ru-RU: 'Время сбора'
+
+  '注释':
+    zh-CN: '注释'
+    en-US: 'Annotation'
+    ru-RU: 'Аннотация'
+
+  '时间 s':
+    zh-CN: '时间 s'
+    en-US: 'Time (s)'
+    ru-RU: 'Время (с)'
+
+  '未命名列':
+    zh-CN: '未命名列'
+    en-US: 'Unnamed Column'
+    ru-RU: 'Безымянный столбец'
+
+  # ========== 测量数据导出 - 数据值翻译 ==========
+  '标准样品':
+    zh-CN: '标准样品'
+    en-US: 'Standard Sample'
+    ru-RU: 'Стандартный образец'
+
+  '未知样品':
+    zh-CN: '未知样品'
+    en-US: 'Unknown Sample'
+    ru-RU: 'Неизвестный образец'
+
+  '样品':
+    zh-CN: '样品'
+    en-US: 'Sample'
+    ru-RU: 'Образец'
