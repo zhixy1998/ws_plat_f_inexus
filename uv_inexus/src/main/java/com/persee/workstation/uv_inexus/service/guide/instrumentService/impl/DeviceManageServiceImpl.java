@@ -2646,8 +2646,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 content = new ArrayList<>();
             }
 
-            List<CalibrationTableData> ans = new ArrayList<>();
-            Map<String, CalibrationTableData> map = new HashMap<>();
+            Map<String, CalibrationTableData> map = new LinkedHashMap<>();
             for (CalibrationTableData a : content) {
                 map.put(a.getNum(), a);
             }
@@ -2656,7 +2655,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 cont.setIsOriginData(true);
                 map.put(cont.getNum(), cont);
             }
-            ans = new ArrayList<>(map.values());
+            List<CalibrationTableData> ans = new ArrayList<>(map.values());
+            ans.sort(Comparator.comparingInt(data -> Integer.parseInt(data.getNum())));
             tableVO.setContent(ans);
 
             tablePo.setTableData(tableVO);
@@ -3096,7 +3096,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             List<CalibrationTableData> originTable = tablePo.getTableData().getContent();
 
-            Map<String, CalibrationTableData> map = new HashMap<>();
+            Map<String, CalibrationTableData> map = new  LinkedHashMap<>();
             for (CalibrationTableData a : originTable) {
                 map.put(a.getNum(), a);
             }
@@ -3104,6 +3104,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             for (CalibrationTableData cont : allTableData) {
                 map.put(cont.getNum(), cont);
             }
+
+            List<CalibrationTableData> sortedContent = new ArrayList<>(map.values());
+            sortedContent.sort(Comparator.comparingInt(da -> Integer.parseInt(da.getNum())));
+
 
             vo.setContent(new ArrayList<>(map.values()));
             tableVO.setContent(new ArrayList<>(map.values()));
