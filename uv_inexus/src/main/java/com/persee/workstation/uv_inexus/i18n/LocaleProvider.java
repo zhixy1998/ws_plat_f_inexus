@@ -1,8 +1,7 @@
 package com.persee.workstation.uv_inexus.i18n;
 
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
-import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemManageDAO;
-import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemManagePO;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemManageService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,8 +19,11 @@ public class LocaleProvider {
     private static final String DEFAULT_LOCALE = "zh-CN";
     private static final long CACHE_REFRESH_INTERVAL_MS = 30_000;
 
+//    @Autowired
+//    private SystemManageDAO systemManageDAO;
+
     @Autowired
-    private SystemManageDAO systemManageDAO;
+    SystemManageService systemManageService;
 
     @Autowired
     @org.springframework.context.annotation.Lazy
@@ -64,9 +66,17 @@ public class LocaleProvider {
      */
     private void refreshLocaleOnly() {
         try {
-            SystemManagePO config = systemManageDAO.selectById(defaultId);
-            if (config != null && StringUtils.isNotBlank(config.getLanguage())) {
-                String newLocale = normalize(config.getLanguage());
+//            SystemManagePO config = systemManageDAO.selectById(defaultId);
+
+            String s = systemManageService.queryLanguage();
+
+//            if (config != null && StringUtils.isNotBlank(config.getLanguage())) {
+//                String newLocale = normalize(config.getLanguage());
+//                cachedLocale.set(newLocale);
+//            }
+
+            if (StringUtils.isNotBlank(s)) {
+                String newLocale = normalize(s);
                 cachedLocale.set(newLocale);
             }
         } catch (Exception e) {
@@ -78,9 +88,25 @@ public class LocaleProvider {
     @Scheduled(fixedDelay = CACHE_REFRESH_INTERVAL_MS)
     public void refreshCache() {
         try {
-            SystemManagePO config = systemManageDAO.selectById(defaultId);
-            if (config != null && StringUtils.isNotBlank(config.getLanguage())) {
-                String newLocale = normalize(config.getLanguage());
+//            SystemManagePO config = systemManageDAO.selectById(defaultId);
+            String s = systemManageService.queryLanguage();
+
+//            if (config != null && StringUtils.isNotBlank(config.getLanguage())) {
+//                String newLocale = normalize(config.getLanguage());
+//                String oldLocale = cachedLocale.get();
+//                if (!newLocale.equals(oldLocale)) {
+//                    cachedLocale.set(newLocale);
+//                    log.info("系统语言切换: {} → {}", oldLocale, newLocale);
+//                    try {
+//                        inputTranslator.rebuildIndex();
+//                    } catch (Exception e) {
+//                        log.warn("InputTranslator 索引重建失败", e);
+//                    }
+//                }
+//            }
+
+            if (StringUtils.isNotBlank(s)) {
+                String newLocale = normalize(s);
                 String oldLocale = cachedLocale.get();
                 if (!newLocale.equals(oldLocale)) {
                     cachedLocale.set(newLocale);
