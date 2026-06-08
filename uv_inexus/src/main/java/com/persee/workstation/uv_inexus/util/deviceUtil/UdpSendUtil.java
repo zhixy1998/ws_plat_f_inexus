@@ -848,6 +848,9 @@ public class UdpSendUtil {
             return scheduler;
         }
 
+        // ====== 修改点 1：引入原子计数器，记录当前是第几次采样 ======
+        AtomicInteger scheduleCount = new AtomicInteger(0);
+
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 currentTime  = System.currentTimeMillis();
@@ -881,13 +884,28 @@ public class UdpSendUtil {
                     return;
                 }
 
+                // ====== 新增防线：防滞后跳点逻辑 ======
+                int currentCount = scheduleCount.getAndIncrement();
+                long absoluteEndTime = startTime + (long)(currentCount + 1) * intervalMillis;
+
+                // 如果当前时间已经超过了本次应有的绝对截止时间，说明发生了严重滞后
+                if (System.currentTimeMillis() > absoluteEndTime) {
+                    log.warn("调度发生严重滞后，跳过第 {} 次采样点以对齐时间轴", currentCount + 1);
+                    return; // 直接返回，不发包，不接收，等待下一个周期
+                }
+
                 // ===== 正常一次采样 =====
                 store.clearDeviceMessages(deviceId);
                 socket.send(packet);
                 sendMessageLog(sendIp, cmdId, packet.getData());
 
                 long firstTimeMillis = System.currentTimeMillis();
-                receiveAndDeal(deviceId, firstTimeMillis, intervalMillis, replyNumber, cmdId, deviceSerialNumber,headReceiveBytes);
+
+                // ====== 修改点 2：计算本次采样的绝对截止时间 ======
+                // 基于 startTime 往后推 (count + 1) 个周期，作为绝对对齐的时间线
+
+                // 传入绝对截止时间
+                receiveAndDeal(deviceId, firstTimeMillis, absoluteEndTime, replyNumber, cmdId, deviceSerialNumber, headReceiveBytes);
 
             } catch (Exception e) {
                 log.error("时间扫描定时任务异常，立即停止", e);
@@ -906,20 +924,26 @@ public class UdpSendUtil {
         return scheduler;
     }
 
-    private void receiveAndDeal(String deviceId, long firstTimeMillis, long intervalTime, Integer replyNumber, String cmdId, String deviceSerialNumber, List<String> headReceiveBytes) {
+    // ====== 修改点 3：修改 receiveAndDeal 的入参，使用 absoluteEndTime ======
+    private void receiveAndDeal(String deviceId, long firstTimeMillis, long absoluteEndTime, Integer replyNumber, String cmdId, String deviceSerialNumber, List<String> headReceiveBytes) {
 
-        log.info("处理时间扫描报文，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
-
+        log.info("处理时间扫描报文，起始时间：{}，当前时间：{}，绝对截止时间：{}", firstTimeMillis, System.currentTimeMillis(), absoluteEndTime);
 
         MessageStoreManager store = MessageStoreManager.getInstance();
         List<byte[]> responses = new ArrayList<>();
         boolean start = false;
         int i = 0;
-        long endTime = firstTimeMillis + intervalTime;
-        while (System.currentTimeMillis() <= endTime) {
-//        while (System.currentTimeMillis() <= endTime && i < replyNumber) {
+
+        // ====== 修改点 4：while 循环判断使用绝对截止时间 ======
+        while (System.currentTimeMillis() <= absoluteEndTime) {
             byte[] bytes = store.peekMessage(deviceId);
             if (bytes == null || bytes.length == 0) {
+                try {
+                    Thread.sleep(1); // 让出CPU，大幅减少无效耗时
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
                 continue;
             }
             log.info("开始接收，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
@@ -959,11 +983,6 @@ public class UdpSendUtil {
         }
         log.info("接收完成，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
 
-//        if (i < replyNumber) {
-//            log.info("接收超时");
-//            timeMeasureIsStop.put(deviceId, true);
-//            return;
-//        }
         OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, null);
         if (!parse.getIsSuccess()) {
             log.info("时间扫描数据处理失败");
@@ -974,8 +993,6 @@ public class UdpSendUtil {
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
 
         String xmlKey = device.getXmlKey();
-
-
 
         String currentWavelength = device.getCurrentWavelength() == null ? "" : device.getCurrentWavelength();
         ChangeParam measureResult = parse.getMeasureResult();
@@ -989,7 +1006,6 @@ public class UdpSendUtil {
         }
         if (zeroRsd == null) {
             log.warn("未找到 zeroRsd, wl={}", currentWavelength);
-//            return;
         }
 
         if (measureResult == null) {
@@ -1013,7 +1029,6 @@ public class UdpSendUtil {
             es = 7;
             er = 8;
         }
-
 
         SpectrumCalcResult absResult =
                 calculator.calculate(abs, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
