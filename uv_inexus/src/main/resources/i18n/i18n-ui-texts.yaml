@@ -455,6 +455,120 @@ messages:
     en-US: 'Wavelength check'
     ru-RU: 'Проверка длины волны'
 
+  # ========== 任务状态 ==========
+  '未测':
+    zh-CN: '未测'
+    en-US: 'Not tested'
+    ru-RU: 'Не измерено'
+  '已测':
+    zh-CN: '已测'
+    en-US: 'Tested'
+    ru-RU: 'Измерено'
+  '结束':
+    zh-CN: '结束'
+    en-US: 'Finished'
+    ru-RU: 'Завершено'
+
+  # ========== 时间维度 ==========
+  '最近一周':
+    zh-CN: '最近一周'
+    en-US: 'Last week'
+    ru-RU: 'Последняя неделя'
+  '最近一个月':
+    zh-CN: '最近一个月'
+    en-US: 'Last month'
+    ru-RU: 'Последний месяц'
+  '最近半年':
+    zh-CN: '最近半年'
+    en-US: 'Last 6 months'
+    ru-RU: 'Последние 6 месяцев'
+  '最近一年':
+    zh-CN: '最近一年'
+    en-US: 'Last year'
+    ru-RU: 'Последний год'
+  '最近三年':
+    zh-CN: '最近三年'
+    en-US: 'Last 3 years'
+    ru-RU: 'Последние 3 года'
+  '所有时间':
+    zh-CN: '所有时间'
+    en-US: 'All time'
+    ru-RU: 'Всё время'
+
+  # ========== 全局响应消息 ==========
+  '成功':
+    zh-CN: '成功'
+    en-US: 'Success'
+    ru-RU: 'Успешно'
+  '失败':
+    zh-CN: '失败'
+    en-US: 'Failed'
+    ru-RU: 'Ошибка'
+  '警告':
+    zh-CN: '警告'
+    en-US: 'Warning'
+    ru-RU: 'Предупреждение'
+  '服务异常':
+    zh-CN: '服务异常'
+    en-US: 'Service error'
+    ru-RU: 'Ошибка сервиса'
+  '系统异常':
+    zh-CN: '系统异常'
+    en-US: 'System error'
+    ru-RU: 'Системная ошибка'
+  '数据异常':
+    zh-CN: '数据异常'
+    en-US: 'Data error'
+    ru-RU: 'Ошибка данных'
+  '非法请求':
+    zh-CN: '非法请求'
+    en-US: 'Illegal request'
+    ru-RU: 'Незаконный запрос'
+  '重复提交':
+    zh-CN: '重复提交'
+    en-US: 'Duplicate submission'
+    ru-RU: 'Повторная отправка'
+  '参数校验异常':
+    zh-CN: '参数校验异常'
+    en-US: 'Parameter validation error'
+    ru-RU: 'Ошибка валидации параметров'
+  '未登陆':
+    zh-CN: '未登陆'
+    en-US: 'Not logged in'
+    ru-RU: 'Не авторизован'
+  '没有权限':
+    zh-CN: '没有权限'
+    en-US: 'No permission'
+    ru-RU: 'Нет прав доступа'
+  '账号不正确':
+    zh-CN: '账号不正确'
+    en-US: 'Incorrect account'
+    ru-RU: 'Неверный аккаунт'
+  '账号已存在':
+    zh-CN: '账号已存在'
+    en-US: 'Account already exists'
+    ru-RU: 'Аккаунт уже существует'
+  '密码不正确':
+    zh-CN: '密码不正确'
+    en-US: 'Incorrect password'
+    ru-RU: 'Неверный пароль'
+  '账号或密码不正确':
+    zh-CN: '账号或密码不正确'
+    en-US: 'Incorrect account or password'
+    ru-RU: 'Неверный аккаунт или пароль'
+  '账号已停用':
+    zh-CN: '账号已停用'
+    en-US: 'Account disabled'
+    ru-RU: 'Аккаунт отключен'
+  '该节点下有子节点，不可以删除':
+    zh-CN: '该节点下有子节点，不可以删除'
+    en-US: 'Cannot delete: node has children'
+    ru-RU: 'Нельзя удалить: узел имеет дочерние элементы'
+  '设备已断开':
+    zh-CN: '设备已断开'
+    en-US: 'Device disconnected'
+    ru-RU: 'Устройство отключено'
+
   '任务ID不能为空':
     zh-CN: '任务ID不能为空'
     en-US: 'Task ID cannot be empty'
@@ -1793,6 +1907,11 @@ messages:
     ru-RU: 'Повторяемость пропускания'
 
   # ========== Excel 下拉选项 ==========
+  '最慢':
+    zh-CN: '最慢'
+    en-US: 'Slowest'
+    ru-RU: 'Самый медленный'
+
   '极慢':
     zh-CN: '极慢'
     en-US: 'Ultra Slow'
@@ -1822,6 +1941,21 @@ messages:
     zh-CN: '寻峰'
     en-US: 'Peak Finding'
     ru-RU: 'Поиск пика'
+
+  '校零':
+    zh-CN: '校零'
+    en-US: 'Zero'
+    ru-RU: 'Нуль'
+
+  '基线':
+    zh-CN: '基线'
+    en-US: 'Baseline'
+    ru-RU: 'Базовая линия'
+
+  '测量':
+    zh-CN: '测量'
+    en-US: 'Measure'
+    ru-RU: 'Измерение'
 
   '求平均':
     zh-CN: '求平均'
@@ -2760,22 +2894,22 @@ messages:
   # ========== 测量类型 (t_measure_method / t_measure_task / t_measure_preset_head) ==========
   '光度测量':
     zh-CN: '光度测量'
-    en-US: 'Photometric Measurement'
+    en-US: 'Photometry'
     ru-RU: 'Фотометрическое измерение'
 
   '定量测定':
     zh-CN: '定量测定'
-    en-US: 'Quantitative Determination'
+    en-US: 'Quantitation'
     ru-RU: 'Количественное определение'
 
   '光谱扫描':
     zh-CN: '光谱扫描'
-    en-US: 'Spectral Scan'
+    en-US: 'Spectrum Scan'
     ru-RU: 'Спектральное сканирование'
 
   '时间扫描':
     zh-CN: '时间扫描'
-    en-US: 'Time Scan'
+    en-US: 'Kinetic Scan'
     ru-RU: 'Сканирование по времени'
 
   '默认方法':
@@ -3006,17 +3140,17 @@ messages:
   # ========== 菜单权限名称 - 一级菜单 (t_sys_permission) ==========
   '仪器管理':
     zh-CN: '仪器管理'
-    en-US: 'Instrument Management'
+    en-US: 'Instruments'
     ru-RU: 'Управление приборами'
 
   '仪器配置':
     zh-CN: '仪器配置'
-    en-US: 'Instrument Configuration'
+    en-US: 'Instrument Settings'
     ru-RU: 'Конфигурация прибора'
 
   '自动进样器配置':
     zh-CN: '自动进样器配置'
-    en-US: 'Autosampler Configuration'
+    en-US: 'Autosampler Settings'
     ru-RU: 'Конфигурация автосамплера'
 
   '仪器校正':
@@ -3026,12 +3160,12 @@ messages:
 
   '历史检测任务':
     zh-CN: '历史检测任务'
-    en-US: 'Historical Test Tasks'
+    en-US: 'Task History'
     ru-RU: 'История задач тестирования'
 
   '仪器使用统计':
     zh-CN: '仪器使用统计'
-    en-US: 'Instrument Usage Statistics'
+    en-US: 'Instrument Usage'
     ru-RU: 'Статистика использования прибора'
 
   '软件激活':
@@ -3041,7 +3175,7 @@ messages:
 
   '实验测试':
     zh-CN: '实验测试'
-    en-US: 'Experiment & Test'
+    en-US: 'Test'
     ru-RU: 'Эксперимент и тестирование'
 
   '方法调优':
@@ -3051,67 +3185,67 @@ messages:
 
   '报告设计':
     zh-CN: '报告设计'
-    en-US: 'Report Design'
+    en-US: 'Report Designer'
     ru-RU: 'Дизайн отчёта'
 
   '报告模板设计':
     zh-CN: '报告模板设计'
-    en-US: 'Report Template Design'
+    en-US: 'Report Templates'
     ru-RU: 'Дизайн шаблона отчёта'
 
   '校准模板设计':
     zh-CN: '校准模板设计'
-    en-US: 'Calibration Template Design'
+    en-US: 'Calibration Templates'
     ru-RU: 'Дизайн шаблона калибровки'
 
   '安装验收模板设计':
     zh-CN: '安装验收模板设计'
-    en-US: 'Installation Acceptance Template Design'
+    en-US: 'Installation Acceptance Templates'
     ru-RU: 'Дизайн шаблона приёмки'
 
   '模板编辑':
     zh-CN: '模板编辑'
-    en-US: 'Template Editing'
+    en-US: 'Template Editor'
     ru-RU: 'Редактирование шаблона'
 
   '系统管理':
     zh-CN: '系统管理'
-    en-US: 'System Management'
+    en-US: 'System'
     ru-RU: 'Управление системой'
 
   '系统面板配置':
     zh-CN: '系统面板配置'
-    en-US: 'System Panel Configuration'
+    en-US: 'Panel Settings'
     ru-RU: 'Конфигурация системной панели'
 
   '系统管理配置':
     zh-CN: '系统管理配置'
-    en-US: 'System Management Configuration'
+    en-US: 'System Settings'
     ru-RU: 'Конфигурация управления системой'
 
   '数据库配置':
     zh-CN: '数据库配置'
-    en-US: 'Database Configuration'
+    en-US: 'Database Settings'
     ru-RU: 'Конфигурация базы данных'
 
   '系统日志管理':
     zh-CN: '系统日志管理'
-    en-US: 'System Log Management'
+    en-US: 'System Logs'
     ru-RU: 'Управление системными журналами'
 
   '算法配置':
     zh-CN: '算法配置'
-    en-US: 'Algorithm Configuration'
+    en-US: 'Algorithm Settings'
     ru-RU: 'Конфигурация алгоритмов'
 
   '业务参数配置':
     zh-CN: '业务参数配置'
-    en-US: 'Business Parameter Configuration'
+    en-US: 'Business Parameters'
     ru-RU: 'Конфигурация бизнес-параметров'
 
   '标准管理':
     zh-CN: '标准管理'
-    en-US: 'Standard Management'
+    en-US: 'Standards'
     ru-RU: 'Управление стандартами'
 
   '用户管理':
@@ -3121,12 +3255,12 @@ messages:
 
   '系统用户管理':
     zh-CN: '系统用户管理'
-    en-US: 'System User Management'
+    en-US: 'System Users'
     ru-RU: 'Управление системными пользователями'
 
   '产线用户管理':
     zh-CN: '产线用户管理'
-    en-US: 'Production Line User Management'
+    en-US: 'Production Users'
     ru-RU: 'Управление пользователями линии'
 
   '用户和组':
@@ -3214,6 +3348,26 @@ messages:
     zh-CN: '仪器管理-软件激活-批量删除'
     en-US: 'Instrument - Software Activation - Batch Delete'
     ru-RU: 'Приборы - Активация ПО - Пакетное удаление'
+
+  '首页':
+    zh-CN: '首页'
+    en-US: 'Home'
+    ru-RU: 'Главная'
+
+  '仪器管理-仪器配置-保存修改的仪器配置':
+    zh-CN: '仪器管理-仪器配置-保存修改的仪器配置'
+    en-US: 'Instrument - Configuration - Save Configuration'
+    ru-RU: 'Приборы - Конфигурация - Сохранить конфигурацию'
+
+  '仪器管理-自动进样器配置-基本配置':
+    zh-CN: '仪器管理-自动进样器配置-基本配置'
+    en-US: 'Instrument - Autosampler - Basic Configuration'
+    ru-RU: 'Приборы - Автосамплер - Базовая конфигурация'
+
+  '仪器管理-自动进样器配置-运行参数配置':
+    zh-CN: '仪器管理-自动进样器配置-运行参数配置'
+    en-US: 'Instrument - Autosampler - Operating Parameters'
+    ru-RU: 'Приборы - Автосамплер - Рабочие параметры'
 
   # ========== 测量方法 JSON 参数 (f_t_measure_method / excel_data_asset) ==========
   '不重复':
@@ -4181,3 +4335,1585 @@ messages:
     zh-CN: '样品'
     en-US: 'Sample'
     ru-RU: 'Образец'
+
+  # ========== 权限 title 补充 - 二级菜单 ==========
+#  '光度测量':
+#    zh-CN: '光度测量'
+#    en-US: 'Photometric Measurement'
+#    ru-RU: 'Фотометрическое измерение'
+#
+#  '定量测定':
+#    zh-CN: '定量测定'
+#    en-US: 'Quantitative Determination'
+#    ru-RU: 'Количественное определение'
+#
+#  '光谱扫描':
+#    zh-CN: '光谱扫描'
+#    en-US: 'Spectral Scan'
+#    ru-RU: 'Спектральное сканирование'
+#
+#  '时间扫描':
+#    zh-CN: '时间扫描'
+#    en-US: 'Time Scan'
+#    ru-RU: 'Временное сканирование'
+#
+#  '经典模式':
+#    zh-CN: '经典模式'
+#    en-US: 'Classic Mode'
+#    ru-RU: 'Классический режим'
+#
+#  '向导模式':
+#    zh-CN: '向导模式'
+#    en-US: 'Wizard Mode'
+#    ru-RU: 'Режим мастера'
+#
+#  '出厂检验':
+#    zh-CN: '出厂检验'
+#    en-US: 'Factory Inspection'
+#    ru-RU: 'Заводской контроль'
+#
+#  '开箱检验':
+#    zh-CN: '开箱检验'
+#    en-US: 'Unboxing Inspection'
+#    ru-RU: 'Распаковочный контроль'
+#
+#  '期间核查':
+#    zh-CN: '期间核查'
+#    en-US: 'Interim Check'
+#    ru-RU: 'Промежуточная проверка'
+
+  '部件设计':
+    zh-CN: '部件设计'
+    en-US: 'Component Design'
+    ru-RU: 'Дизайн компонентов'
+
+  '流程设计':
+    zh-CN: '流程设计'
+    en-US: 'Workflow Design'
+    ru-RU: 'Дизайн процессов'
+
+  '数据管理':
+    zh-CN: '数据管理'
+    en-US: 'Data Management'
+    ru-RU: 'Управление данными'
+
+  '向导方法管理':
+    zh-CN: '向导方法管理'
+    en-US: 'Wizard Methods'
+    ru-RU: 'Управление методами мастера'
+
+  '向导任务管理':
+    zh-CN: '向导任务管理'
+    en-US: 'Wizard Tasks'
+    ru-RU: 'Управление задачами мастера'
+
+  '项目管理':
+    zh-CN: '项目管理'
+    en-US: 'Project Management'
+    ru-RU: 'Управление проектами'
+
+  '双分组测量':
+    zh-CN: '双分组测量'
+    en-US: 'Dual-group Measurement'
+    ru-RU: 'Двухгрупповое измерение'
+
+  '检定标准物质管理':
+    zh-CN: '检定标准物质管理'
+    en-US: 'Reference Materials'
+    ru-RU: 'Управление эталонными материалами'
+
+  '模板管理':
+    zh-CN: '模板管理'
+    en-US: 'Templates'
+    ru-RU: 'Управление шаблонами'
+
+  '任务管理':
+    zh-CN: '任务管理'
+    en-US: 'Task Management'
+    ru-RU: 'Управление задачами'
+
+  '日志管理':
+    zh-CN: '日志管理'
+    en-US: 'Logs'
+    ru-RU: 'Управление журналами'
+
+  '安装验收':
+    zh-CN: '安装验收'
+    en-US: 'Installation Acceptance'
+    ru-RU: 'Приёмка установки'
+
+  '权限管理':
+    zh-CN: '权限管理'
+    en-US: 'Permissions'
+    ru-RU: 'Управление правами'
+
+  '经典方法管理':
+    zh-CN: '经典方法管理'
+    en-US: 'Classic Methods'
+    ru-RU: 'Управление классическими методами'
+
+  '经典文件管理':
+    zh-CN: '经典文件管理'
+    en-US: 'Classic Tasks'
+    ru-RU: 'Управление классическими файлами'
+
+  '检验':
+    zh-CN: '检验'
+    en-US: 'Inspection'
+    ru-RU: 'Контроль'
+
+  '快捷配置管理':
+    zh-CN: '快捷配置管理'
+    en-US: 'Quick Settings'
+    ru-RU: 'Быстрая конфигурация'
+
+  '数据对比':
+    zh-CN: '数据对比'
+    en-US: 'Data Comparison'
+    ru-RU: 'Сравнение данных'
+
+  '创建部件':
+    zh-CN: '创建部件'
+    en-US: 'Create Component'
+    ru-RU: 'Создать компонент'
+
+  '修改部件':
+    zh-CN: '修改部件'
+    en-US: 'Edit Component'
+    ru-RU: 'Изменить компонент'
+
+  '创建流程':
+    zh-CN: '创建流程'
+    en-US: 'Create Workflow'
+    ru-RU: 'Создать процесс'
+
+  '修改流程':
+    zh-CN: '修改流程'
+    en-US: 'Edit Workflow'
+    ru-RU: 'Изменить процесс'
+
+  '查看历史UVWin查看工具':
+    zh-CN: '查看历史UVWin查看工具'
+    en-US: 'UVWin History Viewer'
+    ru-RU: 'Просмотр истории UVWin'
+
+  # ========== 权限 title 补充 - 仪器管理子操作 ==========
+  '仪器管理-自动进样器配置-进样盘参数配置':
+    zh-CN: '仪器管理-自动进样器配置-进样盘参数配置'
+    en-US: 'Instrument - Autosampler - Tray Parameters'
+    ru-RU: 'Приборы - Автосамплер - Параметры лотка'
+
+  '仪器管理-仪器校正-波长校正':
+    zh-CN: '仪器管理-仪器校正-波长校正'
+    en-US: 'Instrument - Calibration - Wavelength Correction'
+    ru-RU: 'Приборы - Калибровка - Коррекция длины волны'
+
+  '仪器管理-仪器校正-暗电流校正':
+    zh-CN: '仪器管理-仪器校正-暗电流校正'
+    en-US: 'Instrument - Calibration - Dark Current Correction'
+    ru-RU: 'Приборы - Калибровка - Коррекция темнового тока'
+
+  '仪器管理-软件激活-设备发现':
+    zh-CN: '仪器管理-软件激活-设备发现'
+    en-US: 'Instrument - Software Activation - Device Discovery'
+    ru-RU: 'Приборы - Активация ПО - Обнаружение устройств'
+
+  # ========== 权限 title 补充 - 经典模式操作权限 ==========
+  '实验测试-经典模式-光度测量-设置样品':
+    zh-CN: '实验测试-经典模式-光度测量-设置样品'
+    en-US: 'Classic - Photometry - Set Sample'
+    ru-RU: 'Классический - Фотометрия - Настройка образца'
+
+  '实验测试-经典模式-光度测量-修改样品信息':
+    zh-CN: '实验测试-经典模式-光度测量-修改样品信息'
+    en-US: 'Classic - Photometry - Edit Sample'
+    ru-RU: 'Классический - Фотометрия - Изменить образец'
+
+  '实验测试-经典模式-光度测量-校零':
+    zh-CN: '实验测试-经典模式-光度测量-校零'
+    en-US: 'Classic - Photometry - Zero'
+    ru-RU: 'Классический - Фотометрия - Нуль'
+
+  '实验测试-经典模式-光度测量-测量':
+    zh-CN: '实验测试-经典模式-光度测量-测量'
+    en-US: 'Classic - Photometry - Measure'
+    ru-RU: 'Классический - Фотометрия - Измерение'
+
+  '实验测试-经典模式-光度测量-新建任务':
+    zh-CN: '实验测试-经典模式-光度测量-新建任务'
+    en-US: 'Classic - Photometry - New Task'
+    ru-RU: 'Классический - Фотометрия - Новая задача'
+
+  '实验测试-经典模式-光度测量-选择报告模板':
+    zh-CN: '实验测试-经典模式-光度测量-选择报告模板'
+    en-US: 'Classic - Photometry - Select Report Template'
+    ru-RU: 'Классический - Фотометрия - Выбрать шаблон отчёта'
+
+  '实验测试-经典模式-光度测量-输出报告':
+    zh-CN: '实验测试-经典模式-光度测量-输出报告'
+    en-US: 'Classic - Photometry - Output Report'
+    ru-RU: 'Классический - Фотометрия - Вывод отчёта'
+
+  '实验测试-经典模式-光度测量-导出数据':
+    zh-CN: '实验测试-经典模式-光度测量-导出数据'
+    en-US: 'Classic - Photometry - Export Data'
+    ru-RU: 'Классический - Фотометрия - Экспорт данных'
+
+  '实验测试-经典模式-光度测量-方法参数应用':
+    zh-CN: '实验测试-经典模式-光度测量-方法参数应用'
+    en-US: 'Classic - Photometry - Apply Method Params'
+    ru-RU: 'Классический - Фотометрия - Применить параметры'
+
+  '实验测试-经典模式-光度测量-附件设置':
+    zh-CN: '实验测试-经典模式-光度测量-附件设置'
+    en-US: 'Classic - Photometry - Attachment Setup'
+    ru-RU: 'Классический - Фотометрия - Настройка附件'
+
+  '实验测试-经典模式-光度测量-查看他人的方法':
+    zh-CN: '实验测试-经典模式-光度测量-查看他人的方法'
+    en-US: "Classic - Photometry - View Others' Methods"
+    ru-RU: "Классический - Фотометрия - Просмотр чужих методов"
+
+  '实验测试-经典模式-光度测量-查看他人的文件':
+    zh-CN: '实验测试-经典模式-光度测量-查看他人的文件'
+    en-US: "Classic - Photometry - View Others' Files"
+    ru-RU: "Классический - Фотометрия - Просмотр чужих файлов"
+
+  '实验测试-经典模式-光度测量-标准样品列表删除':
+    zh-CN: '实验测试-经典模式-光度测量-标准样品列表删除'
+    en-US: 'Classic - Photometry - Delete Std Sample'
+    ru-RU: 'Классический - Фотометрия - Удалить стд. образец'
+
+  '实验测试-经典模式-光度测量-审核人电子签名':
+    zh-CN: '实验测试-经典模式-光度测量-审核人电子签名'
+    en-US: 'Classic - Photometry - Reviewer E-Signature'
+    ru-RU: 'Классический - Фотометрия - ЭЦП рецензента'
+
+  '实验测试-经典模式-光度测量-复核人电子签名':
+    zh-CN: '实验测试-经典模式-光度测量-复核人电子签名'
+    en-US: 'Classic - Photometry - Checker E-Signature'
+    ru-RU: 'Классический - Фотометрия - ЭЦП проверяющего'
+
+  '实验测试-经典模式-光度测量-撤销电子签名':
+    zh-CN: '实验测试-经典模式-光度测量-撤销电子签名'
+    en-US: 'Classic - Photometry - Revoke E-Signature'
+    ru-RU: 'Классический - Фотометрия - Отозвать ЭЦП'
+
+  '实验测试-经典模式-光度测量-历史方法重命名':
+    zh-CN: '实验测试-经典模式-光度测量-历史方法重命名'
+    en-US: 'Classic - Photometry - Rename History Method'
+    ru-RU: 'Классический - Фотометрия - Переименовать метод'
+
+  '实验测试-经典模式-光度测量-历史方法删除':
+    zh-CN: '实验测试-经典模式-光度测量-历史方法删除'
+    en-US: 'Classic - Photometry - Delete History Method'
+    ru-RU: 'Классический - Фотометрия - Удалить метод'
+
+  '实验测试-经典模式-光度测量-批准成向导模式下项目方法':
+    zh-CN: '实验测试-经典模式-光度测量-批准成向导模式下项目方法'
+    en-US: 'Classic - Photometry - Approve to Wizard Project'
+    ru-RU: 'Классический - Фотометрия - Утвердить в мастер'
+
+  '实验测试-经典模式-光度测量-批准成向导模式下公共方法':
+    zh-CN: '实验测试-经典模式-光度测量-批准成向导模式下公共方法'
+    en-US: 'Classic - Photometry - Approve to Wizard Public'
+    ru-RU: 'Классический - Фотометрия - Утвердить в общие'
+
+  '实验测试-经典模式-光度测量-方法电子签名':
+    zh-CN: '实验测试-经典模式-光度测量-方法电子签名'
+    en-US: 'Classic - Photometry - Method E-Signature'
+    ru-RU: 'Classic - Photometry - Method E-Signature'
+
+  # ========== 经典模式-定量测定 操作权限 ==========
+  '实验测试-经典模式-定量测定-设置样品':
+    zh-CN: '实验测试-经典模式-定量测定-设置样品'
+    en-US: 'Classic - Quantitation - Set Sample'
+    ru-RU: 'Classic - Quantitation - Set Sample'
+
+  '实验测试-经典模式-定量测定-修改样品信息':
+    zh-CN: '实验测试-经典模式-定量测定-修改样品信息'
+    en-US: 'Classic - Quantitation - Edit Sample Info'
+    ru-RU: 'Classic - Quantitation - Edit Sample Info'
+
+  '实验测试-经典模式-定量测定-标准样品列表删除':
+    zh-CN: '实验测试-经典模式-定量测定-标准样品列表删除'
+    en-US: 'Classic - Quantitation - Delete Std Sample'
+    ru-RU: 'Classic - Quantitation - Delete Std Sample'
+
+  '实验测试-经典模式-定量测定-校零':
+    zh-CN: '实验测试-经典模式-定量测定-校零'
+    en-US: 'Classic - Quantitation - Zero'
+    ru-RU: 'Classic - Quantitation - Zero'
+
+  '实验测试-经典模式-定量测定-测量':
+    zh-CN: '实验测试-经典模式-定量测定-测量'
+    en-US: 'Classic - Quantitation - Measure'
+    ru-RU: 'Classic - Quantitation - Measure'
+
+  '实验测试-经典模式-定量测定-新建任务':
+    zh-CN: '实验测试-经典模式-定量测定-新建任务'
+    en-US: 'Classic - Quantitation - New Task'
+    ru-RU: 'Classic - Quantitation - New Task'
+
+  '实验测试-经典模式-定量测定-选择报告模板':
+    zh-CN: '实验测试-经典模式-定量测定-选择报告模板'
+    en-US: 'Classic - Quantitation - Select Report Template'
+    ru-RU: 'Classic - Quantitation - Select Report Template'
+
+  '实验测试-经典模式-定量测定-输出报告':
+    zh-CN: '实验测试-经典模式-定量测定-输出报告'
+    en-US: 'Classic - Quantitation - Output Report'
+    ru-RU: 'Classic - Quantitation - Output Report'
+
+  '实验测试-经典模式-定量测定-导出数据':
+    zh-CN: '实验测试-经典模式-定量测定-导出数据'
+    en-US: 'Classic - Quantitation - Export Data'
+    ru-RU: 'Classic - Quantitation - Export Data'
+
+  '实验测试-经典模式-定量测定-方法参数应用':
+    zh-CN: '实验测试-经典模式-定量测定-方法参数应用'
+    en-US: 'Classic - Quantitation - Apply Method Params'
+    ru-RU: 'Classic - Quantitation - Apply Method Params'
+
+  '实验测试-经典模式-定量测定-附件设置':
+    zh-CN: '实验测试-经典模式-定量测定-附件设置'
+    en-US: 'Classic - Quantitation - Attachment Setup'
+    ru-RU: 'Classic - Quantitation - Attachment Setup'
+
+  '实验测试-经典模式-定量测定-查看他人的方法':
+    zh-CN: '实验测试-经典模式-定量测定-查看他人的方法'
+    en-US: "Classic - Quantitation - View Others' Methods"
+    ru-RU: "Classic - Quantitation - View Others' Methods"
+
+  '实验测试-经典模式-定量测定-查看他人的文件':
+    zh-CN: '实验测试-经典模式-定量测定-查看他人的文件'
+    en-US: "Classic - Quantitation - View Others' Files"
+    ru-RU: "Classic - Quantitation - View Others' Files"
+
+  '实验测试-经典模式-定量测定-审核人电子签名':
+    zh-CN: '实验测试-经典模式-定量测定-审核人电子签名'
+    en-US: 'Classic - Quantitation - Reviewer E-Signature'
+    ru-RU: 'Classic - Quantitation - Reviewer E-Signature'
+
+  '实验测试-经典模式-定量测定-复核人电子签名':
+    zh-CN: '实验测试-经典模式-定量测定-复核人电子签名'
+    en-US: 'Classic - Quantitation - Checker E-Signature'
+    ru-RU: 'Classic - Quantitation - Checker E-Signature'
+
+  '实验测试-经典模式-定量测定-撤销电子签名':
+    zh-CN: '实验测试-经典模式-定量测定-撤销电子签名'
+    en-US: 'Classic - Quantitation - Revoke E-Signature'
+    ru-RU: 'Classic - Quantitation - Revoke E-Signature'
+
+  '实验测试-经典模式-定量测定-历史方法重命名':
+    zh-CN: '实验测试-经典模式-定量测定-历史方法重命名'
+    en-US: 'Classic - Quantitation - Rename History Method'
+    ru-RU: 'Classic - Quantitation - Rename History Method'
+
+  '实验测试-经典模式-定量测定-历史方法删除':
+    zh-CN: '实验测试-经典模式-定量测定-历史方法删除'
+    en-US: 'Classic - Quantitation - Delete History Method'
+    ru-RU: 'Classic - Quantitation - Delete History Method'
+
+  '实验测试-经典模式-定量测定-批准成向导模式下项目方法':
+    zh-CN: '实验测试-经典模式-定量测定-批准成向导模式下项目方法'
+    en-US: 'Classic - Quantitation - Approve to Wizard Project'
+    ru-RU: 'Classic - Quantitation - Approve to Wizard Project'
+
+  '实验测试-经典模式-定量测定-批准成向导模式下公共方法':
+    zh-CN: '实验测试-经典模式-定量测定-批准成向导模式下公共方法'
+    en-US: 'Classic - Quantitation - Approve to Wizard Public'
+    ru-RU: 'Classic - Quantitation - Approve to Wizard Public'
+
+  '实验测试-经典模式-定量测定-方法电子签名':
+    zh-CN: '实验测试-经典模式-定量测定-方法电子签名'
+    en-US: 'Classic - Quantitation - Method E-Signature'
+    ru-RU: 'Classic - Quantitation - Method E-Signature'
+
+  # ========== 经典模式-光谱扫描 操作权限 ==========
+  '实验测试-经典模式-光谱扫描-设置样品':
+    zh-CN: '实验测试-经典模式-光谱扫描-设置样品'
+    en-US: 'Classic - Spectrum Scan - Set Sample'
+    ru-RU: 'Classic - Spectrum Scan - Set Sample'
+
+  '实验测试-经典模式-光谱扫描-修改样品信息':
+    zh-CN: '实验测试-经典模式-光谱扫描-修改样品信息'
+    en-US: 'Classic - Spectrum Scan - Edit Sample Info'
+    ru-RU: 'Classic - Spectrum Scan - Edit Sample Info'
+
+  '实验测试-经典模式-光谱扫描-标准样品列表删除':
+    zh-CN: '实验测试-经典模式-光谱扫描-标准样品列表删除'
+    en-US: 'Classic - Spectrum Scan - Delete Std Sample'
+    ru-RU: 'Classic - Spectrum Scan - Delete Std Sample'
+
+  '实验测试-经典模式-光谱扫描-基线':
+    zh-CN: '实验测试-经典模式-光谱扫描-基线'
+    en-US: 'Classic - Spectrum Scan - Baseline'
+    ru-RU: 'Classic - Spectrum Scan - Baseline'
+
+  '实验测试-经典模式-光谱扫描-扫描':
+    zh-CN: '实验测试-经典模式-光谱扫描-扫描'
+    en-US: 'Classic - Spectrum Scan - Scan'
+    ru-RU: 'Classic - Spectrum Scan - Scan'
+
+  '实验测试-经典模式-光谱扫描-新建任务':
+    zh-CN: '实验测试-经典模式-光谱扫描-新建任务'
+    en-US: 'Classic - Spectrum Scan - New Task'
+    ru-RU: 'Classic - Spectrum Scan - New Task'
+
+  '实验测试-经典模式-光谱扫描-选择报告模板':
+    zh-CN: '实验测试-经典模式-光谱扫描-选择报告模板'
+    en-US: 'Classic - Spectrum Scan - Select Report Template'
+    ru-RU: 'Classic - Spectrum Scan - Select Report Template'
+
+  '实验测试-经典模式-光谱扫描-谱图变换':
+    zh-CN: '实验测试-经典模式-光谱扫描-谱图变换'
+    en-US: 'Classic - Spectrum Scan - Spectrum Transform'
+    ru-RU: 'Classic - Spectrum Scan - Spectrum Transform'
+
+  '实验测试-经典模式-光谱扫描-输出报告':
+    zh-CN: '实验测试-经典模式-光谱扫描-输出报告'
+    en-US: 'Classic - Spectrum Scan - Output Report'
+    ru-RU: 'Classic - Spectrum Scan - Output Report'
+
+  '实验测试-经典模式-光谱扫描-导出数据':
+    zh-CN: '实验测试-经典模式-光谱扫描-导出数据'
+    en-US: 'Classic - Spectrum Scan - Export Data'
+    ru-RU: 'Classic - Spectrum Scan - Export Data'
+
+  '实验测试-经典模式-光谱扫描-方法参数应用':
+    zh-CN: '实验测试-经典模式-光谱扫描-方法参数应用'
+    en-US: 'Classic - Spectrum Scan - Apply Method Params'
+    ru-RU: 'Classic - Spectrum Scan - Apply Method Params'
+
+  '实验测试-经典模式-光谱扫描-附件设置':
+    zh-CN: '实验测试-经典模式-光谱扫描-附件设置'
+    en-US: 'Classic - Spectrum Scan - Attachment Setup'
+    ru-RU: 'Classic - Spectrum Scan - Attachment Setup'
+
+  '实验测试-经典模式-光谱扫描-查看他人的方法':
+    zh-CN: '实验测试-经典模式-光谱扫描-查看他人的方法'
+    en-US: "Classic - Spectrum Scan - View Others' Methods"
+    ru-RU: "Classic - Spectrum Scan - View Others' Methods"
+
+  '实验测试-经典模式-光谱扫描-查看他人的文件':
+    zh-CN: '实验测试-经典模式-光谱扫描-查看他人的文件'
+    en-US: "Classic - Spectrum Scan - View Others' Files"
+    ru-RU: "Classic - Spectrum Scan - View Others' Files"
+
+  '实验测试-经典模式-光谱扫描-审核人电子签名':
+    zh-CN: '实验测试-经典模式-光谱扫描-审核人电子签名'
+    en-US: 'Classic - Spectrum Scan - Reviewer E-Signature'
+    ru-RU: 'Classic - Spectrum Scan - Reviewer E-Signature'
+
+  '实验测试-经典模式-光谱扫描-复核人电子签名':
+    zh-CN: '实验测试-经典模式-光谱扫描-复核人电子签名'
+    en-US: 'Classic - Spectrum Scan - Checker E-Signature'
+    ru-RU: 'Classic - Spectrum Scan - Checker E-Signature'
+
+  '实验测试-经典模式-光谱扫描-撤销电子签名':
+    zh-CN: '实验测试-经典模式-光谱扫描-撤销电子签名'
+    en-US: 'Classic - Spectrum Scan - Revoke E-Signature'
+    ru-RU: 'Classic - Spectrum Scan - Revoke E-Signature'
+
+  '实验测试-经典模式-光谱扫描-历史方法重命名':
+    zh-CN: '实验测试-经典模式-光谱扫描-历史方法重命名'
+    en-US: 'Classic - Spectrum Scan - Rename History Method'
+    ru-RU: 'Classic - Spectrum Scan - Rename History Method'
+
+  '实验测试-经典模式-光谱扫描-历史方法删除':
+    zh-CN: '实验测试-经典模式-光谱扫描-历史方法删除'
+    en-US: 'Classic - Spectrum Scan - Delete History Method'
+    ru-RU: 'Classic - Spectrum Scan - Delete History Method'
+
+  '实验测试-经典模式-光谱扫描-批准成向导模式下项目方法':
+    zh-CN: '实验测试-经典模式-光谱扫描-批准成向导模式下项目方法'
+    en-US: 'Classic - Spectrum Scan - Approve to Wizard Project'
+    ru-RU: 'Classic - Spectrum Scan - Approve to Wizard Project'
+
+  '实验测试-经典模式-光谱扫描-批准成向导模式下公共方法':
+    zh-CN: '实验测试-经典模式-光谱扫描-批准成向导模式下公共方法'
+    en-US: 'Classic - Spectrum Scan - Approve to Wizard Public'
+    ru-RU: 'Classic - Spectrum Scan - Approve to Wizard Public'
+
+  '实验测试-经典模式-光谱扫描-方法电子签名':
+    zh-CN: '实验测试-经典模式-光谱扫描-方法电子签名'
+    en-US: 'Classic - Spectrum Scan - Method E-Signature'
+    ru-RU: 'Classic - Spectrum Scan - Method E-Signature'
+
+  # ========== 经典模式-时间扫描 操作权限 ==========
+  '实验测试-经典模式-时间扫描-设置样品':
+    zh-CN: '实验测试-经典模式-时间扫描-设置样品'
+    en-US: 'Classic - Kinetic Scan - Set Sample'
+    ru-RU: 'Classic - Kinetic Scan - Set Sample'
+
+  '实验测试-经典模式-时间扫描-修改样品信息':
+    zh-CN: '实验测试-经典模式-时间扫描-修改样品信息'
+    en-US: 'Classic - Kinetic Scan - Edit Sample Info'
+    ru-RU: 'Classic - Kinetic Scan - Edit Sample Info'
+
+  '实验测试-经典模式-时间扫描-标准样品列表删除':
+    zh-CN: '实验测试-经典模式-时间扫描-标准样品列表删除'
+    en-US: 'Classic - Kinetic Scan - Delete Std Sample'
+    ru-RU: 'Classic - Kinetic Scan - Delete Std Sample'
+
+  '实验测试-经典模式-时间扫描-校零':
+    zh-CN: '实验测试-经典模式-时间扫描-校零'
+    en-US: 'Classic - Kinetic Scan - Zero'
+    ru-RU: 'Classic - Kinetic Scan - Zero'
+
+  '实验测试-经典模式-时间扫描-测量':
+    zh-CN: '实验测试-经典模式-时间扫描-测量'
+    en-US: 'Classic - Kinetic Scan - Measure'
+    ru-RU: 'Classic - Kinetic Scan - Measure'
+
+  '实验测试-经典模式-时间扫描-新建任务':
+    zh-CN: '实验测试-经典模式-时间扫描-新建任务'
+    en-US: 'Classic - Kinetic Scan - New Task'
+    ru-RU: 'Classic - Kinetic Scan - New Task'
+
+  '实验测试-经典模式-时间扫描-选择报告模板':
+    zh-CN: '实验测试-经典模式-时间扫描-选择报告模板'
+    en-US: 'Classic - Kinetic Scan - Select Report Template'
+    ru-RU: 'Classic - Kinetic Scan - Select Report Template'
+
+  '实验测试-经典模式-时间扫描-谱图变换':
+    zh-CN: '实验测试-经典模式-时间扫描-谱图变换'
+    en-US: 'Classic - Kinetic Scan - Spectrum Transform'
+    ru-RU: 'Classic - Kinetic Scan - Spectrum Transform'
+
+  '实验测试-经典模式-时间扫描-输出报告':
+    zh-CN: '实验测试-经典模式-时间扫描-输出报告'
+    en-US: 'Classic - Kinetic Scan - Output Report'
+    ru-RU: 'Classic - Kinetic Scan - Output Report'
+
+  '实验测试-经典模式-时间扫描-导出数据':
+    zh-CN: '实验测试-经典模式-时间扫描-导出数据'
+    en-US: 'Classic - Kinetic Scan - Export Data'
+    ru-RU: 'Classic - Kinetic Scan - Export Data'
+
+  '实验测试-经典模式-时间扫描-应用方法':
+    zh-CN: '实验测试-经典模式-时间扫描-应用方法'
+    en-US: 'Classic - Kinetic Scan - Apply Method'
+    ru-RU: 'Classic - Kinetic Scan - Apply Method'
+
+  '实验测试-经典模式-时间扫描-附件设置':
+    zh-CN: '实验测试-经典模式-时间扫描-附件设置'
+    en-US: 'Classic - Kinetic Scan - Attachment Setup'
+    ru-RU: 'Classic - Kinetic Scan - Attachment Setup'
+
+  '实验测试-经典模式-时间扫描-查看他人的方法':
+    zh-CN: '实验测试-经典模式-时间扫描-查看他人的方法'
+    en-US: "Classic - Kinetic Scan - View Others' Methods"
+    ru-RU: "Classic - Kinetic Scan - View Others' Methods"
+
+  '实验测试-经典模式-时间扫描-查看他人的文件':
+    zh-CN: '实验测试-经典模式-时间扫描-查看他人的文件'
+    en-US: "Classic - Kinetic Scan - View Others' Files"
+    ru-RU: "Classic - Kinetic Scan - View Others' Files"
+
+  '实验测试-经典模式-时间扫描-审核人电子签名':
+    zh-CN: '实验测试-经典模式-时间扫描-审核人电子签名'
+    en-US: 'Classic - Kinetic Scan - Reviewer E-Signature'
+    ru-RU: 'Classic - Kinetic Scan - Reviewer E-Signature'
+
+  '实验测试-经典模式-时间扫描-复核人电子签名':
+    zh-CN: '实验测试-经典模式-时间扫描-复核人电子签名'
+    en-US: 'Classic - Kinetic Scan - Checker E-Signature'
+    ru-RU: 'Classic - Kinetic Scan - Checker E-Signature'
+
+  '实验测试-经典模式-时间扫描-撤销电子签名':
+    zh-CN: '实验测试-经典模式-时间扫描-撤销电子签名'
+    en-US: 'Classic - Kinetic Scan - Revoke E-Signature'
+    ru-RU: 'Classic - Kinetic Scan - Revoke E-Signature'
+
+  '实验测试-经典模式-时间扫描-历史方法重命名':
+    zh-CN: '实验测试-经典模式-时间扫描-历史方法重命名'
+    en-US: 'Classic - Kinetic Scan - Rename History Method'
+    ru-RU: 'Classic - Kinetic Scan - Rename History Method'
+
+  '实验测试-经典模式-时间扫描-历史方法删除':
+    zh-CN: '实验测试-经典模式-时间扫描-历史方法删除'
+    en-US: 'Classic - Kinetic Scan - Delete History Method'
+    ru-RU: 'Classic - Kinetic Scan - Delete History Method'
+
+  '实验测试-经典模式-时间扫描-批准成向导模式下项目方法':
+    zh-CN: '实验测试-经典模式-时间扫描-批准成向导模式下项目方法'
+    en-US: 'Classic - Kinetic Scan - Approve to Wizard Project'
+    ru-RU: 'Classic - Kinetic Scan - Approve to Wizard Project'
+
+  '实验测试-经典模式-时间扫描-批准成向导模式下公共方法':
+    zh-CN: '实验测试-经典模式-时间扫描-批准成向导模式下公共方法'
+    en-US: 'Classic - Kinetic Scan - Approve to Wizard Public'
+    ru-RU: 'Classic - Kinetic Scan - Approve to Wizard Public'
+
+  '实验测试-经典模式-时间扫描-方法电子签名':
+    zh-CN: '实验测试-经典模式-时间扫描-方法电子签名'
+    en-US: 'Classic - Kinetic Scan - Method E-Signature'
+    ru-RU: 'Classic - Kinetic Scan - Method E-Signature'
+
+  # ========== 向导模式-光度测量 操作权限 ==========
+  '实验测试-向导模式-光度测量-设置样品':
+    zh-CN: '实验测试-向导模式-光度测量-设置样品'
+    en-US: 'Wizard - Photometry - Set Sample'
+    ru-RU: 'Wizard - Photometry - Set Sample'
+  '实验测试-向导模式-光度测量-修改样品信息':
+    zh-CN: '实验测试-向导模式-光度测量-修改样品信息'
+    en-US: 'Wizard - Photometry - Edit Sample Info'
+    ru-RU: 'Wizard - Photometry - Edit Sample Info'
+  '实验测试-向导模式-光度测量-校零':
+    zh-CN: '实验测试-向导模式-光度测量-校零'
+    en-US: 'Wizard - Photometry - Zero'
+    ru-RU: 'Wizard - Photometry - Zero'
+  '实验测试-向导模式-光度测量-测量':
+    zh-CN: '实验测试-向导模式-光度测量-测量'
+    en-US: 'Wizard - Photometry - Measure'
+    ru-RU: 'Wizard - Photometry - Measure'
+  '实验测试-向导模式-光度测量-新建任务':
+    zh-CN: '实验测试-向导模式-光度测量-新建任务'
+    en-US: 'Wizard - Photometry - New Task'
+    ru-RU: 'Wizard - Photometry - New Task'
+  '实验测试-向导模式-光度测量-选择报告模板':
+    zh-CN: '实验测试-向导模式-光度测量-选择报告模板'
+    en-US: 'Wizard - Photometry - Select Report Template'
+    ru-RU: 'Wizard - Photometry - Select Report Template'
+  '实验测试-向导模式-光度测量-输出报告':
+    zh-CN: '实验测试-向导模式-光度测量-输出报告'
+    en-US: 'Wizard - Photometry - Output Report'
+    ru-RU: 'Wizard - Photometry - Output Report'
+  '实验测试-向导模式-光度测量-导出数据':
+    zh-CN: '实验测试-向导模式-光度测量-导出数据'
+    en-US: 'Wizard - Photometry - Export Data'
+    ru-RU: 'Wizard - Photometry - Export Data'
+  '实验测试-向导模式-光度测量-修改参数':
+    zh-CN: '实验测试-向导模式-光度测量-修改参数'
+    en-US: 'Wizard - Photometry - Edit Parameters'
+    ru-RU: 'Wizard - Photometry - Edit Parameters'
+  '实验测试-向导模式-光度测量-应用方法':
+    zh-CN: '实验测试-向导模式-光度测量-应用方法'
+    en-US: 'Wizard - Photometry - Apply Method'
+    ru-RU: 'Wizard - Photometry - Apply Method'
+  '实验测试-向导模式-光度测量-附件设置':
+    zh-CN: '实验测试-向导模式-光度测量-附件设置'
+    en-US: 'Wizard - Photometry - Attachment Setup'
+    ru-RU: 'Wizard - Photometry - Attachment Setup'
+  '实验测试-向导模式-光度测量-查看他人的方法':
+    zh-CN: '实验测试-向导模式-光度测量-查看他人的方法'
+    en-US: "Wizard - Photometry - View Others' Methods"
+    ru-RU: "Wizard - Photometry - View Others' Methods"
+  '实验测试-向导模式-光度测量-查看他人的文件':
+    zh-CN: '实验测试-向导模式-光度测量-查看他人的文件'
+    en-US: "Wizard - Photometry - View Others' Files"
+    ru-RU: "Wizard - Photometry - View Others' Files"
+  '实验测试-向导模式-光度测量-标准样品列表删除':
+    zh-CN: '实验测试-向导模式-光度测量-标准样品列表删除'
+    en-US: 'Wizard - Photometry - Delete Std Sample'
+    ru-RU: 'Wizard - Photometry - Delete Std Sample'
+  '实验测试-向导模式-光度测量-审核人电子签名':
+    zh-CN: '实验测试-向导模式-光度测量-审核人电子签名'
+    en-US: 'Wizard - Photometry - Reviewer E-Signature'
+    ru-RU: 'Wizard - Photometry - Reviewer E-Signature'
+  '实验测试-向导模式-光度测量-复核人电子签名':
+    zh-CN: '实验测试-向导模式-光度测量-复核人电子签名'
+    en-US: 'Wizard - Photometry - Checker E-Signature'
+    ru-RU: 'Wizard - Photometry - Checker E-Signature'
+  '实验测试-向导模式-光度测量-撤销电子签名':
+    zh-CN: '实验测试-向导模式-光度测量-撤销电子签名'
+    en-US: 'Wizard - Photometry - Revoke E-Signature'
+    ru-RU: 'Wizard - Photometry - Revoke E-Signature'
+  '实验测试-向导模式-光度测量-批准成向导模式下项目方法':
+    zh-CN: '实验测试-向导模式-光度测量-批准成向导模式下项目方法'
+    en-US: 'Wizard - Photometry - Approve to Wizard Project'
+    ru-RU: 'Wizard - Photometry - Approve to Wizard Project'
+  '实验测试-向导模式-光度测量-批准成向导模式下公共方法':
+    zh-CN: '实验测试-向导模式-光度测量-批准成向导模式下公共方法'
+    en-US: 'Wizard - Photometry - Approve to Wizard Public'
+    ru-RU: 'Wizard - Photometry - Approve to Wizard Public'
+  '实验测试-向导模式-光度测量-方法电子签名':
+    zh-CN: '实验测试-向导模式-光度测量-方法电子签名'
+    en-US: 'Wizard - Photometry - Method E-Signature'
+    ru-RU: 'Wizard - Photometry - Method E-Signature'
+
+  # ========== 向导模式-定量测定 操作权限 ==========
+  '实验测试-向导模式-定量测定-设置样品':
+    zh-CN: '实验测试-向导模式-定量测定-设置样品'
+    en-US: 'Wizard - Quantitation - Set Sample'
+    ru-RU: 'Wizard - Quantitation - Set Sample'
+  '实验测试-向导模式-定量测定-修改样品信息':
+    zh-CN: '实验测试-向导模式-定量测定-修改样品信息'
+    en-US: 'Wizard - Quantitation - Edit Sample Info'
+    ru-RU: 'Wizard - Quantitation - Edit Sample Info'
+  '实验测试-向导模式-定量测定-标准样品列表删除':
+    zh-CN: '实验测试-向导模式-定量测定-标准样品列表删除'
+    en-US: 'Wizard - Quantitation - Delete Std Sample'
+    ru-RU: 'Wizard - Quantitation - Delete Std Sample'
+  '实验测试-向导模式-定量测定-校零':
+    zh-CN: '实验测试-向导模式-定量测定-校零'
+    en-US: 'Wizard - Quantitation - Zero'
+    ru-RU: 'Wizard - Quantitation - Zero'
+  '实验测试-向导模式-定量测定-测量':
+    zh-CN: '实验测试-向导模式-定量测定-测量'
+    en-US: 'Wizard - Quantitation - Measure'
+    ru-RU: 'Wizard - Quantitation - Measure'
+  '实验测试-向导模式-定量测定-选择报告模板':
+    zh-CN: '实验测试-向导模式-定量测定-选择报告模板'
+    en-US: 'Wizard - Quantitation - Select Report Template'
+    ru-RU: 'Wizard - Quantitation - Select Report Template'
+  '实验测试-向导模式-定量测定-输出报告':
+    zh-CN: '实验测试-向导模式-定量测定-输出报告'
+    en-US: 'Wizard - Quantitation - Output Report'
+    ru-RU: 'Wizard - Quantitation - Output Report'
+  '实验测试-向导模式-定量测定-导出数据':
+    zh-CN: '实验测试-向导模式-定量测定-导出数据'
+    en-US: 'Wizard - Quantitation - Export Data'
+    ru-RU: 'Wizard - Quantitation - Export Data'
+  '实验测试-向导模式-定量测定-修改参数':
+    zh-CN: '实验测试-向导模式-定量测定-修改参数'
+    en-US: 'Wizard - Quantitation - Edit Parameters'
+    ru-RU: 'Wizard - Quantitation - Edit Parameters'
+  '实验测试-向导模式-定量测定-附件设置':
+    zh-CN: '实验测试-向导模式-定量测定-附件设置'
+    en-US: 'Wizard - Quantitation - Attachment Setup'
+    ru-RU: 'Wizard - Quantitation - Attachment Setup'
+  '实验测试-向导模式-定量测定-查看他人的方法':
+    zh-CN: '实验测试-向导模式-定量测定-查看他人的方法'
+    en-US: "Wizard - Quantitation - View Others' Methods"
+    ru-RU: "Wizard - Quantitation - View Others' Methods"
+  '实验测试-向导模式-定量测定-查看他人的文件':
+    zh-CN: '实验测试-向导模式-定量测定-查看他人的文件'
+    en-US: "Wizard - Quantitation - View Others' Files"
+    ru-RU: "Wizard - Quantitation - View Others' Files"
+  '实验测试-向导模式-定量测定-审核人电子签名':
+    zh-CN: '实验测试-向导模式-定量测定-审核人电子签名'
+    en-US: 'Wizard - Quantitation - Reviewer E-Signature'
+    ru-RU: 'Wizard - Quantitation - Reviewer E-Signature'
+  '实验测试-向导模式-定量测定-复核人电子签名':
+    zh-CN: '实验测试-向导模式-定量测定-复核人电子签名'
+    en-US: 'Wizard - Quantitation - Checker E-Signature'
+    ru-RU: 'Wizard - Quantitation - Checker E-Signature'
+  '实验测试-向导模式-定量测定-撤销电子签名':
+    zh-CN: '实验测试-向导模式-定量测定-撤销电子签名'
+    en-US: 'Wizard - Quantitation - Revoke E-Signature'
+    ru-RU: 'Wizard - Quantitation - Revoke E-Signature'
+  '实验测试-向导模式-定量测定-批准成向导模式下项目方法':
+    zh-CN: '实验测试-向导模式-定量测定-批准成向导模式下项目方法'
+    en-US: 'Wizard - Quantitation - Approve to Wizard Project'
+    ru-RU: 'Wizard - Quantitation - Approve to Wizard Project'
+  '实验测试-向导模式-定量测定-批准成向导模式下公共方法':
+    zh-CN: '实验测试-向导模式-定量测定-批准成向导模式下公共方法'
+    en-US: 'Wizard - Quantitation - Approve to Wizard Public'
+    ru-RU: 'Wizard - Quantitation - Approve to Wizard Public'
+  '实验测试-向导模式-定量测定-方法电子签名':
+    zh-CN: '实验测试-向导模式-定量测定-方法电子签名'
+    en-US: 'Wizard - Quantitation - Method E-Signature'
+    ru-RU: 'Wizard - Quantitation - Method E-Signature'
+
+  # ========== 向导模式-光谱扫描 操作权限 ==========
+  '实验测试-向导模式-光谱扫描-设置样品':
+    zh-CN: '实验测试-向导模式-光谱扫描-设置样品'
+    en-US: 'Wizard - Spectrum Scan - Set Sample'
+    ru-RU: 'Wizard - Spectrum Scan - Set Sample'
+  '实验测试-向导模式-光谱扫描-修改样品信息':
+    zh-CN: '实验测试-向导模式-光谱扫描-修改样品信息'
+    en-US: 'Wizard - Spectrum Scan - Edit Sample Info'
+    ru-RU: 'Wizard - Spectrum Scan - Edit Sample Info'
+  '实验测试-向导模式-光谱扫描-标准样品列表删除':
+    zh-CN: '实验测试-向导模式-光谱扫描-标准样品列表删除'
+    en-US: 'Wizard - Spectrum Scan - Delete Std Sample'
+    ru-RU: 'Wizard - Spectrum Scan - Delete Std Sample'
+  '实验测试-向导模式-光谱扫描-基线':
+    zh-CN: '实验测试-向导模式-光谱扫描-基线'
+    en-US: 'Wizard - Spectrum Scan - Baseline'
+    ru-RU: 'Wizard - Spectrum Scan - Baseline'
+  '实验测试-向导模式-光谱扫描-扫描':
+    zh-CN: '实验测试-向导模式-光谱扫描-扫描'
+    en-US: 'Wizard - Spectrum Scan - Scan'
+    ru-RU: 'Wizard - Spectrum Scan - Scan'
+  '实验测试-向导模式-光谱扫描-选择报告模板':
+    zh-CN: '实验测试-向导模式-光谱扫描-选择报告模板'
+    en-US: 'Wizard - Spectrum Scan - Select Report Template'
+    ru-RU: 'Wizard - Spectrum Scan - Select Report Template'
+  '实验测试-向导模式-光谱扫描-谱图变换':
+    zh-CN: '实验测试-向导模式-光谱扫描-谱图变换'
+    en-US: 'Wizard - Spectrum Scan - Spectrum Transform'
+    ru-RU: 'Wizard - Spectrum Scan - Spectrum Transform'
+  '实验测试-向导模式-光谱扫描-输出报告':
+    zh-CN: '实验测试-向导模式-光谱扫描-输出报告'
+    en-US: 'Wizard - Spectrum Scan - Output Report'
+    ru-RU: 'Wizard - Spectrum Scan - Output Report'
+  '实验测试-向导模式-光谱扫描-导出数据':
+    zh-CN: '实验测试-向导模式-光谱扫描-导出数据'
+    en-US: 'Wizard - Spectrum Scan - Export Data'
+    ru-RU: 'Wizard - Spectrum Scan - Export Data'
+  '实验测试-向导模式-光谱扫描-修改参数':
+    zh-CN: '实验测试-向导模式-光谱扫描-修改参数'
+    en-US: 'Wizard - Spectrum Scan - Edit Parameters'
+    ru-RU: 'Wizard - Spectrum Scan - Edit Parameters'
+  '实验测试-向导模式-光谱扫描-附件设置':
+    zh-CN: '实验测试-向导模式-光谱扫描-附件设置'
+    en-US: 'Wizard - Spectrum Scan - Attachment Setup'
+    ru-RU: 'Wizard - Spectrum Scan - Attachment Setup'
+  '实验测试-向导模式-光谱扫描-查看他人的方法':
+    zh-CN: '实验测试-向导模式-光谱扫描-查看他人的方法'
+    en-US: "Wizard - Spectrum Scan - View Others' Methods"
+    ru-RU: "Wizard - Spectrum Scan - View Others' Methods"
+  '实验测试-向导模式-光谱扫描-查看他人的文件':
+    zh-CN: '实验测试-向导模式-光谱扫描-查看他人的文件'
+    en-US: "Wizard - Spectrum Scan - View Others' Files"
+    ru-RU: "Wizard - Spectrum Scan - View Others' Files"
+  '实验测试-向导模式-光谱扫描-审核人电子签名':
+    zh-CN: '实验测试-向导模式-光谱扫描-审核人电子签名'
+    en-US: 'Wizard - Spectrum Scan - Reviewer E-Signature'
+    ru-RU: 'Wizard - Spectrum Scan - Reviewer E-Signature'
+  '实验测试-向导模式-光谱扫描-复核人电子签名':
+    zh-CN: '实验测试-向导模式-光谱扫描-复核人电子签名'
+    en-US: 'Wizard - Spectrum Scan - Checker E-Signature'
+    ru-RU: 'Wizard - Spectrum Scan - Checker E-Signature'
+  '实验测试-向导模式-光谱扫描-撤销电子签名':
+    zh-CN: '实验测试-向导模式-光谱扫描-撤销电子签名'
+    en-US: 'Wizard - Spectrum Scan - Revoke E-Signature'
+    ru-RU: 'Wizard - Spectrum Scan - Revoke E-Signature'
+  '实验测试-向导模式-光谱扫描-批准成向导模式下项目方法':
+    zh-CN: '实验测试-向导模式-光谱扫描-批准成向导模式下项目方法'
+    en-US: 'Wizard - Spectrum Scan - Approve to Wizard Project'
+    ru-RU: 'Wizard - Spectrum Scan - Approve to Wizard Project'
+  '实验测试-向导模式-光谱扫描-批准成向导模式下公共方法':
+    zh-CN: '实验测试-向导模式-光谱扫描-批准成向导模式下公共方法'
+    en-US: 'Wizard - Spectrum Scan - Approve to Wizard Public'
+    ru-RU: 'Wizard - Spectrum Scan - Approve to Wizard Public'
+  '实验测试-向导模式-光谱扫描-方法电子签名':
+    zh-CN: '实验测试-向导模式-光谱扫描-方法电子签名'
+    en-US: 'Wizard - Spectrum Scan - Method E-Signature'
+    ru-RU: 'Wizard - Spectrum Scan - Method E-Signature'
+
+  # ========== 向导模式-时间扫描 操作权限 ==========
+  '实验测试-向导模式-时间扫描-设置样品':
+    zh-CN: '实验测试-向导模式-时间扫描-设置样品'
+    en-US: 'Wizard - Kinetic Scan - Set Sample'
+    ru-RU: 'Wizard - Kinetic Scan - Set Sample'
+  '实验测试-向导模式-时间扫描-修改样品信息':
+    zh-CN: '实验测试-向导模式-时间扫描-修改样品信息'
+    en-US: 'Wizard - Kinetic Scan - Edit Sample Info'
+    ru-RU: 'Wizard - Kinetic Scan - Edit Sample Info'
+  '实验测试-向导模式-时间扫描-标准样品列表删除':
+    zh-CN: '实验测试-向导模式-时间扫描-标准样品列表删除'
+    en-US: 'Wizard - Kinetic Scan - Delete Std Sample'
+    ru-RU: 'Wizard - Kinetic Scan - Delete Std Sample'
+  '实验测试-向导模式-时间扫描-校零':
+    zh-CN: '实验测试-向导模式-时间扫描-校零'
+    en-US: 'Wizard - Kinetic Scan - Zero'
+    ru-RU: 'Wizard - Kinetic Scan - Zero'
+  '实验测试-向导模式-时间扫描-测量':
+    zh-CN: '实验测试-向导模式-时间扫描-测量'
+    en-US: 'Wizard - Kinetic Scan - Measure'
+    ru-RU: 'Wizard - Kinetic Scan - Measure'
+  '实验测试-向导模式-时间扫描-选择报告模板':
+    zh-CN: '实验测试-向导模式-时间扫描-选择报告模板'
+    en-US: 'Wizard - Kinetic Scan - Select Report Template'
+    ru-RU: 'Wizard - Kinetic Scan - Select Report Template'
+  '实验测试-向导模式-时间扫描-谱图变换':
+    zh-CN: '实验测试-向导模式-时间扫描-谱图变换'
+    en-US: 'Wizard - Kinetic Scan - Spectrum Transform'
+    ru-RU: 'Wizard - Kinetic Scan - Spectrum Transform'
+  '实验测试-向导模式-时间扫描-输出报告':
+    zh-CN: '实验测试-向导模式-时间扫描-输出报告'
+    en-US: 'Wizard - Kinetic Scan - Output Report'
+    ru-RU: 'Wizard - Kinetic Scan - Output Report'
+  '实验测试-向导模式-时间扫描-导出数据':
+    zh-CN: '实验测试-向导模式-时间扫描-导出数据'
+    en-US: 'Wizard - Kinetic Scan - Export Data'
+    ru-RU: 'Wizard - Kinetic Scan - Export Data'
+  '实验测试-向导模式-时间扫描-修改参数':
+    zh-CN: '实验测试-向导模式-时间扫描-修改参数'
+    en-US: 'Wizard - Kinetic Scan - Edit Parameters'
+    ru-RU: 'Wizard - Kinetic Scan - Edit Parameters'
+  '实验测试-向导模式-时间扫描-附件设置':
+    zh-CN: '实验测试-向导模式-时间扫描-附件设置'
+    en-US: 'Wizard - Kinetic Scan - Attachment Setup'
+    ru-RU: 'Wizard - Kinetic Scan - Attachment Setup'
+  '实验测试-向导模式-时间扫描-查看他人的方法':
+    zh-CN: '实验测试-向导模式-时间扫描-查看他人的方法'
+    en-US: "Wizard - Kinetic Scan - View Others' Methods"
+    ru-RU: "Wizard - Kinetic Scan - View Others' Methods"
+  '实验测试-向导模式-时间扫描-查看他人的文件':
+    zh-CN: '实验测试-向导模式-时间扫描-查看他人的文件'
+    en-US: "Wizard - Kinetic Scan - View Others' Files"
+    ru-RU: "Wizard - Kinetic Scan - View Others' Files"
+  '实验测试-向导模式-时间扫描-审核人电子签名':
+    zh-CN: '实验测试-向导模式-时间扫描-审核人电子签名'
+    en-US: 'Wizard - Kinetic Scan - Reviewer E-Signature'
+    ru-RU: 'Wizard - Kinetic Scan - Reviewer E-Signature'
+  '实验测试-向导模式-时间扫描-复核人电子签名':
+    zh-CN: '实验测试-向导模式-时间扫描-复核人电子签名'
+    en-US: 'Wizard - Kinetic Scan - Checker E-Signature'
+    ru-RU: 'Wizard - Kinetic Scan - Checker E-Signature'
+  '实验测试-向导模式-时间扫描-撤销电子签名':
+    zh-CN: '实验测试-向导模式-时间扫描-撤销电子签名'
+    en-US: 'Wizard - Kinetic Scan - Revoke E-Signature'
+    ru-RU: 'Wizard - Kinetic Scan - Revoke E-Signature'
+  '实验测试-向导模式-时间扫描-批准成向导模式下项目方法':
+    zh-CN: '实验测试-向导模式-时间扫描-批准成向导模式下项目方法'
+    en-US: 'Wizard - Kinetic Scan - Approve to Wizard Project'
+    ru-RU: 'Wizard - Kinetic Scan - Approve to Wizard Project'
+  '实验测试-向导模式-时间扫描-批准成向导模式下公共方法':
+    zh-CN: '实验测试-向导模式-时间扫描-批准成向导模式下公共方法'
+    en-US: 'Wizard - Kinetic Scan - Approve to Wizard Public'
+    ru-RU: 'Wizard - Kinetic Scan - Approve to Wizard Public'
+  '实验测试-向导模式-时间扫描-方法电子签名':
+    zh-CN: '实验测试-向导模式-时间扫描-方法电子签名'
+    en-US: 'Wizard - Kinetic Scan - Method E-Signature'
+    ru-RU: 'Wizard - Kinetic Scan - Method E-Signature'
+
+  # ========== 检定校准 操作权限 ==========
+  '检定校准-检定-新建任务':
+    zh-CN: '检定校准-检定-新建任务'
+    en-US: 'Verification - New Task'
+    ru-RU: 'Verification - New Task'
+  '检定校准-检定-查看他人任务':
+    zh-CN: '检定校准-检定-查看他人任务'
+    en-US: "Verification - View Others' Tasks"
+    ru-RU: "Verification - View Others' Tasks"
+  '检定校准-检定-附件配置':
+    zh-CN: '检定校准-检定-附件配置'
+    en-US: 'Verification - Attachment Config'
+    ru-RU: 'Verification - Attachment Config'
+  '检定校准-任务管理-查看他人任务':
+    zh-CN: '检定校准-任务管理-查看他人任务'
+    en-US: "Task Mgmt - View Others' Tasks"
+    ru-RU: "Task Mgmt - View Others' Tasks"
+  '检定校准-任务管理-删除任务':
+    zh-CN: '检定校准-任务管理-删除任务'
+    en-US: 'Task Mgmt - Delete Task'
+    ru-RU: 'Task Mgmt - Delete Task'
+  '检定校准-模板管理-查看':
+    zh-CN: '检定校准-模板管理-查看'
+    en-US: 'Template Mgmt - View'
+    ru-RU: 'Template Mgmt - View'
+  '检定校准-模板管理-删除':
+    zh-CN: '检定校准-模板管理-删除'
+    en-US: 'Template Mgmt - Delete'
+    ru-RU: 'Template Mgmt - Delete'
+  '检定校准-标准物质管理-新增标准物质类型':
+    zh-CN: '检定校准-标准物质管理-新增标准物质类型'
+    en-US: 'Reference Material - Add Type'
+    ru-RU: 'Reference Material - Add Type'
+  '检定校准-标准物质管理-新增标准物质':
+    zh-CN: '检定校准-标准物质管理-新增标准物质'
+    en-US: 'Reference Material - Add Material'
+    ru-RU: 'Reference Material - Add Material'
+  '检定校准-标准物质管理-删除标准物质':
+    zh-CN: '检定校准-标准物质管理-删除标准物质'
+    en-US: 'Reference Material - Delete Material'
+    ru-RU: 'Reference Material - Delete Material'
+  '检定校准-标准物质管理-编辑标准物质':
+    zh-CN: '检定校准-标准物质管理-编辑标准物质'
+    en-US: 'Reference Material - Edit Material'
+    ru-RU: 'Reference Material - Edit Material'
+  '检定校准-检定-查看历史任务':
+    zh-CN: '检定校准-检定-查看历史任务'
+    en-US: 'Verification - View History'
+    ru-RU: 'Verification - View History'
+  '检定校准-任务管理-批量删除':
+    zh-CN: '检定校准-任务管理-批量删除'
+    en-US: 'Task Mgmt - Batch Delete'
+    ru-RU: 'Task Mgmt - Batch Delete'
+  '检定校准-检定-查看':
+    zh-CN: '检定校准-检定-查看'
+    en-US: 'Verification - View'
+    ru-RU: 'Verification - View'
+  '检定校准-任务管理-重命名':
+    zh-CN: '检定校准-任务管理-重命名'
+    en-US: 'Task Mgmt - Rename'
+    ru-RU: 'Task Mgmt - Rename'
+  '检定校准-标准物质管理-批量删除':
+    zh-CN: '检定校准-标准物质管理-批量删除'
+    en-US: 'Reference Material - Batch Delete'
+    ru-RU: 'Reference Material - Batch Delete'
+  '检定校准-检定-创建任务':
+    zh-CN: '检定校准-检定-创建任务'
+    en-US: 'Verification - Create Task'
+    ru-RU: 'Verification - Create Task'
+  '检定校准-检定-单项测量':
+    zh-CN: '检定校准-检定-单项测量'
+    en-US: 'Verification - Single Measure'
+    ru-RU: 'Verification - Single Measure'
+  '检定校准-检定-自动测量':
+    zh-CN: '检定校准-检定-自动测量'
+    en-US: 'Verification - Auto Measure'
+    ru-RU: 'Verification - Auto Measure'
+  '检定校准-检定-停止测量':
+    zh-CN: '检定校准-检定-停止测量'
+    en-US: 'Verification - Stop Measure'
+    ru-RU: 'Verification - Stop Measure'
+  '检定校准-模板管理-批量删除':
+    zh-CN: '检定校准-模板管理-批量删除'
+    en-US: 'Template Mgmt - Batch Delete'
+    ru-RU: 'Template Mgmt - Batch Delete'
+
+  # ========== 报告设计 操作权限 ==========
+  '报告设计-报告模板设计-模板编辑保存':
+    zh-CN: '报告设计-报告模板设计-模板编辑保存'
+    en-US: 'Report Designer - Save Template'
+    ru-RU: 'Report Designer - Save Template'
+  '报告设计-报告模板设计-模板重命名':
+    zh-CN: '报告设计-报告模板设计-模板重命名'
+    en-US: 'Report Designer - Rename Template'
+    ru-RU: 'Report Designer - Rename Template'
+  '报告设计-报告模板设计-模板删除':
+    zh-CN: '报告设计-报告模板设计-模板删除'
+    en-US: 'Report Designer - Delete Template'
+    ru-RU: 'Report Designer - Delete Template'
+  '报告设计-报告模板设计-导入模板':
+    zh-CN: '报告设计-报告模板设计-导入模板'
+    en-US: 'Report Designer - Import Template'
+    ru-RU: 'Report Designer - Import Template'
+  '报告设计-报告模板设计-导出模板':
+    zh-CN: '报告设计-报告模板设计-导出模板'
+    en-US: 'Report Designer - Export Template'
+    ru-RU: 'Report Designer - Export Template'
+
+  # ========== 系统管理 操作权限 ==========
+  '系统管理-系统面板配置-保存配置结果':
+    zh-CN: '系统管理-系统面板配置-保存配置结果'
+    en-US: 'System - Panel - Save Config'
+    ru-RU: 'System - Panel - Save Config'
+  '系统管理-算法配置-保存配置结果':
+    zh-CN: '系统管理-算法配置-保存配置结果'
+    en-US: 'System - Algorithm - Save Config'
+    ru-RU: 'System - Algorithm - Save Config'
+  '系统管理-业务参数配置-保存配置结果':
+    zh-CN: '系统管理-业务参数配置-保存配置结果'
+    en-US: 'System - Business Params - Save Config'
+    ru-RU: 'System - Business Params - Save Config'
+
+  # ========== 标准管理 操作权限 ==========
+  '标准管理-升级标准':
+    zh-CN: '标准管理-升级标准'
+    en-US: 'Standard - Upgrade'
+    ru-RU: 'Standard - Upgrade'
+  '标准管理-导入':
+    zh-CN: '标准管理-导入'
+    en-US: 'Standard - Import'
+    ru-RU: 'Standard - Import'
+  '标准管理-导出':
+    zh-CN: '标准管理-导出'
+    en-US: 'Standard - Export'
+    ru-RU: 'Standard - Export'
+  '标准管理-批量删除':
+    zh-CN: '标准管理-批量删除'
+    en-US: 'Standard - Batch Delete'
+    ru-RU: 'Standard - Batch Delete'
+  '标准管理-详情':
+    zh-CN: '标准管理-详情'
+    en-US: 'Standard - Detail'
+    ru-RU: 'Standard - Detail'
+  '标准管理-删除':
+    zh-CN: '标准管理-删除'
+    en-US: 'Standard - Delete'
+    ru-RU: 'Standard - Delete'
+
+  # ========== 用户管理 操作权限 ==========
+  '用户管理-用户权限管理-新增用户组':
+    zh-CN: '用户管理-用户权限管理-新增用户组'
+    en-US: 'User - Add Group'
+    ru-RU: 'User - Add Group'
+  '用户管理-用户权限管理-删除用户组':
+    zh-CN: '用户管理-用户权限管理-删除用户组'
+    en-US: 'User - Delete Group'
+    ru-RU: 'User - Delete Group'
+  '用户管理-用户权限管理-保存用户组修改':
+    zh-CN: '用户管理-用户权限管理-保存用户组修改'
+    en-US: 'User - Save Group'
+    ru-RU: 'User - Save Group'
+  '用户管理-用户权限管理-保存权限设置':
+    zh-CN: '用户管理-用户权限管理-保存权限设置'
+    en-US: 'User - Save Permissions'
+    ru-RU: 'User - Save Permissions'
+  '用户管理-用户权限管理-新增用户':
+    zh-CN: '用户管理-用户权限管理-新增用户'
+    en-US: 'User - Add User'
+    ru-RU: 'User - Add User'
+  '用户管理-用户权限管理-删除用户':
+    zh-CN: '用户管理-用户权限管理-删除用户'
+    en-US: 'User - Delete User'
+    ru-RU: 'User - Delete User'
+  '用户管理-用户权限管理-重置密码':
+    zh-CN: '用户管理-用户权限管理-重置密码'
+    en-US: 'User - Reset Password'
+    ru-RU: 'User - Reset Password'
+  '用户管理-用户权限管理-解锁用户':
+    zh-CN: '用户管理-用户权限管理-解锁用户'
+    en-US: 'User - Unlock User'
+    ru-RU: 'User - Unlock User'
+  '用户管理-用户权限管理-项目分配':
+    zh-CN: '用户管理-用户权限管理-项目分配'
+    en-US: 'User - Assign Project'
+    ru-RU: 'User - Assign Project'
+  '用户管理-用户权限管理-保存人员修改':
+    zh-CN: '用户管理-用户权限管理-保存人员修改'
+    en-US: 'User - Save Personnel'
+    ru-RU: 'User - Save Personnel'
+
+  # ========== 通知管理 操作权限 ==========
+  '通知管理-一键已读':
+    zh-CN: '通知管理-一键已读'
+    en-US: 'Notification - Mark All Read'
+    ru-RU: 'Notification - Mark All Read'
+  '通知管理-批量删除':
+    zh-CN: '通知管理-批量删除'
+    en-US: 'Notification - Batch Delete'
+    ru-RU: 'Notification - Batch Delete'
+  '通知管理-详情':
+    zh-CN: '通知管理-详情'
+    en-US: 'Notification - Detail'
+    ru-RU: 'Notification - Detail'
+  '通知管理-删除':
+    zh-CN: '通知管理-删除'
+    en-US: 'Notification - Delete'
+    ru-RU: 'Notification - Delete'
+
+  # ========== 开箱检验 操作权限 ==========
+  '开箱检验-创建任务':
+    zh-CN: '开箱检验-创建任务'
+    en-US: 'Unboxing - Create Task'
+    ru-RU: 'Unboxing - Create Task'
+  '开箱检验-查看历史任务':
+    zh-CN: '开箱检验-查看历史任务'
+    en-US: 'Unboxing - View History'
+    ru-RU: 'Unboxing - View History'
+  '开箱检验-单项测量':
+    zh-CN: '开箱检验-单项测量'
+    en-US: 'Unboxing - Single Measure'
+    ru-RU: 'Unboxing - Single Measure'
+  '开箱检验-自动测量':
+    zh-CN: '开箱检验-自动测量'
+    en-US: 'Unboxing - Auto Measure'
+    ru-RU: 'Unboxing - Auto Measure'
+  '开箱检验-停止测量':
+    zh-CN: '开箱检验-停止测量'
+    en-US: 'Unboxing - Stop Measure'
+    ru-RU: 'Unboxing - Stop Measure'
+
+  # ========== 出厂检验 操作权限 ==========
+  '出厂检验-模板管理-生成报告':
+    zh-CN: '出厂检验-模板管理-生成报告'
+    en-US: 'Factory - Generate Report'
+    ru-RU: 'Factory - Generate Report'
+  '出厂检验-模板管理-打印':
+    zh-CN: '出厂检验-模板管理-打印'
+    en-US: 'Factory - Print'
+    ru-RU: 'Factory - Print'
+
+  # ========== 数据管理 操作权限 ==========
+  '实验测试-数据管理-向导方法管理-批量删除':
+    zh-CN: '实验测试-数据管理-向导方法管理-批量删除'
+    en-US: 'Data - Wizard Methods - Batch Delete'
+    ru-RU: 'Data - Wizard Methods - Batch Delete'
+  '实验测试-数据管理-向导方法管理-新建':
+    zh-CN: '实验测试-数据管理-向导方法管理-新建'
+    en-US: 'Data - Wizard Methods - New'
+    ru-RU: 'Data - Wizard Methods - New'
+  '实验测试-数据管理-向导方法管理-导入备份':
+    zh-CN: '实验测试-数据管理-向导方法管理-导入备份'
+    en-US: 'Data - Wizard Methods - Import Backup'
+    ru-RU: 'Data - Wizard Methods - Import Backup'
+  '实验测试-数据管理-向导方法管理-备份':
+    zh-CN: '实验测试-数据管理-向导方法管理-备份'
+    en-US: 'Data - Wizard Methods - Backup'
+    ru-RU: 'Data - Wizard Methods - Backup'
+  '实验测试-数据管理-向导方法管理-编辑':
+    zh-CN: '实验测试-数据管理-向导方法管理-编辑'
+    en-US: 'Data - Wizard Methods - Edit'
+    ru-RU: 'Data - Wizard Methods - Edit'
+  '实验测试-数据管理-向导方法管理-详情':
+    zh-CN: '实验测试-数据管理-向导方法管理-详情'
+    en-US: 'Data - Wizard Methods - Detail'
+    ru-RU: 'Data - Wizard Methods - Detail'
+  '实验测试-数据管理-向导方法管理-删除':
+    zh-CN: '实验测试-数据管理-向导方法管理-删除'
+    en-US: 'Data - Wizard Methods - Delete'
+    ru-RU: 'Data - Wizard Methods - Delete'
+  '实验测试-数据管理-向导任务管理-批量删除':
+    zh-CN: '实验测试-数据管理-向导任务管理-批量删除'
+    en-US: 'Data - Wizard Tasks - Batch Delete'
+    ru-RU: 'Data - Wizard Tasks - Batch Delete'
+  '实验测试-数据管理-向导任务管理-新建':
+    zh-CN: '实验测试-数据管理-向导任务管理-新建'
+    en-US: 'Data - Wizard Tasks - New'
+    ru-RU: 'Data - Wizard Tasks - New'
+  '实验测试-数据管理-向导任务管理-导入备份':
+    zh-CN: '实验测试-数据管理-向导任务管理-导入备份'
+    en-US: 'Data - Wizard Tasks - Import Backup'
+    ru-RU: 'Data - Wizard Tasks - Import Backup'
+  '实验测试-数据管理-向导任务管理-备份':
+    zh-CN: '实验测试-数据管理-向导任务管理-备份'
+    en-US: 'Data - Wizard Tasks - Backup'
+    ru-RU: 'Data - Wizard Tasks - Backup'
+  '实验测试-数据管理-向导任务管理-编辑':
+    zh-CN: '实验测试-数据管理-向导任务管理-编辑'
+    en-US: 'Data - Wizard Tasks - Edit'
+    ru-RU: 'Data - Wizard Tasks - Edit'
+  '实验测试-数据管理-向导任务管理-详情':
+    zh-CN: '实验测试-数据管理-向导任务管理-详情'
+    en-US: 'Data - Wizard Tasks - Detail'
+    ru-RU: 'Data - Wizard Tasks - Detail'
+  '实验测试-数据管理-向导任务管理-删除':
+    zh-CN: '实验测试-数据管理-向导任务管理-删除'
+    en-US: 'Data - Wizard Tasks - Delete'
+    ru-RU: 'Data - Wizard Tasks - Delete'
+  '实验测试-数据管理-经典方法管理-详情':
+    zh-CN: '实验测试-数据管理-经典方法管理-详情'
+    en-US: 'Data - Classic Methods - Detail'
+    ru-RU: 'Data - Classic Methods - Detail'
+  '实验测试-数据管理-经典方法管理-删除':
+    zh-CN: '实验测试-数据管理-经典方法管理-删除'
+    en-US: 'Data - Classic Methods - Delete'
+    ru-RU: 'Data - Classic Methods - Delete'
+  '实验测试-数据管理-经典方法管理-批量删除':
+    zh-CN: '实验测试-数据管理-经典方法管理-批量删除'
+    en-US: 'Data - Classic Methods - Batch Delete'
+    ru-RU: 'Data - Classic Methods - Batch Delete'
+  '实验测试-数据管理-经典方法管理-导入备份':
+    zh-CN: '实验测试-数据管理-经典方法管理-导入备份'
+    en-US: 'Data - Classic Methods - Import Backup'
+    ru-RU: 'Data - Classic Methods - Import Backup'
+  '实验测试-数据管理-经典方法管理-备份':
+    zh-CN: '实验测试-数据管理-经典方法管理-备份'
+    en-US: 'Data - Classic Methods - Backup'
+    ru-RU: 'Data - Classic Methods - Backup'
+
+  # ========== 操作日志模块名 (t_operate_log.module) ==========
+  '用户登录':
+    zh-CN: '用户登录'
+    en-US: 'User Login'
+    ru-RU: 'Вход пользователя'
+  '用户登出':
+    zh-CN: '用户登出'
+    en-US: 'User Logout'
+    ru-RU: 'Выход пользователя'
+  '激活仪器':
+    zh-CN: '激活仪器'
+    en-US: 'Activate Instrument'
+    ru-RU: 'Активация прибора'
+  '实验测试-仪器管理':
+    zh-CN: '实验测试-仪器管理'
+    en-US: 'Test - Instruments'
+    ru-RU: 'Эксперимент - Приборы'
+  '实验测试-经典模式':
+    zh-CN: '实验测试-经典模式'
+    en-US: 'Test - Classic Mode'
+    ru-RU: 'Эксперимент - Классический режим'
+  '实验测试-向导模式':
+    zh-CN: '实验测试-向导模式'
+    en-US: 'Test - Wizard Mode'
+    ru-RU: 'Эксперимент - Режим мастера'
+  '仪器管理-搜索仪器':
+    zh-CN: '仪器管理-搜索仪器'
+    en-US: 'Instruments - Search'
+    ru-RU: 'Приборы - Поиск'
+  '仪器管理-断开连接':
+    zh-CN: '仪器管理-断开连接'
+    en-US: 'Instruments - Disconnect'
+    ru-RU: 'Приборы - Отключение'
+  '仪器管理-初始化':
+    zh-CN: '仪器管理-初始化'
+    en-US: 'Instruments - Initialize'
+    ru-RU: 'Приборы - Инициализация'
+  '仪器管理-仪器配置-仪器命名':
+    zh-CN: '仪器管理-仪器配置-仪器命名'
+    en-US: 'Instruments - Settings - Rename'
+    ru-RU: 'Приборы - Настройки - Переименование'
+  '仪器管理-仪器配置-保存修改的仪器配置':
+    zh-CN: '仪器管理-仪器配置-保存修改的仪器配置'
+    en-US: 'Instruments - Settings - Save'
+    ru-RU: 'Приборы - Настройки - Сохранение'
+  '仪器管理-软件激活-删除':
+    zh-CN: '仪器管理-软件激活-删除'
+    en-US: 'Instruments - Activation - Delete'
+    ru-RU: 'Приборы - Активация - Удаление'
+  '仪器管理-软件激活-批量删除':
+    zh-CN: '仪器管理-软件激活-批量删除'
+    en-US: 'Instruments - Activation - Batch Delete'
+    ru-RU: 'Приборы - Активация - Пакетное удаление'
+  '仪器管理-软件激活-设备发现-查询':
+    zh-CN: '仪器管理-软件激活-设备发现-查询'
+    en-US: 'Instruments - Activation - Discovery'
+    ru-RU: 'Приборы - Активация - Обнаружение'
+  '仪器管理-软件激活-设备列表新增':
+    zh-CN: '仪器管理-软件激活-设备列表新增'
+    en-US: 'Instruments - Activation - Add Device'
+    ru-RU: 'Приборы - Активация - Добавление'
+
+  # ========== 操作日志描述 (t_operate_log.description) ==========
+  '登录操作':
+    zh-CN: '登录操作'
+    en-US: 'Login'
+    ru-RU: 'Вход'
+  '登出操作':
+    zh-CN: '登出操作'
+    en-US: 'Logout'
+    ru-RU: 'Выход'
+  '新增操作':
+    zh-CN: '新增操作'
+    en-US: 'Create'
+    ru-RU: 'Создание'
+  '修改操作':
+    zh-CN: '修改操作'
+    en-US: 'Update'
+    ru-RU: 'Обновление'
+  '删除操作':
+    zh-CN: '删除操作'
+    en-US: 'Delete'
+    ru-RU: 'Удаление'
+  '重新测量操作':
+    zh-CN: '重新测量操作'
+    en-US: 'Re-measure'
+    ru-RU: 'Повторное измерение'
+  '系统操作':
+    zh-CN: '系统操作'
+    en-US: 'System Operation'
+    ru-RU: 'Системная операция'
+
+  # ========== 操作日志 OperateLogAspect 映射词 ==========
+  '设置':
+    zh-CN: '设置'
+    en-US: 'Set'
+    ru-RU: 'Настройка'
+  '修改':
+    zh-CN: '修改'
+    en-US: 'Modify'
+    ru-RU: 'Изменение'
+  '删除':
+    zh-CN: '删除'
+    en-US: 'Delete'
+    ru-RU: 'Удаление'
+  '光度测量-测量':
+    zh-CN: '光度测量-测量'
+    en-US: 'Photometry - Measure'
+    ru-RU: 'Фотометрия - Измерение'
+  '定量测定-测量':
+    zh-CN: '定量测定-测量'
+    en-US: 'Quantitation - Measure'
+    ru-RU: 'Количественный - Измерение'
+  '光谱扫描-扫描':
+    zh-CN: '光谱扫描-扫描'
+    en-US: 'Spectrum Scan - Scan'
+    ru-RU: 'Спектральное сканирование'
+  '时间扫描-扫描':
+    zh-CN: '时间扫描-扫描'
+    en-US: 'Kinetic Scan - Scan'
+    ru-RU: 'Сканирование по времени'
+  '光谱扫描-基线':
+    zh-CN: '光谱扫描-基线'
+    en-US: 'Spectrum Scan - Baseline'
+    ru-RU: 'Спектральное сканирование - Базовая линия'
+  '时间扫描-校零':
+    zh-CN: '时间扫描-校零'
+    en-US: 'Kinetic Scan - Zero'
+    ru-RU: 'Сканирование по времени - Нуль'
+  '光度测量-预览报告':
+    zh-CN: '光度测量-预览报告'
+    en-US: 'Photometry - Preview Report'
+    ru-RU: 'Фотометрия - Предпросмотр отчёта'
+  '定量测定-预览报告':
+    zh-CN: '定量测定-预览报告'
+    en-US: 'Quantitation - Preview Report'
+    ru-RU: 'Количественный - Предпросмотр отчёта'
+  '光谱扫描-预览报告':
+    zh-CN: '光谱扫描-预览报告'
+    en-US: 'Spectrum Scan - Preview Report'
+    ru-RU: 'Спектральное сканирование - Предпросмотр'
+  '时间扫描-预览报告':
+    zh-CN: '时间扫描-预览报告'
+    en-US: 'Kinetic Scan - Preview Report'
+    ru-RU: 'Сканирование по времени - Предпросмотр'
+  '光度测量-生成报告':
+    zh-CN: '光度测量-生成报告'
+    en-US: 'Photometry - Generate Report'
+    ru-RU: 'Фотометрия - Генерация отчёта'
+  '定量测定-生成报告':
+    zh-CN: '定量测定-生成报告'
+    en-US: 'Quantitation - Generate Report'
+    ru-RU: 'Количественный - Генерация отчёта'
+  '光谱扫描-生成报告':
+    zh-CN: '光谱扫描-生成报告'
+    en-US: 'Spectrum Scan - Generate Report'
+    ru-RU: 'Спектральное сканирование - Генерация отчёта'
+  '时间扫描-生成报告':
+    zh-CN: '时间扫描-生成报告'
+    en-US: 'Kinetic Scan - Generate Report'
+    ru-RU: 'Сканирование по времени - Генерация отчёта'
+  '波长校正':
+    zh-CN: '波长校正'
+    en-US: 'Wavelength Correction'
+    ru-RU: 'Коррекция длины волны'
+  '暗电流校正':
+    zh-CN: '暗电流校正'
+    en-US: 'Dark Current Correction'
+    ru-RU: 'Коррекция темнового тока'
+  '无':
+    zh-CN: '无'
+    en-US: 'None'
+    ru-RU: 'Нет'
+  '修改密码':
+    zh-CN: '修改密码'
+    en-US: 'Change Password'
+    ru-RU: 'Смена пароля'
+  '重置用户密码':
+    zh-CN: '重置用户密码'
+    en-US: 'Reset User Password'
+    ru-RU: 'Сброс пароля пользователя'
+
+  # ========== 日志 changeContent 固定片段（子串替换） ==========
+  '新增样品':
+    zh-CN: '新增样品'
+    en-US: 'Added sample'
+    ru-RU: 'Добавлен образец'
+  '删除样品':
+    zh-CN: '删除样品'
+    en-US: 'Deleted sample'
+    ru-RU: 'Удалён образец'
+  '新增标准样品':
+    zh-CN: '新增标准样品'
+    en-US: 'Added standard sample'
+    ru-RU: 'Добавлен стандартный образец'
+  '新增未知样品':
+    zh-CN: '新增未知样品'
+    en-US: 'Added unknown sample'
+    ru-RU: 'Добавлен неизвестный образец'
+  '用户登录成功':
+    zh-CN: '用户登录成功'
+    en-US: 'User login successful'
+    ru-RU: 'Успешный вход пользователя'
+  '用户登出成功':
+    zh-CN: '用户登出成功'
+    en-US: 'User logout successful'
+    ru-RU: 'Успешный выход пользователя'
+  '重新测量':
+    zh-CN: '重新测量'
+    en-US: 'Re-measure'
+    ru-RU: 'Повторное измерение'
+#  '编号':
+#    zh-CN: '编号'
+#    en-US: 'No.'
+#    ru-RU: 'Номер'
+  '名称':
+    zh-CN: '名称'
+    en-US: 'Name'
+    ru-RU: 'Имя'
+#  '样品':
+#    zh-CN: '样品'
+#    en-US: 'Sample'
+#    ru-RU: 'Образец'
+  '修改样品信息':
+    zh-CN: '修改样品信息'
+    en-US: 'Edit sample info'
+    ru-RU: 'Изменение информации об образце'
+  '修改附件参数':
+    zh-CN: '修改附件参数'
+    en-US: 'Edit attachment params'
+    ru-RU: 'Изменение параметров аксессуара'
+
+  # ========== 消息类型 (MessageTypeEnum) ==========
+  '系统提示':
+    zh-CN: '系统提示'
+    en-US: 'System'
+    ru-RU: 'Системное'
+  '仪器消息':
+    zh-CN: '仪器消息'
+    en-US: 'Instrument'
+    ru-RU: 'Прибор'
+  '远程消息':
+    zh-CN: '远程消息'
+    en-US: 'Remote'
+    ru-RU: 'Удалённое'
+  '未知':
+    zh-CN: '未知'
+    en-US: 'Unknown'
+    ru-RU: 'Неизвестно'
+  '提醒消息':
+    zh-CN: '提醒消息'
+    en-US: 'Reminder'
+    ru-RU: 'Напоминание'
+  '通知但不提醒':
+    zh-CN: '通知但不提醒'
+    en-US: 'Notification'
+    ru-RU: 'Уведомление'
+
+  # ========== 消息状态 (MessageStatusEnum) ==========
+  '未读':
+    zh-CN: '未读'
+    en-US: 'Unread'
+    ru-RU: 'Непрочитано'
+  '已读':
+    zh-CN: '已读'
+    en-US: 'Read'
+    ru-RU: 'Прочитано'
+
+  # ========== 消息摘要/内容固定片段 ==========
+  '设备无响应':
+    zh-CN: '设备无响应'
+    en-US: 'Instrument not responding'
+    ru-RU: 'Прибор не отвечает'
+  '系统消息':
+    zh-CN: '系统消息'
+    en-US: 'System message'
+    ru-RU: 'Системное сообщение'
+  '期间核查提醒':
+    zh-CN: '期间核查提醒'
+    en-US: 'Intermediate check reminder'
+    ru-RU: 'Напоминание о промежуточной проверке'
+  '条系统消息':
+    zh-CN: '条系统消息'
+    en-US: ' system message(s)'
+    ru-RU: ' системных сообщений'
+
+  # ========== 消息内容固定片段（标准物质效期提醒等） ==========
+  '已过期的标准物质':
+    zh-CN: '已过期的标准物质'
+    en-US: 'Expired reference materials'
+    ru-RU: 'Просроченные эталонные материалы'
+  '标准物质效期提醒':
+    zh-CN: '标准物质效期提醒'
+    en-US: 'Reference material expiry reminder'
+    ru-RU: 'Напоминание о сроке эталонных материалов'
+  '已过期':
+    zh-CN: '已过期'
+    en-US: 'Expired'
+    ru-RU: 'Просрочено'
+  '天':
+    zh-CN: '天'
+    en-US: ' day(s)'
+    ru-RU: ' дн.'
+  '应于':
+    zh-CN: '应于'
+    en-US: 'Due on '
+    ru-RU: 'Срок '
+  '更换':
+    zh-CN: '更换'
+    en-US: 'replace'
+    ru-RU: 'заменить'
+  '请及时更换或重新标定标准物质':
+    zh-CN: '请及时更换或重新标定标准物质'
+    en-US: 'Please replace or recalibrate the reference materials promptly'
+    ru-RU: 'Пожалуйста, своевременно замените или перекалибруйте эталонные материалы'
+  '确保检测':
+    zh-CN: '确保检测'
+    en-US: 'to ensure testing '
+    ru-RU: 'для обеспечения '
+  '准确性':
+    zh-CN: '准确性'
+    en-US: 'accuracy'
+    ru-RU: 'точности'
+  '重新标定':
+    zh-CN: '重新标定'
+    en-US: 'recalibrate'
+    ru-RU: 'перекалибровать'
+  '请及时':
+    zh-CN: '请及时'
+    en-US: 'Please promptly '
+    ru-RU: 'Пожалуйста, своевременно '
+#  '成功':
+#    zh-CN: '成功'
+#    en-US: 'Success'
+#    ru-RU: 'Успешно'
