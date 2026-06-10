@@ -52,6 +52,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
+import com.persee.workstation.uv_inexus.util.pythonUtil.DogInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.PeakReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
@@ -1562,6 +1563,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
 
             Integer i = infoService.queryDeviceActivationStatus(vo.getDeviceSerialNumber());
+
+            if (i.equals(Constants.DEVICE_ACTIVE_NO)) {
+                boolean b = checkDog();
+                if (b) {
+                    i = Constants.DEVICE_ACTIVE_YES;
+                }
+            }
+
             info.setIsActivated(i);
 
             List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
@@ -1623,6 +1632,23 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             return R.ok(vo);
         }
+    }
+
+    private boolean checkDog() {
+
+        DogInfo dogInfo = restUtil.getDogInfo();
+
+        if (dogInfo == null || dogInfo.getStatusCode() != 200 || !dogInfo.getHasDog()) {
+            log.info("没有密码狗");
+            return false;
+        }
+
+        String key = Constants.WORKSHOP_PASSWORD_DOG_KEY;
+        if (StringUtils.hasText(dogInfo.getBid()) && dogInfo.getBid().equals(key)) {
+            log.info("密码狗校验成功");
+            return true;
+        }
+        return false;
     }
 
     private void saveWlList(String deviceSerialNumber, List<StepPoint> stepPoints, String updateBy) {
