@@ -12,6 +12,8 @@ package com.persee.workstation.uv_inexus.po.concise.common;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import java.util.Map;
+
 @Data
 public class FSamplePoolStatus {
 
@@ -31,5 +33,8 @@ public class FSamplePoolStatus {
     private Boolean poolStatus;
 
     @ApiModelProperty("样品池数据，比色皿匹配值，待定")
-    private String poolData;
+    private Map<String, String> poolData;
+
+    @ApiModelProperty("比色皿校正时的光度模式")
+    private String luminosity;
 }

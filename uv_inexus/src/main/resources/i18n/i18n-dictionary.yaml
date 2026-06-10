@@ -1550,6 +1550,28 @@ messages:
     en-US: 'Start time cannot be greater than end time'
     ru-RU: 'Время начала не может быть больше времени окончания'
 
+  '00250009':
+    zh-CN: '能量模式支持样品池校正'
+    en-US: 'Energy mode supports sample pool correction'
+    ru-RU: 'Энергетический режим поддерживает校正 в пуле образцов'
+
+  '0025000A':
+    zh-CN: '请选择校零池后校正！'
+    en-US: 'Please select the sample pool to correct!'
+    ru-RU: 'Пожалуйста, выберите пул образцов для коррекции!'
+
+  '0025000B':
+    zh-CN: '校零池不可用，请检查！'
+    en-US: 'The sample pool is not available, please check!'
+    ru-RU: 'Пул образцов недоступен, пожалуйста, проверьте!'
+
+    #清理失败
+  '0025000C':
+    zh-CN: '清理校正信息失败！'
+    en-US: 'Clearing correction information failed!'
+    ru-RU: 'Исключние при очистке информации о коррекции!'
+
+
   # ========== 经典模式模块=003 ==========
   # 通用模块=00
   '00300001':

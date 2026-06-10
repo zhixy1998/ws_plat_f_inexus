@@ -34,6 +34,7 @@ public enum OperationTypeEnums {
     QueryLifeTime(12, "查询灯使用寿命", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
     SetWlList(13, "设置波长列表", "deviceIp,connectType,InputParam", "", Constants.DEVICE_STATUS_OTHER),
     MercuryLocate(14, "汞灯定位", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
+    SamplePoolCalibration(15, "SamplePool校准", "deviceIp,connectType", "", Constants.DEVICE_STATUS_CALIBRATION),
     Zero(885, "零点校准", "deviceIp,connectType", "", Constants.DEVICE_STATUS_ZERO),
     Calibration(886, "校准", "deviceIp,connectType", "", Constants.DEVICE_STATUS_CALIBRATION),
     LiveDetection(887, "实时检测", "deviceIp,connectType", "", Constants.DEVICE_STATUS_ECHO),

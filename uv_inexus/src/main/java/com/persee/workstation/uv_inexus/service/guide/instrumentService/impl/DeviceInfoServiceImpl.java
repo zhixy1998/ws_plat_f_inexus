@@ -351,7 +351,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         if (i != null) {
             return i;
         }
-        return 0;
+        return Constants.DEVICE_ACTIVE_NO;
     }
 
     @Override
@@ -553,6 +553,8 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         return ans;
 
     }
+
+
 
 
 

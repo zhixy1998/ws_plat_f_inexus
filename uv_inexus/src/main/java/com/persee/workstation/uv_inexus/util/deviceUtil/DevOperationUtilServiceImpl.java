@@ -20,12 +20,14 @@ import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitPreComma
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInitEntryInfo;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceUsageLogPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InitRecordPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceUsageLogService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
@@ -94,6 +96,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
     @Autowired
     UdpSendUtil udpSendUtil;
+
+    @Autowired
+    SamplePoolConfigService samplePoolConfigService;
 
     @Autowired
     SpectrumResultCalculator spectrumResultCalculator;
@@ -403,6 +408,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             case MercuryLocate:
                 result = mercuryLocate(inputParam);
                 break;
+            case SamplePoolCalibration:
+                result = samplePoolCalibration(inputParam);
+                break;
             case SetWlList:
                 result = setWlList(inputParam);
                 break;
@@ -415,6 +423,134 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             infoService.newReleaseDevice(deviceSerialNumber);
         }
         return result;
+    }
+
+    private R<OperationResultEntity> samplePoolCalibration(DevOperationInputParam inputParam) {
+        OperationResultEntity resultEntity = new OperationResultEntity();
+        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        List<String> wavelength = inputParam.getWavelength();
+        Integer cellPos = inputParam.getCellPos();
+
+        if (wavelength == null || wavelength.isEmpty()) {
+            return R.fail("00209020");
+        }
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        String deviceId = info.getDeviceId();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String xmlKey = device.getXmlKey();
+        Integer connectType = device.getConnectType();
+        Object[] param;
+        String cmdId = "";
+        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+
+        byte[] bytes;
+        R<Object> mesure = new R<>();
+        List<ChangeParam> changeParamList = new ArrayList<>();
+
+        if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
+            log.info("串口零点");
+        } else {
+
+            cmdId = T600ComIdEnums.SetCellPos.getComId();
+            Transition transition = xml.get(cmdId);
+            int replyNumber = transition.getReplyNumber();
+            int timeout = transition.getTimeout();
+            List<String> headReceiveBytes = transition.getHeadReceiveBytes();
+
+            param = new Object[]{cellPos};
+            bytes = protocolItemUtil.calcSendBytes(param, transition);
+
+            mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+
+            if (!mesure.getSuccess()) {
+                return R.fail("00209022");
+            }
+
+            for (String s : wavelength) {
+
+                cmdId = T600ComIdEnums.SetWl.getComId();
+                transition = xml.get(cmdId);
+                replyNumber = transition.getReplyNumber();
+                timeout = transition.getTimeout();
+                headReceiveBytes = transition.getHeadReceiveBytes();
+
+                double v = formulaUtil.calculateStep(Double.parseDouble(s), deviceSerialNumber);
+                param = new Object[]{v};
+                bytes = protocolItemUtil.calcSendBytes(param, transition);
+
+                mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+
+                if (!mesure.getSuccess()) {
+                    return R.fail("00209022");
+                }
+                deviceManager.setCurrentWavelength(deviceId, s);
+
+                cmdId = T600ComIdEnums.Measure.getComId();
+                transition = xml.get(cmdId);
+                replyNumber = transition.getReplyNumber();
+                timeout = transition.getTimeout();
+                param = new Object[]{};
+                bytes = protocolItemUtil.calcSendBytes(param, transition);
+                headReceiveBytes = transition.getHeadReceiveBytes();
+                mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+                if (!mesure.getSuccess()) {
+                    return R.fail("00209022");
+                } else {
+                    Object data = mesure.getData();
+                    resultEntity = (OperationResultEntity) data;
+                    ChangeParam measureResult = resultEntity.getMeasureResult();
+
+                    String mode = device.getLuminosityMode();
+
+                    if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
+
+                        String value = DataCountUtil.countErOrEs(measureResult, mode);
+
+                        if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                            value = DataCountUtil.count1960ErOrEs(measureResult, mode);
+                        }
+
+                        measureResult.setValue(value);
+
+                    } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
+                        Map<String, String> darkInfo = info.getDarkInfo();
+                        String z = "1";
+                        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                            z = "0.1";
+                        }
+//                        if (darkInfo != null && StringUtils.hasText(darkInfo.get(s))) {
+//                            z = darkInfo.get(s);
+//                        }
+                        Double zVal = spectrumResultCalculator.getZFromDatabase2(deviceSerialNumber, s);
+                        if (zVal != null) {
+                            z = String.valueOf(zVal);
+                        }
+                        String tPercent = DataCountUtil.countTPercent(null, measureResult, Double.parseDouble(z));
+
+                        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                            tPercent = DataCountUtil.calcTPercent1960(null, measureResult, Double.parseDouble(z));
+                        }
+
+                        String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+                        if (mode.equals(WaveLengthEnum.abs.getCode())) {
+                            measureResult.setValue(abs);
+                            measureResult.setOtherData(tPercent);
+                        } else {
+                            measureResult.setValue(tPercent);
+                            measureResult.setOtherData(abs);
+                        }
+                    }
+                    deviceManager.setMeasureValue(deviceId, measureResult.getValue());
+
+                    measureResult.setWl(s);
+                    changeParamList.add(measureResult);
+                }
+            }
+        }
+        resultEntity.setOriginalMeasureResult(changeParamList);
+
+        return R.ok(resultEntity);
     }
 
     private R<OperationResultEntity> mercuryLocate(DevOperationInputParam inputParam) {
@@ -1117,6 +1253,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             deviceManager.setCurrentWavelength(deviceId, wlStr);
         }
 
+        if (setParam.getCellPos() != null) {
+            deviceManager.setCurrentPoolNum(deviceId, setParam.getCellPos());
+        }
+
         resultEntity.setIsSuccess(true);
         return R.ok(resultEntity);
     }
@@ -1798,6 +1938,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     dataList.add(status);
 
                     resultEntity.setDataList(dataList);
+                } else if (comId.equals(LiveDetectionCmdEnum.GetCellPos.getComId())) {
+                    Integer currentPoolNum = resultEntity.getCurrentPoolNum();
+                    deviceManager.setCurrentPoolNum(deviceId, currentPoolNum);
                 }
 
                 param = new Object[]{};
@@ -1835,6 +1978,17 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             resultEntity.setX(wl + "nm");
             measureParam.setWl(wl);
 
+            String poolValue = null;
+
+            Integer currentPoolNum = deviceManager.getCurrentPoolNum(deviceId);
+            FSamplePoolStatus poolStatus = samplePoolConfigService.getPoolCorrectionData(deviceSerialNumber, currentPoolNum);
+            if (poolStatus != null) {
+                if (poolStatus.getLuminosity() != null && poolStatus.getLuminosity().equals(luminosity)) {
+                    Map<String, String> poolData = poolStatus.getPoolData();
+                    poolValue = poolData.get(wl);
+                }
+            }
+
             if (luminosity.equals(WaveLengthEnum.abs.getCode())) {
 
                 ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
@@ -1852,6 +2006,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     }
                 }
                 String abs = DataCountUtil.changeTPercentOrAbs(null, s);
+                if (poolValue != null) {
+                    abs = samplePoolConfigService.applyPoolCorrection(abs, poolValue, luminosity);
+                }
+
                 resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, abs));
             } else if (luminosity.equals(WaveLengthEnum.es.getCode()) || luminosity.equals(WaveLengthEnum.er.getCode())) {
                 String s = DataCountUtil.countErOrEs(measureParam, luminosity);
@@ -1876,6 +2034,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z));
                     }
+                }
+
+                if (poolValue != null) {
+                    s = samplePoolConfigService.applyPoolCorrection(s, poolValue, luminosity);
                 }
                 resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
             }
@@ -2290,10 +2452,21 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 resultEntity = (OperationResultEntity) data;
                 measureResult = resultEntity.getMeasureResult();
 
-
                 ChangeParam zeroResult = device.getZeroResult(wavelength);
 
                 String mode = device.getLuminosityMode();
+
+                String poolValue = null;
+
+                Integer currentPoolNum = deviceManager.getCurrentPoolNum(deviceId);
+                FSamplePoolStatus poolStatus = samplePoolConfigService.getPoolCorrectionData(deviceSerialNumber, currentPoolNum);
+                if (poolStatus != null) {
+
+                    if (poolStatus.getLuminosity() != null && poolStatus.getLuminosity().equals(mode)) {
+                        Map<String, String> poolData = poolStatus.getPoolData();
+                        poolValue = poolData.get(wavelength);
+                    }
+                }
 
                 if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
 
@@ -2324,10 +2497,19 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         tPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
                     }
                     String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+
                     if (mode.equals(WaveLengthEnum.abs.getCode())) {
+                        if (poolValue != null) {
+                            abs = samplePoolConfigService.applyPoolCorrection(abs, poolValue, mode);
+
+                        }
+
                         measureResult.setValue(abs);
                         measureResult.setOtherData(tPercent);
                     } else {
+                        if (poolValue != null) {
+                            tPercent = samplePoolConfigService.applyPoolCorrection(tPercent, poolValue, mode);
+                        }
                         measureResult.setValue(tPercent);
                         measureResult.setOtherData(abs);
                     }
