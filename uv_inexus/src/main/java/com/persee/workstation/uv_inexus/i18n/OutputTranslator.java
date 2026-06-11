@@ -16,7 +16,8 @@ public class OutputTranslator {
     private static final Pattern CJK_PATTERN = Pattern.compile("[\\u4e00-\\u9fff]");
     private static final Set<String> SKIP_KEYS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             "taskId", "sessionId", "type", "action", "command",
-            "code", "id", "itemId", "deviceSerialNumber", "templateCode"
+            "code", "id", "itemId", "deviceSerialNumber", "templateCode",
+            "params", "method", "result", "beforeData", "afterData"
     )));
 
     @Autowired
@@ -24,6 +25,10 @@ public class OutputTranslator {
 
     @Autowired
     private LocaleProvider localeProvider;
+
+    /** 缓存排序后的字典条目，避免每次翻译都重新排序 */
+    private volatile List<Map.Entry<String, Map<String, String>>> sortedDictEntries;
+    private volatile int cachedDictSize = -1;
 
     public JSONObject translate(JSONObject json) {
         if (json == null) {
@@ -85,8 +90,54 @@ public class OutputTranslator {
         if (isDefaultLocale(locale)) {
             return text;
         }
+        return translateText(text, locale);
+    }
+
+    /**
+     * 统一的文本翻译方法：先精确匹配，失败后做子串替换。
+     * 所有内部翻译字符串的地方都应调用此方法。
+     */
+    private String translateText(String text, String locale) {
+        // 1. 精确匹配
         String translated = messageSource.getMessage(text, locale);
-        return text.equals(translated) ? text : translated;
+        if (!text.equals(translated)) {
+            return translated;
+        }
+        // 2. 子串替换：按key长度降序排列，优先匹配更长的中文片段
+        String result = text;
+        for (Map.Entry<String, Map<String, String>> entry : getSortedDictEntries()) {
+            String key = entry.getKey();
+            if (!containsChinese(key) || key.length() < 2) {
+                continue;
+            }
+            if (!result.contains(key)) {
+                continue;
+            }
+            Map<String, String> translations = entry.getValue();
+            String translatedVal = translations.get(locale);
+            if (translatedVal == null) {
+                translatedVal = translations.get("zh-CN");
+            }
+            if (translatedVal != null && !key.equals(translatedVal)) {
+                result = result.replace(key, translatedVal);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 获取按长度降序排列的字典条目（带缓存）。
+     * 当字典大小变化时自动重建缓存。
+     */
+    private List<Map.Entry<String, Map<String, String>>> getSortedDictEntries() {
+        Map<String, Map<String, String>> all = messageSource.getAllMessages();
+        if (sortedDictEntries == null || cachedDictSize != all.size()) {
+            List<Map.Entry<String, Map<String, String>>> entries = new ArrayList<>(all.entrySet());
+            entries.sort((a, b) -> Integer.compare(b.getKey().length(), a.getKey().length()));
+            sortedDictEntries = Collections.unmodifiableList(entries);
+            cachedDictSize = all.size();
+        }
+        return sortedDictEntries;
     }
 
     private Map<String, Object> translateMap(Map<String, Object> map, String locale, Set<String> dynamicSkipKeys) {
@@ -106,10 +157,7 @@ public class OutputTranslator {
         if (value instanceof String) {
             String str = (String) value;
             if (shouldTranslate(key, str, dynamicSkipKeys)) {
-                String translated = messageSource.getMessage(str, locale);
-                if (!str.equals(translated)) {
-                    return translated;
-                }
+                return translateText(str, locale);
             }
             return str;
         }
@@ -136,8 +184,7 @@ public class OutputTranslator {
             } else if (item instanceof String) {
                 String str = (String) item;
                 if (containsChinese(str)) {
-                    String translated = messageSource.getMessage(str, locale);
-                    result.add(str.equals(translated) ? str : translated);
+                    result.add(translateText(str, locale));
                 } else {
                     result.add(str);
                 }
@@ -169,10 +216,7 @@ public class OutputTranslator {
         if (value instanceof String) {
             String str = (String) value;
             if (shouldTranslate(key, str)) {
-                String translated = messageSource.getMessage(str, locale);
-                if (!str.equals(translated)) {
-                    return translated;
-                }
+                return translateText(str, locale);
             }
             return str;
         }
@@ -222,8 +266,7 @@ public class OutputTranslator {
             } else if (item instanceof String) {
                 String str = (String) item;
                 if (containsChinese(str)) {
-                    String translated = messageSource.getMessage(str, locale);
-                    result.add(str.equals(translated) ? str : translated);
+                    result.add(translateText(str, locale));
                 } else {
                     result.add(str);
                 }

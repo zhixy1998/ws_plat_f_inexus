@@ -19,6 +19,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSave
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceSamplePoolPurpose;
 import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
+import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
@@ -66,6 +67,9 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
 
     @Autowired
     DevOperationUtilService operationUtilService;
+
+    @Autowired
+    LocaleProvider localeProvider;
 
     @Override
     public Boolean updateCurrentPoolNum(String deviceSerialNumber, Integer currentPoolNum, String updateBy) {
@@ -252,7 +256,9 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         FSamplePoolInfoVO vo = new FSamplePoolInfoVO();
         BeanUtils.copyProperties(po, vo);
         List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
-        list.forEach(status -> status.setPoolName(status.getPoolNum() + "号"));
+        String locale = localeProvider.getSystemLocale();
+        boolean isChinese = "zh-CN".equals(locale) || "zh_CN".equals(locale);
+        list.forEach(status -> status.setPoolName(isChinese ? status.getPoolNum() + "号" : "#" + status.getPoolNum()));
         vo.setPoolStatusList(list);
         return R.ok(vo);
     }
@@ -346,7 +352,9 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         SamplePoolInfoVO vo = new SamplePoolInfoVO();
         BeanUtils.copyProperties(po, vo);
         List<SamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), SamplePoolStatus.class);
-        list.forEach(status -> status.setPoolName(status.getPoolNum() + "号"));
+        String locale2 = localeProvider.getSystemLocale();
+        boolean isChinese2 = "zh-CN".equals(locale2) || "zh_CN".equals(locale2);
+        list.forEach(status -> status.setPoolName(isChinese2 ? status.getPoolNum() + "号" : "#" + status.getPoolNum()));
         vo.setPoolStatusList(list);
         return R.ok(vo);
 
