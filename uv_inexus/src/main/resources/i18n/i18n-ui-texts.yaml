@@ -1,4 +1,4 @@
-# =====================================================
+﻿# =====================================================
 # UI 文本翻译字典 - 中英日俄四语
 #
 # 本文件: i18n-ui-texts.yaml — WebSocket 推送 / 前端展示的中文文本翻译
@@ -422,7 +422,7 @@ messages:
   # ========== 附件类型 ==========
   'T600A八联池':
     zh-CN: 'T600A八联池'
-    en-US: 'T600A 8-Cell Holder'
+    en-US: 'T600A 8-Cell changer'
     ru-RU: 'T600A 8-позиционный кюветодержатель'
 
   # ========== 自检项目 ==========
@@ -1990,13 +1990,17 @@ messages:
   # ========== 仪器型号名称 ==========
   'T600A紫外可见分光光度计':
     zh-CN: 'T600A紫外可见分光光度计'
-    en-US: 'T600A UV-Vis Spectrophotometer'
+    en-US: 'T600A'
     ru-RU: 'УФ-видимый спектрофотометр T600A'
 
+  'T600B紫外可见分光光度计状态图':
+    zh-CN: 'T600B紫外可见分光光度计状态图'
+    en-US: 'T600B status chart'
+    ru-RU: 'Диаграмма состояния T600B'
   'T600B紫外可见分光光度计':
     zh-CN: 'T600B紫外可见分光光度计'
-    en-US: 'T600B UV-Vis Spectrophotometer'
-    ru-RU: 'УФ-видимый спектрофотометр T600B'
+    en-US: 'T600B'
+    ru-RU: 'T600B'
 
   'T600S紫外可见分光光度计':
     zh-CN: 'T600S紫外可见分光光度计'
@@ -2914,7 +2918,7 @@ messages:
 
   '默认方法':
     zh-CN: '默认方法'
-    en-US: 'Default Method'
+    en-US: 'Default item'
     ru-RU: 'Метод по умолчанию'
 
   # ========== 预设表头名称 (t_measure_preset_head) ==========
@@ -3344,20 +3348,20 @@ messages:
     en-US: 'Instrument - Software Activation - Delete Instrument'
     ru-RU: 'Приборы - Активация ПО - Удалить прибор'
 
-  '仪器管理-软件激活-批量删除':
-    zh-CN: '仪器管理-软件激活-批量删除'
-    en-US: 'Instrument - Software Activation - Batch Delete'
-    ru-RU: 'Приборы - Активация ПО - Пакетное удаление'
+#  '仪器管理-软件激活-批量删除':
+#    zh-CN: '仪器管理-软件激活-批量删除'
+#    en-US: 'Instrument - Software Activation - Batch Delete'
+#    ru-RU: 'Приборы - Активация ПО - Пакетное удаление'
 
   '首页':
     zh-CN: '首页'
     en-US: 'Home'
     ru-RU: 'Главная'
 
-  '仪器管理-仪器配置-保存修改的仪器配置':
-    zh-CN: '仪器管理-仪器配置-保存修改的仪器配置'
-    en-US: 'Instrument - Configuration - Save Configuration'
-    ru-RU: 'Приборы - Конфигурация - Сохранить конфигурацию'
+#  '仪器管理-仪器配置-保存修改的仪器配置':
+#    zh-CN: '仪器管理-仪器配置-保存修改的仪器配置'
+#    en-US: 'Instrument - Configuration - Save Configuration'
+#    ru-RU: 'Приборы - Конфигурация - Сохранить конфигурацию'
 
   '仪器管理-自动进样器配置-基本配置':
     zh-CN: '仪器管理-自动进样器配置-基本配置'
@@ -3372,7 +3376,7 @@ messages:
   # ========== 测量方法 JSON 参数 (f_t_measure_method / excel_data_asset) ==========
   '不重复':
     zh-CN: '不重复'
-    en-US: 'Do not Repeat'
+    en-US: 'No Repeat'
     ru-RU: 'Без повторения'
 
   '平均值':
@@ -3982,6 +3986,38 @@ messages:
     en-US: 'Coefficient 3'
     ru-RU: 'Коэффициент 3'
 
+  '当前光谱带宽':
+    zh-CN: '当前光谱带宽'
+    en-US: 'Bandwidth'
+    ru-RU: 'Полоса пропускания'
+  '换灯波长':
+    zh-CN: '换灯波长'
+    en-US: 'Lamp Switching Wavelength'
+    ru-RU: 'Длина волны переключения лампы'
+  '自动进样器':
+    zh-CN: '自动进样器'
+    en-US: 'Auto sampler'
+    ru-RU: 'Автосамплер'
+  '样品仓':
+    zh-CN: '样品仓'
+    en-US: 'sample cell holder'
+    ru-RU: 'Держатель кюветы'
+  '控制终端':
+    zh-CN: '控制终端'
+    en-US: 'Terminal control'
+    ru-RU: 'Управление терминалом'
+  '附件类型':
+    zh-CN: '附件类型'
+    en-US: 'Accessory model'
+    ru-RU: 'Тип аксессуара'
+  '灯位置':
+    zh-CN: '灯位置'
+    en-US: 'Lamp mirror position'
+    ru-RU: 'Положение лампы'
+  'PC电脑':
+    zh-CN: 'PC电脑'
+    en-US: 'PC'
+    ru-RU: 'ПК'
   '光谱带宽':
     zh-CN: '光谱带宽'
     en-US: 'Spectral Bandwidth'
@@ -5675,82 +5711,82 @@ messages:
     ru-RU: 'Системная операция'
 
   # ========== 操作日志 OperateLogAspect 映射词 ==========
-  '设置':
-    zh-CN: '设置'
-    en-US: 'Set'
-    ru-RU: 'Настройка'
-  '修改':
-    zh-CN: '修改'
-    en-US: 'Modify'
-    ru-RU: 'Изменение'
-  '删除':
-    zh-CN: '删除'
-    en-US: 'Delete'
-    ru-RU: 'Удаление'
-  '光度测量-测量':
-    zh-CN: '光度测量-测量'
-    en-US: 'Photometry - Measure'
-    ru-RU: 'Фотометрия - Измерение'
-  '定量测定-测量':
-    zh-CN: '定量测定-测量'
-    en-US: 'Quantitation - Measure'
-    ru-RU: 'Количественный - Измерение'
-  '光谱扫描-扫描':
-    zh-CN: '光谱扫描-扫描'
-    en-US: 'Spectrum Scan - Scan'
-    ru-RU: 'Спектральное сканирование'
-  '时间扫描-扫描':
-    zh-CN: '时间扫描-扫描'
-    en-US: 'Kinetic Scan - Scan'
-    ru-RU: 'Сканирование по времени'
-  '光谱扫描-基线':
-    zh-CN: '光谱扫描-基线'
-    en-US: 'Spectrum Scan - Baseline'
-    ru-RU: 'Спектральное сканирование - Базовая линия'
-  '时间扫描-校零':
-    zh-CN: '时间扫描-校零'
-    en-US: 'Kinetic Scan - Zero'
-    ru-RU: 'Сканирование по времени - Нуль'
-  '光度测量-预览报告':
-    zh-CN: '光度测量-预览报告'
-    en-US: 'Photometry - Preview Report'
-    ru-RU: 'Фотометрия - Предпросмотр отчёта'
-  '定量测定-预览报告':
-    zh-CN: '定量测定-预览报告'
-    en-US: 'Quantitation - Preview Report'
-    ru-RU: 'Количественный - Предпросмотр отчёта'
-  '光谱扫描-预览报告':
-    zh-CN: '光谱扫描-预览报告'
-    en-US: 'Spectrum Scan - Preview Report'
-    ru-RU: 'Спектральное сканирование - Предпросмотр'
-  '时间扫描-预览报告':
-    zh-CN: '时间扫描-预览报告'
-    en-US: 'Kinetic Scan - Preview Report'
-    ru-RU: 'Сканирование по времени - Предпросмотр'
-  '光度测量-生成报告':
-    zh-CN: '光度测量-生成报告'
-    en-US: 'Photometry - Generate Report'
-    ru-RU: 'Фотометрия - Генерация отчёта'
-  '定量测定-生成报告':
-    zh-CN: '定量测定-生成报告'
-    en-US: 'Quantitation - Generate Report'
-    ru-RU: 'Количественный - Генерация отчёта'
-  '光谱扫描-生成报告':
-    zh-CN: '光谱扫描-生成报告'
-    en-US: 'Spectrum Scan - Generate Report'
-    ru-RU: 'Спектральное сканирование - Генерация отчёта'
-  '时间扫描-生成报告':
-    zh-CN: '时间扫描-生成报告'
-    en-US: 'Kinetic Scan - Generate Report'
-    ru-RU: 'Сканирование по времени - Генерация отчёта'
-  '波长校正':
-    zh-CN: '波长校正'
-    en-US: 'Wavelength Correction'
-    ru-RU: 'Коррекция длины волны'
-  '暗电流校正':
-    zh-CN: '暗电流校正'
-    en-US: 'Dark Current Correction'
-    ru-RU: 'Коррекция темнового тока'
+#  '设置':
+#    zh-CN: '设置'
+#    en-US: 'Set'
+#    ru-RU: 'Настройка'
+#  '修改':
+#    zh-CN: '修改'
+#    en-US: 'Modify'
+#    ru-RU: 'Изменение'
+#  '删除':
+#    zh-CN: '删除'
+#    en-US: 'Delete'
+#    ru-RU: 'Удаление'
+#  '光度测量-测量':
+#    zh-CN: '光度测量-测量'
+#    en-US: 'Photometry - Measure'
+#    ru-RU: 'Фотометрия - Измерение'
+#  '定量测定-测量':
+#    zh-CN: '定量测定-测量'
+#    en-US: 'Quantitation - Measure'
+#    ru-RU: 'Количественный - Измерение'
+#  '光谱扫描-扫描':
+#    zh-CN: '光谱扫描-扫描'
+#    en-US: 'Spectrum Scan - Scan'
+#    ru-RU: 'Спектральное сканирование'
+#  '时间扫描-扫描':
+#    zh-CN: '时间扫描-扫描'
+#    en-US: 'Kinetic Scan - Scan'
+#    ru-RU: 'Сканирование по времени'
+#  '光谱扫描-基线':
+#    zh-CN: '光谱扫描-基线'
+#    en-US: 'Spectrum Scan - Baseline'
+#    ru-RU: 'Спектральное сканирование - Базовая линия'
+#  '时间扫描-校零':
+#    zh-CN: '时间扫描-校零'
+#    en-US: 'Kinetic Scan - Zero'
+#    ru-RU: 'Сканирование по времени - Нуль'
+#  '光度测量-预览报告':
+#    zh-CN: '光度测量-预览报告'
+#    en-US: 'Photometry - Preview Report'
+#    ru-RU: 'Фотометрия - Предпросмотр отчёта'
+#  '定量测定-预览报告':
+#    zh-CN: '定量测定-预览报告'
+#    en-US: 'Quantitation - Preview Report'
+#    ru-RU: 'Количественный - Предпросмотр отчёта'
+#  '光谱扫描-预览报告':
+#    zh-CN: '光谱扫描-预览报告'
+#    en-US: 'Spectrum Scan - Preview Report'
+#    ru-RU: 'Спектральное сканирование - Предпросмотр'
+#  '时间扫描-预览报告':
+#    zh-CN: '时间扫描-预览报告'
+#    en-US: 'Kinetic Scan - Preview Report'
+#    ru-RU: 'Сканирование по времени - Предпросмотр'
+#  '光度测量-生成报告':
+#    zh-CN: '光度测量-生成报告'
+#    en-US: 'Photometry - Generate Report'
+#    ru-RU: 'Фотометрия - Генерация отчёта'
+#  '定量测定-生成报告':
+#    zh-CN: '定量测定-生成报告'
+#    en-US: 'Quantitation - Generate Report'
+#    ru-RU: 'Количественный - Генерация отчёта'
+#  '光谱扫描-生成报告':
+#    zh-CN: '光谱扫描-生成报告'
+#    en-US: 'Spectrum Scan - Generate Report'
+#    ru-RU: 'Спектральное сканирование - Генерация отчёта'
+#  '时间扫描-生成报告':
+#    zh-CN: '时间扫描-生成报告'
+#    en-US: 'Kinetic Scan - Generate Report'
+#    ru-RU: 'Сканирование по времени - Генерация отчёта'
+#  '波长校正':
+#    zh-CN: '波长校正'
+#    en-US: 'Wavelength Correction'
+#    ru-RU: 'Коррекция длины волны'
+#  '暗电流校正':
+#    zh-CN: '暗电流校正'
+#    en-US: 'Dark Current Correction'
+#    ru-RU: 'Коррекция темнового тока'
   '无':
     zh-CN: '无'
     en-US: 'None'
@@ -5859,10 +5895,10 @@ messages:
     zh-CN: '系统消息'
     en-US: 'System message'
     ru-RU: 'Системное сообщение'
-  '期间核查提醒':
-    zh-CN: '期间核查提醒'
-    en-US: 'Intermediate check reminder'
-    ru-RU: 'Напоминание о промежуточной проверке'
+#  '期间核查提醒':
+#    zh-CN: '期间核查提醒'
+#    en-US: 'Intermediate check reminder'
+#    ru-RU: 'Напоминание о промежуточной проверке'
   '条系统消息':
     zh-CN: '条系统消息'
     en-US: ' system message(s)'
