@@ -53,14 +53,10 @@ public class DefaultTaskManager {
     private ExcelDataAssetService dataAssetService;
     @Autowired
     private TaskItemStatusService taskItemStatusService;
-    private volatile String defaultTaskId;
 
-    // 获取默认任务ID
+    // 获取默认任务ID（每次都从数据库查询，避免多用户共享全局变量导致串号）
     public String getDefaultTaskId(String updateBy, String taskType, Integer templateStatus) {
-        synchronized (this) {
-            ensureDefaultTaskExists(updateBy,taskType,templateStatus);
-        }
-        return defaultTaskId;
+        return ensureDefaultTaskExists(updateBy, taskType, templateStatus);
     }
     /**
      * 为新任务初始化任务执行详情记录和检测项状态
@@ -110,23 +106,14 @@ public class DefaultTaskManager {
         }
     }
 
-    // 确保存在未开始的默认任务
+    // 确保存在未开始的默认任务，返回任务ID
     @Transactional(rollbackFor = Exception.class)
-    public void ensureDefaultTaskExists(String updateBy, String taskType,Integer templateStatus) {
-//        QueryWrapper<TaskManagement> wrapper = new QueryWrapper<>();
-//        wrapper.eq("completion_status", TASK_NOT_STARTED.getCode())
-//                .eq("content_category", TEMPLATE_BUILT_IN_TASK.getCode()); // 假设用名称标识默认任务
-//
-//        TaskManagement task = taskManagementService.getOne(wrapper);
-//
-//        if (task == null) {
-//
+    public String ensureDefaultTaskExists(String updateBy, String taskType,Integer templateStatus) {
         //看一下有没有updateBy创建的任务
         LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(TaskManagement::getCreateBy, updateBy)
                 .eq(TaskManagement::getTaskType, taskType);
         long count = taskManagementService.count(wrapper);
-//        long count = taskManagementService.count();
         if (count == 0) {
             // 创建新默认任务
             TaskManagement newTask = createDefaultTask(updateBy,taskType,templateStatus);
@@ -134,18 +121,18 @@ public class DefaultTaskManager {
             initializeTaskExecutionDetails(newTask.getId(), excelTemplate.getTemplateCode());
 
             taskManagementService.save(newTask);
-            this.defaultTaskId = newTask.getId();
+            return newTask.getId();
 
         } else {
-            //使用最新的任务，不ai管有没有使用过
+            //使用最新的任务
             TaskManagement task1 = taskManagementService.getOne(
                     new LambdaQueryWrapper<TaskManagement>()
                             .eq(TaskManagement::getCreateBy, updateBy)
                             .eq(TaskManagement::getTaskType, taskType)
-                            .orderByDesc(TaskManagement::getUpdated)  // 按创建时间降序
+                            .orderByDesc(TaskManagement::getUpdated)  // 按更新时间降序
                             .last("LIMIT 1")  // 只取最新的一条
             );
-            this.defaultTaskId = task1.getId();
+            return task1.getId();
         }
     }
 //    public TaskManagement createFactoryInspectionTask(String updateBy) {
