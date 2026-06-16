@@ -3920,6 +3920,7 @@ public class RationServiceImpl implements RationService {
         int digit = Constants.DEFAULT_DECIMAL_NUM;
         SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
         int rSquareDigits = businessParamVO.getRSquareDigits();
+        Integer kDigits = businessParamVO.getKDigits();
 
 //        R<TMeasureTaskAttachment> attachmentR = taskAttachmentService.queryByTaskId(taskId);
 //        if (attachmentR.getSuccess()) {
@@ -3963,6 +3964,32 @@ public class RationServiceImpl implements RationService {
                 if (StringUtils.hasText(task.getFittingParam()) && !"{}".equals(task.getFittingParam()) && !"null".equals(task.getFittingParam())) {
                     FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
 
+
+                    List<Double> coefficients = fittingParam.getCoefficients();
+                    List<Double> roundCoefficient = new ArrayList<>();
+                    if (kDigits != null) {
+                        for (Double coefficient : coefficients) {
+                            Double v = DataCountUtil.formatValue(kDigits, coefficient);
+                            String s = DataCountUtil.addZero(v, kDigits);
+                            roundCoefficient.add(Double.valueOf(s));
+                        }
+                        fittingParam.setRoundCoefficient(roundCoefficient);
+
+                        String equation = fittingParam.getEquation();
+
+                        if (RationCurveParamEnums.typeAbs.getIdentity().equals(parameter.getEquationType())) {
+                            equation = rebuildFormula(roundCoefficient, kDigits, fittingParam.getDegree(), "Abs", "C");
+                        } else {
+                            equation = rebuildFormula(roundCoefficient, kDigits, fittingParam.getDegree(), "C", "Abs");
+                        }
+
+                        fittingParam.setEquation(equation);
+
+                        task.setFittingParam(JSON.toJSONString(fittingParam));
+                        tMeasureTaskService.updateById(task);
+
+                        changeUnknowSampleDigit(taskId, digit);
+                    }
 
                     fittingParam.setMaxX(curveData.getMaxX());
                     fittingParam.setMinX(curveData.getMinX());
@@ -4413,6 +4440,7 @@ public class RationServiceImpl implements RationService {
 
             String mid = jsonObject.get("value").toString();
             ans = DataCountUtil.formatValueWithBigDecimal(digit, mid);
+            ans = DataCountUtil.addZero(Double.valueOf(ans), digit);
         }
         return ans;
     }
