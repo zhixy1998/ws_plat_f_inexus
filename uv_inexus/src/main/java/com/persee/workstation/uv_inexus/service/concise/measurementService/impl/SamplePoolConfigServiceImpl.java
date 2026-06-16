@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
-import com.alibaba.fastjson.JSON;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -18,7 +17,8 @@ import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceSamplePoolPurpose;
-import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
@@ -26,11 +26,6 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.Conci
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
-import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
-import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
-import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
-import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
-import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
@@ -41,8 +36,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service("FSamplePoolConfig")
 @DS("guide")
@@ -65,7 +64,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
     ConcisePublicUtilService concisePublicUtilService;
 
     @Autowired
-    DevOperationUtilService operationUtilService;
+    LocaleProvider localeProvider;
 
     @Override
     public Boolean updateCurrentPoolNum(String deviceSerialNumber, Integer currentPoolNum, String updateBy) {
@@ -85,7 +84,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
             po.setCurrentPoolNum(currentPoolNum);
             po.setUpdateBy(updateBy);
             List<FSamplePoolStatus> poolInfo = createFSamplePoolStatuses(attachmentInfo.getSamplePoolNum());
-            po.setPoolInfo(JSON.toJSONString(poolInfo));
+            po.setPoolInfo(poolInfo);
             return dao.insert(po) > 0;
         } else {
             po.setCurrentPoolNum(currentPoolNum);
@@ -128,7 +127,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
 
         DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(dto.getAttachmentType(), s);
         List<FSamplePoolStatus> list = createFSamplePoolStatuses(attachmentInfo.getSamplePoolNum());
-        po.setPoolInfo(JSON.toJSONString(list));
+        po.setPoolInfo(list);
         po.setIsAutoChangePool(false);
 
         po.setCreateBy(dto.getUpdateBy());
@@ -166,33 +165,29 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         }
         if (changeDto.getIsAutoChangePool() != null) {
             if (changeDto.getIsAutoChangePool()) {
-                if (StringUtils.hasText(po.getPoolInfo())) {
-                    List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
-                    if (list != null && !list.isEmpty()) {
-                        for (FSamplePoolStatus status : list) {
-                            status.setPoolStatus(true);
-                        }
-                        po.setPoolInfo(JSON.toJSONString(list));
+                if (po.getPoolInfo() != null && !po.getPoolInfo().isEmpty()) {
+                    List<FSamplePoolStatus> list = po.getPoolInfo();
+                    for (FSamplePoolStatus status : list) {
+                        status.setPoolStatus(true);
                     }
+                    po.setPoolInfo(list);
                 }
             } else {
-                if (StringUtils.hasText(po.getPoolInfo())) {
-                    List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
-                    if (list != null && !list.isEmpty()) {
-                        for (FSamplePoolStatus status : list) {
-                            status.setPoolStatus(false);
-                        }
-                        po.setPoolInfo(JSON.toJSONString(list));
+                if (po.getPoolInfo() != null && !po.getPoolInfo().isEmpty()) {
+                    List<FSamplePoolStatus> list = po.getPoolInfo();
+                    for (FSamplePoolStatus status : list) {
+                        status.setPoolStatus(false);
                     }
+                    po.setPoolInfo(list);
                 }
             }
         }
 
         po.setUpdateBy(changeDto.getUpdateBy());
         if (changeDto.getIsAutoChangePool() != null) {
-            if (StringUtils.hasText(po.getPoolInfo())) {
-                List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
-                if (list == null || list.size() <= 1) {
+            if (po.getPoolInfo() != null && !po.getPoolInfo().isEmpty()) {
+                List<FSamplePoolStatus> list = po.getPoolInfo();
+                if (list.size() == 1) {
                     //没有切换的样品池
                     return R.fail("00106002");
                 }
@@ -202,7 +197,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         }
 
         if (changeDto.getPoolNum() != null) {
-            List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
+            List<FSamplePoolStatus> list = po.getPoolInfo();
             for (FSamplePoolStatus status : list) {
                 if (status.getPoolNum().equals(changeDto.getPoolNum())) {
                     if (changeDto.getPoolStatus() != null) {
@@ -214,7 +209,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
                     }
                 }
             }
-            po.setPoolInfo(JSON.toJSONString(list));
+            po.setPoolInfo(list);
         } else {
             if (changeDto.getPoolStatus() != null || changeDto.getPoolPurpose() != null) {
                 //请选择要操作的样品池
@@ -244,15 +239,17 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
         query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
         SamplePoolConfigPO po = dao.selectOne(query);
-        if (po == null || !StringUtils.hasText(po.getPoolInfo())) {
+        if (po == null || po.getPoolInfo() == null || po.getPoolInfo().isEmpty()) {
             //未找到该仪器附件配置
             return R.fail("00106001");
         }
 
         FSamplePoolInfoVO vo = new FSamplePoolInfoVO();
         BeanUtils.copyProperties(po, vo);
-        List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
-        list.forEach(status -> status.setPoolName(status.getPoolNum() + "号"));
+        String locale = localeProvider.getSystemLocale();
+        List<FSamplePoolStatus> list = po.getPoolInfo();
+        boolean isChinese = "zh-CN".equals(locale) || "zh_CN".equals(locale);
+        list.forEach(status -> status.setPoolName(isChinese ? status.getPoolNum() + "号" : "#" + status.getPoolNum()));
         vo.setPoolStatusList(list);
         return R.ok(vo);
     }
@@ -269,11 +266,11 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
         query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
         SamplePoolConfigPO po = dao.selectOne(query);
-        if (po == null || !StringUtils.hasText(po.getPoolInfo())) {
+        if (po == null || po.getPoolInfo() == null || po.getPoolInfo().isEmpty()) {
             return list;
         }
 
-        List<FSamplePoolStatus> poolStatuses = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
+        List<FSamplePoolStatus> poolStatuses = po.getPoolInfo();
         for (FSamplePoolStatus status : poolStatuses) {
             if (status.getPoolStatus() && status.getPoolPurpose().equals(DeviceSamplePoolPurpose.MEASURE.getCode())) {
                 list.add(status.getPoolNum());
@@ -284,53 +281,31 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         return list;
     }
 
+    /**
+     * 获取可用的样本位置(含校零池)
+     * @param deviceSerialNumber
+     * @return
+     */
     @Override
-    public R<Boolean> setCurrentPool(String deviceSerialNumber, Integer poolNum, String updateBy) {
-        if (!StringUtils.hasText(deviceSerialNumber)) {
-            log.info("未连接仪器");
-            //未连接仪器
-            return R.fail("0000001D");
-        }
-        if (!StringUtils.hasText(updateBy)) {
-            log.info("缺少更新人信息");
-            //请登录后操作
-            return R.fail("00307004");
-        }
+    public List<Integer> getAllUsefulLocation(String deviceSerialNumber) {
+        List<Integer> list = new ArrayList<>();
+
         LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
         query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
         SamplePoolConfigPO po = dao.selectOne(query);
-        if (po == null) {
-            po = new SamplePoolConfigPO();
-            po.setCreateBy(updateBy);
-            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(deviceSerialNumber);
-            po.setAttachmentType(attachmentInfo.getAttachmentNum());
-            po.setDeviceSerialNumber(deviceSerialNumber);
-            List<FSamplePoolStatus> poolInfo = createFSamplePoolStatuses(attachmentInfo.getSamplePoolNum());
-            po.setPoolInfo(JSON.toJSONString(poolInfo));
+        if (po == null || po.getPoolInfo() == null || po.getPoolInfo().isEmpty()) {
+            return list;
         }
 
-        DevOperationInputParam inputParam = new DevOperationInputParam();
-        inputParam.setDeviceSerialNumber(deviceSerialNumber);
-        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
-
-        SetParam param = new SetParam();
-        param.setCellPos(poolNum);
-        inputParam.setParam(param);
-        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
-
-        if (!operation.getSuccess()) {
-            return R.fail("00B06008");
+        List<FSamplePoolStatus> poolStatuses = po.getPoolInfo();
+        for (FSamplePoolStatus status : poolStatuses) {
+            if (status.getPoolStatus()) {
+                list.add(status.getPoolNum());
+            }
         }
 
-        po.setCurrentPoolNum(poolNum);
-        po.setUpdateBy(updateBy);
-        boolean b = dao.updateById(po) > 0;
-        if (b) {
-            return R.ok(true);
-        } else {
-            //更新失败
-            return R.fail("00000048");
-        }
+        list.sort(Integer::compareTo);
+        return list;
     }
 
     @Override
@@ -338,18 +313,127 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
         query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
         SamplePoolConfigPO po = dao.selectOne(query);
-        if (po == null || !StringUtils.hasText(po.getPoolInfo())) {
+        if (po == null || po.getPoolInfo() == null || po.getPoolInfo().isEmpty()) {
             //未找到该仪器附件配置
             return R.fail("00106001");
         }
 
         SamplePoolInfoVO vo = new SamplePoolInfoVO();
         BeanUtils.copyProperties(po, vo);
-        List<SamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), SamplePoolStatus.class);
-        list.forEach(status -> status.setPoolName(status.getPoolNum() + "号"));
+        String locale2 = localeProvider.getSystemLocale();
+        boolean isChinese2 = "zh-CN".equals(locale2) || "zh_CN".equals(locale2);
+
+        List<SamplePoolStatus> list = po.getPoolInfo().stream().map(p -> {
+            SamplePoolStatus status = new SamplePoolStatus();
+            status.setPoolNum(p.getPoolNum());
+            status.setPoolStatus(p.getPoolStatus());
+            status.setPoolName(isChinese2 ? status.getPoolNum() + "号" : "#" + status.getPoolNum());
+            return status;
+        }).collect(Collectors.toList());
         vo.setPoolStatusList(list);
         return R.ok(vo);
 
+    }
+
+    @Override
+    public FSamplePoolStatus getPoolCorrectionData(String deviceSerialNumber, Integer poolNum) {
+        if (!StringUtils.hasText(deviceSerialNumber) || poolNum == null) {
+            log.warn("获取样品池校正数据参数无效：device={}, poolNum={}", deviceSerialNumber, poolNum);
+            return null;
+        }
+
+        LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        SamplePoolConfigPO po = dao.selectOne(query);
+
+        if (po == null || po.getPoolInfo() == null || po.getPoolInfo().isEmpty()) {
+            log.warn("未找到设备 {} 的样品池配置", deviceSerialNumber);
+            return null;
+        }
+
+        for (FSamplePoolStatus status : po.getPoolInfo()) {
+            if (poolNum.equals(status.getPoolNum())) {
+                Map<String, String> poolData = status.getPoolData();
+                return poolData != null ? status : null;
+            }
+        }
+
+        log.warn("未找到样品池 {} 的配置信息", poolNum);
+        return null;
+    }
+
+    // ... existing code ...
+    @Override
+    public Boolean clearAllPoolCorrectionData(String deviceSerialNumber) {
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            log.warn("清除校正数据参数无效：device={}", deviceSerialNumber);
+            return false;
+        }
+
+        LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        SamplePoolConfigPO po = dao.selectOne(query);
+
+        if (po == null || po.getPoolInfo() == null || po.getPoolInfo().isEmpty()) {
+            log.warn("未找到设备 {} 的样品池配置，无法清除校正数据", deviceSerialNumber);
+            return false;
+        }
+
+        int clearedCount = 0;
+        for (FSamplePoolStatus status : po.getPoolInfo()) {
+            if (status.getPoolData() != null || status.getLuminosity() != null) {
+                status.setPoolData(null);
+                status.setLuminosity(null);
+                clearedCount++;
+            }
+        }
+
+        if (clearedCount == 0) {
+            log.info("设备 {} 没有需要清除的校正数据", deviceSerialNumber);
+            return true;
+        }
+
+        // 更新数据库
+        boolean updateResult = dao.updateById(po) > 0;
+        if (updateResult) {
+            log.info("已清除设备 {} 共 {} 个样品池的校正数据", deviceSerialNumber, clearedCount);
+        } else {
+            log.error("清除设备 {} 的校正数据失败", deviceSerialNumber);
+        }
+
+        return updateResult;
+    }
+
+    @Override
+    public String applyPoolCorrection(String measured, String correction, String currentLuminosity) {
+
+        BigDecimal measuredValue = new BigDecimal(measured);
+        BigDecimal correctionValue = new BigDecimal(correction);
+
+        // 3. 校验光度模式
+        if (!StringUtils.hasText(currentLuminosity)) {
+            log.warn("光度模式为空，无法应用校正");
+            return null;
+        }
+
+        boolean isAbs = WaveLengthEnum.abs.getCode().equals(currentLuminosity);
+
+        BigDecimal correctedValue;
+        if (isAbs) {
+            // Abs模式：校正时用 样品值 - 校零值，还原时用 测量值 - 校正值
+            correctedValue = measuredValue.subtract(correctionValue);
+            log.debug("Abs模式校正：测量值={}, 校正值={}, 校正后={}", measuredValue, correctionValue, correctedValue);
+        } else {
+            // T%模式：校正时用 样品值 / 校零值，还原时用 测量值 / 校正值
+            if (correctionValue.compareTo(BigDecimal.ZERO) == 0) {
+                log.warn("校正值为0，无法进行T%除法运算");
+                return null;
+            }
+            correctedValue = measuredValue.divide(correctionValue, 10, RoundingMode.HALF_UP);
+            log.debug("T%模式校正：测量值={}, 校正值={}, 校正后={}", measuredValue, correctionValue, correctedValue);
+        }
+
+        return correctedValue.toPlainString();
     }
 
 

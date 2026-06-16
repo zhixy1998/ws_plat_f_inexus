@@ -42,7 +42,8 @@ public enum T800ComIdEnums {
     Init("Init","初始化"),
     GetInitStatus("GetInitStatus","获取初始化状态"),
     Zero("Zero","校零"),
-    SetResponseTime("SetResponseTime","设置响应时间")
+    SetResponseTime("SetResponseTime","设置响应时间"),
+    T800TimeMeasure("T800TimeMeasure","T800时间测量")
     ;
     private final String comId;
     private final String Describe;

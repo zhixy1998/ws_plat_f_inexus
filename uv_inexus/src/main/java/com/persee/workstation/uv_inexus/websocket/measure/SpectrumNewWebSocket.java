@@ -682,7 +682,7 @@ public class SpectrumNewWebSocket {
 
         boolean poolStatus = false;
         if (configPO.getIsAutoChangePool()) {
-            List<FSamplePoolStatus> poolStatuses = com.alibaba.fastjson.JSON.parseArray(configPO.getPoolInfo(), FSamplePoolStatus.class);
+            List<FSamplePoolStatus> poolStatuses = configPO.getPoolInfo();
             for (FSamplePoolStatus status : poolStatuses) {
                 if (status.getPoolStatus()) {
                     poolStatus = true;

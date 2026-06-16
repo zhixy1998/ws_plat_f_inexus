@@ -207,9 +207,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     private ConcisePublicUtilService concisePublicUtilService;
 
     @Autowired
-    private DeviceManageService deviceManageService;
-
-    @Autowired
     private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
 
     @Value("1")
@@ -370,7 +367,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             }
         }
 
-        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(methodParam.getDeviceSerialNumber());
+        R<DeviceMeasureVO> deviceMeasureVOR = infoService.queryDeviceTypeInfo(methodParam.getDeviceSerialNumber());
         if (!deviceMeasureVOR.getSuccess()) {
             return Result.fail(deviceMeasureVOR.getMessage());
         }
@@ -3973,7 +3970,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (!StringUtils.hasText(luminosity)) {
             return R.fail("00B03007");
         }
-        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        R<DeviceMeasureVO> deviceMeasureVOR = infoService.queryDeviceTypeInfo(deviceSerialNumber);
         if (!deviceMeasureVOR.getSuccess()) {
             return R.fail(deviceMeasureVOR.getMessage());
         }
@@ -4242,7 +4239,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     private R IssueCheckParam(TimeSweepParamter param, String deviceSerialNumber) {
         Boolean result = true;
         List<String> errorMessages = new ArrayList<>();
-        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        R<DeviceMeasureVO> deviceMeasureVOR = infoService.queryDeviceTypeInfo(deviceSerialNumber);
         if (!deviceMeasureVOR.getSuccess()) {
             return R.fail(deviceMeasureVOR.getMessage());
         }

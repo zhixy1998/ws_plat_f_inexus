@@ -10,7 +10,6 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddSampleDTO;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.DatabaseEnum;
@@ -19,6 +18,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
@@ -44,6 +44,9 @@ public class ConciseCommonController {
     @Autowired
     SamplePoolConfigService fSamplePoolConfigService;
 
+    @Autowired
+    DeviceManageService deviceManageService;
+
 
     @GetMapping("queryDefaultParameters")
     @ApiOperation("查询默认参数")
@@ -67,7 +70,12 @@ public class ConciseCommonController {
     @GetMapping("queryDeviceStatus")
     @ApiOperation("查询设备状态")
     public Result queryDeviceStatus(@RequestParam String deviceSerialNumber) {
-        return conciseCommonService.queryDeviceStatus(deviceSerialNumber);
+        R<Integer> r = deviceManageService.queryDeviceStatus(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
     }
 
 
@@ -158,7 +166,7 @@ public class ConciseCommonController {
     @ApiOperation("设置为当前样品池")
     @GetMapping("setCurrentPool")
     public Result<Boolean> setCurrentPool(@RequestParam String deviceSerialNumber, @RequestParam Integer poolNum, @RequestParam String updateBy) {
-        R<Boolean> r = fSamplePoolConfigService.setCurrentPool(deviceSerialNumber, poolNum, updateBy);
+        R<Boolean> r = deviceManageService.setCurrentPool(deviceSerialNumber, poolNum, updateBy);
         if (r.getSuccess()) {
             return Result.ok();
         } else {

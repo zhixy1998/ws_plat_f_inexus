@@ -20,6 +20,7 @@ import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
@@ -35,7 +36,6 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
-import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
@@ -514,8 +514,8 @@ public class TimeNewWebSocket {
             boolean poolStatus = false;
             Integer maxPoolNum = 0;
             if (config.getPoolInfo() != null && !config.getPoolInfo().isEmpty()) {
-                List<SamplePoolStatus> poolStatuses = JSON.parseArray(config.getPoolInfo(), SamplePoolStatus.class);
-                for (SamplePoolStatus status : poolStatuses) {
+                List<FSamplePoolStatus> poolStatuses = config.getPoolInfo();
+                for (FSamplePoolStatus status : poolStatuses) {
                     if (status.getPoolStatus()) {
                         poolStatus = true;
                         break;
@@ -525,7 +525,7 @@ public class TimeNewWebSocket {
                 maxPoolNum=poolStatuses.stream()
                         .filter(Objects::nonNull)                  // 过滤null对象
                         .filter(status -> Boolean.TRUE.equals(status.getPoolStatus())) // 只取可用池
-                        .map(SamplePoolStatus::getPoolNum)         // 提取池号
+                        .map(FSamplePoolStatus::getPoolNum)         // 提取池号
                         .filter(Objects::nonNull)                  // 过滤掉null的池号
                         .max(Integer::compareTo)                   // 找到最大值
                         .orElse(0);                                // 如果没有可用池返回0

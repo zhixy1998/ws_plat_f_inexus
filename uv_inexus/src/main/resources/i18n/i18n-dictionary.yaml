@@ -1550,6 +1550,28 @@ messages:
     en-US: 'Start time cannot be greater than end time'
     ru-RU: 'Время начала не может быть больше времени окончания'
 
+  '00250009':
+    zh-CN: '能量模式支持样品池校正'
+    en-US: 'Energy mode supports sample pool correction'
+    ru-RU: 'Энергетический режим поддерживает校正 в пуле образцов'
+
+  '0025000A':
+    zh-CN: '请选择校零池后校正！'
+    en-US: 'Please select the sample pool to correct!'
+    ru-RU: 'Пожалуйста, выберите пул образцов для коррекции!'
+
+  '0025000B':
+    zh-CN: '校零池不可用，请检查！'
+    en-US: 'The sample pool is not available, please check!'
+    ru-RU: 'Пул образцов недоступен, пожалуйста, проверьте!'
+
+    #清理失败
+  '0025000C':
+    zh-CN: '清理校正信息失败！'
+    en-US: 'Clearing correction information failed!'
+    ru-RU: 'Исключние при очистке информации о коррекции!'
+
+
   # ========== 经典模式模块=003 ==========
   # 通用模块=00
   '00300001':
@@ -1793,7 +1815,7 @@ messages:
     en-US: 'Variable {0} missing data'
     ru-RU: 'Переменная {0}缺少数据'
 
-#   定量测定模块=03
+  #   定量测定模块=03
   '00303001':
     zh-CN: '参考标准方法长度超限'
     en-US: 'Reference standard method length exceeded'
@@ -3549,7 +3571,7 @@ messages:
     ru-RU: 'Интервал длин волн должен быть больше 0, текущее значение: {0}'
 
   '00B0201D':
-    zh-CN: '波长间隔小数点后最多保留2位，当前值：{0}'
+    zh-CN: '波长间隔小数点后最多保留3位，当前值：{0}'
     en-US: 'Wavelength interval can have at most 2 decimal places, current value: {0}'
     ru-RU: 'Интервал длин волн может иметь не более 2 десятичных знаков, текущее значение: {0}'
 
@@ -4756,3 +4778,7 @@ messages:
     zh-CN: '验证失败，请重新登录'
     en-US: 'Verification failed, please log in again'
     ru-RU: 'Ошибка проверки, пожалуйста, войдите снова'
+  '0030001F':
+    zh-CN: '当前设备与任务测量设备不匹配'
+    en-US: 'The current device does not match the task measurement device'
+    ru-RU: 'Текущее устройство не совпадает с устройством измерения задачи'
