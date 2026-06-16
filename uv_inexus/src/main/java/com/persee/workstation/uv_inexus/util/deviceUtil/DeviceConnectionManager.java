@@ -20,6 +20,7 @@ import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.Detec
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.DetectionManyDevicesResponseInfoVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -413,6 +414,41 @@ public class DeviceConnectionManager {
         return serialNumber;
     }
 
+
+    /**
+     * 设置当前样品池位置
+     *
+     * @param deviceId 设备ID
+     * @param poolNum 样品池号
+     * @return 是否成功
+     */
+    public boolean setCurrentPoolNum(String deviceId, Integer poolNum) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置序列号失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.setCurrentPoolNum(poolNum);
+        device.updateLastUseTime();
+        logInfo("设置设备序列号: %s -> %s", deviceId, poolNum);
+        return true;
+    }
+
+    public Integer getCurrentPoolNum(String deviceId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("获取序列号失败: 设备不存在 %s", deviceId);
+            return null;
+        }
+
+        device.updateLastUseTime();
+        Integer poolNum = device.getCurrentPoolNum();
+        logInfo("获取设备序列号: %s -> %s", deviceId, poolNum);
+        return poolNum;
+    }
+
+
     /**
      * 设置设备空闲状态
      *
@@ -470,6 +506,21 @@ public class DeviceConnectionManager {
         device.updateLastUseTime();
         return zero;
     }
+
+    public String getDeviceId(String deviceSerialNumber) {
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            return null;
+        }
+
+        return deviceMap.entrySet().stream()
+                .filter(entry -> entry.getValue() != null
+                        && StringUtils.hasText(entry.getValue().getDeviceSerialNumber())
+                        && entry.getValue().getDeviceSerialNumber().equals(deviceSerialNumber))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
+    }
+
 
 
 
@@ -570,6 +621,20 @@ public class DeviceConnectionManager {
         device.updateLastUseTime();
         logInfo("设置光度模式: %s -> %s", deviceId, luminosityMode);
         return true;
+    }
+
+    public String getLuminosityMode(String deviceId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("获取当前波长失败: 设备不存在 %s", deviceId);
+            return null;
+        }
+
+        device.updateLastUseTime();
+        String mode = device.getLuminosityMode();
+
+        logInfo("获取当前波长: %s -> %s", deviceId, mode);
+        return mode;
     }
 
     /**

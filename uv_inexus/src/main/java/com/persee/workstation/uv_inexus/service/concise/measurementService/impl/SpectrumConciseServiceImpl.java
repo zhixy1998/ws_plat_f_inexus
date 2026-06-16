@@ -47,7 +47,6 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
@@ -170,9 +169,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     @Autowired
     private DevOperationUtilService devOperationUtilService;
-
-    @Autowired
-    private DeviceManageService deviceManageService;
 
     @Autowired
     private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
@@ -2386,7 +2382,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         // 6. 扫描速度
         if (!spectrumParam.getScanSpeed().equals(ScanSpeedEnum.EXTREME_FAST.getCode())) {
-            R<DeviceMeasureVO> deviceTypeInfo = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+            R<DeviceMeasureVO> deviceTypeInfo = infoService.queryDeviceTypeInfo(deviceSerialNumber);
             String ScanSpeed = deviceTypeInfo.getData().getScanSpeed().stream()
                     .filter(obj -> obj.getParamName().equals(spectrumParam.getScanSpeed()))
                     .map(DeviceConfParam::getParamValue)
@@ -4892,7 +4888,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     private R IssueCheckParam(FSpectrumParameter param, String deviceSerialNumber) {
         Boolean result = true;
         List<String> errorMessages = new ArrayList<>();
-        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        R<DeviceMeasureVO> deviceMeasureVOR = infoService.queryDeviceTypeInfo(deviceSerialNumber);
         if (!deviceMeasureVOR.getSuccess()) {
             return R.fail(deviceMeasureVOR.getMessage());
         }

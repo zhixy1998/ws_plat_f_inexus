@@ -36,7 +36,6 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -140,9 +139,6 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     @Autowired
     DevOperationUtilService devOperationUtilService;
-
-    @Autowired
-    private DeviceManageService deviceManageService;
 
     @Autowired
     private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
@@ -4393,7 +4389,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     private R IssueCheckParam(FPhotometricParameter param, String deviceSerialNumber) {
         Boolean result = true;
         List<String> errorMessages = new ArrayList<>();
-        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        R<DeviceMeasureVO> deviceMeasureVOR = infoService.queryDeviceTypeInfo(deviceSerialNumber);
         if (!deviceMeasureVOR.getSuccess()) {
             return R.fail(deviceMeasureVOR.getMessage());
         }

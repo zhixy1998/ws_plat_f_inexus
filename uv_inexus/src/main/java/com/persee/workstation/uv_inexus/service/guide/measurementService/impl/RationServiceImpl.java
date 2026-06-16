@@ -37,7 +37,6 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecime
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
@@ -129,9 +128,6 @@ public class RationServiceImpl implements RationService {
 
     @Autowired
     SystemBusinessParamService businessParamService;
-
-    @Autowired
-    private DeviceManageService deviceManageService;
 
     @Autowired
     private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
@@ -6523,7 +6519,7 @@ public class RationServiceImpl implements RationService {
     private R IssueCheckParam(RationParameter param, String deviceSerialNumber) {
         Boolean result = true;
         List<String> errorMessages = new ArrayList<>();
-        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceInfoService.queryDeviceTypeInfo(deviceSerialNumber);
         if (!deviceMeasureVOR.getSuccess()) {
             return R.fail(deviceMeasureVOR.getMessage());
         }
