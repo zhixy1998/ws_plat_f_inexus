@@ -2709,7 +2709,13 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
         }
         Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
-        Transition measureTransition = xml.get(T600ComIdEnums.Measure.getComId());
+        DevXmlEnums dev = DevXmlEnums.getEnum(xmlKey);
+        Transition measureTransition;
+        if (dev.getDevType().equals("T800")){
+            measureTransition = xml.get(T800ComIdEnums.T800TimeMeasure.getComId());
+        }else{
+            measureTransition = xml.get(T600ComIdEnums.Measure.getComId());
+        }
         byte[] measureBytes = protocolItemUtil.calcSendBytes(new Object[]{}, measureTransition);
 
         udpSendUtil.TimeMeasure(
