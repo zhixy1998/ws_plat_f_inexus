@@ -20,6 +20,7 @@ import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.Detec
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.DetectionManyDevicesResponseInfoVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -505,6 +506,21 @@ public class DeviceConnectionManager {
         device.updateLastUseTime();
         return zero;
     }
+
+    public String getDeviceId(String deviceSerialNumber) {
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            return null;
+        }
+
+        return deviceMap.entrySet().stream()
+                .filter(entry -> entry.getValue() != null
+                        && StringUtils.hasText(entry.getValue().getDeviceSerialNumber())
+                        && entry.getValue().getDeviceSerialNumber().equals(deviceSerialNumber))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
+    }
+
 
 
 

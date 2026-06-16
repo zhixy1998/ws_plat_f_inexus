@@ -345,82 +345,87 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         R<OperationResultEntity> result = R.ok();
         boolean release = true;
-        switch (anEnum) {
-            case Find:
-                result = find(inputParam);
-                break;
-            case Connect:
-                result = connect(inputParam);
-                break;
-            case Init:
-                synchronized (this) {
-                    new Thread(() -> initDevice(deviceSerialNumber, inputParam.getIsInitFromHead())).start();
+        try {
+            switch (anEnum) {
+                case Find:
+                    result = find(inputParam);
+                    break;
+                case Connect:
+                    result = connect(inputParam);
+                    break;
+                case Init:
+                    synchronized (this) {
+                        new Thread(() -> initDevice(deviceSerialNumber, inputParam.getIsInitFromHead())).start();
+                        release = false;
+                    }
+                    break;
+                case SetParam:
+                    result = setParam(inputParam);
+                    break;
+                case Disconnect:
+                    result = disconnect(inputParam);
                     release = false;
-                }
-                break;
-            case SetParam:
-                result = setParam(inputParam);
-                break;
-            case Disconnect:
-                result = disconnect(inputParam);
-                release = false;
-                break;
-            case LiveDetection:
-                result = liveDetection(deviceSerialNumber);
-                break;
-            case ActionCmdEnum:
-                actionExecutor.submit(() -> executeAction(inputParam));
-                release = false;
-                break;
-            case GetValue:
-                result = getValue(inputParam);
-                break;
-            case Calibration:
-                result = calibration(inputParam);
-                release = false;
-                break;
-            case Zero:
-                result = zero(inputParam);
-                break;
-            case SingWaveLengthZero:
-                result = singleWavelengthZero(inputParam);
-                break;
-            case Measure:
-                result = measure(inputParam);
-                break;
-            case SingWaveLengthMeasure:
-                result = singWaveLengthMeasure(inputParam);
-                break;
-            case Stop:
-                actionExecutor.submit(() -> stop(inputParam));
-                release = false;
-                break;
-            case TimeMeasure:
-                actionExecutor.submit(() -> executeTimeMeasure(inputParam));
-                release = false;
-                break;
-            case T800Connect:
-                t800Connect(inputParam);
-                break;
-            case QueryLifeTime:
-                result = queryLifeTime(inputParam);
-                break;
-            case MercuryLocate:
-                result = mercuryLocate(inputParam);
-                break;
-            case SamplePoolCalibration:
-                result = samplePoolCalibration(inputParam);
-                break;
-            case SetWlList:
-                result = setWlList(inputParam);
-                break;
-            default:
+                    break;
+                case LiveDetection:
+                    result = liveDetection(deviceSerialNumber);
+                    break;
+                case ActionCmdEnum:
+                    actionExecutor.submit(() -> executeAction(inputParam));
+                    release = false;
+                    break;
+                case GetValue:
+                    result = getValue(inputParam);
+                    break;
+                case Calibration:
+                    result = calibration(inputParam);
+                    release = false;
+                    break;
+                case Zero:
+                    result = zero(inputParam);
+                    break;
+                case SingWaveLengthZero:
+                    result = singleWavelengthZero(inputParam);
+                    break;
+                case Measure:
+                    result = measure(inputParam);
+                    break;
+                case SingWaveLengthMeasure:
+                    result = singWaveLengthMeasure(inputParam);
+                    break;
+                case Stop:
+                    actionExecutor.submit(() -> stop(inputParam));
+                    release = false;
+                    break;
+                case TimeMeasure:
+                    actionExecutor.submit(() -> executeTimeMeasure(inputParam));
+                    release = false;
+                    break;
+                case T800Connect:
+                    t800Connect(inputParam);
+                    break;
+                case QueryLifeTime:
+                    result = queryLifeTime(inputParam);
+                    break;
+                case MercuryLocate:
+                    result = mercuryLocate(inputParam);
+                    break;
+                case SamplePoolCalibration:
+                    result = samplePoolCalibration(inputParam);
+                    break;
+                case SetWlList:
+                    result = setWlList(inputParam);
+                    break;
+                default:
+                    infoService.newReleaseDevice(deviceSerialNumber);
+                    break;
+            }
+        } catch (Exception e) {
+            log.info("设备操作异常，设备序列号: {}, 操作类型: {}", deviceSerialNumber, anEnum, e);
+        } finally {
+            //释放仪器，部分操作自主释放
+            if (release && StringUtils.hasText(deviceSerialNumber)) {
                 infoService.newReleaseDevice(deviceSerialNumber);
-                break;
-        }
-        //释放仪器，部分操作自主释放
-        if (release && StringUtils.hasText(deviceSerialNumber)) {
-            infoService.newReleaseDevice(deviceSerialNumber);
+            }
         }
         return result;
     }
