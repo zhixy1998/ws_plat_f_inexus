@@ -258,6 +258,11 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
     }
 
+/**
+ * 创建新的测量任务草稿
+ * @param dto 包含保存数据的DTO对象，包含方法ID、任务ID、更新人、是否保存等字段
+ * @return 返回操作结果，包含成功或失败信息及数据
+ */
     @Override
     public Result<FMeasurementCurrentInfoVO> newDraft(SaveDataDto dto) {
 
@@ -307,28 +312,19 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
                 if (parameter.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
                     task.setFittingParam(oldTask.getFittingParam());
+                } else if (Boolean.TRUE.equals(dto.getReuseCurve())) {
+                    task.setFittingParam(oldTask.getFittingParam());
                 }
 
             }
         }
-//        else {
-//            List<FHeadVO> standHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
-//            List<FHeadVO> unknownHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_unknown.getIdentity());
-//
-//            FRationTaskHeadSnapShot rationTaskHeadSnapShot = new FRationTaskHeadSnapShot();
-//
-//            FTaskHeadSnapshot standSnapshot = new FTaskHeadSnapshot();
-//            standSnapshot.setSampleHeads(standHead);
-//            rationTaskHeadSnapShot.setStandHead(standSnapshot);
-//
-//            FTaskHeadSnapshot unKnowSnapshot = new FTaskHeadSnapshot();
-//            unKnowSnapshot.setSampleHeads(unknownHead);
-//            rationTaskHeadSnapShot.setUnknownHead(unKnowSnapshot);
-//
-//            task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
-//        }
 
         boolean save = fMeasureTaskService.save(task);
+
+        // 沿用曲线时，复制标准样品及其测量数据到新任务
+        if (oldTask != null && Boolean.TRUE.equals(dto.getReuseCurve())) {
+            copyStandSampleData(oldTask, task);
+        }
         FMeasurementCurrentInfoVO vo = new FMeasurementCurrentInfoVO();
         vo.setMethodId(task.getMethodKey());
 
@@ -339,6 +335,102 @@ public class RationServiceConciseImpl implements RationConciseService {
         } else {
             //新建失败
             return Result.fail("00100001");
+        }
+    }
+
+    /**
+     * 沿用曲线时，复制旧任务的标准样品（含空白）及其测量数据到新任务
+     * 同时更新新任务的 sampleKey，使标准样品关联到新任务
+     */
+    private void copyStandSampleData(FMeasureTask oldTask, FMeasureTask newTask) {
+        String oldTaskId = oldTask.getId();
+        String newTaskId = newTask.getId();
+
+        List<FTaskSpecimen> oldSpecimenList = JSON.parseArray(oldTask.getSampleKey(), FTaskSpecimen.class);
+        if (oldSpecimenList == null || oldSpecimenList.isEmpty()) {
+            return;
+        }
+
+        // 只复制标准样品和空白样品（sampleKind=0），未知样品不复制
+        List<FTaskSpecimen> newSpecimenList = new ArrayList<>();
+        // 旧样品ID → 新样品ID 的映射，用于后续关联测量数据
+        Map<String, String> sampleIdMapping = new HashMap<>();
+        // 旧测量数据ID → 新测量数据ID 的映射
+        Map<String, String> dataIdMapping = new HashMap<>();
+
+        for (FTaskSpecimen specimen : oldSpecimenList) {
+            if (specimen.getDeleteType().equals(deleteType)) {
+                continue; // 跳过已删除的
+            }
+            // 只复制标准样品和空白样品
+            if (!SampleTypeEnum.kind_stand.getIdentity().equals(specimen.getSampleKind())) {
+                // 保留未知样品的记录但标记为未测（如果有的话也一并保留）
+                // 实际上未知样品不需要带过来，只带标准样品
+                continue;
+            }
+
+            String oldSampleId = specimen.getSpecimenKey();
+            FMeasureSample oldSample = fMeasureSampleService.getById(oldSampleId);
+            if (oldSample == null) {
+                continue;
+            }
+
+            // 复制样品记录，生成新ID
+            FMeasureSample newSample = new FMeasureSample();
+            BeanUtils.copyProperties(oldSample, newSample);
+            newSample.setId(null); // 让数据库自动生成新ID
+            fMeasureSampleService.save(newSample);
+
+            String newSampleId = newSample.getId();
+            sampleIdMapping.put(oldSampleId, newSampleId);
+
+            // 创建新的样品关联记录
+            FTaskSpecimen newSpecimen = new FTaskSpecimen();
+            newSpecimen.setSpecimenKey(newSampleId);
+            newSpecimen.setDeleteType(specimen.getDeleteType());
+            newSpecimen.setIsTested(specimen.getIsTested());
+            newSpecimen.setSampleType(specimen.getSampleType());
+            newSpecimen.setSampleKind(specimen.getSampleKind());
+            newSpecimenList.add(newSpecimen);
+
+            // 复制测量数据 FMeasureData
+            LambdaQueryWrapper<FMeasureData> dataQuery = new LambdaQueryWrapper<>();
+            dataQuery.eq(FMeasureData::getTaskId, oldTaskId)
+                    .eq(FMeasureData::getSampleKey, oldSampleId);
+            List<FMeasureData> oldDataList = fMeasureDataService.list(dataQuery);
+            for (FMeasureData oldData : oldDataList) {
+                FMeasureData newData = new FMeasureData();
+                BeanUtils.copyProperties(oldData, newData);
+                newData.setId(null);
+                newData.setTaskId(newTaskId);
+                newData.setSampleKey(newSampleId);
+                fMeasureDataService.save(newData);
+                dataIdMapping.put(oldData.getId(), newData.getId());
+            }
+
+            // 复制分析数据 FMeasureAnalysisData
+            LambdaQueryWrapper<FMeasureAnalysisData> analysisQuery = new LambdaQueryWrapper<>();
+            analysisQuery.eq(FMeasureAnalysisData::getTaskId, oldTaskId)
+                    .eq(FMeasureAnalysisData::getSampleKey, oldSampleId);
+            List<FMeasureAnalysisData> oldAnalysisList = fMeasureAnalysisDataService.list(analysisQuery);
+            for (FMeasureAnalysisData oldAnalysis : oldAnalysisList) {
+                FMeasureAnalysisData newAnalysis = new FMeasureAnalysisData();
+                BeanUtils.copyProperties(oldAnalysis, newAnalysis);
+                newAnalysis.setId(null);
+                newAnalysis.setTaskId(newTaskId);
+                newAnalysis.setSampleKey(newSampleId);
+                // 关联到新的测量数据ID
+                if (StringUtils.hasText(oldAnalysis.getMeasureDataId()) && dataIdMapping.containsKey(oldAnalysis.getMeasureDataId())) {
+                    newAnalysis.setMeasureDataId(dataIdMapping.get(oldAnalysis.getMeasureDataId()));
+                }
+                fMeasureAnalysisDataService.save(newAnalysis);
+            }
+        }
+
+        // 更新新任务的 sampleKey
+        if (!newSpecimenList.isEmpty()) {
+            newTask.setSampleKey(JSON.toJSONString(newSpecimenList));
+            fMeasureTaskService.updateById(newTask);
         }
     }
 

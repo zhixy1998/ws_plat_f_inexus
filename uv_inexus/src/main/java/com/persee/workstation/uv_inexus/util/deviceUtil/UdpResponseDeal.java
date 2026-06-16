@@ -42,6 +42,8 @@ public class UdpResponseDeal {
 
     private static OperationResultEntity resultEntity;
 
+    private static ChangeParam lastSuccessfulParam = null;
+
     /**
      * 根据命令ID分发解析逻辑
      */
@@ -1015,17 +1017,36 @@ public class UdpResponseDeal {
 
                 // ---------- 一组数据齐了 ----------
                 if (hasWlS && hasDR) {
+                    lastSuccessfulParam = param;
                     break; // Zero 只需要一组
                 }
             }
 
 
 
+            // 3. 修改判断逻辑，使用上一次的数据进行容错
             if (hasWlS || hasDR) {
+                // 本次有部分数据，尝试用上一次的数据补全缺失部分
+                if (lastSuccessfulParam != null) {
+                    if (!hasWlS) {
+                        param.setStep(lastSuccessfulParam.getStep());
+                        param.setS(lastSuccessfulParam.getS());
+                    }
+                    if (!hasDR) {
+                        param.setD(lastSuccessfulParam.getD());
+                        param.setR(lastSuccessfulParam.getR());
+                    }
+                }
                 resultEntity.setMeasureResult(param);
             } else {
-                resultEntity.setErrorCode("0020A022");
-                resultEntity.setIsSuccess(false);
+                // 本次完全没数据，直接使用上一次的完整缓存
+                if (lastSuccessfulParam != null) {
+                    resultEntity.setMeasureResult(lastSuccessfulParam);
+                } else {
+                    // 连上一次的缓存也没有，才报错
+                    resultEntity.setErrorCode("0020A022");
+                    resultEntity.setIsSuccess(false);
+                }
             }
 
             return resultEntity;

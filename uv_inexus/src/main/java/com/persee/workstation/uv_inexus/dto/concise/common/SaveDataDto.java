@@ -17,4 +17,6 @@ public class SaveDataDto {
     private String methodId;
     private String updateBy;
     private Boolean isSave;
+    /** 是否沿用旧任务的标准曲线，true=沿用 */
+    private Boolean reuseCurve;
 }
