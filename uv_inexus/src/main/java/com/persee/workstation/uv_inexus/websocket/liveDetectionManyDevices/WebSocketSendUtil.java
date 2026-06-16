@@ -2,8 +2,10 @@ package com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices;
 
 
 import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.i18n.LocaleContext;
 import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
+import com.persee.workstation.uv_inexus.i18n.OutputTranslator;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.util.I18nMessageUtil;
@@ -15,6 +17,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -29,6 +33,12 @@ public class WebSocketSendUtil {
     @Autowired
     private LocaleProvider localeProvider;
 
+    @Autowired
+    private OutputTranslator outputTranslator;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @Value("/topic/device")
     private String deviceTopic;
 
@@ -42,10 +52,44 @@ public class WebSocketSendUtil {
     public void sendMessage(String deviceSerialNumber, WebSocketResponseVO data) {
         try {
             data.setCurrentTime(LocalDateTime.now());
+            String locale = localeProvider.getSystemLocale();
+            boolean needTranslate = !"zh-CN".equals(locale) && !"zh_CN".equals(locale) && locale != null;
+            if (needTranslate && data.getData() != null) {
+                data.setData(translateWsData(data.getData()));
+            }
+            if (needTranslate && data.getErrorMsg() != null) {
+                data.setErrorMsg(i18nMessageUtil.getMessageWithDefault(data.getErrorMsg(), data.getErrorMsg()));
+            }
             Result<Object> result = Result.ok(data);
+            if (needTranslate) {
+                String msg = result.getMessage();
+                if (msg != null) {
+                    result.setMessage(i18nMessageUtil.getMessageWithDefault(msg, msg));
+                }
+            }
             messagingTemplate.convertAndSend(getDeviceMessageTopic(deviceSerialNumber), result);
         } catch (Exception e) {
             log.error("发送消息失败: {} {}", deviceTopic, data, e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object translateWsData(Object data) {
+        if (data instanceof CharSequence || data instanceof Number || data instanceof Boolean
+                || data instanceof java.time.temporal.Temporal) {
+            return data;
+        }
+        try {
+            Object converted = objectMapper.convertValue(data, Object.class);
+            if (converted instanceof Map) {
+                return outputTranslator.translate((Map<String, Object>) converted);
+            } else if (converted instanceof List) {
+                return outputTranslator.translate((List<Object>) converted);
+            }
+            return data;
+        } catch (Exception e) {
+            log.debug("[i18n] WS data翻译跳过: {}", e.getMessage());
+            return data;
         }
     }
 
@@ -62,6 +106,7 @@ public class WebSocketSendUtil {
         try {
             String locale = localeProvider.getSystemLocale();
             String translatedMessage = i18nMessageUtil.getMessageWithDefault(errorMessage, errorMessage);
+            log.info("[i18n] sendErrorMessage: locale={}, original={}, translated={}", locale, errorMessage, translatedMessage);
 
             WebSocketResponseVO error = new WebSocketResponseVO();
             if (operation != null) {

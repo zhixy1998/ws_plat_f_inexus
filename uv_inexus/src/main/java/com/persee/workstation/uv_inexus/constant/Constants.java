@@ -93,6 +93,11 @@ public class Constants {
     public static final Integer DEVICE_ACTIVE_NO = 0;
     public static final Integer DEVICE_ACTIVE_YES = 1;
 
+    /**
+     * 车间免激活的密码狗的key
+     */
+    public static final String WORKSHOP_PASSWORD_DOG_KEY = "workshop_password_dog_key";
+
 
     public static volatile LocalDateTime startTime=null;
     public static volatile LocalDateTime endTime = null;

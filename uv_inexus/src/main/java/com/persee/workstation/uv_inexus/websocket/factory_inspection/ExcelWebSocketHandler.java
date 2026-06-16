@@ -1332,7 +1332,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
             if (DEFAULT_TASK.getCode().equals(taskId)) {
                 LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode());
+                wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode())
+                        .eq(TaskManagement::getCreateBy, updateBy);
                 TaskManagement one = taskService.getOne(wrapper);
                 taskId = one.getId();
             }

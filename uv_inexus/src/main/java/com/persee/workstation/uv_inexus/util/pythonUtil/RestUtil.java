@@ -180,4 +180,46 @@ public class RestUtil {
         }
 
     }
+
+
+    /**
+     * 获取密码狗信息（车间免激活使用）
+     *
+     */
+
+    public DogInfo getDogInfo() {
+
+        // 创建带有超时设置的 RestTemplate
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+
+        // 设置连接超时（单位：毫秒） // 5秒连接超时
+        factory.setConnectTimeout(3000);
+        // 10秒读取超时
+        factory.setReadTimeout(5000);
+
+
+        RestTemplate restTemplate = new RestTemplate(factory);
+        String url = baseUrl + "dog/find_dog";
+
+        try {
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                throw new RuntimeException("获取密码狗信息失败，状态码：" + response.getStatusCode());
+            }
+
+            String body = response.getBody();
+            DogInfo dogInfo = JSONObject.parseObject(body, DogInfo.class);
+            log.info("密码狗信息：{}", dogInfo);
+
+            return dogInfo;
+        } catch (Exception e) {
+            log.warn("获取密码狗接口失败：{}", e.getMessage());
+
+            DogInfo dogInfo = new DogInfo();
+            dogInfo.setStatusCode(400);
+            dogInfo.setMessage("获取密码狗信息失败");
+
+            return dogInfo;
+        }
+    }
 }
