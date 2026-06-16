@@ -155,6 +155,7 @@ public class LaTeXConverter {
         expr = expr.replaceAll("\\\\frac\\{(.*?)\\}\\{(.*?)\\}", "($1)/($2)");
         // 处理乘法符号: \cdot → *
         expr = expr.replaceAll("\\\\cdot", "*");
+        expr = expr.replaceAll("\\\\times", "*");
         // 处理左括号: \left( → (
         expr = expr.replaceAll("\\\\left\\(", "(");
         // 处理右括号: \right) → )
