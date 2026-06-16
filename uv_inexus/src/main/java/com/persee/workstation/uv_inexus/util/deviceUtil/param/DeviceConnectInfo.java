@@ -152,6 +152,11 @@ public class DeviceConnectInfo {
 
     private String currentMeasureValue = "";
 
+    /**
+     * 多联池时，当前样品池位置
+     */
+    private Integer currentPoolNum;
+
     /** 当前扫描波长配置（前端下发） */
     private ScanWavelengthConfig scanWavelengthConfig;
     // ====== 校零结果管理方法 ======
@@ -254,6 +259,7 @@ public class DeviceConnectInfo {
         copy.createTime = this.createTime;
         copy.messageCount = new AtomicInteger(this.messageCount.get());
         copy.identityKey = this.identityKey; // safe to copy
+        copy.currentPoolNum = this.currentPoolNum;
         return copy;
     }
 

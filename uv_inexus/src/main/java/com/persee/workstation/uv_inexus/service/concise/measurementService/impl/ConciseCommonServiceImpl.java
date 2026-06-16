@@ -35,7 +35,6 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecime
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.GuidePublicUtilService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
@@ -118,9 +117,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;
-
-    @Autowired
-    DeviceManageService deviceManageService;
 
     @Autowired
     GuidePublicUtilService guidePublicUtilService;
@@ -299,16 +295,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
         vo.setSaveState(true);
         return Result.ok(vo);
-    }
-
-    @Override
-    public Result<Integer> queryDeviceStatus(String deviceSerialNumber) {
-        R<Integer> r = deviceManageService.queryDeviceStatus(deviceSerialNumber);
-        if (r.getSuccess()) {
-            return Result.ok(r.getData());
-        } else {
-            return Result.fail(r.getMessage());
-        }
     }
 
     /**
@@ -1775,7 +1761,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     @Override
     public Result<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber) {
 
-        R<DeviceMeasureVO> re = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        R<DeviceMeasureVO> re = deviceInfoService.queryDeviceTypeInfo(deviceSerialNumber);
         if (!re.getSuccess()) {
             return Result.fail(re.getMessage());
         }
@@ -2055,7 +2041,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
         String serialNumber = task.getDeviceSerialNumber();
         if (serialNumber!=null&&!task.getDeviceSerialNumber().equals(deviceSerialNumber)){
-            return Result.fail("0030001F");
+            return Result.fail("00B00004");
         }
         String methodId = task.getMethodKey();
         // 根据测量类型获取对应的测量服务

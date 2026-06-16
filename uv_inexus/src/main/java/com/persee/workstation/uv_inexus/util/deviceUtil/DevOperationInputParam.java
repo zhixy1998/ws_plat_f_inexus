@@ -61,6 +61,9 @@ public class DevOperationInputParam {
     @ApiModelProperty("波长信息")
     private List<String> wavelength;
 
+    @ApiModelProperty("样品池位置")
+    private Integer cellPos;
+
     @ApiModelProperty("单波长")
     private String singleWavelength;
 

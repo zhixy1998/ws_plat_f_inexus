@@ -36,6 +36,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
@@ -586,9 +587,9 @@ public class TimeNewOneWebSocket {
                 return false;
             }
 
-            boolean poolStatus = JSON.parseArray(configPO.getPoolInfo(), SamplePoolStatus.class)
+            boolean poolStatus = configPO.getPoolInfo()
                     .stream()
-                    .anyMatch(SamplePoolStatus::getPoolStatus);
+                    .anyMatch(FSamplePoolStatus::getPoolStatus);
 
             if (poolStatus) {
                 // 设置样品池位置

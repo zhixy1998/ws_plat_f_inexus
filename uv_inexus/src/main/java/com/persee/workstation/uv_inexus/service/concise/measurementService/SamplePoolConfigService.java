@@ -14,6 +14,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolInfoVO;
@@ -32,8 +33,17 @@ public interface SamplePoolConfigService  extends IService<SamplePoolConfigPO> {
     R<FSamplePoolInfoVO> querySamplePoolInfo(String deviceSerialNumber);
 
     List<Integer> getUsefulLocation(String deviceSerialNumber);
+    List<Integer> getAllUsefulLocation(String deviceSerialNumber);
 
-    R<Boolean> setCurrentPool(String deviceSerialNumber, Integer poolNum, String updateBy);
+
 
     R<SamplePoolInfoVO> queryCalibrationSampleInfo(String deviceSerialNumber);
+
+    FSamplePoolStatus getPoolCorrectionData(String deviceSerialNumber, Integer poolNum);
+
+    Boolean clearAllPoolCorrectionData(String deviceSerialNumber);
+
+    String applyPoolCorrection(String measuredValue, String correctionValue, String currentLuminosity);
+
+
 }

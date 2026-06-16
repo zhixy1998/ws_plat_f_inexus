@@ -585,7 +585,7 @@ public class ConciseTimeOneNewWebSocket {
                 return false;
             }
 
-            boolean poolStatus = JSON.parseArray(configPO.getPoolInfo(), FSamplePoolStatus.class)
+            boolean poolStatus = configPO.getPoolInfo()
                     .stream()
                     .anyMatch(FSamplePoolStatus::getPoolStatus);
 

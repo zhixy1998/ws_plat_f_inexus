@@ -10,14 +10,18 @@ package com.persee.workstation.uv_inexus.po.concise.measurementPo;/*
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.persee.workstation.uv_inexus.model.BasePO;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
+
 @EqualsAndHashCode(callSuper = true)
 @Data
-@TableName("t_sample_pool_config")
+@TableName(value = "t_sample_pool_config", autoResultMap = true)
 public class SamplePoolConfigPO extends BasePO {
 
     @ApiModelProperty("设备序列号")
@@ -40,9 +44,13 @@ public class SamplePoolConfigPO extends BasePO {
     @TableField(value = "current_pool_num")
     private Integer currentPoolNum;
 
+//    @ApiModelProperty("样品池信息")
+//    @TableField(value = "pool_info")
+//    private String poolInfo;
+
     @ApiModelProperty("样品池信息")
-    @TableField(value = "pool_info")
-    private String poolInfo;
+    @TableField(value = "pool_info", typeHandler = JacksonTypeHandler .class)
+    private List<FSamplePoolStatus> poolInfo;
 
 
 }

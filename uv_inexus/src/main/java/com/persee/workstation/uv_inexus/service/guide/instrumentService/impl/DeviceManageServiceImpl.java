@@ -16,6 +16,7 @@ import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.component.EhcacheUtil;
 import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.dao.concise.measurementDao.SamplePoolConfigDAO;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.*;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.DeviceTaskDto;
@@ -31,11 +32,14 @@ import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.*;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
@@ -43,6 +47,7 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceIn
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceUsageLogService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
@@ -57,6 +62,7 @@ import com.persee.workstation.uv_inexus.util.pythonUtil.PeakReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
@@ -75,6 +81,7 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -116,6 +123,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
     SamplePoolConfigService samplePoolConfigService;
+
+    @Autowired
+    SamplePoolConfigDAO samplePoolConfigDAO;
 
     @Autowired
     DeviceModelInfoDAO deviceModelInfoDAO;
@@ -166,6 +176,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     private TaskManagementService taskManagementService;
     @Autowired
     private ThreadPoolTaskExecutor measurementTaskExecutor;
+
+    @Autowired
+    private ConciseCommonService conciseCommonService;
+    @Autowired
+    private ExperimentTestService experimentTestService;
     @Override
     public R<DeviceInfoVO> queryDeviceInfo(String deviceSerialNumber, String updateBy) {
 //        log.info("查询仪器信息");
@@ -3614,6 +3629,285 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return Result.ok(initDto);
     }
 
+
+    @Override
+    public R<Boolean> setCurrentPool(String deviceSerialNumber, Integer poolNum, String updateBy) {
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            log.info("未连接仪器");
+            //未连接仪器
+            return R.fail("0000001D");
+        }
+        if (!StringUtils.hasText(updateBy)) {
+            log.info("缺少更新人信息");
+            //请登录后操作
+            return R.fail("00307004");
+        }
+        LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        SamplePoolConfigPO po = samplePoolConfigDAO.selectOne(query);
+        if (po == null) {
+            po = new SamplePoolConfigPO();
+            po.setCreateBy(updateBy);
+            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(deviceSerialNumber);
+            po.setAttachmentType(attachmentInfo.getAttachmentNum());
+            po.setDeviceSerialNumber(deviceSerialNumber);
+            List<FSamplePoolStatus> poolInfo = createFSamplePoolStatuses(attachmentInfo.getSamplePoolNum());
+            po.setPoolInfo(poolInfo);
+        }
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+        SetParam param = new SetParam();
+        param.setCellPos(poolNum);
+        inputParam.setParam(param);
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+
+        if (!operation.getSuccess()) {
+            return R.fail("00B06008");
+        }
+
+        po.setCurrentPoolNum(poolNum);
+        po.setUpdateBy(updateBy);
+        boolean b = samplePoolConfigDAO.updateById(po) > 0;
+        if (b) {
+            return R.ok(true);
+        } else {
+            //更新失败
+            return R.fail("00000048");
+        }
+    }
+
+    private static List<FSamplePoolStatus> createFSamplePoolStatuses(Integer totalPoolNum) {
+        List<FSamplePoolStatus> poolInfo = new ArrayList<>();
+
+        for (int i = 1; i < totalPoolNum + 1; i++) {
+            FSamplePoolStatus status = new FSamplePoolStatus();
+            status.setPoolNum(i);
+            status.setPoolStatus(false);
+            status.setPoolPurpose(DeviceSamplePoolPurpose.MEASURE.getCode());
+            status.setPoolPurposeName(DeviceSamplePoolPurpose.MEASURE.getName());
+            poolInfo.add(status);
+        }
+        return poolInfo;
+    }
+
+    @Override
+    public R<Boolean> samplePoolCalibration(SamplePoolCalibrationDTO dto) {
+
+        /*
+        1,序列号
+        2，获取哪些是可用的样品池
+        3，分别设置位置，测量，最后回到初始位置
+        4，先设置参数，交由前端。
+         */
+
+        String deviceSerialNumber = dto.getDeviceSerialNumber();
+        String taskId = dto.getTaskId();
+        String updateBy = dto.getUpdateBy();
+        String measureType = dto.getMeasureType();
+        Boolean isConcise = dto.getIsConcise();
+        List<String> waveLengths = dto.getWaveLengths();
+        String luminosity = dto.getLuminosity();
+
+        if (!StringUtils.hasText(luminosity)) {
+            luminosity = WaveLengthEnum.abs.getCode();
+        }
+
+        if (deviceSerialNumber == null || deviceSerialNumber.isEmpty()) {
+            log.warn("请先连接仪器！");
+            return R.fail("00201001");
+        }
+
+        if (!StringUtils.hasText(taskId)) {
+            log.warn("缺少任务或方法！");
+            return R.fail("00101006");
+        }
+
+        if (waveLengths == null || waveLengths.isEmpty()) {
+            log.warn("缺少波长！");
+            return R.fail("00105003");
+        }
+
+        if (luminosity.equals(WaveLengthEnum.er.getCode()) || luminosity.equals(WaveLengthEnum.es.getCode())) {
+            log.warn("能量模式不支持校正！");
+            return R.fail("00250009");
+        }
+
+        infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), WebSocketOperationEnum.Calibration.getOperation(), Constants.DEVICE_STATUS_CALIBRATION);
+
+        Result result;
+        if (isConcise) {
+             result = conciseCommonService.setUpParametersPort(taskId, deviceSerialNumber, measureType);
+        } else {
+             result = experimentTestService.setUpParametersPort(taskId,deviceSerialNumber,measureType);
+        }
+        if (!result.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
+            log.warn("初始化参数设置失败：device={}", deviceSerialNumber);
+            infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
+            return R.fail(result.getMessage());
+        }
+
+        List<Integer> usefulLocation = samplePoolConfigService.getAllUsefulLocation(deviceSerialNumber);
+        R<FSamplePoolInfoVO> poolInfo = samplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+
+        if (usefulLocation == null || usefulLocation.isEmpty() || !poolInfo.getSuccess()) {
+            log.warn("无可用位置！");
+            infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
+            return R.fail("00100017");
+        }
+
+        FSamplePoolInfoVO poolInfoData = poolInfo.getData();
+        List<FSamplePoolStatus> poolStatusList = poolInfoData.getPoolStatusList();
+
+        // 校验：必须配置校零用途的样品池
+        boolean hasZeroPurpose = poolStatusList.stream()
+                .anyMatch(status -> DeviceSamplePoolPurpose.ZERO.getCode().equals(status.getPoolPurpose()));
+        if (!hasZeroPurpose) {
+            log.warn("未配置校零用途的样品池！device={}", deviceSerialNumber);
+            infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
+            return R.fail("0025000A");
+        }
+
+        // 校验：必须有可用且校零用途的样品池
+        boolean hasAvailableZero = poolStatusList.stream()
+                .anyMatch(status -> Boolean.TRUE.equals(status.getPoolStatus())
+                        && DeviceSamplePoolPurpose.ZERO.getCode().equals(status.getPoolPurpose()));
+        if (!hasAvailableZero) {
+            log.warn("校零样品池不可用！device={}", deviceSerialNumber);
+            infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
+            return R.fail("0025000B");
+        }
+
+        Map<Integer, FSamplePoolStatus> poolStatusMap = new HashMap<>();
+        poolStatusList.forEach(status -> poolStatusMap.put(status.getPoolNum(), status));
+
+
+        // 找到可用且校零用途的样品池位置
+        Integer zeroLocation = null;
+        for (FSamplePoolStatus status : poolStatusList) {
+            if (DeviceSamplePoolPurpose.ZERO.getCode().equals(status.getPoolPurpose())
+                    && Boolean.TRUE.equals(status.getPoolStatus())) {
+                zeroLocation = status.getPoolNum();
+                break;
+            }
+        }
+
+        // 构建完整测量列表：校零池 + 各测量池
+        List<Integer> allLocations = new ArrayList<>();
+        allLocations.add(zeroLocation);
+        allLocations.addAll(usefulLocation);
+
+        String finalLuminosity = luminosity;
+        Integer finalZeroLocation = zeroLocation;
+
+        new Thread(() -> {
+
+            // 收集所有位置测量结果：location → List<ChangeParam>
+            Map<Integer, List<ChangeParam>> allMeasurements = new LinkedHashMap<>();
+            DevOperationInputParam inputParam = new DevOperationInputParam();
+            for (Integer location : usefulLocation) {
+                inputParam.setOperationType(OperationTypeEnums.SamplePoolCalibration.getType());
+                inputParam.setDeviceSerialNumber(deviceSerialNumber);
+                inputParam.setCellPos(location);
+                inputParam.setWavelength(waveLengths);
+
+                R<OperationResultEntity> measure = operationUtilService.operation(inputParam);
+                if (!measure.getSuccess()) {
+                    log.warn("测量失败：device={}", deviceSerialNumber);
+                    infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
+                    return;
+                }
+
+                OperationResultEntity data = measure.getData();
+                List<ChangeParam> originalMeasureResult = data.getOriginalMeasureResult();
+                allMeasurements.put(location, originalMeasureResult);
+            }
+            inputParam = new DevOperationInputParam();
+            inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+            inputParam.setDeviceSerialNumber(deviceSerialNumber);
+            SetParam param = new SetParam();
+            param.setCellPos(usefulLocation.get(0));
+            inputParam.setParam(param);
+            operationUtilService.operation(inputParam);
+
+            // 获取校零池测量结果，构建 wavelength → value 映射
+            List<ChangeParam> zeroMeasurements = allMeasurements.get(finalZeroLocation);
+            if (zeroMeasurements == null || zeroMeasurements.isEmpty()) {
+                log.warn("校零池测量数据为空！device={}", deviceSerialNumber);
+                infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
+                return;
+            }
+
+            Map<String, BigDecimal> zeroValueMap = new LinkedHashMap<>();
+            for (ChangeParam cp : zeroMeasurements) {
+                if (StringUtils.hasText(cp.getWl()) && StringUtils.hasText(cp.getValue())) {
+                    zeroValueMap.put(cp.getWl(), new BigDecimal(cp.getValue()));
+                }
+            }
+
+            boolean isAbs = WaveLengthEnum.abs.getCode().equals(finalLuminosity);
+
+            // 为每个测量池计算校正值
+            for (Integer location : usefulLocation) {
+                List<ChangeParam> measureResults = allMeasurements.get(location);
+                if (measureResults == null) {
+                    continue;
+                }
+
+                FSamplePoolStatus status = poolStatusMap.get(location);
+                if (status == null) {
+                    continue;
+                }
+
+                Map<String, String> correctionMap = new LinkedHashMap<>();
+                for (ChangeParam cp : measureResults) {
+                    String wl = cp.getWl();
+                    if (!StringUtils.hasText(wl) || !StringUtils.hasText(cp.getValue())) {
+                        continue;
+                    }
+
+                    BigDecimal zeroValue = zeroValueMap.get(wl);
+                    if (zeroValue == null) {
+                        continue;
+                    }
+
+                    BigDecimal sampleValue = new BigDecimal(cp.getValue());
+                    BigDecimal correction;
+                    if (isAbs) {
+                        // 吸光度模式：校正值 = 样品值 - 校零值
+                        correction = sampleValue.subtract(zeroValue);
+                    } else {
+                        // T% 模式：校正值 = 样品值 / 校零值（比值）
+                        if (zeroValue.compareTo(BigDecimal.ZERO) == 0) {
+                            log.warn("校零值为0，无法计算T%比值：wl={}, location={}", wl, location);
+                            continue;
+                        }
+                        correction = sampleValue.divide(zeroValue, 10, BigDecimal.ROUND_HALF_UP);
+                    }
+                    correctionMap.put(wl, correction.stripTrailingZeros().toPlainString());
+                }
+                status.setPoolData(correctionMap);
+                status.setLuminosity(finalLuminosity);
+            }
+
+            // 将校正数据持久化到数据库
+            LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+            query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+            SamplePoolConfigPO po = samplePoolConfigService.getOne(query);
+            if (po != null) {
+                po.setPoolInfo(poolStatusList);
+                samplePoolConfigService.updateById(po);
+                log.info("样品池校正数据已保存：device={}", deviceSerialNumber);
+            }
+            infoService.updateDeviceCurrentStatus(dto.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
+
+
+        }).start();
+
+        return R.ok();
+    }
 
 
     /**

@@ -334,6 +334,10 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
         DeviceInfoPO info = getInfo(deviceSerialNumber);
         String deviceId = info.getDeviceId();
+
+        if(!StringUtils.hasText(deviceId)) {
+            deviceId = deviceManager.getDeviceId(deviceSerialNumber);
+        }
         deviceManager.setDeviceIdleStatus(deviceId, true);
         deviceManager.setDevCurrentStatus(deviceId, Constants.DEVICE_STATUS_IDLE);
     }
@@ -351,7 +355,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         if (i != null) {
             return i;
         }
-        return 0;
+        return Constants.DEVICE_ACTIVE_NO;
     }
 
     @Override
@@ -553,6 +557,8 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         return ans;
 
     }
+
+
 
 
 
