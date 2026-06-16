@@ -101,6 +101,7 @@ public class UdpResponseDeal {
             case "GetAccessoryType":
                 return parseType(responses);
             case "Measure":
+            case "T800TimeMeasure":
                 return measure(responses);
             case "LiveMeasure":
                 return liveMeasure(responses);
