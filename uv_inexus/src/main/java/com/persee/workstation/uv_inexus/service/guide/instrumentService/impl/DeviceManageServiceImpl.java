@@ -2843,7 +2843,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 SetParam closeParam = new SetParam();
 
                 closeParam.setMlLamp(0);
-                closeParam.setLampPos(0);
+                closeParam.setLampPos(Integer.valueOf(EnergyLampEnums.Tungsten.getIdentity()));
 
                 param.setParam(closeParam);
                 R<OperationResultEntity> operation = operationUtilService.operation(param);
@@ -3905,6 +3905,104 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
 
         }).start();
+
+        return R.ok();
+    }
+
+    @Override
+    public R<Boolean> checkMercuryLamp(String deviceSerialNumber) {
+
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            return R.ok(false);
+        }
+        R<DeviceMeasureVO> r = infoService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!r.getSuccess()) {
+            return R.ok(false);
+        }
+        DeviceMeasureVO vo = r.getData();
+
+        List<DeviceConfParam> lampType = vo.getLampType();
+        if (lampType.isEmpty()) {
+            return R.ok(false);
+        }
+
+        boolean b = lampType.stream().anyMatch(param -> param.getParamValue().equals(EnergyLampEnums.Mercury.getIdentity()));
+        if (!b) {
+            return R.ok(false);
+        }
+
+        return R.ok(true);
+    }
+
+
+    @Override
+    public R<Boolean> switchHgLamp(String deviceSerialNumber, Integer status) {
+
+        R<DeviceMeasureVO> r = infoService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!r.getSuccess()) {
+            return R.fail(r.getMessage());
+        }
+        DeviceMeasureVO vo = r.getData();
+
+        List<DeviceConfParam> lampType = vo.getLampType();
+        if (lampType.isEmpty()) {
+            return R.fail("未找到汞灯");
+        }
+
+        boolean b = lampType.stream().anyMatch(param -> param.getParamValue().equals(EnergyLampEnums.Mercury.getIdentity()));
+        if (!b) {
+            return R.fail("未找到汞灯");
+        }
+
+        if (status == 1) {
+            //开汞灯加汞灯定位
+            DevOperationInputParam param = new DevOperationInputParam();
+            param.setOperationType(OperationTypeEnums.SetParam.getType());
+            param.setDeviceSerialNumber(deviceSerialNumber);
+
+            SetParam setParam = new SetParam();
+
+
+            setParam.setMlLamp(1);
+            setParam.setLampPos(Integer.valueOf(EnergyLampEnums.Mercury.getIdentity()));
+
+            param.setParam(setParam);
+            R<OperationResultEntity> operation = operationUtilService.operation(param);
+            if (!operation.getSuccess()) {
+                log.error("设置参数失败{}", operation.getMessage());
+                return R.fail(operation.getMessage());
+            }
+
+
+            param.setOperationType(OperationTypeEnums.MercuryLocate.getType());
+            operation = operationUtilService.operation(param);
+            if (!operation.getSuccess()) {
+                log.error(" MercuryLocate失败{}", operation.getMessage());
+                return R.fail(operation.getMessage());
+            }
+
+
+        } else {
+            //关汞灯加移动到钨灯位置
+            DevOperationInputParam param = new DevOperationInputParam();
+            param.setOperationType(OperationTypeEnums.SetParam.getType());
+            param.setDeviceSerialNumber(deviceSerialNumber);
+
+            SetParam setParam = new SetParam();
+
+
+            setParam.setMlLamp(0);
+            setParam.setLampPos(Integer.valueOf(EnergyLampEnums.Tungsten.getIdentity()));
+
+            param.setParam(setParam);
+            R<OperationResultEntity> operation = operationUtilService.operation(param);
+            if (!operation.getSuccess()) {
+                log.error("关闭汞灯失败{}", operation.getMessage());
+                return R.fail(operation.getMessage());
+            }
+
+        }
+
 
         return R.ok();
     }

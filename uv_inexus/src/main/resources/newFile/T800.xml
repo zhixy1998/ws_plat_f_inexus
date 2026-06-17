@@ -188,7 +188,7 @@
     <ProtocolItem>
         <ID>GotoMLamp</ID>
         <Describe>汞灯定位</Describe>
-        <Timeout>20000</Timeout>
+        <Timeout>40000</Timeout>
         <ACK>Y</ACK>
         <InputString>
             <string/>

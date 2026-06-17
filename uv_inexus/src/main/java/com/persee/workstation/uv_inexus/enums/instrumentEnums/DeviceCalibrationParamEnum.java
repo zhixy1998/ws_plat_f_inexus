@@ -31,6 +31,8 @@ public enum DeviceCalibrationParamEnum {
     RealWavelength("realLength", "实际波长"),
     Gain("gain", "增益"),
     Lamp("lamp", "灯类型"),
+    Speed("speed", "扫描速度"),
+    Interval("interval", "间隔"),
     IsSendToDevice("isSendToDevice", "是否已经发送给设备"),
     Identifier("identifier", "物质标识"),
 
