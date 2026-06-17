@@ -622,6 +622,30 @@ public class DeviceController {
         }
     }
 
+    //检查是否有汞灯
+    @GetMapping("/checkMercuryLamp")
+    @ApiOperation("检查是否有汞灯")
+    public Result<Boolean> checkMercuryLamp(@RequestParam(required = false) String deviceSerialNumber) {
+        R<Boolean> r = deviceManageService.checkMercuryLamp(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    //汞灯开关
+    @GetMapping("/setMercuryLampStatus")
+    @ApiOperation("汞灯开关，1-开汞灯，2-关汞灯")
+    public Result<Boolean> setMercuryLampStatus(@RequestParam String deviceSerialNumber, @RequestParam Integer status) {
+        R<Boolean> r = deviceManageService.switchHgLamp(deviceSerialNumber, status);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
     @GetMapping("/clearAllPoolCorrectionData")
     @ApiOperation("清除设备所有样品池校正数据")
     public Result<Boolean> clearAllPoolCorrectionData(@RequestParam String deviceSerialNumber) {
