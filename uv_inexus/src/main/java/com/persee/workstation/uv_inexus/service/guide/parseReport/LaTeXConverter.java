@@ -9,14 +9,19 @@
 
 package com.persee.workstation.uv_inexus.service.guide.parseReport;
 
-import com.persee.workstation.uv_inexus.model.R;
-import org.mariuszgromada.math.mxparser.Expression;
-import org.springframework.stereotype.Service;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import org.mariuszgromada.math.mxparser.Expression;
+import org.springframework.stereotype.Service;
+
+import com.persee.workstation.uv_inexus.model.R;
 
 @Service("LaTeXConverter")
 public class LaTeXConverter {
@@ -160,6 +165,41 @@ public class LaTeXConverter {
         expr = expr.replaceAll("\\\\left\\(", "(");
         // 处理右括号: \right) → )
         expr = expr.replaceAll("\\\\right\\)", ")");
+        // 处理平方根: \sqrt{x} → sqrt(x)
+        expr = expr.replaceAll("\\\\sqrt\\{(.*?)\\}", "sqrt($1)");
+        // 处理上标: x^{n} → x^n
+        expr = expr.replaceAll("(\\w)\\^\\{(.*?)\\}", "$1^$2");
+        // 处理下标: x_{n} → x_n
+        expr = expr.replaceAll("(\\w)\\_\\{(.*?)\\}", "$1_$2");
+        // 处理希腊字母
+        expr = expr.replaceAll("\\\\α", "alpha");
+        expr = expr.replaceAll("\\\\β", "beta");
+        expr = expr.replaceAll("\\\\θ", "theta");
+        expr = expr.replaceAll("π", "pi");
+        expr = expr.replaceAll("\\\\rho", "rho");
+        expr = expr.replaceAll("\\\\omega", "omega");
+        // 处理数学函数：\log x → log(x), \ln x → ln(x)
+        // 优先处理 \log_{n}（带底数的对数，如 \log_{10}x → log10(x)）
+        expr = expr.replaceAll("\\\\log\\_\\{(\\d+)\\}(\\w)", "log$1($2)");
+        expr = expr.replaceAll("\\\\log\\_\\{(\\d+)\\}", "log$1");
+        // 处理 \log_n（单字符底数，如 \log_5x → log5(x)）
+        expr = expr.replaceAll("\\\\log\\_(\\w)(\\w)", "log$1($2)");
+        expr = expr.replaceAll("\\\\log\\_(\\w)", "log$1");
+        // 匹配 \log{内容} 或 \log(内容) 或 \log 后面直接跟内容
+        expr = expr.replaceAll("\\\\log\\{(.*?)\\}", "log($1)");
+        expr = expr.replaceAll("\\\\log\\((.*?)\\)", "log($1)");
+        expr = expr.replaceAll("\\\\log(\\d+)", "log($1)");
+        expr = expr.replaceAll("\\\\log(\\w)", "log($1)");
+        // 处理 ln
+        expr = expr.replaceAll("\\\\ln\\{(.*?)\\}", "ln($1)");
+        expr = expr.replaceAll("\\\\ln\\((.*?)\\)", "ln($1)");
+        expr = expr.replaceAll("\\\\ln(\\d+)", "ln($1)");
+        expr = expr.replaceAll("\\\\ln(\\w)", "ln($1)");
+        // 处理积分符号: \int_{a}^{b} → int_a^b, \int → int
+        expr = expr.replaceAll("\\\\int\\_\\{(.*?)\\}\\^\\{(.*?)\\}", "int_$1^$2");
+        expr = expr.replaceAll("\\\\int", "int");
+        // 处理微分符号: \mathrm{d} → d
+        expr = expr.replaceAll("\\\\mathrm\\{d\\}", "d");
         // 清理剩余的反斜杠
         expr = expr.replaceAll("\\\\", "");
         expr = expr.replace("E", "1");
