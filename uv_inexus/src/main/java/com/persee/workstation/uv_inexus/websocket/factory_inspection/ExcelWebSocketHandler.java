@@ -44,7 +44,6 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.MessageUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
-import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import lombok.Data;
@@ -2868,8 +2867,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             log.error("无效的灯状态");
         }
-        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
-        DeviceMeasureVO deviceMeasureVO = deviceMeasureVOR.getData();
         boolean b = false;
         WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
         //如果是第一次进来的话
@@ -2990,7 +2987,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                 // 【新增】参数校验
                 validateSpectrumScanParams(
-                        deviceMeasureVO,
                         deviceTypeInfoPO,
                         startWavelength,
                         endWavelength,
@@ -3001,7 +2997,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         deviceSerialNumber
                 );
 
-                com.alibaba.fastjson.JSONObject speedJson = convertScanSpeedToJsonObject(deviceMeasureVO.getScanSpeed());
+                com.alibaba.fastjson.JSONObject speedJson = deviceTypeInfoPO.getScanSpeed();
                 if (speedJson != null && !speedJson.isEmpty()) {
                     // 遍历 JSON 对象，找到值为 "medium" 的 key
                     for (String key : speedJson.keySet()) {
@@ -3499,8 +3495,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * @param luminosityMode  光度模式
      * @throws BusinessException 参数校验失败时抛出
      */
-    private void validateSpectrumScanParams(DeviceMeasureVO deviceMeasureVO,
-                                            DeviceTypeInfoPO deviceTypeInfo,
+    private void validateSpectrumScanParams(DeviceTypeInfoPO deviceTypeInfo,
                                             Double startWavelength,
                                             Double endWavelength,
                                             Double scanInterval,
@@ -3564,16 +3559,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
         }
 
-        com.alibaba.fastjson.JSONObject speedJson = convertScanSpeedToJsonObject(deviceMeasureVO.getScanSpeed());
+
         // 4. 校验扫描速度
-        if (scanSpeed != null && speedJson != null && !speedJson.isEmpty()) {
+        if (scanSpeed != null && deviceTypeInfo.getScanSpeed() != null && !deviceTypeInfo.getScanSpeed().isEmpty()) {
             String speedCode = ScanSpeedEnum.getCodeByName(scanSpeed);
             if (speedCode == null) {
                 errorMessages.add(String.format("扫描速度 %s 无法转换为设备识别码", scanSpeed));
             } else {
                 // 应该判断 value 是否包含 speedCode，而不是判断 key
                 boolean speedSupported = false;
-                for (Object value : speedJson.values()) {
+                for (Object value : deviceTypeInfo.getScanSpeed().values()) {
                     if (value != null && speedCode.equals(value.toString())) {
                         speedSupported = true;
                         break;
@@ -3582,7 +3577,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                 if (!speedSupported) {
                     errorMessages.add(String.format("扫描速度 %s(code:%s) 不在设备支持范围内: %s",
-                            scanSpeed, speedCode, speedJson));
+                            scanSpeed, speedCode, deviceTypeInfo.getScanSpeed()));
                 }
             }
 
@@ -3615,33 +3610,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             log.info("设备光谱扫描参数校验通过: 波长[{}-{}]nm, 间隔={}nm, 增益={}, 速度={}, 光度模式={}",
                     startWavelength, endWavelength, scanInterval, gain, scanSpeed, luminosityMode);
         }
-    }
-
-
-    /**
-     * 将List<DeviceConfParam>类型的scanSpeed转换为JSONObject格式
-     * 用于兼容旧的校验逻辑
-     *
-     * @param scanSpeedList DeviceMeasureVO中的scanSpeed字段，类型为List<DeviceConfParam>
-     * @return JSONObject格式的扫描速度数据，key为paramName，value为paramValue
-     */
-    private com.alibaba.fastjson.JSONObject convertScanSpeedToJsonObject(List<com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam> scanSpeedList) {
-        if (scanSpeedList == null || scanSpeedList.isEmpty()) {
-            return null;
-        }
-
-        com.alibaba.fastjson.JSONObject jsonObject = new com.alibaba.fastjson.JSONObject();
-        for (int i = 0; i < scanSpeedList.size(); i++) {
-            com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam param = scanSpeedList.get(i);
-            if (param != null) {
-                // 使用索引作为key，paramValue作为value存储
-                // 或者使用paramName作为key，paramValue作为value
-                if (param.getParamName() != null && param.getParamValue() != null) {
-                    jsonObject.put(param.getParamValue(), param.getParamName());
-                }
-            }
-        }
-        return jsonObject;
     }
 
 

@@ -1285,7 +1285,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         List<DataNameValue> ans = new ArrayList<>();
         if (DeviceCalibrationParamEnum.ScanSpeed.getType().equals(param)) {
 
-            JSONObject scanSpeed = (JSONObject) modelInfoPO.getScanSpeed();
+            JSONObject scanSpeed = po.getScanSpeed();
             Object defaultValue = MappingParamEnum.SCAN_SPEED.getDefaultValue();
             String jsonString = JSONObject.toJSONString(defaultValue);
             List<DeviceConfParam> options = JSON.parseArray(jsonString, DeviceConfParam.class);
