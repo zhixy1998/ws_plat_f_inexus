@@ -1587,7 +1587,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         result.setLinearSegment(s);
                     }
 
-                    result.setLinearSegment(s);
                     continue;
                 }
 
