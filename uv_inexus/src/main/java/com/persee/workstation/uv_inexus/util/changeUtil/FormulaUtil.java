@@ -179,32 +179,32 @@ public class FormulaUtil {
     public Double calculateStep(double wl, String deviceSerialNumber) {
         Double coefficient = 50.0;
         coefficient = infoService.queryCoefficient(deviceSerialNumber);
-        try {
-            List<LinearSegment> linearSegment = getLinearSegment(deviceSerialNumber);
-
-            if (CollectionUtils.isNotEmpty(linearSegment)) {
-                for (LinearSegment segment : linearSegment) {
-                    if (segment.containsWl(wl)) {
-                        return roundToOneDecimal((wl * coefficient - segment.getB()) / segment.getK());
-                    }
-                }
-                // 如果不在任何线段范围内，则判断是小于最小值还是大于最大值
-                LinearSegment firstSegment = linearSegment.get(0);
-                LinearSegment lastSegment = linearSegment.get(linearSegment.size() - 1);
-
-                // 如果小于最小线段的起始点，则使用最小线段计算
-                if (wl*coefficient < firstSegment.getMinTheoryStep()) {
-                    return roundToOneDecimal((wl * coefficient - firstSegment.getB()) / firstSegment.getK());
-                }
-
-                // 如果大于最大线段的结束点，则使用最大线段计算
-                if (wl*coefficient > lastSegment.getMaxActualStep()) {
-                    return roundToOneDecimal((wl * coefficient - lastSegment.getB()) / lastSegment.getK());
-                }
-            }
-        } catch (Exception e) {
-            return wl * coefficient;
-        }
+//        try {
+//            List<LinearSegment> linearSegment = getLinearSegment(deviceSerialNumber);
+//
+//            if (CollectionUtils.isNotEmpty(linearSegment)) {
+//                for (LinearSegment segment : linearSegment) {
+//                    if (segment.containsWl(wl)) {
+//                        return roundToOneDecimal((wl * coefficient - segment.getB()) / segment.getK());
+//                    }
+//                }
+//                // 如果不在任何线段范围内，则判断是小于最小值还是大于最大值
+//                LinearSegment firstSegment = linearSegment.get(0);
+//                LinearSegment lastSegment = linearSegment.get(linearSegment.size() - 1);
+//
+//                // 如果小于最小线段的起始点，则使用最小线段计算
+//                if (wl*coefficient < firstSegment.getMinTheoryStep()) {
+//                    return roundToOneDecimal((wl * coefficient - firstSegment.getB()) / firstSegment.getK());
+//                }
+//
+//                // 如果大于最大线段的结束点，则使用最大线段计算
+//                if (wl*coefficient > lastSegment.getMaxActualStep()) {
+//                    return roundToOneDecimal((wl * coefficient - lastSegment.getB()) / lastSegment.getK());
+//                }
+//            }
+//        } catch (Exception e) {
+//            return wl * coefficient;
+//        }
         return wl * coefficient;
     }
 

@@ -20,6 +20,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceAutoInjectorPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InjectionTrayParamPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
@@ -54,6 +55,9 @@ public class DeviceController {
 
     @Autowired
     private DeviceUsageLogService deviceUsageLogService;
+
+    @Autowired
+    SamplePoolConfigService samplePoolConfigService;
 
     @GetMapping("/stop")
     @ApiOperation("新驱动-停止扫描")
@@ -491,6 +495,8 @@ public class DeviceController {
 
     }
 
+
+
     //    @PostMapping("/calibration")
 //    @ApiOperation("仪器校准")
 //    public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto){
@@ -601,6 +607,53 @@ public class DeviceController {
             return Result.ok(r.getData());
         } else {
             return Result.fail(r.getMessage());
+        }
+    }
+
+    //样品池校正
+    @PostMapping("/samplePoolCalibration")
+    @ApiOperation("样品池校正")
+    public Result<Boolean> samplePoolCalibration(@RequestBody SamplePoolCalibrationDTO dto) {
+        R<Boolean> r = deviceManageService.samplePoolCalibration(dto);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    //检查是否有汞灯
+    @GetMapping("/checkMercuryLamp")
+    @ApiOperation("检查是否有汞灯")
+    public Result<Boolean> checkMercuryLamp(@RequestParam(required = false) String deviceSerialNumber) {
+        R<Boolean> r = deviceManageService.checkMercuryLamp(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    //汞灯开关
+    @GetMapping("/setMercuryLampStatus")
+    @ApiOperation("汞灯开关，1-开汞灯，2-关汞灯")
+    public Result<Boolean> setMercuryLampStatus(@RequestParam String deviceSerialNumber, @RequestParam Integer status) {
+        R<Boolean> r = deviceManageService.switchHgLamp(deviceSerialNumber, status);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @GetMapping("/clearAllPoolCorrectionData")
+    @ApiOperation("清除设备所有样品池校正数据")
+    public Result<Boolean> clearAllPoolCorrectionData(@RequestParam String deviceSerialNumber) {
+        Boolean result = samplePoolConfigService.clearAllPoolCorrectionData(deviceSerialNumber);
+        if (result) {
+            return Result.ok(true);
+        } else {
+            return Result.fail("0025000C");
         }
     }
 

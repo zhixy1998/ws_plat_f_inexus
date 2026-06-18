@@ -36,6 +36,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
@@ -708,8 +709,8 @@ public class SpectrumOneNewWebSocket {
 
         boolean poolStatus = false;
         if (configPO.getIsAutoChangePool()) {
-            List<SamplePoolStatus> poolStatuses = com.alibaba.fastjson.JSON.parseArray(configPO.getPoolInfo(), SamplePoolStatus.class);
-            for (SamplePoolStatus status : poolStatuses) {
+            List<FSamplePoolStatus> poolStatuses = configPO.getPoolInfo();
+            for (FSamplePoolStatus status : poolStatuses) {
                 if (status.getPoolStatus()) {
                     poolStatus = true;
                     break;

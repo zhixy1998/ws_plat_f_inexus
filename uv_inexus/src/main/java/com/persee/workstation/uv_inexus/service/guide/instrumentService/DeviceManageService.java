@@ -173,5 +173,15 @@ public interface DeviceManageService {
 
     Result<DeviceTaskDto> createTaskAfterInstrumentInit(String deviceSerialNumber, String updateBy, String templateCode) throws BusinessException;
 
+    R<Boolean> setCurrentPool(String deviceSerialNumber, Integer poolNum, String updateBy);
+
+    //样品池校正
+    R<Boolean> samplePoolCalibration(SamplePoolCalibrationDTO dto);
+
+    R<Boolean> checkMercuryLamp(String deviceSerialNumber);
+
+    //开关汞灯
+    R<Boolean> switchHgLamp(String deviceSerialNumber, Integer status);
+
 
 }

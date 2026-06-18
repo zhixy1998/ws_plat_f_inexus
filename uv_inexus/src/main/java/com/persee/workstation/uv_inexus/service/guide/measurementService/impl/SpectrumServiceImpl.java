@@ -174,9 +174,6 @@ public class SpectrumServiceImpl implements SpectrumService {
     private ConcisePublicUtilService concisePublicUtilService;
 
     @Autowired
-    private DeviceManageService deviceManageService;
-
-    @Autowired
     private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
 
     @Value("1")
@@ -344,7 +341,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             }
         }
 
-        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(methodParam.getDeviceSerialNumber());
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceInfoService.queryDeviceTypeInfo(methodParam.getDeviceSerialNumber());
         if (!deviceMeasureVOR.getSuccess()) {
             return Result.fail(deviceMeasureVOR.getMessage());
         }
@@ -754,7 +751,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         // 6. 扫描速度
         if (!spectrumParam.getScanSpeed().equals(ScanSpeedEnum.EXTREME_FAST.getCode())) {
-            R<DeviceMeasureVO> deviceTypeInfo = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+            R<DeviceMeasureVO> deviceTypeInfo = deviceInfoService.queryDeviceTypeInfo(deviceSerialNumber);
             String ScanSpeed = deviceTypeInfo.getData().getScanSpeed().stream()
                     .filter(obj -> obj.getParamName().equals(spectrumParam.getScanSpeed()))
                     .map(DeviceConfParam::getParamValue)
@@ -4797,7 +4794,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         double maxLampWaveLength = Double.parseDouble(MappingParamEnum.MAX_LAMP_WAVELENGTH.getDefaultValue().toString());
 
         if (StringUtils.hasText(deviceSerialNumber)) {
-            R<DeviceMeasureVO> typeInfo = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+            R<DeviceMeasureVO> typeInfo = deviceInfoService.queryDeviceTypeInfo(deviceSerialNumber);
             if (typeInfo.getSuccess()) {
                 DeviceMeasureVO vo = typeInfo.getData();
                 if (vo != null) {
@@ -5107,7 +5104,7 @@ public class SpectrumServiceImpl implements SpectrumService {
     private R IssueCheckParam(SpectrumParameter param, String deviceSerialNumber) {
         Boolean result = true;
         List<String> errorMessages = new ArrayList<>();
-        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        R<DeviceMeasureVO> deviceMeasureVOR = deviceInfoService.queryDeviceTypeInfo(deviceSerialNumber);
         if (!deviceMeasureVOR.getSuccess()) {
             return R.fail(deviceMeasureVOR.getMessage());
         }

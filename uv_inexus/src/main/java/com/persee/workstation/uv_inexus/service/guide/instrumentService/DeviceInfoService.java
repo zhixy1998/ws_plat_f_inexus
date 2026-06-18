@@ -72,4 +72,6 @@ public interface DeviceInfoService {
      */
     String queryDeviceTypeBySerialNumber(String deviceSerialNumber);
 
+
+
 }

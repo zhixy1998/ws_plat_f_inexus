@@ -475,7 +475,7 @@ public class ConciseTimeNewWebSocket {
             boolean poolStatus = false;
             Integer maxPoolNum = 0;
             if (config.getPoolInfo() != null && !config.getPoolInfo().isEmpty()) {
-                List<FSamplePoolStatus> poolStatuses = JSON.parseArray(config.getPoolInfo(), FSamplePoolStatus.class);
+                List<FSamplePoolStatus> poolStatuses = config.getPoolInfo();
                 for (FSamplePoolStatus status : poolStatuses) {
                     if (status.getPoolStatus()) {
                         poolStatus = true;

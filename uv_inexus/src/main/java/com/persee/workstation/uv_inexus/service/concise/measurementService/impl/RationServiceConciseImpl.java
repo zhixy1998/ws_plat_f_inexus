@@ -45,7 +45,6 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecime
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -145,9 +144,6 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     @Autowired
     private DevOperationUtilService operationUtilService;
-
-    @Autowired
-    private DeviceManageService deviceManageService;
 
     @Autowired
     private com.persee.workstation.uv_inexus.util.I18nExcelHelper i18nExcelHelper;
@@ -4329,6 +4325,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         int digit = Constants.DEFAULT_DECIMAL_NUM;
         SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
         int rSquareDigits = businessParamVO.getRSquareDigits();
+        Integer kDigits = businessParamVO.getKDigits();
 
         R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(taskId);
         if (attachmentR.getSuccess()) {
@@ -4374,6 +4371,31 @@ public class RationServiceConciseImpl implements RationConciseService {
                 if (StringUtils.hasText(task.getFittingParam()) && !task.getFittingParam().equals("{}") && !task.getFittingParam().equals("null")){
                     FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
 
+                    List<Double> coefficients = fittingParam.getCoefficients();
+                    List<Double> roundCoefficient = new ArrayList<>();
+                    if (kDigits != null) {
+                        for (Double coefficient : coefficients) {
+                            Double v = DataCountUtil.formatValue(kDigits, coefficient);
+                            String s = DataCountUtil.addZero(v, kDigits);
+                            roundCoefficient.add(Double.valueOf(s));
+                        }
+                        fittingParam.setRoundCoefficient(roundCoefficient);
+
+                        String equation = fittingParam.getEquation();
+
+                        if (RationCurveParamEnums.typeAbs.getIdentity().equals(parameter.getEquationType())) {
+                            equation = rebuildFormula(roundCoefficient, kDigits, fittingParam.getDegree(), "Abs", "C");
+                        } else {
+                            equation = rebuildFormula(roundCoefficient, kDigits, fittingParam.getDegree(), "C", "Abs");
+                        }
+
+                        fittingParam.setEquation(equation);
+
+                        task.setFittingParam(JSON.toJSONString(fittingParam));
+                        fMeasureTaskService.updateById(task);
+
+                        changeUnknowSampleDigit(taskId, digit);
+                    }
 
                     fittingParam.setMaxX(curveData.getMaxX());
                     fittingParam.setMinX(curveData.getMinX());
@@ -4844,7 +4866,10 @@ public class RationServiceConciseImpl implements RationConciseService {
             if (StringUtils.hasText(s)) {
                 JSONObject jsonObject = JSON.parseObject(s);
 
+
                 ans = jsonObject.get("value").toString();
+                String s1 = DataCountUtil.formatValueWithBigDecimal(digit, ans);
+                ans = DataCountUtil.addZero(Double.parseDouble(s1), digit);
             }
             return ans;
         } catch (Exception e) {
@@ -7045,7 +7070,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     private R IssueCheckParam(FRationParameter param, String deviceSerialNumber) {
         Boolean result = true;
         List<String> errorMessages = new ArrayList<>();
-        R<DeviceMeasureVO> deviceMeasureVOR = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        R<DeviceMeasureVO> deviceMeasureVOR = infoService.queryDeviceTypeInfo(deviceSerialNumber);
         if (!deviceMeasureVOR.getSuccess()) {
             return R.fail(deviceMeasureVOR.getMessage());
         }

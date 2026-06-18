@@ -19,8 +19,8 @@ public enum MappingParamEnum {
 
     LAMP_TYPE("lampType", "灯类型", Arrays.asList(
             new DeviceConfParam("钨灯", "0"),
-            new DeviceConfParam("氘灯", "1")
-//            new DeviceConfParam("汞灯", "2")
+            new DeviceConfParam("氘灯", "1"),
+            new DeviceConfParam("汞灯", "2")
     )),
 
     GAIN("gain", "增益", Arrays.asList(1, 2, 3, 4, 5, 6 ,7)),

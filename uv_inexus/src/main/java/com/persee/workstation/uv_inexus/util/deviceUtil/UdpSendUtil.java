@@ -10,7 +10,10 @@
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
 import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
@@ -23,10 +26,7 @@ import org.springframework.stereotype.Service;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -49,6 +49,9 @@ public class UdpSendUtil {
 
     @Autowired
     DeviceInfoService infoService;
+
+    @Autowired
+    SamplePoolConfigService samplePoolConfigService;
 
     private final static ConnectUtil connectUtil = ConnectUtil.getInstance();
 
@@ -1029,6 +1032,18 @@ public class UdpSendUtil {
             es = 7;
             er = 8;
         }
+        String poolValue = null;
+
+        Integer currentPoolNum = deviceManager.getCurrentPoolNum(deviceId);
+        FSamplePoolStatus poolStatus = samplePoolConfigService.getPoolCorrectionData(deviceSerialNumber, currentPoolNum);
+        String luminosityMode = deviceManager.getLuminosityMode(deviceId);
+        if (poolStatus != null) {
+
+            if (poolStatus.getLuminosity() != null && poolStatus.getLuminosity().equals(luminosityMode)) {
+                Map<String, String> poolData = poolStatus.getPoolData();
+                poolValue = poolData.get(currentWavelength);
+            }
+        }
 
         SpectrumCalcResult absResult =
                 calculator.calculate(abs, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
@@ -1042,6 +1057,18 @@ public class UdpSendUtil {
         SpectrumCalcResult erResult =
                 calculator.calculate(er, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
 
+        if (luminosityMode.equals(WaveLengthEnum.abs.getCode())) {
+            if (poolValue != null) {
+                String s = samplePoolConfigService.applyPoolCorrection(absResult.getAbs(), poolValue, luminosityMode);
+                absResult.setAbs(s);
+            }
+        } else if (luminosityMode.equals(WaveLengthEnum.tPercent.getCode())) {
+            if (poolValue != null) {
+                String s = samplePoolConfigService.applyPoolCorrection(tResult.getTPercent(), poolValue, luminosityMode);
+                tResult.setTPercent(s);
+            }
+        }
+        
         point.setAbsResult(absResult);
         point.setTResult(tResult);
         point.setEsResult(esResult);
