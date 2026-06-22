@@ -1264,7 +1264,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
 
             if (!result.getSuccess()) {
-                return R.fail("00209010", command.getCmdId());
+                log.warn("[setParam] 命令 {} 失败: {}", command.getCmdId(), result.getMessage());
+                return R.fail("00209010");
             }
         }
 
