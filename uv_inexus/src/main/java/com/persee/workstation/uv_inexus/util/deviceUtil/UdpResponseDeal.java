@@ -407,6 +407,7 @@ public class UdpResponseDeal {
         if (DetectionConstants.detectionInfo != null) {
             DetectionConstants.detectionInfo.put("bandwidth", SpectralBandwidth);
         }
+        resultEntity.setBandwidth(SpectralBandwidth);
 
         return resultEntity;
     }

@@ -1798,6 +1798,17 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         failDeal(infoPO, recordPO);
                         return;
                     }
+
+                    if (cmdId.equals(T800ComIdEnums.SetSlit1.getComId())) {
+
+                        Object[] params = command.getParams();
+                        String param = params[0].toString();
+
+                        deviceManager.setBandwidth(deviceId, param);
+//                            deviceManager.setBandwidth(deviceId, data.getBandwidth());
+                    }
+
+
                     count++;
                     log.info("{}指令初始化成功", cmdId);
                 } catch (Exception e) {
@@ -2085,6 +2096,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         device = deviceManager.getDevice(deviceId);
         resultEntity.setY(resultEntity.getY() + WaveLengthEnum.getName(device.getLuminosityMode()));
+        resultEntity.setBandwidth(deviceManager.getBandwidth(deviceId));
         if (!StringUtils.hasText(resultEntity.getBandwidth())) {
             resultEntity.setBandwidth("2.0");
         }
