@@ -2254,18 +2254,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         List<FHeadVO> allMeasureHeads = new ArrayList<>();
 
         String mode = parameter.getLuminosity();
-        if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
-            for (String s : waveLength) {
-                String identity = s + "-"+ mode;
-                String name =WaveLengthEnum.getName(mode);
-                String unit = s + "nm";
-                FHeadVO newHead = new FHeadVO(name, identity, unit, TableHeadILocateEnums.measure.getIdentity(), name);
-                if (map.containsKey(identity)) {
-                    newHead = map.get(identity);
-                }
-                allMeasureHeads.add(newHead);
-            }
-        } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
+        if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
             for (String s : waveLength) {
                 String absIdentity = s + "-"+ WaveLengthEnum.abs.getCode();
                 String tPercentIdentity = s + "-"+ WaveLengthEnum.tPercent.getCode();
@@ -2293,8 +2282,32 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     }
                 }
             }
+        }else {
+            for (String s : waveLength) {
+                String identity = s + "-"+ mode;
+                String name =WaveLengthEnum.getName(mode);
+                String unit = s + "nm";
+                FHeadVO newHead = new FHeadVO(name, identity, unit, TableHeadILocateEnums.measure.getIdentity(), name);
+                if (map.containsKey(identity)) {
+                    newHead = map.get(identity);
+                }
+                allMeasureHeads.add(newHead);
+            }
         }
-        List<FHeadVO> ans = new ArrayList<>();
+//        if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
+//            for (String s : waveLength) {
+//                String identity = s + "-"+ mode;
+//                String name =WaveLengthEnum.getName(mode);
+//                String unit = s + "nm";
+//                FHeadVO newHead = new FHeadVO(name, identity, unit, TableHeadILocateEnums.measure.getIdentity(), name);
+//                if (map.containsKey(identity)) {
+//                    newHead = map.get(identity);
+//                }
+//                allMeasureHeads.add(newHead);
+//            }
+//        }
+
+                List<FHeadVO> ans = new ArrayList<>();
         List<FHeadVO> systemHeads = headsMap.get(TableHeadILocateEnums.system.getIdentity());
         if (systemHeads != null) {
             ans.addAll(systemHeads);

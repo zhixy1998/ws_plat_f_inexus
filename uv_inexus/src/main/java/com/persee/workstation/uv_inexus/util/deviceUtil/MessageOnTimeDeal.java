@@ -423,11 +423,14 @@ public class MessageOnTimeDeal {
                                         SpectrumCalcResult tResult   = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
                                         SpectrumCalcResult esResult  = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
                                         SpectrumCalcResult erResult  = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
+                                        SpectrumCalcResult rResult = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
+                                        rResult.setRPercent(rResult.getTPercent());
 
                                         sp.setAbsResult(absResult);
                                         sp.setTResult(tResult);
                                         sp.setEsResult(esResult);
                                         sp.setErResult(erResult);
+                                        sp.setRResult(rResult);
 
                                         log.info("[光谱计算] wl={}, Abs={}, T%={}, Es={}, Er={} , Ms{}",
                                                 sp.getWavelength(),
@@ -488,11 +491,15 @@ public class MessageOnTimeDeal {
                                     SpectrumCalcResult tResult = calculator.calculate(6, sp, RANGE, deviceSerialNumber);
                                     SpectrumCalcResult esResult = calculator.calculate(7, sp, RANGE, deviceSerialNumber);
                                     SpectrumCalcResult erResult = calculator.calculate(8, sp, RANGE, deviceSerialNumber);
+                                    SpectrumCalcResult rResult = calculator.calculate(6, sp, RANGE, deviceSerialNumber);
+                                    rResult.setRPercent(rResult.getTPercent());
 
                                     sp.setAbsResult(absResult);
                                     sp.setTResult(tResult);
                                     sp.setEsResult(esResult);
                                     sp.setErResult(erResult);
+                                    sp.setRResult(rResult);
+
 
 
                                 log.info("[光谱计算] wl={}, Abs={}, T%={}, Es={}, Er={}",

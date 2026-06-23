@@ -208,9 +208,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (!StringUtils.hasText(luminosity)) {
             return R.fail("光度模式不能为空");
         }
-        List<String> validLuminosityModes = Arrays.asList("1", "2", "3", "4"); // 1.abs 2.T% 3.Es 4.Er
+        List<String> validLuminosityModes = Arrays.asList("1", "2", "3", "4","5"); // 1.abs 2.T% 3.Es 4.Er
         if (!validLuminosityModes.contains(luminosity)) {
-            return R.fail("光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：" + luminosity);
+            return R.fail("光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er、5-R%），当前值：" + luminosity);
         }
 
         // 3. 波长参数校验

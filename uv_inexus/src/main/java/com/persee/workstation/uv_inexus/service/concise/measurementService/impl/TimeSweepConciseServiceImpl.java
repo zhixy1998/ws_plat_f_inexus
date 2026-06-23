@@ -208,7 +208,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (!StringUtils.hasText(luminosity)) {
             return R.fail("00B03007");
         }
-        List<String> validLuminosityModes = Arrays.asList("1", "2", "3", "4"); // 1.abs 2.T% 3.Es 4.Er
+        List<String> validLuminosityModes = Arrays.asList("1", "2", "3", "4", "5"); // 1.abs 2.T% 3.Es 4.Er 5.R%
         if (!validLuminosityModes.contains(luminosity)) {
             return R.fail("00B03008", luminosity);
         }

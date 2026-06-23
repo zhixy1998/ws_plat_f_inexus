@@ -19,6 +19,12 @@ public class SpectrumCalcResult {
     /** 能量 R */
     private String er;
 
+    /**
+     * R%
+     */
+    private String rPercent;
+
+
     // getter / setter
 }
 

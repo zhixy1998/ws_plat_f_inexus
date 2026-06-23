@@ -24,5 +24,5 @@ UPDATE `t800_uv_inexus`.`t_measure_pool` SET `attachment_num` = 22, `attachment_
 UPDATE `t800_uv_inexus`.`t_measure_pool` SET `attachment_num` = 23, `attachment_name` = '双光束50mm长样品池', `sample_pool_num` = 1, `attachment_type` = 1, `dev_type` = 2 WHERE `id` = 50;
 UPDATE `t800_uv_inexus`.`t_measure_pool` SET `attachment_num` = 24, `attachment_name` = '双光束150mm积分球--眼镜', `sample_pool_num` = 1, `attachment_type` = 5, `dev_type` = 2 WHERE `id` = 51;
 UPDATE `t800_uv_inexus`.`t_measure_pool` SET `attachment_num` = 25, `attachment_name` = '双光束150mm积分球--扫描', `sample_pool_num` = 1, `attachment_type` = 5, `dev_type` = 2 WHERE `id` = 52;
-UPDATE `t800_uv_inexus`.`t_measure_pool` SET `attachment_num` = 26, `attachment_name` = '双光束150mm积分球--透镜', `sample_pool_num` = 1, `attachment_type` = 5, `dev_type` = 2 WHERE `id` = 53;
-UPDATE `t800_uv_inexus`.`t_measure_pool` SET `attachment_num` = 34, `attachment_name` = '第二样品室积分球', `sample_pool_num` = 1, `attachment_type` = 5, `dev_type` = 2 WHERE `id` = 54;
+INSERT INTO `t800_uv_inexus`.`t_measure_pool` (`id`, `attachment_num`, `attachment_name`, `sample_pool_num`, `attachment_type`, `dev_type`) VALUES (53, 26, '双光束150mm积分球--透镜', 1, 5, 2);
+INSERT INTO `t800_uv_inexus`.`t_measure_pool` (`id`, `attachment_num`, `attachment_name`, `sample_pool_num`, `attachment_type`, `dev_type`) VALUES (54, 34, '第二样品室积分球', 1, 5, 2);
