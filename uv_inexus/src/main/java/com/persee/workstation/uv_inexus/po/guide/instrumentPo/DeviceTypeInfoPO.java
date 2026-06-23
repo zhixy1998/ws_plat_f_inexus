@@ -18,7 +18,6 @@
 
 package com.persee.workstation.uv_inexus.po.guide.instrumentPo;
 
-import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -67,10 +66,6 @@ public class DeviceTypeInfoPO {
     @ApiModelProperty("响应时间")
     @TableField(value = "response_time", typeHandler = JacksonTypeHandler.class)
     private List<String> responseTime;
-
-    @ApiModelProperty("扫描速度")
-    @TableField(value = "scan_speed", typeHandler = JacksonTypeHandler.class)
-    private JSONObject scanSpeed;
 
     @ApiModelProperty("最小换灯波长")
     @TableField(value = "min_lamp_wavelength")
