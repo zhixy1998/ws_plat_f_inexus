@@ -92,6 +92,9 @@ public class OperationResultEntity {
     @ApiModelProperty("仪器型号名称")
     private String deviceModelName;
 
+    @ApiModelProperty("软件版本号")
+    private String softwareVersion;
+
     @ApiModelProperty("xmlKey")
     private String xmlKey;
 
