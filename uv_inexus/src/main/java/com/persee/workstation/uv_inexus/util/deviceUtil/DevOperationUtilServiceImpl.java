@@ -1262,6 +1262,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             deviceManager.setCurrentPoolNum(deviceId, setParam.getCellPos());
         }
 
+        if (setParam.getSlit1() != null) {
+            deviceManager.setBandwidth(deviceId, String.valueOf(setParam.getSlit1()));
+        }
+
         resultEntity.setIsSuccess(true);
         return R.ok(resultEntity);
     }
