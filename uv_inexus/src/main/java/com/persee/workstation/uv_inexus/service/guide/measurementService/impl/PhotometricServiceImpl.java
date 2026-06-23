@@ -1670,18 +1670,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         List<HeadVO> allMeasureHeads = new ArrayList<>();
 
         String mode = parameter.getLuminosity();
-        if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
-            for (String s : waveLength) {
-                String identity = s + "-"+ mode;
-                String name = s + WaveLengthEnum.getName(mode);
-                String unit = s + "nm";
-                HeadVO newHead = new HeadVO(name, identity, unit, TableHeadILocateEnums.measure.getIdentity(), name);
-                if (map.containsKey(identity)) {
-                    newHead = map.get(identity);
-                }
-                allMeasureHeads.add(newHead);
-            }
-        } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
+        if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
             for (String s : waveLength) {
                 String absIdentity = s + "-"+ WaveLengthEnum.abs.getCode();
                 String tPercentIdentity = s + "-"+ WaveLengthEnum.tPercent.getCode();
@@ -1708,6 +1697,17 @@ public class PhotometricServiceImpl implements PhotometricService {
                         allMeasureHeads.add(absHead);
                     }
                 }
+            }
+        } else {
+            for (String s : waveLength) {
+                String identity = s + "-"+ mode;
+                String name = s + WaveLengthEnum.getName(mode);
+                String unit = s + "nm";
+                HeadVO newHead = new HeadVO(name, identity, unit, TableHeadILocateEnums.measure.getIdentity(), name);
+                if (map.containsKey(identity)) {
+                    newHead = map.get(identity);
+                }
+                allMeasureHeads.add(newHead);
             }
         }
         List<HeadVO> ans = new ArrayList<>();

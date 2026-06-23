@@ -694,6 +694,11 @@ public class TimeNewOneWebSocket {
                     yType = "Er";
                     break;
                 }
+                case "5": {
+                    yValue = new BigDecimal(calculate.getRResult().getRPercent());
+                    yType = "R%";
+                    break;
+                }
                 default: {
                     sendError(deviceSerialNumber, "无效的光度参数");
                     return;
@@ -1348,6 +1353,7 @@ public class TimeNewOneWebSocket {
             case "2": return "T%";
             case "3": return "Es";
             case "4": return "Er";
+            case "5": return "R%";
             default: return "Unknown";
         }
     }

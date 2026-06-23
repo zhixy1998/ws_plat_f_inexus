@@ -646,6 +646,7 @@ public class GuidePhotometricWebSocket {
                     }
                 }
                 break;
+                case "R%":
                 case "Es":
                 case "Er": {
                     Map<String, List<Double>> erValues = originDataList.stream()
@@ -795,8 +796,18 @@ public class GuidePhotometricWebSocket {
             jsonObject.put("value", currentValue);
             sendMessage(deviceSerialNumber, jsonObject);
 
-        }
-        else {
+        } else if(luminosity.equals(WaveLengthEnum.rPercent.getCode())) {
+            String s = response.getValue();
+            measureData.put(waveLength + "-" + WaveLengthEnum.rPercent.getCode(), s);
+
+            jsonObject.put("key", waveLength + "-" + WaveLengthEnum.rPercent.getCode());
+
+            Double v = DataCountUtil.formatValue(digit, Double.valueOf(s));
+            currentValue = DataCountUtil.addZero(v, digit);
+
+            jsonObject.put("value", currentValue);
+            sendMessage(deviceSerialNumber, jsonObject);
+        } else {
 
             String abs = response.getValue();
             String tPercent = response.getOtherData();

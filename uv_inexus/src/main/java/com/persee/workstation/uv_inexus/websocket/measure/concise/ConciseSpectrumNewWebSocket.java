@@ -466,7 +466,8 @@ public class ConciseSpectrumNewWebSocket {
 
                 String luminosityType = luminosity.equals("1") ? "Abs" :
                         luminosity.equals("2") ? "T%" :
-                                luminosity.equals("3") ? "Es" : "Er";
+                                luminosity.equals("3") ? "Es" :
+                                        luminosity.equals("5") ? "R%" : "Er";
                 point.put("yType", luminosityType);
                 dataArray.add(point);
 
@@ -530,7 +531,8 @@ public class ConciseSpectrumNewWebSocket {
                 point.put("xType", "nm");
                 String luminosityType = luminosity.equals("1") ? "Abs" :
                         luminosity.equals("2") ? "T%" :
-                                luminosity.equals("3") ? "Es" : "Er";
+                                luminosity.equals("3") ? "Es" :
+                                        luminosity.equals("5") ? "R%":"Er";
                 point.put("yType", luminosityType);
                 dataArray.add(point);
 
@@ -1362,6 +1364,9 @@ public class ConciseSpectrumNewWebSocket {
             case "4":
                 luminosity = "Er";
                 break;
+            case "5":
+                luminosity = "R%";
+                break;
             default:
                 luminosity = "Abs";
                 break;
@@ -1467,9 +1472,12 @@ public class ConciseSpectrumNewWebSocket {
                         }else if (spectrumParameter.getLuminosity().equals("3")) {
                             y.add(Double.valueOf(message.getEsResult().getEs()));
                             Constants.instrumentData.add(message.getWavelength()+","+message.getAbsResult().getEs());
-                        }else {
+                        }else if (spectrumParameter.getLuminosity().equals("4")) {
                             y.add(Double.valueOf(message.getErResult().getEr()));
                             Constants.instrumentData.add(message.getWavelength()+","+message.getAbsResult().getEr());
+                        }else if (spectrumParameter.getLuminosity().equals("5")) {
+                            y.add(Double.valueOf(message.getRResult().getRPercent()));
+                            Constants.instrumentData.add(message.getWavelength()+","+message.getRResult().getRPercent());
                         }
                         changeParams.add(message.getScanRsd());
 
@@ -1954,7 +1962,7 @@ public class ConciseSpectrumNewWebSocket {
 
         point.put("xType", "nm");
         // 光度模式是1.Abs 2.T% 3.Es 4.Er
-        String luminosityType = luminosity.equals("1") ? "Abs" : luminosity.equals("2") ? "T%" : luminosity.equals("3") ? "Es" : "Er";
+        String luminosityType = luminosity.equals("1") ? "Abs" : luminosity.equals("2") ? "T%" : luminosity.equals("3") ? "Es" :luminosity.equals("5") ? "R%": "Er";
         point.put("yType", luminosityType);
         dataArray.add(point);
 
@@ -2036,7 +2044,10 @@ public class ConciseSpectrumNewWebSocket {
                     processedY.add(Double.valueOf(message.getTResult().getTPercent()));
                 }else if (spectrumParameter.getLuminosity().equals("3")) {
                     processedY.add(Double.valueOf(message.getEsResult().getEs()));
-                }else {
+                }else if (spectrumParameter.getLuminosity().equals("5")) {
+                    processedY.add(Double.valueOf(message.getRResult().getRPercent()));
+                    Constants.instrumentData.add(message.getWavelength()+","+message.getRResult().getRPercent());
+                } else {
                     processedY.add(Double.valueOf(message.getErResult().getEr()));
                 }
                 changeParams.add(message.getScanRsd());
@@ -2174,6 +2185,9 @@ public class ConciseSpectrumNewWebSocket {
                 case "4":
                     luminosityType = "Er";
                     break;
+                case "5":
+                    luminosityType = "R%";
+                    break;
                 default:
                     luminosityType = "Abs";
                     break;
@@ -2280,7 +2294,7 @@ public class ConciseSpectrumNewWebSocket {
                     if (confVO.getAbs() != null && !confVO.getAbs().trim().isEmpty()) {
                         threshold = Integer.valueOf(confVO.getAbs());
                     }
-                } else if ("2".equals(luminosityMode)) {
+                } else if ("2".equals(luminosityMode) || "5".equals(luminosityMode)) {
                     // 透过率的台阶消除数值
                     if (confVO.getTransmittance() != null && !confVO.getTransmittance().trim().isEmpty()) {
                         threshold = Integer.valueOf(confVO.getTransmittance());
