@@ -1721,6 +1721,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         log.info("自检开始");
         String deviceId = infoPO.getDeviceId();
         Integer attachmentType = infoPO.getAttachmentType();
+        DeviceAttachmentTypeVO attachment = infoService.getAttachment(attachmentType, deviceSerialNumber);
+        Integer kind = attachment.getAttachmentKind();
         DeviceConstants.isStopInit.put(deviceSerialNumber, false);
 
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
@@ -1743,7 +1745,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             int count = 0;
             while (count < cmdIdList.size() && !DeviceConstants.isStopInit.get(deviceSerialNumber)) {
                 String cmdId = cmdIdList.get(count);
-                Command command = dealCommand(attachmentType, cmdId);
+                Command command = dealCommand(kind, cmdId);
                 try {
 
                     Transition transition = xmlInfo.get(cmdId);
