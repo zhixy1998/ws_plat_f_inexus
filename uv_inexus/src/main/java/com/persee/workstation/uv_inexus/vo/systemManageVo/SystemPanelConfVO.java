@@ -35,4 +35,7 @@ public class SystemPanelConfVO {
 
     @ApiModelProperty("自动进入实验测试")
     private Boolean isAutoEnterExperiment;
+
+    @ApiModelProperty("是否精简提示，true-是，false-否")
+    private Boolean isSimpleTip;
 }

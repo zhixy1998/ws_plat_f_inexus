@@ -14,7 +14,8 @@ public enum MappingParamEnum {
             new DeviceConfParam("Abs", "1"),
             new DeviceConfParam("T%", "2"),
             new DeviceConfParam("Es", "3"),
-            new DeviceConfParam("Er", "4")
+            new DeviceConfParam("Er", "4"),
+            new DeviceConfParam("R%", "5")
     )),
 
     LAMP_TYPE("lampType", "灯类型", Arrays.asList(

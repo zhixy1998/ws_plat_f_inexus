@@ -28,6 +28,7 @@ public class SpectrumPoint {
     private SpectrumCalcResult tResult;
     private SpectrumCalcResult esResult;
     private SpectrumCalcResult erResult;
+    private SpectrumCalcResult rResult;
 
     private Double darkZ;
 

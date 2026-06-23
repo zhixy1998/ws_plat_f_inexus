@@ -55,4 +55,8 @@ public class SystemPanelConfPO extends BasePO {
     @TableField(value = "is_auto_enter_experiment")
     private Boolean isAutoEnterExperiment;
 
+    @ApiModelProperty("是否精简提示")
+    @TableField(value = "is_simple_tip")
+    private Boolean isSimpleTip;
+
 }

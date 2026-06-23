@@ -1025,12 +1025,14 @@ public class UdpSendUtil {
         int tpercent = 2;
         int es = 3;
         int er = 4;
+        int r = 2;
 
         if (xmlKey != null && xmlKey.equals(DevXmlEnums.T800.getDevType())) {
             abs = 5;
             tpercent = 6;
             es = 7;
             er = 8;
+            r = 6;
         }
         String poolValue = null;
 
@@ -1056,6 +1058,9 @@ public class UdpSendUtil {
 
         SpectrumCalcResult erResult =
                 calculator.calculate(er, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
+        SpectrumCalcResult rResult =
+                calculator.calculate(r, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
+        rResult.setRPercent(rResult.getTPercent());
 
         if (luminosityMode.equals(WaveLengthEnum.abs.getCode())) {
             if (poolValue != null) {
@@ -1073,6 +1078,7 @@ public class UdpSendUtil {
         point.setTResult(tResult);
         point.setEsResult(esResult);
         point.setErResult(erResult);
+        point.setRResult(rResult);
         point.setTimestamp(currentTime);
 
         log.info("[时间扫描计算结果] wl={}, Abs={}, T%={}, Es={}, Er={},time={},index={}",

@@ -1583,7 +1583,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     String s = formulaUtil.addFormula(stepPoints, result.getDeviceSerialNumber());
                     result.setStepPoints(stepPoints);
 
-                    result.setLinearSegment(s);
+                    if (comId.equals(ConnectEnum.GetWlList.getComId())) {
+                        result.setLinearSegment(s);
+                    }
+
                     continue;
                 }
 
@@ -1721,6 +1724,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         log.info("自检开始");
         String deviceId = infoPO.getDeviceId();
         Integer attachmentType = infoPO.getAttachmentType();
+        DeviceAttachmentTypeVO attachment = infoService.getAttachment(attachmentType, deviceSerialNumber);
+        Integer kind = attachment.getAttachmentKind();
         DeviceConstants.isStopInit.put(deviceSerialNumber, false);
 
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
@@ -1743,7 +1748,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             int count = 0;
             while (count < cmdIdList.size() && !DeviceConstants.isStopInit.get(deviceSerialNumber)) {
                 String cmdId = cmdIdList.get(count);
-                Command command = dealCommand(attachmentType, cmdId);
+                Command command = dealCommand(kind, cmdId);
                 try {
 
                     Transition transition = xmlInfo.get(cmdId);
@@ -2025,6 +2030,27 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
             } else if (luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
+                ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
+                String s;
+
+                if (!Objects.isNull(zeroParam)) {
+                    s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z));
+
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z));
+                    }
+                } else {
+                    s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z));
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z));
+                    }
+                }
+
+                if (poolValue != null) {
+                    s = samplePoolConfigService.applyPoolCorrection(s, poolValue, luminosity);
+                }
+                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
+            } else if (luminosity.equals(WaveLengthEnum.rPercent.getCode())) {
                 ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
                 String s;
 
@@ -2385,7 +2411,29 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                             measureResult.setValue(tPercent);
                             measureResult.setOtherData(abs);
                         }
+                    } else if (mode.equals(WaveLengthEnum.rPercent.getCode())) {
+
+                        String z = "1";
+                        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                            z = "0.1";
+                        }
+//                    if (darkInfo != null && StringUtils.hasText(darkInfo.get(wavelength))) {
+//                        z = darkInfo.get(wavelength);
+//                    }
+                        Double zVal = spectrumResultCalculator.getZFromDatabase2(deviceSerialNumber, device.getCurrentWavelength());
+                        if (zVal != null) {
+                            z = String.valueOf(zVal);
+                        }
+
+                        String rPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
+
+                        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                            rPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
+                        }
+                        measureResult.setValue(rPercent);
+
                     }
+
                     deviceManager.setMeasureValue(deviceId, measureResult.getValue());
 
                     measureResult.setWl(s);
@@ -2518,6 +2566,31 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         measureResult.setValue(tPercent);
                         measureResult.setOtherData(abs);
                     }
+                }  else if (mode.equals(WaveLengthEnum.rPercent.getCode())) {
+
+                    String z = "1";
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        z = "0.1";
+                    }
+//                    if (darkInfo != null && StringUtils.hasText(darkInfo.get(wavelength))) {
+//                        z = darkInfo.get(wavelength);
+//                    }
+                    Double zVal = spectrumResultCalculator.getZFromDatabase2(deviceSerialNumber, device.getCurrentWavelength());
+                    if (zVal != null) {
+                        z = String.valueOf(zVal);
+                    }
+
+                    String rPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
+
+                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                        rPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
+                    }
+
+                    if (poolValue != null) {
+                        rPercent = samplePoolConfigService.applyPoolCorrection(rPercent, poolValue, mode);
+                    }
+                    measureResult.setValue(rPercent);
+
                 }
 
                 measureResult.setWl(wavelength);

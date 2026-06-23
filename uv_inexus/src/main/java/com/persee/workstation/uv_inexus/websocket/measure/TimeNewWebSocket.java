@@ -647,6 +647,11 @@ public class TimeNewWebSocket {
                     yType = "Er";
                     break;
                 }
+                case "5": {
+                    yValue = new BigDecimal(calculate.getRResult().getRPercent());
+                    yType = "R%";
+                    break;
+                }
                 default: {
                     sendError(deviceSerialNumber, "无效的光度参数");
                     return;

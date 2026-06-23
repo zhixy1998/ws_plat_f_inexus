@@ -1285,7 +1285,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         List<DataNameValue> ans = new ArrayList<>();
         if (DeviceCalibrationParamEnum.ScanSpeed.getType().equals(param)) {
 
-            JSONObject scanSpeed = po.getScanSpeed();
+            JSONObject scanSpeed = (JSONObject) modelInfoPO.getScanSpeed();
             Object defaultValue = MappingParamEnum.SCAN_SPEED.getDefaultValue();
             String jsonString = JSONObject.toJSONString(defaultValue);
             List<DeviceConfParam> options = JSON.parseArray(jsonString, DeviceConfParam.class);
@@ -1628,7 +1628,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
 
             if (vo.getIsInited() == 0 || !initRecord) {
-                if (attachmentInfo.getAttachmentKind().equals(1)) {
+                Integer kind = attachmentInfo.getAttachmentKind();
+                if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType()) || kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())) {
                     List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
                     initRecordService.initAllTask(vo.getDeviceSerialNumber(), info.getId(), allInitEntry);
                 }

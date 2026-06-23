@@ -16,6 +16,7 @@ public enum WaveLengthEnum {
 
     abs("1", "Abs"),
     tPercent("2", "T%"),
+    rPercent("5", "R%"),
     es("3", "Es"),
     er("4", "Er");
 
