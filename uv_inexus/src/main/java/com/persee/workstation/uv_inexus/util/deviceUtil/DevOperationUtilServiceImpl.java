@@ -1264,7 +1264,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
 
             if (!result.getSuccess()) {
-                return R.fail("00209010", command.getCmdId());
+                log.warn("[setParam] 命令 {} 失败: {}", command.getCmdId(), result.getMessage());
+                return R.fail("00209010");
             }
         }
 
@@ -1750,8 +1751,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         log.info("自检开始");
         String deviceId = infoPO.getDeviceId();
         Integer attachmentType = infoPO.getAttachmentType();
-        DeviceAttachmentTypeVO attachment = infoService.getAttachment(attachmentType, deviceSerialNumber);
-        Integer kind = attachment.getAttachmentKind();
         DeviceConstants.isStopInit.put(deviceSerialNumber, false);
 
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
@@ -1774,7 +1773,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             int count = 0;
             while (count < cmdIdList.size() && !DeviceConstants.isStopInit.get(deviceSerialNumber)) {
                 String cmdId = cmdIdList.get(count);
-                Command command = dealCommand(kind, cmdId);
+                Command command = dealCommand(attachmentType, cmdId);
                 try {
 
                     Transition transition = xmlInfo.get(cmdId);
@@ -1827,17 +1826,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         failDeal(infoPO, recordPO);
                         return;
                     }
-
-                    if (cmdId.equals(T800ComIdEnums.SetSlit1.getComId())) {
-
-                        Object[] params = command.getParams();
-                        String param = params[0].toString();
-
-                        deviceManager.setBandwidth(deviceId, param);
-//                            deviceManager.setBandwidth(deviceId, data.getBandwidth());
-                    }
-
-
                     count++;
                     log.info("{}指令初始化成功", cmdId);
                 } catch (Exception e) {
@@ -2087,27 +2075,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     s = samplePoolConfigService.applyPoolCorrection(s, poolValue, luminosity);
                 }
                 resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
-            } else if (luminosity.equals(WaveLengthEnum.rPercent.getCode())) {
-                ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
-                String s;
-
-                if (!Objects.isNull(zeroParam)) {
-                    s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z));
-
-                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z));
-                    }
-                } else {
-                    s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z));
-                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z));
-                    }
-                }
-
-                if (poolValue != null) {
-                    s = samplePoolConfigService.applyPoolCorrection(s, poolValue, luminosity);
-                }
-                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
             }
         }
         deviceManager.setMeasureValue(deviceId, resultEntity.getY());
@@ -2125,7 +2092,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         device = deviceManager.getDevice(deviceId);
         resultEntity.setY(resultEntity.getY() + WaveLengthEnum.getName(device.getLuminosityMode()));
-        resultEntity.setBandwidth(deviceManager.getBandwidth(deviceId));
         if (!StringUtils.hasText(resultEntity.getBandwidth())) {
             resultEntity.setBandwidth("2.0");
         }
@@ -2449,29 +2415,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                             measureResult.setValue(tPercent);
                             measureResult.setOtherData(abs);
                         }
-                    } else if (mode.equals(WaveLengthEnum.rPercent.getCode())) {
-
-                        String z = "1";
-                        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                            z = "0.1";
-                        }
-//                    if (darkInfo != null && StringUtils.hasText(darkInfo.get(wavelength))) {
-//                        z = darkInfo.get(wavelength);
-//                    }
-                        Double zVal = spectrumResultCalculator.getZFromDatabase2(deviceSerialNumber, device.getCurrentWavelength());
-                        if (zVal != null) {
-                            z = String.valueOf(zVal);
-                        }
-
-                        String rPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
-
-                        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                            rPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
-                        }
-                        measureResult.setValue(rPercent);
-
                     }
-
                     deviceManager.setMeasureValue(deviceId, measureResult.getValue());
 
                     measureResult.setWl(s);
@@ -2604,31 +2548,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         measureResult.setValue(tPercent);
                         measureResult.setOtherData(abs);
                     }
-                }  else if (mode.equals(WaveLengthEnum.rPercent.getCode())) {
-
-                    String z = "1";
-                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        z = "0.1";
-                    }
-//                    if (darkInfo != null && StringUtils.hasText(darkInfo.get(wavelength))) {
-//                        z = darkInfo.get(wavelength);
-//                    }
-                    Double zVal = spectrumResultCalculator.getZFromDatabase2(deviceSerialNumber, device.getCurrentWavelength());
-                    if (zVal != null) {
-                        z = String.valueOf(zVal);
-                    }
-
-                    String rPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
-
-                    if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        rPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
-                    }
-
-                    if (poolValue != null) {
-                        rPercent = samplePoolConfigService.applyPoolCorrection(rPercent, poolValue, mode);
-                    }
-                    measureResult.setValue(rPercent);
-
                 }
 
                 measureResult.setWl(wavelength);

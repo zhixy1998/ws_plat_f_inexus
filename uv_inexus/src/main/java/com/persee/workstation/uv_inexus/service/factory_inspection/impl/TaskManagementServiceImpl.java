@@ -638,10 +638,21 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 //这是检定任务
                 String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,CALIBRATION_INSPECTION.getCode(),1);
                 TaskManagement management = this.getById(defaultTaskId);
+                if (management == null) {
+                    return Result.fail("00614002");
+                }
                 ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
+                if (excelTemplate == null) {
+                    log.error("检定任务关联模板不存在，taskId={}, useTemplate={}", defaultTaskId, management.getUseTemplate());
+                    return Result.fail("00614002");
+                }
                 management.setTemplateName(excelTemplate.getTemplateName());
                 management.setTemplateCode(excelTemplate.getTemplateCode());
                 R<String> device = deviceManageService.getConnectDevice(updateBy);
+                if (device == null) {
+                    log.warn("检定任务获取连接设备返回null，updateBy={}", updateBy);
+                    return Result.ok(management);
+                }
 
                 // 获取当前连接的设备序列号
                 String currentDevice = device.getData();
@@ -695,10 +706,21 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 //这是校准任务
                 String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,CALIBRATION.getCode(),1);
                 TaskManagement management = this.getById(defaultTaskId);
+                if (management == null) {
+                    return Result.fail("00614002");
+                }
                 ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
+                if (excelTemplate == null) {
+                    log.error("校准任务关联模板不存在，taskId={}, useTemplate={}", defaultTaskId, management.getUseTemplate());
+                    return Result.fail("00614002");
+                }
                 management.setTemplateName(excelTemplate.getTemplateName());
                 management.setTemplateCode(excelTemplate.getTemplateCode());
                 R<String> device = deviceManageService.getConnectDevice(updateBy);
+                if (device == null) {
+                    log.warn("校准任务获取连接设备返回null，updateBy={}", updateBy);
+                    return Result.ok(management);
+                }
 
                 // 获取当前连接的设备序列号
                 String currentDevice = device.getData();
@@ -752,10 +774,21 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 //这是期间核查任务
                 String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy,PERIODIC_INSPECTION_TASK.getCode(),1);
                 TaskManagement management = this.getById(defaultTaskId);
+                if (management == null) {
+                    return Result.fail("00614002");
+                }
                 ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
+                if (excelTemplate == null) {
+                    log.error("期间核查任务关联模板不存在，taskId={}, useTemplate={}", defaultTaskId, management.getUseTemplate());
+                    return Result.fail("00614002");
+                }
                 management.setTemplateName(excelTemplate.getTemplateName());
                 management.setTemplateCode(excelTemplate.getTemplateCode());
                 R<String> device = deviceManageService.getConnectDevice(updateBy);
+                if (device == null) {
+                    log.warn("期间核查任务获取连接设备返回null，updateBy={}", updateBy);
+                    return Result.ok(management);
+                }
 
                 // 获取当前连接的设备序列号
                 String currentDevice = device.getData();
@@ -809,6 +842,10 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             if (OPEN_BOX_INSPECTION.getCode().equals(taskId)) {
                 TaskManagement management = null;
                 R<String> device = deviceManageService.getConnectDevice(updateBy);
+                if (device == null) {
+                    log.warn("开箱检验获取连接设备返回null，updateBy={}", updateBy);
+                    return Result.fail("00614002");
+                }
                 String data = device.getData();
                 LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
                 //查找的是开箱验证任务
@@ -897,8 +934,15 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 return Result.ok(null);
             }
             TaskManagement management = this.getById(taskId);
+            if (management == null) {
+                return Result.fail("00614002");
+            }
 
             ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
+            if (excelTemplate == null) {
+                log.error("任务关联模板不存在，taskId={}, useTemplate={}", taskId, management.getUseTemplate());
+                return Result.fail("00614002");
+            }
             management.setTemplateName(excelTemplate.getTemplateName());
             return Result.ok(management);
         } catch (Exception e) {

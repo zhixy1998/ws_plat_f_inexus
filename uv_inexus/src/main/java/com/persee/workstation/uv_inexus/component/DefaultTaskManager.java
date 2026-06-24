@@ -118,6 +118,10 @@ public class DefaultTaskManager {
             // 创建新默认任务
             TaskManagement newTask = createDefaultTask(updateBy,taskType,templateStatus);
             ExcelTemplate excelTemplate = templateService.getById(newTask.getUseTemplate());
+            if (excelTemplate == null) {
+                log.error("新建任务后查询模板为空，taskId={}, useTemplate={}", newTask.getId(), newTask.getUseTemplate());
+                throw new RuntimeException("任务模板数据异常，请联系管理员");
+            }
             initializeTaskExecutionDetails(newTask.getId(), excelTemplate.getTemplateCode());
 
             taskManagementService.save(newTask);
@@ -145,7 +149,18 @@ public class DefaultTaskManager {
         task.setId(IdGeneratorUtil.generateIdWithPrefix("task"));
         task.setDetectName("默认任务" + IdGeneratorUtil.generateShortId() + System.currentTimeMillis());
         task.setCompletionStatus(TASK_NOT_STARTED.getCode());
-        ExcelTemplate template = templateService.getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getStatus, templateStatus));
+        // 修复跨用户报错：使用 LIMIT 1 避免多条匹配的 TooManyResultsException，getOne 传 false 避免空结果抛异常
+        ExcelTemplate template = templateService.getOne(
+                new LambdaQueryWrapper<ExcelTemplate>()
+                        .eq(ExcelTemplate::getStatus, templateStatus)
+                        .orderByDesc(ExcelTemplate::getUpdated)
+                        .last("LIMIT 1"),
+                false
+        );
+        if (template == null) {
+            log.error("未找到可用模板，updateBy={}, templateStatus={}", updateBy, templateStatus);
+            throw new RuntimeException("未找到可用的检定模板，请联系管理员创建模板");
+        }
         task.setResultTemplate(template.getTemplateCode());
         task.setUseTemplate(template.getId());
         task.setContentCategory(TEMPLATE_BUILT_IN_TASK.getCode());
