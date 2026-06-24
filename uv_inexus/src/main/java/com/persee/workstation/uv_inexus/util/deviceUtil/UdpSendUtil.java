@@ -1072,6 +1072,11 @@ public class UdpSendUtil {
                 String s = samplePoolConfigService.applyPoolCorrection(tResult.getTPercent(), poolValue, luminosityMode);
                 tResult.setTPercent(s);
             }
+        } else if (luminosityMode.equals(WaveLengthEnum.rPercent.getCode())) {
+            if (poolValue != null) {
+                String s = samplePoolConfigService.applyPoolCorrection(rResult.getRPercent(), poolValue, luminosityMode);
+                rResult.setRPercent(s);
+            }
         }
         
         point.setAbsResult(absResult);
