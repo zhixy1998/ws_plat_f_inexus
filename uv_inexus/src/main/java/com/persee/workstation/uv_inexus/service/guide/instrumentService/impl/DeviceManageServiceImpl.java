@@ -3898,6 +3898,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
             SamplePoolConfigPO po = samplePoolConfigService.getOne(query);
             if (po != null) {
+                po.setCurrentPoolNum(usefulLocation.get(0));
                 po.setPoolInfo(poolStatusList);
                 samplePoolConfigService.updateById(po);
                 log.info("样品池校正数据已保存：device={}", deviceSerialNumber);
