@@ -1285,7 +1285,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         List<DataNameValue> ans = new ArrayList<>();
         if (DeviceCalibrationParamEnum.ScanSpeed.getType().equals(param)) {
 
-            JSONObject scanSpeed = po.getScanSpeed();
+            JSONObject scanSpeed = (JSONObject) modelInfoPO.getScanSpeed();
             Object defaultValue = MappingParamEnum.SCAN_SPEED.getDefaultValue();
             String jsonString = JSONObject.toJSONString(defaultValue);
             List<DeviceConfParam> options = JSON.parseArray(jsonString, DeviceConfParam.class);
@@ -3898,6 +3898,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
             SamplePoolConfigPO po = samplePoolConfigService.getOne(query);
             if (po != null) {
+                po.setCurrentPoolNum(usefulLocation.get(0));
                 po.setPoolInfo(poolStatusList);
                 samplePoolConfigService.updateById(po);
                 log.info("样品池校正数据已保存：device={}", deviceSerialNumber);

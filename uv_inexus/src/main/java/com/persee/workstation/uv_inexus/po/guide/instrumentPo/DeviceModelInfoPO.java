@@ -18,6 +18,7 @@
 
 package com.persee.workstation.uv_inexus.po.guide.instrumentPo;
 
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -74,4 +75,8 @@ public class DeviceModelInfoPO {
     @ApiModelProperty("滤色片波长点数组")
     @TableField(value = "filter_wavelengths", typeHandler = JacksonTypeHandler.class)
     private List<Integer>  filterWavelength;
+
+    @ApiModelProperty("扫描速度")
+    @TableField(value = "scan_speed", typeHandler = JacksonTypeHandler.class)
+    private JSONObject scanSpeed;
 }

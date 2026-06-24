@@ -545,6 +545,28 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                             measureResult.setValue(tPercent);
                             measureResult.setOtherData(abs);
                         }
+                    } else if (mode.equals(WaveLengthEnum.rPercent.getCode())) {
+
+                        Map<String, String> darkInfo = info.getDarkInfo();
+                        String z = "1";
+                        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                            z = "0.1";
+                        }
+//                        if (darkInfo != null && StringUtils.hasText(darkInfo.get(s))) {
+//                            z = darkInfo.get(s);
+//                        }
+                        Double zVal = spectrumResultCalculator.getZFromDatabase2(deviceSerialNumber, s);
+                        if (zVal != null) {
+                            z = String.valueOf(zVal);
+                        }
+                        String tPercent = DataCountUtil.countTPercent(null, measureResult, Double.parseDouble(z));
+
+                        if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
+                            tPercent = DataCountUtil.calcTPercent1960(null, measureResult, Double.parseDouble(z));
+                        }
+
+                        measureResult.setValue(tPercent);
+
                     }
                     deviceManager.setMeasureValue(deviceId, measureResult.getValue());
 
@@ -1262,6 +1284,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             deviceManager.setCurrentPoolNum(deviceId, setParam.getCellPos());
         }
 
+        if (setParam.getSlit1() != null) {
+            deviceManager.setBandwidth(deviceId, String.valueOf(setParam.getSlit1()));
+        }
+
         resultEntity.setIsSuccess(true);
         return R.ok(resultEntity);
     }
@@ -1801,6 +1827,17 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         failDeal(infoPO, recordPO);
                         return;
                     }
+
+                    if (cmdId.equals(T800ComIdEnums.SetSlit1.getComId())) {
+
+                        Object[] params = command.getParams();
+                        String param = params[0].toString();
+
+                        deviceManager.setBandwidth(deviceId, param);
+//                            deviceManager.setBandwidth(deviceId, data.getBandwidth());
+                    }
+
+
                     count++;
                     log.info("{}指令初始化成功", cmdId);
                 } catch (Exception e) {
@@ -2088,6 +2125,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         device = deviceManager.getDevice(deviceId);
         resultEntity.setY(resultEntity.getY() + WaveLengthEnum.getName(device.getLuminosityMode()));
+        resultEntity.setBandwidth(deviceManager.getBandwidth(deviceId));
         if (!StringUtils.hasText(resultEntity.getBandwidth())) {
             resultEntity.setBandwidth("2.0");
         }
