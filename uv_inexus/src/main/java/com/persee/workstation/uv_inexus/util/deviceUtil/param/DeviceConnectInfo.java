@@ -130,10 +130,6 @@ public class DeviceConnectInfo {
      */
     private String luminosityMode = "1";
     /**
-     *  光谱带宽
-     */
-    private String bandwidth = "";
-    /**
      * 仪器当前状态
      */
     private DetectionManyDevicesResponseInfoVO currentStatus;

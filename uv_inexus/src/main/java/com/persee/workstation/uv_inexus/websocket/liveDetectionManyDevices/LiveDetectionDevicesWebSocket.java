@@ -30,8 +30,6 @@ import com.persee.workstation.uv_inexus.websocket.measure.param.*;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.BeanWrapper;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
@@ -49,10 +47,8 @@ import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.beans.PropertyDescriptor;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
@@ -712,7 +708,7 @@ public class LiveDetectionDevicesWebSocket {
                         BeanUtils.copyProperties(data, vo);
 
                         if (device != null) {
-                            BeanUtils.copyProperties(device, vo, getNonNullAndNonEmptyPropertyNames(vo));
+                            BeanUtils.copyProperties(device, vo);
                         }
 
                         DeviceAttachmentTypeVO attachmentInfo = infoService.getAttachmentInfo(taskInfo.getDeviceSerialNumber());
@@ -752,24 +748,6 @@ public class LiveDetectionDevicesWebSocket {
             });
 
         }, delayMillis, TimeUnit.MILLISECONDS);
-    }
-
-    /**
-     * 获取目标对象中已有值（非null且非空字符串）的属性名，
-     * 用于 BeanUtils.copyProperties 的 ignoreProperties 参数，
-     * 实现：只拷贝源对象的值到目标对象中为空（null或""）的字段。
-     */
-    private static String[] getNonNullAndNonEmptyPropertyNames(Object target) {
-        final BeanWrapper src = new BeanWrapperImpl(target);
-        PropertyDescriptor[] pds = src.getPropertyDescriptors();
-        Set<String> nonEmptyNames = new HashSet<>();
-        for (PropertyDescriptor pd : pds) {
-            Object srcValue = src.getPropertyValue(pd.getName());
-            if (srcValue != null && !"".equals(srcValue)) {
-                nonEmptyNames.add(pd.getName());
-            }
-        }
-        return nonEmptyNames.toArray(new String[0]);
     }
 
     //发送仪器忙碌时状态

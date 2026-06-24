@@ -638,39 +638,6 @@ public class DeviceConnectionManager {
     }
 
     /**
-     * 设置光谱带宽
-     * @param deviceId 设备ID
-     * @param bandwidth 光谱带宽
-     * @return 是否成功
-     */
-    public boolean setBandwidth(String deviceId, String bandwidth) {
-        DeviceConnectInfo device = deviceMap.get(deviceId);
-        if (device == null) {
-            logWarning("设置光谱带宽失败: 设备不存在 %s", deviceId);
-            return false;
-        }
-
-        device.setBandwidth(bandwidth);
-        device.updateLastUseTime();
-        logInfo("设置光谱带宽: %s -> %s", deviceId, bandwidth);
-        return true;
-    }
-
-    public String getBandwidth(String deviceId) {
-        DeviceConnectInfo device = deviceMap.get(deviceId);
-        if (device == null) {
-            logWarning("获取光谱带宽失败: 设备不存在 %s", deviceId);
-            return null;
-        }
-
-        device.updateLastUseTime();
-        String bandwidth = device.getBandwidth();
-
-        logInfo("获取光谱带宽: %s -> %s", deviceId, bandwidth);
-        return bandwidth;
-    }
-
-    /**
      * 设置当前状态
      * @param deviceId 设备ID
      * @param status 当前状态值
