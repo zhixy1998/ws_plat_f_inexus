@@ -1584,10 +1584,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     String s = formulaUtil.addFormula(stepPoints, result.getDeviceSerialNumber());
                     result.setStepPoints(stepPoints);
 
-                    if (comId.equals(ConnectEnum.GetWlList.getComId())) {
-                        result.setLinearSegment(s);
-                    }
-
+                    result.setLinearSegment(s);
                     continue;
                 }
 

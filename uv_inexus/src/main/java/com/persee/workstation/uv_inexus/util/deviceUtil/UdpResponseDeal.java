@@ -53,8 +53,6 @@ public class UdpResponseDeal {
         switch (cmdId) {
             case "GetSn":
                 return parseSn(responses);
-            case "GetVer":
-                return parseVer(responses);
             case "GotoMLamp":
                 return goToMlLamp(responses);
 
@@ -137,7 +135,6 @@ public class UdpResponseDeal {
                 return parseCellPos(responses, sendBytes);
             case "GetWLampStatus":
             case "GetDLampStatus":
-            case "GetGLampStatus":
                 return getLampStatus(responses);
 
             case "GetInitStatus":
@@ -688,27 +685,6 @@ public class UdpResponseDeal {
 
         System.out.println("设备序列号：" + Sn);
         return resultEntity; // 返回处理后的结果
-    }
-
-    private static OperationResultEntity parseVer(List<byte[]> responses) {
-        if (responses == null || responses.isEmpty() || responses.size() < 4) {
-            resultEntity.setIsSuccess(false);
-            return resultEntity;
-        }
-
-        StringBuilder ver = new StringBuilder();
-        for (int i = 1; i<= 2; i++){
-            byte[] part = responses.get(i);
-            if (part.length >= 12){
-                ver.append(new String(part, 4, 7));
-            } else {
-                System.out.println("第 " + (i + 1) + " 条回应太短，跳过");
-            }
-        }
-        resultEntity.setSoftwareVersion(ver.toString());
-
-        System.out.println("设备版本号：" + ver);
-        return resultEntity;
     }
 
     private static OperationResultEntity goToMlLamp(List<byte[]> responses) {

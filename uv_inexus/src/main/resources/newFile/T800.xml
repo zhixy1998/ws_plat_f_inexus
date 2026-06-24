@@ -141,28 +141,6 @@
                  <string>255:101:1:7</string>
              </HeadReceiveBytes>
          </ProtocolItem>
-    <ProtocolItem>
-        <ID>GetGLampStatus</ID>
-        <Describe>读取汞灯状态</Describe>
-        <Timeout>3000</Timeout>
-        <ACK>Y</ACK>
-        <InputString>
-            <string>灯状态(开1关0):I2:0</string>
-        </InputString>
-        <OutputString>
-            <string>灯状态(开1关0):AJ2:4</string>
-        </OutputString>
-        <SendBytes>
-            <string>101:255:1:15:0:0:0:0:0:0:0:Check</string>
-        </SendBytes>
-        <ReadBytes>
-            <string>254:101:1:15:AJ2:0:0:0:0:0:0:Check</string>
-        </ReadBytes>
-        <ReplyNumber>24</ReplyNumber>
-        <HeadReceiveBytes>
-            <string>255:101:1:15</string>
-        </HeadReceiveBytes>
-    </ProtocolItem>
 <ProtocolItem>
 <ID>SetDLampStatus</ID>
 <Describe>设置氘灯状态</Describe>
@@ -654,28 +632,6 @@
         <string>255:101:19:253</string>
     </HeadReceiveBytes>
 </ProtocolItem>
-    <ProtocolItem>
-        <ID>GetVer</ID>
-        <Describe>读软件下位机版本号</Describe>
-        <Timeout>3000</Timeout>
-        <ACK>Y</ACK>
-        <InputString>
-            <string/>
-        </InputString>
-        <OutputString>
-            <string>序列号:AJ28:6</string>
-        </OutputString>
-        <SendBytes>
-            <string>101:255:19:254:0:0:0:0:0:0:0:Check</string>
-        </SendBytes>
-        <ReadBytes>
-            <string>255:101:19:254:AJ28:AJ28:AJ28:AJ28:AJ28:AJ28:AJ28:Check:254:181:19:254:AJ28:AJ28:AJ28:AJ28:AJ28:AJ28:AJ28:Check</string>
-        </ReadBytes>
-        <ReplyNumber>36</ReplyNumber>
-        <HeadReceiveBytes>
-            <string>255:101:19:254</string>
-        </HeadReceiveBytes>
-    </ProtocolItem>
 <ProtocolItem>
 <ID>InitLampMotor</ID>
 <Describe>灯电机初始化</Describe>
