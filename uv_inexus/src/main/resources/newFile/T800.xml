@@ -478,7 +478,7 @@
 <ProtocolItem>
 <ID>SetSlit1</ID>
 <Describe>设置主狭缝的宽度</Describe>
-<Timeout>30000</Timeout>
+<Timeout>60000</Timeout>
 <ACK>Y</ACK>
 <InputString>
 <string>狭缝:I19:0</string>
