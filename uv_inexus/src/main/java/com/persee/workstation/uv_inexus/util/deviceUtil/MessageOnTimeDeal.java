@@ -350,6 +350,13 @@ public class MessageOnTimeDeal {
                             Thread.sleep(5);
                             continue;
                         }
+                        if (isStartMessage(message,deviceId)) {
+                            log.info("07报文");
+                            store.getMessage(deviceId);
+                            startTime = System.currentTimeMillis();
+                            continue;
+                        }
+
                         if (message[2] == 0x00 && message[3] == 0x00 && message[4] == 0x00 && message[5] == 0x00){
                             flag = 3;
                             return;
@@ -607,6 +614,27 @@ public class MessageOnTimeDeal {
         });
     }
 
+    private boolean isStartMessage(byte[] message, String deviceId) {
+
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String xmlKey = device.getXmlKey();
+        DevXmlEnums anEnum = DevXmlEnums.getEnum(xmlKey);
+        byte[] startMessage = anEnum.getStartMessage();
+
+        // 验证字节数组长度
+        if (message == null || startMessage == null || message.length < 12 || startMessage.length < 12) {
+            return false;
+        }
+
+        // 比较两个字节数组的前12个字节
+        for (int i = 0; i < 12; i++) {
+            if (message[i] != startMessage[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public void stop(String deviceSerialNumber, String deviceId) {
 
         // 中断 scan / baseline 线程
@@ -624,15 +652,6 @@ public class MessageOnTimeDeal {
         ScanSessionManager.stopScan(deviceId);
 
         log.info("[ON-TIME] stop parser thread, device={}", deviceSerialNumber);
-    }
-
-    private boolean isStartMessage(byte[] message) {
-//        FF B5 FF 07 00 00 00 00 00 00 00 BA
-
-        return message[0] == (byte) 0xFF && message[1] == (byte) 0xB5
-                && message[2] == (byte) 0xFF && message[3] == (byte) 0x07 && message[4] == (byte) 0x00
-                && message[5] == (byte) 0x00 && message[6] == (byte) 0x00 && message[7] == (byte) 0x00
-                && message[8] == (byte) 0x00 && message[9] == (byte) 0x00 && message[10] == (byte) 0x00 && message[11] == (byte) 0xBA;
     }
 
     private void handleDarkRsd(ChangeParam rsd, String deviceSerialNumber,SpectrumPoint sp) {

@@ -11,7 +11,6 @@ public enum ParamCmdEnum {
     END_WL("endWl", "SetEndWl"),
     SCAN_WL_INTERVAL("scanWlInterval", "SetScanWlInterval"),
     GAIN("gain", "SetGain"),
-    SLIT1("slit1", "SetSlit1"),
     LAMP_POS("lampPos", "SetLampPos"),
     CORR_STATUS("corrStatus", "DoIt"),
     WL_LAMP("mlLamp", "MLamp"),
@@ -24,6 +23,7 @@ public enum ParamCmdEnum {
     Response_Time("responseTime", "SetResponseTime"),
     Cell_Pos("cellPos", "SetCellPos"),
     Dark("dark", "Dark"),
+    SLIT1("slit1", "SetSlit1"),
     Init_Status("initStatus", "SetInitStatus");
 
     private final String paramField;
