@@ -75,6 +75,9 @@ public class SpectrumNewWebSocket {
 
     String currentSampleCell;
 
+    // 灯状态(true:没问题 false:有问题)
+    private static boolean lightStatus = true;
+
     @Autowired
     private SpectrumService spectrumService;
     @Autowired
@@ -575,7 +578,12 @@ public class SpectrumNewWebSocket {
     public void measureTask(SpectrumNewWebSocketParam param) {
         log.info("仪器编号: {} 进入扫描 时间: {}", param.getDeviceSerialNumber(), LocalDateTime.now());
 
+        // 清理公共变量
         clearGlobalData();
+
+        // 初始化灯状态值
+        lightStatus = true;
+
         Constants.measureStopStatus.put(param.getDeviceSerialNumber(), true);
         currentSampleCell=null;
         // 初始化会话状态
@@ -875,7 +883,11 @@ public class SpectrumNewWebSocket {
 
                 JSONObject payload = new JSONObject();
                 if (Constants.measureStopStatus.get(deviceSerialNumber)){
-                    payload.put("success", "扫描成功");
+                    if (lightStatus){
+                        payload.put("success", "扫描成功");
+                    }else {
+                        payload.put("error", "能量异常，请重新测量");
+                    }
                 }else{
                     payload.put("success", "停止成功");
                 }
@@ -1363,6 +1375,10 @@ public class SpectrumNewWebSocket {
                                     break;
                                 case UN_NORMAL:
                                     log.error("设备 {} 的测量异常结束", deviceSerialNumber);
+                                    break;
+                                case NORMAL_OVERPOWER:
+                                    lightStatus = false;
+                                    log.error("设备 {} 能量异常，请重新测量", deviceSerialNumber);
                                     break;
                                 case NORMAL:
                                     log.info("设备 {} 的测量正常完成", deviceSerialNumber);
@@ -1945,6 +1961,9 @@ public class SpectrumNewWebSocket {
                             break;
                         case UN_NORMAL:
                             log.error("设备 {} 的测量异常结束", deviceSerialNumber);
+                            break;
+                        case NORMAL_OVERPOWER:
+                            log.error("设备 {} 能量异常，请重新测量", deviceSerialNumber);
                             break;
                         case NORMAL:
                             log.info("设备 {} 的测量正常完成", deviceSerialNumber);

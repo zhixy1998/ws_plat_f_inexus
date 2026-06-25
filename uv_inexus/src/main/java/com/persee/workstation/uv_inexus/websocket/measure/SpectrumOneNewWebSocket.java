@@ -20,6 +20,7 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
@@ -36,8 +37,6 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
-import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
-import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
@@ -83,6 +82,10 @@ public class SpectrumOneNewWebSocket {
     String deviceSerialNumber;
 
     String currentSampleCell;
+
+
+    // 灯状态(true:没问题 false:有问题)
+    private static boolean lightStatus = true;
 
     @Autowired
     private SpectrumService spectrumService;
@@ -616,6 +619,9 @@ public class SpectrumOneNewWebSocket {
         infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.SpectrumOne.getOperation(), param.getTaskId(), Constants.DEVICE_STATUS_MEASURE);
 
         clearGlobalData();
+        // 初始化灯状态值
+        lightStatus = true;
+
         Constants.measureStopStatus.put(deviceSerialNumber, true);
 
         if (Constants.endTime != null || Constants.startTime != null) {
@@ -780,7 +786,11 @@ public class SpectrumOneNewWebSocket {
 
                 JSONObject payload = new JSONObject();
                 if (Constants.measureStopStatus.get(deviceSerialNumber)) {
-                    payload.put("success", "扫描成功");
+                    if (lightStatus){
+                        payload.put("success", "扫描成功");
+                    }else {
+                        payload.put("error", "能量异常，请重新测量");
+                    }
                 } else {
                     payload.put("success", "停止成功");
                 }
@@ -1220,6 +1230,10 @@ public class SpectrumOneNewWebSocket {
                                     break;
                                 case UN_NORMAL:
                                     log.error("设备 {} 的测量异常结束", deviceSerialNumber);
+                                    break;
+                                case NORMAL_OVERPOWER:
+                                    lightStatus = false;
+                                    log.error("设备 {} 能量异常，请重新测量", deviceSerialNumber);
                                     break;
                                 case NORMAL:
                                     log.info("设备 {} 的测量正常完成", deviceSerialNumber);
@@ -1827,6 +1841,10 @@ public class SpectrumOneNewWebSocket {
                             break;
                         case UN_NORMAL:
                             log.error("设备 {} 的测量异常结束", deviceSerialNumber);
+                            break;
+                        case NORMAL_OVERPOWER:
+                            lightStatus = false;
+                            log.error("设备 {} 能量异常，请重新测量", deviceSerialNumber);
                             break;
                         case NORMAL:
                             log.info("设备 {} 的测量正常完成", deviceSerialNumber);

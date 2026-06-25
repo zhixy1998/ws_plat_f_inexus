@@ -79,6 +79,10 @@ public class ConciseSpectrumNewWebSocket {
     String deviceSerialNumber;
     String currentSampleCell;
 
+
+    // 灯状态(true:没问题 false:有问题)
+    private static boolean lightStatus = true;
+
     @Autowired
     private SpectrumConciseService spectrumService;
     @Autowired
@@ -642,6 +646,9 @@ public class ConciseSpectrumNewWebSocket {
         infoService.updateDeviceCurrentStatus(deviceSerialNumber,WebSocketOperationEnum.ConciseSpectrum.getOperation(), param.getTaskId(), Constants.DEVICE_STATUS_MEASURE);
 
         clearGlobalData();
+
+        // 初始化灯状态值
+        lightStatus = true;
         // 停止状态给初始值
         Constants.measureStopStatus.put(deviceSerialNumber, true);
 
@@ -902,7 +909,11 @@ public class ConciseSpectrumNewWebSocket {
 
                 JSONObject payload = new JSONObject();
                 if (Constants.measureStopStatus.get(deviceSerialNumber)){
-                    payload.put("success", "扫描成功");
+                    if (lightStatus){
+                        payload.put("success", "扫描成功");
+                    }else {
+                        payload.put("error", "能量异常，请重新测量");
+                    }
                 }else{
                     payload.put("success", "停止成功");
                 }
@@ -1447,8 +1458,15 @@ public class ConciseSpectrumNewWebSocket {
                                 case UN_NORMAL:
                                     log.error("设备 {} 的测量异常结束", deviceSerialNumber);
                                     break;
+                                case NORMAL_OVERPOWER:
+                                    lightStatus = false;
+                                    log.error("设备 {} 能量异常，请重新测量", deviceSerialNumber);
+                                    break;
                                 case NORMAL:
                                     log.info("设备 {} 的测量正常完成", deviceSerialNumber);
+                                    break;
+                                case NORMAL_STOP:
+                                    log.info("设备 {} 的测量已停止", deviceSerialNumber);
                                     break;
                             }
                             whileStatus = false;
@@ -2023,8 +2041,15 @@ public class ConciseSpectrumNewWebSocket {
                         case UN_NORMAL:
                             log.error("设备 {} 的测量异常结束", deviceSerialNumber);
                             break;
+                        case NORMAL_OVERPOWER:
+                            lightStatus = false;
+                            log.error("设备 {} 能量异常，请重新测量", deviceSerialNumber);
+                            break;
                         case NORMAL:
                             log.info("设备 {} 的测量正常完成", deviceSerialNumber);
+                            break;
+                        case NORMAL_STOP:
+                            log.info("设备 {} 的测量已停止", deviceSerialNumber);
                             break;
                     }
                     // 结束循环
