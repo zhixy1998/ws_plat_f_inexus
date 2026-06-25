@@ -354,6 +354,10 @@ public class MessageOnTimeDeal {
                             flag = 3;
                             return;
                         }
+                        if ((message[2] & 0xFF) == 0xFF && (message[3] & 0xFF) == 0x01 && (message[4] & 0xFF) == 0x09 && (message[5] & 0xFF) == 0x00){
+                            flag = 4;
+                            return;
+                        }
 
                         StringBuilder s = new StringBuilder();
                         for (int j = 0; j < 4; j++) {
@@ -574,7 +578,13 @@ public class MessageOnTimeDeal {
                                 EndMarker.NormalStop(deviceSerialNumber, cmdId)
                         );
                         log.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
-                    } else{
+                    } else if (flag == 4){
+                        unknowCountMessageQueue.putMessage(
+                                deviceSerialNumber,
+                                cmdId,
+                                EndMarker.unNormalOverPower(deviceSerialNumber, cmdId)
+                        );
+                    }else{
                         unknowCountMessageQueue.putMessage(
                                 deviceSerialNumber,
                                 cmdId,

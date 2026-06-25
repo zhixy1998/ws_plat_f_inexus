@@ -10,7 +10,8 @@ public final class EndMarker {
         UN_NORMAL,
         NORMAL,
         TIME_STOP,
-        NORMAL_STOP
+        NORMAL_STOP,
+        NORMAL_OVERPOWER
     }
 
     private final String deviceSn;
@@ -43,6 +44,10 @@ public final class EndMarker {
 
     public static EndMarker NormalStop (String sn, String cmd) {
         return new EndMarker(sn, cmd, Reason.NORMAL_STOP);
+    }
+
+    public static EndMarker unNormalOverPower (String sn, String cmd) {
+        return new EndMarker(sn, cmd, Reason.NORMAL_OVERPOWER);
     }
 }
 
