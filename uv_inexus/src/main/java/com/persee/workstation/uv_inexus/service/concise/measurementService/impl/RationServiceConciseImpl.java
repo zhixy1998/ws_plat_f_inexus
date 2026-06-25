@@ -1241,6 +1241,10 @@ public class RationServiceConciseImpl implements RationConciseService {
                     waveLength = parameter.getWaveLength().get(parameter.getWaveLength().size() - 1);
                 }
                 param.setSetWl(Double.parseDouble(waveLength));
+                if (StringUtils.hasText(parameter.getSpectralBandwidth())
+                        && deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+                    param.setSlit1(Double.parseDouble(parameter.getSpectralBandwidth()));
+                }
 
                 inputParam.setParam(param);
                 R<OperationResultEntity> operation = operationUtilService.operation(inputParam);

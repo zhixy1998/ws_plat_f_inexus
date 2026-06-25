@@ -1008,6 +1008,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 param.setResponseTime(Double.valueOf(responseTime));
                 param.setSetWl(Double.valueOf(waveLength));
                 param.setChangeLampWl(Double.valueOf(changeLampWaveLength));
+
+                if (StringUtils.hasText(parameter.getSpectralBandwidth())
+                        && deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+                    param.setSlit1(Double.parseDouble(parameter.getSpectralBandwidth()));
+                }
+
                 if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
 
                     String lampPos = StringUtils.hasText(parameter.getEnergyLamp()) ? parameter.getEnergyLamp() : "0";
