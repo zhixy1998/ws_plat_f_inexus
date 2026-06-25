@@ -484,6 +484,20 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         ans.setBandWidth(deviceModelInfoPO.getSpacingWidth() == null ? null : deviceModelInfoPO.getSpacingWidth());
         ans.setFilterWavelength(deviceModelInfoPO.getFilterWavelength() == null ? null : deviceModelInfoPO.getFilterWavelength());
 
+        JSONObject scanSpeedJson = deviceModelInfoPO.getScanSpeed();
+        if (scanSpeedJson != null) {
+            List<DeviceConfParam> scanSpeedList = new ArrayList<>();
+            scanSpeedJson.forEach((k, v) -> {
+                DeviceConfParam param = new DeviceConfParam();
+                param.setParamName(v.toString());
+                param.setParamValue(k);
+                scanSpeedList.add(param);
+            });
+            ans.setScanSpeed(scanSpeedList);
+        } else {
+            ans.setScanSpeed(null);
+        }
+
         return R.ok(ans);
     }
 
@@ -542,17 +556,6 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             lamp.add(param);
         });
         ans.setLampType(lamp);
-
-        List<DeviceConfParam> scanSpeed = new ArrayList<>();
-
-        JSONObject speed = po.getScanSpeed();
-        speed.forEach((k, v) -> {
-            DeviceConfParam param = new DeviceConfParam();
-            param.setParamName(v.toString());
-            param.setParamValue(k);
-            scanSpeed.add(param);
-        });
-        ans.setScanSpeed(scanSpeed);
 
         return ans;
 
