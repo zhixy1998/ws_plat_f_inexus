@@ -725,10 +725,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         setParam.setPhotoMode(Integer.valueOf(paramDto.getParameter().getLuminosity()));
         setParam.setSetWl(Double.valueOf(paramDto.getParameter().getStartWaveLength()));
         setParam.setChangeLampWl(Double.valueOf(paramDto.getParameter().getChangeLampWaveLength()));
-        if (StringUtils.hasText(param.getSpectralBandwidth())
-                && deviceInfoService.isNeedSetSit(paramDto.getDeviceSerialNumber())) {
-            setParam.setSlit1(Double.parseDouble(param.getSpectralBandwidth()));
+        if (StringUtils.hasText(paramDto.getDeviceSerialNumber())) {
+            if (StringUtils.hasText(param.getSpectralBandwidth())
+                    && deviceInfoService.isNeedSetSit(paramDto.getDeviceSerialNumber())) {
+                setParam.setSlit1(Double.parseDouble(param.getSpectralBandwidth()));
+            }
         }
+
         boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
         if (!b) {
             log.error("设置仪器参数失败");
