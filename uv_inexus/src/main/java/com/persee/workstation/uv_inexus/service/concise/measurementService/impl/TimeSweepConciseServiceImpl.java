@@ -605,9 +605,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         setParam.setPhotoMode(Integer.valueOf(paramDto.getParameter().getLuminosity()));
         setParam.setSetWl(Double.valueOf(paramDto.getParameter().getWaveLength()));
         setParam.setResponseTime(Double.valueOf(param.getResponseTime()));
-        if (StringUtils.hasText(param.getSpectralBandwidth())
-                && deviceInfoService.isNeedSetSit(paramDto.getDeviceSerialNumber())) {
-            setParam.setSlit1(Double.parseDouble(param.getSpectralBandwidth()));
+        if (StringUtils.hasText(paramDto.getDeviceSerialNumber())) {
+            if (StringUtils.hasText(param.getSpectralBandwidth())
+                    && deviceInfoService.isNeedSetSit(paramDto.getDeviceSerialNumber())) {
+                setParam.setSlit1(Double.parseDouble(param.getSpectralBandwidth()));
+            }
         }
         boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
         if (!b) {

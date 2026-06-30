@@ -360,6 +360,9 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
     @Override
     public Boolean isNeedSetSit(String deviceSerialNumber) {
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            return false;
+        }
 
         String devModel = deviceSerialNumber.substring(3, 8);
 
