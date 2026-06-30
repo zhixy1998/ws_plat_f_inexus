@@ -601,18 +601,21 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return Result.checkFail(rdata.getData());
             }
         }
-        SetParam setParam = new SetParam();
-        setParam.setPhotoMode(Integer.valueOf(paramDto.getParameter().getLuminosity()));
-        setParam.setSetWl(Double.valueOf(paramDto.getParameter().getWaveLength()));
-        setParam.setResponseTime(Double.valueOf(param.getResponseTime()));
-        if (StringUtils.hasText(param.getSpectralBandwidth())
-                && deviceInfoService.isNeedSetSit(paramDto.getDeviceSerialNumber())) {
-            setParam.setSlit1(Double.parseDouble(param.getSpectralBandwidth()));
+        if (StringUtils.hasText(paramDto.getDeviceSerialNumber())) {
+            SetParam setParam = new SetParam();
+            setParam.setPhotoMode(Integer.valueOf(paramDto.getParameter().getLuminosity()));
+            setParam.setSetWl(Double.valueOf(paramDto.getParameter().getWaveLength()));
+            setParam.setResponseTime(Double.valueOf(param.getResponseTime()));
+            if (StringUtils.hasText(param.getSpectralBandwidth())
+                    && deviceInfoService.isNeedSetSit(paramDto.getDeviceSerialNumber())) {
+                setParam.setSlit1(Double.parseDouble(param.getSpectralBandwidth()));
+            }
+            boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
+            if (!b) {
+                log.error("设置仪器参数失败");
+            }
         }
-        boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
-        if (!b) {
-            log.error("设置仪器参数失败");
-        }
+
 
         // 判断参数是否发生变化，如果没有变化，直接返回，不再执行后续操作
         if (paramDto.getMethodId() != null && (paramDto.getMethodId2() == null || paramDto.getMethodId().equals(paramDto.getMethodId2()))) {
