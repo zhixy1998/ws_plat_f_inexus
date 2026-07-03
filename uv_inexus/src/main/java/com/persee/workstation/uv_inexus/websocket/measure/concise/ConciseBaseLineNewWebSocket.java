@@ -54,6 +54,10 @@ import java.util.stream.Collectors;
  */
 @Component
 public class ConciseBaseLineNewWebSocket {
+
+    // 灯状态(true:没问题 false:有问题)
+    private static boolean lightStatus = true;
+
     private static final Logger log = LoggerFactory.getLogger(ConciseBaseLineNewWebSocket.class);
 
     // 存储任务线程
@@ -157,6 +161,9 @@ public class ConciseBaseLineNewWebSocket {
         SessionState state = new SessionState();
         sessionStates.put(sessionId, state);
 
+        // 初始化灯状态值
+        lightStatus = true;
+
         // 初始化发送锁
         sessionSendLocks.put(sessionId, new Object());
 
@@ -255,7 +262,11 @@ public class ConciseBaseLineNewWebSocket {
 
             JSONObject object = new JSONObject();
             if (Constants.measureStopStatus.get(deviceSerialNumber)){
-                object.put("success", "基线成功");
+                if (lightStatus){
+                    object.put("success", "基线成功");
+                }else {
+                    object.put("error", "能量异常，请重新测量");
+                }
             }else{
                 object.put("success", "停止成功");
             }
@@ -411,6 +422,10 @@ public class ConciseBaseLineNewWebSocket {
                             break;
                         case UN_NORMAL:
                             log.error("设备 {} 的测量异常结束", deviceSerialNumber);
+                            break;
+                        case NORMAL_OVERPOWER:
+                            lightStatus = false;
+                            log.error("设备 {} 能量异常，请重新测量", deviceSerialNumber);
                             break;
                         case NORMAL:
                             log.info("设备 {} 的测量正常完成", deviceSerialNumber);
