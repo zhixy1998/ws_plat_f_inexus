@@ -630,13 +630,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 return Result.fail("00000009");
             }
         }
-        // 仪器下发参数校验
-        if (methodDTO.getDeviceSerialNumber()!=null && !methodDTO.getDeviceSerialNumber().isEmpty()) {
-            R rdata = IssueCheckParam(methodDTO.getNewMethodParam(), methodDTO.getDeviceSerialNumber());
-            if (!rdata.getSuccess()) {
-                return Result.fail(rdata.getMessage());
-            }
-        }
+//        // 仪器下发参数校验
+//        if (methodDTO.getDeviceSerialNumber()!=null && !methodDTO.getDeviceSerialNumber().isEmpty()) {
+//            R rdata = IssueCheckParam(methodDTO.getNewMethodParam(), methodDTO.getDeviceSerialNumber());
+//            if (!rdata.getSuccess()) {
+//                return Result.fail(rdata.getMessage());
+//            }
+//        }
 
         FMeasurementCurrentInfoVO ans = new FMeasurementCurrentInfoVO();
 
@@ -663,15 +663,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             }
             R<Boolean> r = setParamToDevice(currentMethodId, methodDTO.getDeviceSerialNumber());
-            if (!r.getSuccess()) {
-                log.info("设置参数失败");
-                return Result.fail("0030000C");
-            }
-            ans.setMethodId(currentMethodId);
-            ans.setMethodName(currentMethod.getMethodName());
-            ans.setTaskId(methodDTO.getCurrentTaskId());
-            ans.setTaskName(fMeasureTaskService.getById(methodDTO.getCurrentTaskId()).getTaskName());
-            return Result.ok(ans);
+//            if (!r.getSuccess()) {
+//                log.info("设置参数失败");
+//                return Result.fail("0030000C");
+//            }
+//            ans.setMethodId(currentMethodId);
+//            ans.setMethodName(currentMethod.getMethodName());
+//            ans.setTaskId(methodDTO.getCurrentTaskId());
+//            ans.setTaskName(fMeasureTaskService.getById(methodDTO.getCurrentTaskId()).getTaskName());
+//            return Result.ok(ans);
         }
 
 

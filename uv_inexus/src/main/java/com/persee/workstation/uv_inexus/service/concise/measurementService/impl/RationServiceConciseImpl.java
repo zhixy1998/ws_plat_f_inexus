@@ -945,10 +945,10 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             }
             R<Boolean> r = setParamToDevice(currentMethodId, methodDTO.getDeviceSerialNumber());
-            if (!r.getSuccess()) {
-                //仪器下发参数出错
-                return Result.fail("0030000C");
-            }
+//            if (!r.getSuccess()) {
+//                //仪器下发参数出错
+//                return Result.fail("0030000C");
+//            }
         }
 
 
