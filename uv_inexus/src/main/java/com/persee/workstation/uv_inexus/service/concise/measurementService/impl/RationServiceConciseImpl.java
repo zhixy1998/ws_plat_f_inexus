@@ -933,18 +933,21 @@ public class RationServiceConciseImpl implements RationConciseService {
                 //没有找到该方法
                 return Result.fail("00000009");
             }
-            if (!StringUtils.hasText(methodDTO.getDeviceSerialNumber())) {
-                //未连接仪器
-                return Result.fail("0000001D");
+//            if (!StringUtils.hasText(methodDTO.getDeviceSerialNumber())) {
+//                //未连接仪器
+//                return Result.fail("0000001D");
+//            }
+//
+//            DeviceInfoPO info = deviceInfoService.getInfo(methodDTO.getDeviceSerialNumber());
+//            if (info == null || !info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
+//                //未连接仪器
+//                return Result.fail("0000001D");
+//
+//            }
+            if (StringUtils.hasText(methodDTO.getDeviceSerialNumber())) {
+                setParamToDevice(currentMethodId, methodDTO.getDeviceSerialNumber());
             }
 
-            DeviceInfoPO info = deviceInfoService.getInfo(methodDTO.getDeviceSerialNumber());
-            if (info == null || !info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
-                //未连接仪器
-                return Result.fail("0000001D");
-
-            }
-            R<Boolean> r = setParamToDevice(currentMethodId, methodDTO.getDeviceSerialNumber());
 //            if (!r.getSuccess()) {
 //                //仪器下发参数出错
 //                return Result.fail("0030000C");
