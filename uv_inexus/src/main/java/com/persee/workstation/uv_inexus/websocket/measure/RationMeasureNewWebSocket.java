@@ -594,7 +594,7 @@ public class RationMeasureNewWebSocket{
                         if (!operation.getSuccess()) {
                             log.info("设置样品池位置出错");
                         }
-
+                        samplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, usefulLocation.get(0), updateBy);
                         JSONObject object = new JSONObject();
                         object.put("currentPoolNum", usefulLocation.get(0));
                         sendMessage(deviceSerialNumber, object);
