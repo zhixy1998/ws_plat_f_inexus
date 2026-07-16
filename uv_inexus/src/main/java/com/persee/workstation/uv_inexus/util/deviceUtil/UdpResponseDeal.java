@@ -384,9 +384,22 @@ public class UdpResponseDeal {
             return resultEntity;
         }
 
-        byte[] lastResponse = responses.get(responses.size() - 1);
+        byte[] lastResponse = null;
+        for (int i = responses.size() - 1; i >= 0; i--) {
+            byte[] resp = responses.get(i);
+            if (resp != null && resp.length >= 4 &&
+                    (resp[0] & 0xFF) == 0xFF &&
+                    (resp[1] & 0xFF) == 0x65 &&
+                    (resp[2] & 0xFF) == 0x20 &&
+                    (resp[3] & 0xFF) == 0xF1) {
+                continue;
+            }
+            lastResponse = resp;
+            break;
+        }
+
         if (lastResponse == null || lastResponse.length < 5) {
-            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            System.out.println("未找到有效回应报文或报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
             resultEntity.setIsSuccess(false);
             resultEntity.setErrorCode("0020A018");
             resultEntity.setErrorArgs(new Object[]{sendBytes.length});
@@ -396,7 +409,6 @@ public class UdpResponseDeal {
         boolean isEqual = lastResponse[2] == sendBytes[2] &&
                 lastResponse[3] == sendBytes[3] &&
                 lastResponse[4] == sendBytes[4];
-//        boolean isEqual = (lastResponse[4] & 0xFF) == 0;
 
         resultEntity.setIsSuccess(isEqual);
 
@@ -411,6 +423,7 @@ public class UdpResponseDeal {
 
         return resultEntity;
     }
+
 
     //    private static Object parseLampPos(List<byte[]> responses) {
 //        byte[] lastResponse = responses.get(responses.size() - 1);

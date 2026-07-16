@@ -492,8 +492,9 @@
 <ReadBytes>
 <string>255:101:6:2:AJ19*10:0:0:0:0:0:0:Check</string>
 </ReadBytes>
-    <ReplyNumber>24</ReplyNumber>
+    <ReplyNumber>-1</ReplyNumber>
     <HeadReceiveBytes>
+        <string>255:101:32:241</string>
         <string>255:101:6:2</string>
     </HeadReceiveBytes>
 </ProtocolItem>
