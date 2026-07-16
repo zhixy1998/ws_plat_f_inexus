@@ -458,7 +458,7 @@ public class BaseLineNewWebSocket {
             log.info("【数据收集完成】停止数据接收线程并清理数据, session: {}", sessionId);
             Constants.measurd_data.clear();
 
-            if (dataList.isEmpty()&&Constants.measureStopStatus.get(deviceSerialNumber)) {
+            if (dataList.isEmpty()&&Constants.measureStopStatus.get(deviceSerialNumber) && lightStatus) {
                 log.error("【数据为空】基线数据为空，失败, session: {}", sessionId);
                 sendErrorClose(deviceSerialNumber,"基线数据为空，失败" );
                 return null;
