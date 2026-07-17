@@ -1149,6 +1149,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         }
 
         String macAddress = "";
+        byte[] endBytes = new byte[4];
         if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(connectType)) {
         } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(connectType)) {
             macAddress = connectUtil.getWifiMacAddress();
@@ -1241,6 +1242,25 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             List<String> headReceiveBytes = transition.getHeadReceiveBytes();
 
             if (replyNumber < 0) {
+                String[] readBytes = transition.getReadBytes();
+                if (readBytes != null && readBytes.length > 0) {
+                    endBytes = new byte[4];
+                    String fullStr = readBytes[0];
+                    String[] parts = fullStr.split(":");
+
+                    for (int i = 0; i < 4 && i < parts.length; i++) {
+                        String part = parts[i].trim();
+                        // 跳过非数字部分（比如 "Check"）
+                        if (!part.matches("\\d+")) {
+                            break; // 或 continue，根据逻辑决定
+                        }
+                        // 解析为 int（支持 0~255）
+                        int intValue = Integer.parseInt(part);
+                        // 安全转为 byte（保留低8位）
+                        endBytes[i] = (byte) (intValue & 0xFF);
+//                                        System.out.println(endBytes[i]);
+                    }
+                }
                 result = udpSendUtil.unknownReceive(
                         deviceId,
                         command.getCmdId(),
@@ -1248,7 +1268,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         timeout,
                         false,
                         deviceSerialNumber,
-                        null,
+                        endBytes,
                         headReceiveBytes
                 );
             } else {
