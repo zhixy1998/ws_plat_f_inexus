@@ -39,7 +39,6 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.CalculationFormulaService;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.StandardPretreatmentService;
@@ -322,7 +321,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
         if (!StringUtils.hasText(methodParam.getCurrentMethodId())) {
             //请选择当前方法
-            return Result.fail("00000023");
+            return Result.fail("00000021");
         }
 
         if (methodParam.getTaskId()==null||!StringUtils.hasText(methodParam.getTaskId())) {
