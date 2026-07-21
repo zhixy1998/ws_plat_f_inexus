@@ -27,7 +27,6 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConf
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNumConfig;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.MappingParamEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
-import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -835,23 +834,23 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     public Result setUpParametersPort(String taskId, String deviceSerialNumber, String measureType) {
         // 校验参数
         if (!StringUtils.hasText(taskId)) {
-            return Result.fail("00300001");
+            return Result.fail("00000003");
         }
         if (!StringUtils.hasText(deviceSerialNumber)) {
-            return Result.fail("00300002");
+            return Result.fail("00305007");
         }
         if (!StringUtils.hasText(measureType)) {
-            return Result.fail("00300003");
+            return Result.fail("00307003");
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             return Result.fail("00000004");
         }
         if (task.getTaskStatus().equals(Constants.PARAM_ONE)&&!task.getDeviceSerialNumber().equals(deviceSerialNumber)){
-            return Result.fail("00300004");
+            return Result.fail("00B00004");
         }
         if (task.getTaskStatus().equals(Constants.PARAM_TWO)){
-            return Result.fail("00300005");
+            return Result.fail("00B00005");
         }
         String methodId = task.getMethodKey();
         MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
@@ -865,9 +864,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             case TIME_SCAN:
                 return timeSweepService.setMethodParameters(methodId, deviceSerialNumber);
             case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
-                return Result.fail("00300006");
+                return Result.fail("0000002B");
             default:
-                return Result.fail("00300007");
+                return Result.fail("0000002B");
         }
     }
 
