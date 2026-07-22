@@ -4419,9 +4419,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             devType.setDeviceSerialNumber(deviceSerialNumber);
                             SetParam setParam = new SetParam();
                             //设置起始波长
-                            setParam.setStartWl(startWavelength);
+                            setParam.setStartWl(endWavelength);
                             //设置终止波长
-                            setParam.setEndWl(endWavelength);
+                            setParam.setEndWl(startWavelength);
                             //设置扫描间隔
                             setParam.setScanWlInterval(1.0);
                             devType.setParam(setParam);
@@ -5110,9 +5110,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         devType.setDeviceSerialNumber(deviceSerialNumber);
                         SetParam setParam = new SetParam();
                         //设置起始波长
-                        setParam.setStartWl(startWavelength);
+                        setParam.setStartWl(endWavelength);
                         //设置终止波长
-                        setParam.setEndWl(endWavelength);
+                        setParam.setEndWl(startWavelength);
                         //设置扫描间隔
                         setParam.setScanWlInterval(1.0);
                         devType.setParam(setParam);
