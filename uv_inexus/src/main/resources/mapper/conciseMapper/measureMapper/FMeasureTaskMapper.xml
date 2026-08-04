@@ -22,7 +22,9 @@
         select name as name,
         identity as identity,
         print_title as printTitle,
-        locate as locate
+        locate as locate,
+        false as isHidden,
+        case when identity in ('normalConcentration') then false else true end as isSupportHidden
         from t800_uv_inexus_concise.f_t_measure_preset_head
         where measure_type = #{measure_type}
         <if test="sample_kind != null">

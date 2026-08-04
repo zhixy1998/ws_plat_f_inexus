@@ -1418,7 +1418,7 @@ public class RationMeasureNewWebSocket{
         RationDataVO dataInfo = new RationDataVO();
 
         List<String> waveLengths = parameter.getWaveLength();
-
+        waveLengths.sort(Comparator.reverseOrder());
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
@@ -1555,6 +1555,7 @@ public class RationMeasureNewWebSocket{
             RationDataVO ans = new RationDataVO();
 
             List<String> waveLengths = parameter.getWaveLength();
+            waveLengths.sort(Comparator.reverseOrder());
 
             DevOperationInputParam inputParam = new DevOperationInputParam();
             inputParam.setDeviceSerialNumber(deviceSerialNumber);

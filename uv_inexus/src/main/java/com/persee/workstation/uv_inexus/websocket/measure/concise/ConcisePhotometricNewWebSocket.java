@@ -472,6 +472,8 @@ public class ConcisePhotometricNewWebSocket {
         List<ChangeParam> machineData = new ArrayList<>();
 
         List<String> waveLengths = parameter.getWaveLength();
+        //波长排序，从大到小
+        waveLengths.sort(Comparator.reverseOrder());
 
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
@@ -554,6 +556,7 @@ public class ConcisePhotometricNewWebSocket {
             List<ChangeParam> machineData = new ArrayList<>();
 
             List<String> waveLengths = parameter.getWaveLength();
+            waveLengths.sort(Comparator.reverseOrder());
 
             DevOperationInputParam inputParam = new DevOperationInputParam();
             inputParam.setDeviceSerialNumber(deviceSerialNumber);

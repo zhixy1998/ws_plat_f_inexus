@@ -32,6 +32,12 @@ public class HeadVO {
     @ApiModelProperty("定位")
     private String locate;
 
+    @ApiModelProperty("是否隐藏")
+    private Boolean isHidden = false;
+
+    @ApiModelProperty("是否支持隐藏操作")
+    private Boolean isSupportHidden = true;
+
     public HeadVO(String name, String identity) {
         this.name = name;
         this.identity = identity;

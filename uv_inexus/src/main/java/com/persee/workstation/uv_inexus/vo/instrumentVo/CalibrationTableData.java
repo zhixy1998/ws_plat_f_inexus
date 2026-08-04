@@ -30,6 +30,9 @@ public class CalibrationTableData {
     @ApiModelProperty("实际波长")
     private String realLength;
 
+    @ApiModelProperty("扫描间隔")
+    private String step;
+
     @ApiModelProperty("增益")
     private String gain;
 

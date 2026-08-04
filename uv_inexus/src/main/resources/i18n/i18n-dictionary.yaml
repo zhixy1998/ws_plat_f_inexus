@@ -3104,6 +3104,24 @@ messages:
     en-US: 'Processing failed!'
     ru-RU: 'Ошибка обработки!'
 
+    #请选择同一间隔
+  '00209025':
+    zh-CN: '请选择同一间隔'
+    en-US: 'Please select the same interval'
+    ru-RU: 'Пожалуйста, выберите одинаковый интервал'
+
+    #当前仪器不支持该扫描间隔！
+  '00209026':
+      zh-CN: '当前仪器不支持该扫描间隔！'
+      en-US: 'Instrument does not support this scan interval!'
+      ru-RU: 'Прибор не поддерживает этот интервал сканирования!'
+
+    #扫描间隔缺失
+  '00209027':
+      zh-CN: '扫描间隔缺失'
+      en-US: 'Scan interval is missing'
+      ru-RU: 'Интервал сканирования не указан'
+
   # ========== 出厂检测-模板管理补充 (00613) ==========
   '00613022':
     zh-CN: '模板字段配置为空'

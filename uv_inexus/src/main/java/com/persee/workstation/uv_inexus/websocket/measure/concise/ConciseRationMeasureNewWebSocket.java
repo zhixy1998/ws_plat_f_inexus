@@ -1237,6 +1237,7 @@ public class ConciseRationMeasureNewWebSocket {
         FRationDataVO dataInfo = new FRationDataVO();
 
         List<String> waveLengths = parameter.getWaveLength();
+        waveLengths.sort(Comparator.reverseOrder());
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
@@ -1379,6 +1380,7 @@ public class ConciseRationMeasureNewWebSocket {
         FRationDataVO ans = new FRationDataVO();
 
         List<String> waveLengths = parameter.getWaveLength();
+        waveLengths.sort(Comparator.reverseOrder());
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);

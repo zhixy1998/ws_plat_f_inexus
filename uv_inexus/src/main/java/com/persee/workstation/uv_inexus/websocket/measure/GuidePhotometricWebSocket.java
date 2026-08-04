@@ -444,6 +444,7 @@ public class GuidePhotometricWebSocket {
         List<Command> list = new ArrayList<>();
         List<ChangeParam> machineData = new ArrayList<>();
         List<String> waveLengths = parameter.getWaveLength();
+        waveLengths.sort(Comparator.reverseOrder());
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
@@ -517,6 +518,7 @@ public class GuidePhotometricWebSocket {
             List<Command> list = new ArrayList<>();
             List<ChangeParam> machineData = new ArrayList<>();
             List<String> waveLengths = parameter.getWaveLength();
+            waveLengths.sort(Comparator.reverseOrder());
             DevOperationInputParam inputParam = new DevOperationInputParam();
             inputParam.setDeviceSerialNumber(deviceSerialNumber);
             inputParam.setOperationType(OperationTypeEnums.SetParam.getType());

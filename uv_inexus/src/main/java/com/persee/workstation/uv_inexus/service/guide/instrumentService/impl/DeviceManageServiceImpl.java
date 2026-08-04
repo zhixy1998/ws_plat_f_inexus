@@ -1149,6 +1149,17 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                                 List<DataNameValue> result = dealMaxAndMinLength(modelInfoPO);
                                 headVO.setData(result);
                                 continue;
+                            } else if (key.equals(DeviceCalibrationParamEnum.Step.getType())) {
+                                List<String> scanInterval = typeInfoPO.getScanInterval();
+                                List<DataNameValue> result = new ArrayList<>();
+                                for (String value : scanInterval) {
+                                    DataNameValue dataNameValue = new DataNameValue();
+                                    dataNameValue.setDataValue(value);
+                                    dataNameValue.setDataKey(value);
+                                    result.add(dataNameValue);
+                                }
+                                headVO.setData(result);
+                                continue;
                             }
 
                             if (values != null && !values.isEmpty()) {
@@ -3170,9 +3181,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         int gain = -1;
         String mode = null;
         //获取一组测试的样品,获取设置的起始波长和结束波长，以及是否需要基线
+        String step = null;
 
         for (CalibrationTableData data : dto.getCalibrationTableData()) {
             String num = data.getNum();
+            step = data.getStep();
 
             if (!StringUtils.hasText(data.getName())) {
                 return R.fail("0020800C", num);
@@ -3204,6 +3217,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             } else if (!mode.equals(data.getLuminosity())) {
                 return R.fail("00208012");
             }
+
+            if (step == null) {
+                step = data.getStep();
+            } else if (!step.equals(data.getStep())) {
+                return R.fail("00209025");
+            }
+
             if (mode.equals(WaveLengthEnum.er.getCode()) || mode.equals(WaveLengthEnum.es.getCode())) {
                 int v = Integer.parseInt(data.getGain());
                 if (gain == -1) {
@@ -3255,10 +3275,20 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         String minWavelength = measureVO.getMinWavelength();
 
         List<String> scanInterval = measureVO.getScanInterval();
-        double minInterval = scanInterval.stream()
-                .mapToDouble(Double::parseDouble)
-                .min()
-                .orElse(0.0);
+//        double minInterval = scanInterval.stream()
+//                .mapToDouble(Double::parseDouble)
+//                .min()
+//                .orElse(0.0);
+
+        if (step == null) {
+            log.error("扫描间隔缺失");
+            return R.fail("00209027");
+        }
+
+        if (!scanInterval.contains(step)) {
+            log.error("当前仪器不支持该扫描间隔！");
+            return R.fail("00209026");
+        }
 
         if (start < Double.parseDouble(minWavelength) || end > Double.parseDouble(maxWavelength)) {
             log.error("波段超出范围");
@@ -3279,7 +3309,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         SetParam setParam = new SetParam();
         setParam.setPhotoMode(Integer.valueOf(mode));
         setParam.setSlit1(2.0);
-        setParam.setScanWlInterval(minInterval);
+        setParam.setScanWlInterval(Double.parseDouble(step));
 
         setParam.setCorrStatus(0);
         if (mode.equals(WaveLengthEnum.er.getCode()) || mode.equals(WaveLengthEnum.es.getCode())) {

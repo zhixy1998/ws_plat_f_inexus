@@ -29,6 +29,12 @@ public class FHeadVO {
     @ApiModelProperty("打印标题")
     private String printTitle;
 
+    @ApiModelProperty("是否隐藏")
+    private Boolean isHidden = false;
+
+    @ApiModelProperty("是否支持隐藏操作,默认支持")
+    private Boolean isSupportHidden = true;
+
     @ApiModelProperty("定位")
     private String locate;
 

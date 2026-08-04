@@ -29,4 +29,7 @@ public class InputParam {
 
     @ApiModelProperty("曲线标识")
     private String curveIdentifier;
+
+    @ApiModelProperty("是否添加样品列")
+    private Boolean isAddSampleColumn;
 }

@@ -765,7 +765,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
 
             vo.setLuminosityMode(WaveLengthEnum.getName(methodparam.getLuminosity()));
-            vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
+            vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth()+"nm");
 
 
             vo.setReferenceMethod(method.getMethodName());
@@ -935,10 +935,22 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setReferenceStandard(parameter.getReferenceStandardName());
 
             vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-            vo.setSpectrumBandwidth(parameter.getSpectralBandwidth());
+            vo.setSpectrumBandwidth(parameter.getSpectralBandwidth()+"nm");
 
-            vo.setInstrumentName("紫外可见分光光度计");
-            vo.setInstrumentModel("T600");
+            DeviceInfoPO info = null;
+            if (StringUtils.hasText(task.getDeviceSerialNumber())) {
+                vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
+            }
+
+            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
+
+                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
+                vo.setInstrumentModel(info.getDeviceModelName());
+            } else {
+                vo.setInstrumentName("紫外可见分光光度计");
+                vo.setInstrumentModel("T600");
+            }
 
             StringBuilder steps = new StringBuilder();
             if (parameter.getPreProcessParameters() != null) {
@@ -1026,14 +1038,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             if (param.getRepetitionPattern().equals("1")) {
                 vo.setRepetitionTime(param.getRepetitionTime());
             }
-            vo.setWaveLengthInterval(param.getWaveLengthInterval());
+            vo.setWaveLengthInterval(param.getWaveLengthInterval()+"nm");
             ///  仪器
             vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
             // 将光度模式转换为(1.abs 2.T% 3.Es 4.Er)用equals判断,首字母大写
             vo.setLuminosityMode(param.getLuminosity().equals("1") ? "Abs" : param.getLuminosity().equals("2") ? "T%" : param.getLuminosity().equals("3") ? "Es" : param.getLuminosity().equals("4") ? "Er" : "");
             vo.setResponseTime(param.getResponseTime());
-            vo.setSpectrumBandwidth(param.getSpectralBandwidth());
-            vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
+            vo.setSpectrumBandwidth(param.getSpectralBandwidth()+"nm");
+            vo.setChangeLampWaveLength(param.getChangeLampWaveLength()+"nm");
             // 能量灯(0.钨灯 1.氘灯 2.汞灯)
             if (param.getLuminosity().equals("3") || param.getLuminosity().equals("4")) {
                 vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
@@ -1097,8 +1109,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             // 将光度模式转换为(1.abs 2.T% 3.Es 4.Er)用equals判断,首字母大写
             vo.setLuminosityMode(param.getLuminosity().equals("1") ? "Abs" : param.getLuminosity().equals("2") ? "T%" : param.getLuminosity().equals("3") ? "Es" : param.getLuminosity().equals("4") ? "Er" : "");
             vo.setResponseTime(param.getResponseTime());
-            vo.setSpectrumBandwidth(param.getSpectralBandwidth());
-            vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
+            vo.setSpectrumBandwidth(param.getSpectralBandwidth()+"nm");
+            vo.setChangeLampWaveLength(param.getChangeLampWaveLength()+"nm");
             // 能量灯(0.钨灯 1.氘灯 2.汞灯)
             if (param.getLuminosity().equals("3") || param.getLuminosity().equals("4")) {
                 vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
@@ -1364,6 +1376,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 Result<List<FHeadVO>> result = photometricService.tableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (result.getCode() == 200) {
                     List<FHeadVO> vos = result.getData();
+                    vos.removeIf(head -> head.getIsHidden() != null && head.getIsHidden());
                     vo.setHeadList(vos);
                 }
 
@@ -1409,11 +1422,15 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 FRationReportDataVO vo = new FRationReportDataVO();
                 Result<List<FHeadVO>> standHeads = rationConciseService.getStandSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (standHeads.getCode() == 200) {
-                    vo.setStandHeadList(standHeads.getData());
+                    List<FHeadVO> standData = standHeads.getData();
+                    standData.removeIf(head -> head.getIsHidden() != null && head.getIsHidden());
+                    vo.setStandHeadList(standData);
                 }
                 Result<List<FHeadVO>> unknowHeads = rationConciseService.getUnknownSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (unknowHeads.getCode() == 200) {
-                    vo.setUnknowHeadList(unknowHeads.getData());
+                    List<FHeadVO> unknowData = unknowHeads.getData();
+                    unknowData.removeIf(head -> head.getIsHidden() != null && head.getIsHidden());
+                    vo.setUnknowHeadList(unknowData);
                 }
                 if (dataDTO == null) {
                     dataDTO = new FQueryDataDTO();

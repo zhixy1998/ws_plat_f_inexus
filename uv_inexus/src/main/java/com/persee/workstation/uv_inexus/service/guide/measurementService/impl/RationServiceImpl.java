@@ -676,7 +676,7 @@ public class RationServiceImpl implements RationService {
             return R.fail("00000008");
         }
         RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
-        if (parameter == null || parameter.getSampleInputParams() == null || parameter.getSampleInputParams().size() <= parameter.getWaveLength().size()) {
+        if (parameter == null || parameter.getSampleInputParams() == null) {
             log.info("参数信息不存在");
             return R.ok();
         }
@@ -718,6 +718,9 @@ public class RationServiceImpl implements RationService {
         }
 
         List<InputParamMapTableHead> mapRelation = unknownHeadSnapshot.getMapRelation();
+        if (mapRelation == null) {
+            mapRelation = new ArrayList<>();
+        }
         Map<String, String> map = new HashMap<>();
         for (InputParamMapTableHead relation : mapRelation) {
             map.put(relation.getParamIdentity(), relation.getHeadIdentity());
@@ -740,6 +743,32 @@ public class RationServiceImpl implements RationService {
 
             if (param.getIsSampleAttribute() == null) {
                 log.info("当前输入参数{}未设置属性", resultIdentity);
+                continue;
+            }
+
+            if (param.getIsAddSampleColumn() != null && param.getIsAddSampleColumn()) {
+                String newHeadIdentity = randomString(8);
+                while (allHeadIdentity.contains(newHeadIdentity)) {
+                    newHeadIdentity = randomString(8);
+                }
+
+                HeadVO newHead = new HeadVO();
+                newHead.setName(param.getParamName());
+                newHead.setPrintTitle(param.getParamName());
+                newHead.setIdentity(newHeadIdentity);
+                newHead.setUnit(param.getUnit());
+                newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
+                newHead.setIsHidden(false);
+                newHead.setIsSupportHidden(true);
+
+                unknownHeads.add(newHead);
+                InputParamMapTableHead relation = new InputParamMapTableHead();
+                relation.setHeadName(param.getParamName());
+                relation.setHeadIdentity(newHeadIdentity);
+                relation.setParamName(param.getParamName());
+                relation.setParamIdentity(resultIdentity);
+                mapRelation.add(relation);
+                allHeadIdentity.add(newHeadIdentity);
                 continue;
             }
 
@@ -777,6 +806,8 @@ public class RationServiceImpl implements RationService {
                 newHead.setIdentity(newHeadIdentity);
                 newHead.setUnit(param.getUnit());
                 newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
+                newHead.setIsHidden(false);
+                newHead.setIsSupportHidden(true);
 
                 unknownHeads.add(newHead);
                 relation.setHeadIdentity(newHeadIdentity);
@@ -1398,15 +1429,28 @@ public class RationServiceImpl implements RationService {
                 //样品种类出错
                 return Result.fail("00000024");
             }
-            if (isWeight) {
-                for (HeadVO vo : ans) {
-                    if (vo.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity())) {
+//            if (isWeight) {
+//                for (HeadVO vo : ans) {
+//                    if (vo.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity())) {
+//                        vo.setName(RationWeightEnum.NORMAL_WEIGHT.getName());
+//                    }
+//                    if (vo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+//                        vo.setName(RationWeightEnum.FIT_WEIGHT.getName());
+//                    }
+//                    vo.setUnit(unit);
+//                }
+//            }
+
+            for (HeadVO vo : ans) {
+                if (vo.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity())) {
+
+                    vo.setIsHidden(false);
+                    vo.setIsSupportHidden(false);
+                    if (isWeight) {
                         vo.setName(RationWeightEnum.NORMAL_WEIGHT.getName());
+                    } else {
+                        vo.setName(SampleTableEnum.NORMAL_CONCENTRATION.getName());
                     }
-                    if (vo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
-                        vo.setName(RationWeightEnum.FIT_WEIGHT.getName());
-                    }
-                    vo.setUnit(unit);
                 }
             }
             return Result.ok(ans);
@@ -1630,6 +1674,26 @@ public class RationServiceImpl implements RationService {
             }
             unknownHead.setTaskId(task.getId());
             unknownHead.setSampleHeads(dto.getUnknowHeads());
+
+            // 过滤映射关系：删除的表头对应的映射关系也要删除
+            Set<String> allHeadIdentity = new HashSet<>();
+            if (unknownHead.getSampleHeads() != null) {
+                unknownHead.getSampleHeads().forEach(head -> allHeadIdentity.add(head.getIdentity()));
+            }
+            if (unknownHead.getTaskHeads() != null) {
+                unknownHead.getTaskHeads().forEach(head -> allHeadIdentity.add(head.getIdentity()));
+            }
+            List<InputParamMapTableHead> unknownMapRelation = unknownHead.getMapRelation();
+            if (unknownMapRelation != null && !unknownMapRelation.isEmpty()) {
+                List<InputParamMapTableHead> newMapRelation = new ArrayList<>();
+                unknownMapRelation.forEach(map -> {
+                    if (allHeadIdentity.contains(map.getHeadIdentity())) {
+                        newMapRelation.add(map);
+                    }
+                });
+                unknownHead.setMapRelation(newMapRelation);
+            }
+
             taskHeadSnapShot.setUnknownHead(unknownHead);
         }
         task.setTableInfo(JSON.toJSONString(taskHeadSnapShot));
@@ -2038,6 +2102,8 @@ public class RationServiceImpl implements RationService {
 
                 if (StringUtils.hasText(sample.getParallelGroupId())) {
                     HeadVO parallelGroupHead = new HeadVO(SampleTableEnum.Parallel_ID.getName(), SampleTableEnum.Parallel_ID.getIdentity(), TableHeadILocateEnums.analyze.getIdentity());
+                    parallelGroupHead.setIsHidden(false);
+                    parallelGroupHead.setIsSupportHidden(false);
                     ans.add(parallelGroupHead);
                 }
 
@@ -2096,7 +2162,11 @@ public class RationServiceImpl implements RationService {
             String tPercentName = WaveLengthEnum.tPercent.getName();
 
             HeadVO absHead = new HeadVO(absName, absIdentity, unit, TableHeadILocateEnums.measure.getIdentity(), absName);
+            absHead.setIsHidden(false);
+            absHead.setIsSupportHidden(false);
             HeadVO tPercentHead = new HeadVO(tPercentName, tPercentIdentity, unit, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
+            tPercentHead.setIsHidden(false);
+            tPercentHead.setIsSupportHidden(false);
 
             if (map.containsKey(absIdentity)) {
                 absHead = map.get(absIdentity);
@@ -2115,7 +2185,11 @@ public class RationServiceImpl implements RationService {
         String absIdentity = SampleTableEnum.Abs.getIdentity();
 
         HeadVO absHead = new HeadVO(SampleTableEnum.Abs.getName(), absIdentity, TableHeadILocateEnums.measure.getIdentity(), SampleTableEnum.Abs.getName());
+        absHead.setIsHidden(false);
+        absHead.setIsSupportHidden(false);
         HeadVO sumAbsHead = new HeadVO(SampleTableEnum.SUM_Abs.getName(), sumAbsIdentity, TableHeadILocateEnums.measure.getIdentity(), SampleTableEnum.SUM_Abs.getName());
+        sumAbsHead.setIsHidden(false);
+        sumAbsHead.setIsSupportHidden(false);
 
         if (map.containsKey(absIdentity)) {
             absHead = map.get(absIdentity);
@@ -2136,19 +2210,22 @@ public class RationServiceImpl implements RationService {
         for (HeadVO an : ans) {
             if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
                 ans.remove(an);
-                break;
+                continue;
             }
 
             if (an.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity())) {
                 if (parameter.getSamplePoolWay().equals(RationWeightEnum.WEIGHT.getIdentity())) {
                     an.setName(RationWeightEnum.getName(an.getIdentity()));
+                } else {
+                    an.setName(SampleTableEnum.NORMAL_CONCENTRATION.getName());
                 }
 
                 if (StringUtils.hasText(parameter.getUnit())) {
                     an.setName(an.getName());
                     an.setUnit(parameter.getUnit());
                 }
-                break;
+                an.setIsHidden(false);
+                an.setIsSupportHidden(false);
             }
         }
 
@@ -2161,6 +2238,8 @@ public class RationServiceImpl implements RationService {
                     String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
                     String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
                     HeadVO sampleLocation = new HeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
+                    sampleLocation.setIsHidden(false);
+                    sampleLocation.setIsSupportHidden(true);
                     ans.add(sampleLocation);
                 }
             }
@@ -2190,6 +2269,8 @@ public class RationServiceImpl implements RationService {
             }
 
             HeadVO fitHead = new HeadVO(fitConcentrationName, SampleTableEnum.FIT_CONCENTRATION.getIdentity(), unit, TableHeadILocateEnums.analyze.getIdentity(), fitConcentrationName);
+            fitHead.setIsHidden(false);
+            fitHead.setIsSupportHidden(false);
             if (analyzeMap.containsKey(fitConcentrationIdentity)) {
 
                 HeadVO fHeadVO = analyzeMap.get(fitConcentrationIdentity);
@@ -2216,6 +2297,8 @@ public class RationServiceImpl implements RationService {
 
                 String name = results.getResultName();
                 HeadVO analyzeHead = new HeadVO(name, results.getParam(),results.getUnit(), TableHeadILocateEnums.analyze.getIdentity(), name);
+                analyzeHead.setIsHidden(false);
+                analyzeHead.setIsSupportHidden(true);
 
                 if (analyzeMap.containsKey(results.getParam())) {
                     analyzeHead = analyzeMap.get(results.getParam());
@@ -2232,6 +2315,14 @@ public class RationServiceImpl implements RationService {
         if (other == null || other.isEmpty()) {
             other = new ArrayList<>();
             HeadVO samplingTimeHead = new HeadVO(SampleTableEnum.SAMPLING_TIME.getName(), SampleTableEnum.SAMPLING_TIME.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.SAMPLING_TIME.getName());
+            HeadVO existingSamplingTime = map.get(SampleTableEnum.SAMPLING_TIME.getIdentity());
+            if (existingSamplingTime != null) {
+                samplingTimeHead.setIsHidden(existingSamplingTime.getIsHidden());
+                samplingTimeHead.setIsSupportHidden(existingSamplingTime.getIsSupportHidden());
+            } else {
+                samplingTimeHead.setIsHidden(false);
+                samplingTimeHead.setIsSupportHidden(true);
+            }
             other.add(samplingTimeHead);
         }
         ans.addAll(other);
@@ -2239,6 +2330,14 @@ public class RationServiceImpl implements RationService {
         if (remarks == null || remarks.isEmpty()) {
             remarks = new ArrayList<>();
             HeadVO remark = new HeadVO(SampleTableEnum.REMARK.getName(), SampleTableEnum.REMARK.getIdentity(), TableHeadILocateEnums.remark.getIdentity(), SampleTableEnum.REMARK.getName());
+            HeadVO existingRemark = map.get(SampleTableEnum.REMARK.getIdentity());
+            if (existingRemark != null) {
+                remark.setIsHidden(existingRemark.getIsHidden());
+                remark.setIsSupportHidden(existingRemark.getIsSupportHidden());
+            } else {
+                remark.setIsHidden(false);
+                remark.setIsSupportHidden(true);
+            }
             remarks.add(remark);
         }
         ans.addAll(remarks);
@@ -2318,6 +2417,8 @@ public class RationServiceImpl implements RationService {
 
                 if (StringUtils.hasText(sample.getParallelGroupId())) {
                     HeadVO parallelGroupHead = new HeadVO(SampleTableEnum.Parallel_ID.getName(), SampleTableEnum.Parallel_ID.getIdentity(), TableHeadILocateEnums.analyze.getIdentity());
+                    parallelGroupHead.setIsHidden(false);
+                    parallelGroupHead.setIsSupportHidden(false);
                     ans.add(parallelGroupHead);
                 }
 
@@ -5964,6 +6065,11 @@ public class RationServiceImpl implements RationService {
 
             if (head.getLocate().equals(TableHeadILocateEnums.curve.getIdentity())) {
                 continue;
+            }
+
+            if (TableHeadILocateEnums.measure.getIdentity().equals(head.getLocate())) {
+                head.setIsHidden(false);
+                head.setIsSupportHidden(false);
             }
 
             if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity()) || head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {

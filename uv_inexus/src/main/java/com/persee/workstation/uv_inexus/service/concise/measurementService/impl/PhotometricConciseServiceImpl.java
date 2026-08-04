@@ -732,6 +732,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             FMeasureMethod method = fMeasureMethodService.getById(methodId);
             method.setMethodUseTime(LocalDateTime.now());
             fMeasureMethodService.updateById(method);
+            generateTableInfo(task.getId(), task.getMethodKey(),true);
             R<Boolean> r = setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
             return Result.ok(ans);
 
@@ -755,6 +756,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 snapshot.setSampleHeads(preHead);
                 task.setTableInfo(JSON.toJSONString(snapshot));
                 fMeasureTaskService.save(task);
+                generateTableInfo(task.getId(), task.getMethodKey(),true);
 
                 ans.setTaskId(task.getId());
                 ans.setTaskName(task.getTaskName());
@@ -768,6 +770,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             if (!StringUtils.hasText(task.getSampleKey())) {
                 task.setMethodKey(methodId);
                 fMeasureTaskService.updateById(task);
+                generateTableInfo(task.getId(), task.getMethodKey(),true);
 
                 ans.setTaskId(task.getId());
                 ans.setTaskName(task.getTaskName());
@@ -806,6 +809,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     newTask.setCreateTime(LocalDateTime.now());
                     newTask.setMeasureType(methodDTO.getMeasureType());
                     fMeasureTaskService.save(newTask);
+                    generateTableInfo(newTask.getId(), newTask.getMethodKey(),true);
                     ans.setTaskId(newTask.getId());
                     ans.setTaskName(newTask.getTaskName());
                     FMeasureMethod method = fMeasureMethodService.getById(methodId);
@@ -818,6 +822,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                     task.setMethodKey(methodId);
                     fMeasureTaskService.updateById(task);
+                    generateTableInfo(task.getId(), methodId,false);
 
 
                     List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
@@ -840,6 +845,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 } else {
                     task.setMethodKey(methodId);
                     fMeasureTaskService.updateById(task);
+                    generateTableInfo(task.getId(), task.getMethodKey(),true);
                     ans.setTaskId(task.getId());
                     ans.setTaskName(task.getTaskName());
                     FMeasureMethod method = fMeasureMethodService.getById(methodId);
@@ -870,6 +876,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 newTask.setCreateTime(LocalDateTime.now());
                 newTask.setMeasureType(methodDTO.getMeasureType());
                 fMeasureTaskService.save(newTask);
+                generateTableInfo(newTask.getId(), newTask.getMethodKey(),true);
 
                 ans.setTaskId(newTask.getId());
                 ans.setTaskName(newTask.getTaskName());
@@ -1054,7 +1061,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return R.fail("00000008");
         }
         FPhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
-        if (parameter == null || parameter.getSampleInputParams() == null || parameter.getSampleInputParams().size() <= parameter.getWaveLength().size()) {
+        if (parameter == null || parameter.getSampleInputParams() == null) {
             log.info("参数信息不存在");
             return R.ok();
         }
@@ -1081,15 +1088,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             allHeadIdentity.add(head.getIdentity());
         }
 
-        List<FInputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
+        List<FInputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation() == null ? new ArrayList<>() : taskHeadSnapshot.getMapRelation();
         Map<String, String> map = new HashMap<>();
-        for (FInputParamMapTableHead relation : mapRelation) {
-            map.put(relation.getParamIdentity(), relation.getHeadIdentity());
+        if (!mapRelation.isEmpty()) {
+            for (FInputParamMapTableHead relation : mapRelation) {
+                map.put(relation.getParamIdentity(), relation.getHeadIdentity());
+            }
         }
 
         for (FInputParam param : inputParams) {
-
-
 
             String resultIdentity = param.getResultIdentity();
             if (StringUtils.hasText(map.get(resultIdentity))) {
@@ -1098,6 +1105,32 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     log.info("当前输入参数{}绑定的表头{}存在", resultIdentity, map.get(resultIdentity));
                     continue;
                 }
+            }
+
+            if (param.getIsAddSampleColumn() != null && param.getIsAddSampleColumn()) {
+                String newHeadIdentity = randomString(8);
+                while (allHeadIdentity.contains(newHeadIdentity)) {
+                    newHeadIdentity = randomString(8);
+                }
+
+                FHeadVO newHead = new FHeadVO();
+                newHead.setName(param.getParamName());
+                newHead.setPrintTitle(param.getParamName());
+                newHead.setIdentity(newHeadIdentity);
+                newHead.setUnit(param.getUnit());
+                newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
+                newHead.setIsHidden(false);
+                newHead.setIsSupportHidden(true);
+
+                heads.add(newHead);
+                FInputParamMapTableHead relation = new FInputParamMapTableHead();
+                relation.setHeadName(param.getParamName());
+                relation.setHeadIdentity(newHeadIdentity);
+                relation.setParamName(param.getParamName());
+                relation.setParamIdentity(resultIdentity);
+                mapRelation.add(relation);
+                allHeadIdentity.add(newHeadIdentity);
+                continue;
             }
 
             if (param.getIsSampleAttribute() == null) {
@@ -1158,6 +1191,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 newHead.setIdentity(newHeadIdentity);
                 newHead.setUnit(param.getUnit());
                 newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
+                newHead.setIsHidden(false);
+                newHead.setIsSupportHidden(true);
 
                 heads.add(newHead);
                 FInputParamMapTableHead relation = new FInputParamMapTableHead();
@@ -1395,7 +1430,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         List<FInputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
-        List<String> allHeadIdentity = new ArrayList<>();
+        Set<String> allHeadIdentity = new HashSet<>();
 
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         FPhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
@@ -1413,12 +1448,16 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
 
         if (mapRelation != null && !mapRelation.isEmpty()) {
-            taskHeadSnapshot.getSampleHeads().forEach(head -> {
-                allHeadIdentity.add(head.getIdentity());
-            });
-            taskHeadSnapshot.getTaskHeads().forEach(head -> {
-                allHeadIdentity.add(head.getIdentity());
-            });
+            if (taskHeadSnapshot.getSampleHeads() != null) {
+                taskHeadSnapshot.getSampleHeads().forEach(head -> {
+                    allHeadIdentity.add(head.getIdentity());
+                });
+            }
+            if (taskHeadSnapshot.getTaskHeads() != null) {
+                taskHeadSnapshot.getTaskHeads().forEach(head -> {
+                    allHeadIdentity.add(head.getIdentity());
+                });
+            }
             List<FInputParamMapTableHead> newMapRelation = new ArrayList<>();
             mapRelation.forEach(map -> { if (allHeadIdentity.contains(map.getHeadIdentity())) {
                 newMapRelation.add(map);
@@ -2212,26 +2251,32 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             ans.addAll(preHead);
         }
 
-        if (StringUtils.hasText(task.getSampleKey())) {
-
-            List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-            for (FTaskSpecimen specimen : taskSpecimen) {
-
-                if (specimen.getDeleteType().equals(deleteType)) {
-                    continue;
-                }
-
-                FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
-                if (StringUtils.hasText(measureSample.getHeads())){
-                    List<FHeadVO> heads = JSON.parseArray(measureSample.getHeads(), FHeadVO.class);
-
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
-            }
-
-        }
+        // 从样品读取表头已停用，表头统一从任务快照(tableInfo)读取，避免isHidden变化导致重复
+//        if (StringUtils.hasText(task.getSampleKey())) {
+//
+//            List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+//            for (FTaskSpecimen specimen : taskSpecimen) {
+//
+//                if (specimen.getDeleteType().equals(deleteType)) {
+//                    continue;
+//                }
+//
+//                FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+//                if (StringUtils.hasText(measureSample.getHeads())){
+//                    List<FHeadVO> heads = JSON.parseArray(measureSample.getHeads(), FHeadVO.class);
+//
+//                    if (heads != null && !heads.isEmpty()) {
+//                        Set<String> existingIdentities = ans.stream().map(FHeadVO::getIdentity).collect(Collectors.toSet());
+//                        for (FHeadVO head : heads) {
+//                            if (!existingIdentities.contains(head.getIdentity())) {
+//                                ans.add(head);
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//
+//        }
 
         List<FHeadVO> vos = dealHeads(new ArrayList<>(ans), parameter, allDisplay, deviceSerialNumber);
         return Result.ok(new ArrayList<>(vos));
@@ -2272,7 +2317,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 String tPercentName = WaveLengthEnum.tPercent.getName();
 
                 FHeadVO absHead = new FHeadVO(absName, absIdentity, unit, TableHeadILocateEnums.measure.getIdentity(), absName);
+
                 FHeadVO tPercentHead = new FHeadVO(tPercentName, tPercentIdentity, unit, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
+
 
                 if (map.containsKey(absIdentity)) {
                     absHead = map.get(absIdentity);
@@ -2281,12 +2328,21 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     if (map.containsKey(tPercentIdentity)) {
                         tPercentHead = map.get(tPercentIdentity);
                     }
+                    absHead.setIsHidden(false);
+                    absHead.setIsSupportHidden(false);
                     allMeasureHeads.add(absHead);
+
+                    tPercentHead.setIsHidden(false);
+                    tPercentHead.setIsSupportHidden(false);
                     allMeasureHeads.add(tPercentHead);
                 } else {
                     if (mode.equals(WaveLengthEnum.tPercent.getCode())) {
+                        tPercentHead.setIsHidden(false);
+                        tPercentHead.setIsSupportHidden(false);
                         allMeasureHeads.add(tPercentHead);
                     } else {
+                        absHead.setIsHidden(false);
+                        absHead.setIsSupportHidden(false);
                         allMeasureHeads.add(absHead);
                     }
                 }
@@ -2297,6 +2353,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 String name =WaveLengthEnum.getName(mode);
                 String unit = s + "nm";
                 FHeadVO newHead = new FHeadVO(name, identity, unit, TableHeadILocateEnums.measure.getIdentity(), name);
+                newHead.setIsHidden(false);
+                newHead.setIsSupportHidden(false);
                 if (map.containsKey(identity)) {
                     newHead = map.get(identity);
                 }
@@ -2337,6 +2395,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
                     String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
                     FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
+                    sampleLocation.setIsHidden(false);
+                    sampleLocation.setIsSupportHidden(true);
                     ans.add(sampleLocation);
                 }
             }
@@ -2365,6 +2425,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             String name = results.getResultName();
             String unit = results.getUnit();
             FHeadVO analyzeHead = new FHeadVO(name, results.getParam(), unit, TableHeadILocateEnums.analyze.getIdentity(), name);
+            analyzeHead.setIsHidden(false);
+            analyzeHead.setIsSupportHidden(true);
 
             if (analyzeMap.containsKey(results.getParam())) {
                 analyzeHead = analyzeMap.get(results.getParam());
@@ -2377,6 +2439,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (other == null || other.isEmpty()) {
             other = new ArrayList<>();
             FHeadVO samplingTimeHead = new FHeadVO(SampleTableEnum.SAMPLING_TIME.getName(), SampleTableEnum.SAMPLING_TIME.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.SAMPLING_TIME.getName());
+            FHeadVO existingSamplingTime = map.get(SampleTableEnum.SAMPLING_TIME.getIdentity());
+            if (existingSamplingTime != null) {
+                samplingTimeHead.setIsHidden(existingSamplingTime.getIsHidden());
+                samplingTimeHead.setIsSupportHidden(existingSamplingTime.getIsSupportHidden());
+            }
             other.add(samplingTimeHead);
         }
         ans.addAll(other);
@@ -2384,6 +2451,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (remarks == null || remarks.isEmpty()) {
             remarks = new ArrayList<>();
             FHeadVO remark = new FHeadVO(SampleTableEnum.REMARK.getName(), SampleTableEnum.REMARK.getIdentity(), TableHeadILocateEnums.remark.getIdentity(), SampleTableEnum.REMARK.getName());
+            FHeadVO existingRemark = map.get(SampleTableEnum.REMARK.getIdentity());
+            if (existingRemark != null) {
+                remark.setIsHidden(existingRemark.getIsHidden());
+                remark.setIsSupportHidden(existingRemark.getIsSupportHidden());
+            }
             remarks.add(remark);
         }
         ans.addAll(remarks);
@@ -3808,6 +3880,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         List<FHeadVO> taskHeads = new ArrayList<>();
         List<FHeadVO> sampleHeads = new ArrayList<>();
         for (FHeadVO head : snapshotDTO.getTaskHeads()) {
+            if (TableHeadILocateEnums.measure.getIdentity().equals(head.getLocate())) {
+                head.setIsHidden(false);
+                head.setIsSupportHidden(false);
+            }
             if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity()) || head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
                 sampleHeads.add(head);
             } else {
@@ -3819,8 +3895,40 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         taskHeadSnapshot.setSampleHeads(sampleHeads);
 
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
-        //保存失败
-        return fMeasureTaskService.updateById(task) ? R.ok(true) : R.fail("00300008");
+        boolean update = fMeasureTaskService.updateById(task);
+
+        // 同步更新样品里存储的表头信息，保持isHidden/isSupportHidden一致
+        Map<String, FHeadVO> headMap = new HashMap<>();
+        taskHeads.forEach(h -> headMap.put(h.getIdentity(), h));
+        sampleHeads.forEach(h -> headMap.put(h.getIdentity(), h));
+
+        if (StringUtils.hasText(task.getSampleKey())) {
+            List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+                FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (measureSample != null && StringUtils.hasText(measureSample.getHeads())) {
+                    List<FHeadVO> sampleStoredHeads = JSON.parseArray(measureSample.getHeads(), FHeadVO.class);
+                    boolean changed = false;
+                    for (FHeadVO storedHead : sampleStoredHeads) {
+                        FHeadVO snapshotHead = headMap.get(storedHead.getIdentity());
+                        if (snapshotHead != null) {
+                            storedHead.setIsHidden(snapshotHead.getIsHidden());
+                            storedHead.setIsSupportHidden(snapshotHead.getIsSupportHidden());
+                            changed = true;
+                        }
+                    }
+                    if (changed) {
+                        measureSample.setHeads(JSON.toJSONString(sampleStoredHeads));
+                        fMeasureSampleService.updateById(measureSample);
+                    }
+                }
+            }
+        }
+
+        return update ? R.ok(true) : R.fail("00300008");
     }
 
     /**
