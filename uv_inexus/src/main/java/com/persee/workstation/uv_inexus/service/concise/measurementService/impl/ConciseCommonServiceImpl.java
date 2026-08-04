@@ -29,7 +29,6 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
-import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
@@ -748,19 +747,20 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setReferenceMethod(method.getMethodName());
             vo.setReferenceStandard(methodparam.getReferenceStandardName());
 
-            DeviceInfoPO info = null;
             if (StringUtils.hasText(task.getDeviceSerialNumber())) {
                 vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
             }
+            String name = deviceInfoService.queryDeviceName(task.getDeviceSerialNumber());
+            String modelName = deviceInfoService.queryDeviceModelName(task.getDeviceSerialNumber());
 
-            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
+            vo.setInstrumentName("紫外可见分光光度计");
+            vo.setInstrumentModel("T600");
 
-                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
-                vo.setInstrumentModel(info.getDeviceModelName());
-            } else {
-                vo.setInstrumentName("紫外可见分光光度计");
-                vo.setInstrumentModel("T600");
+            if (StringUtils.hasText(name)) {
+                vo.setInstrumentName(name);
+            }
+            if (StringUtils.hasText(modelName)) {
+                vo.setInstrumentModel(modelName);
             }
 
 
@@ -937,20 +937,22 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
             vo.setSpectrumBandwidth(parameter.getSpectralBandwidth()+"nm");
 
-            DeviceInfoPO info = null;
             if (StringUtils.hasText(task.getDeviceSerialNumber())) {
                 vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
+            }
+            String name = deviceInfoService.queryDeviceName(task.getDeviceSerialNumber());
+            String modelName = deviceInfoService.queryDeviceModelName(task.getDeviceSerialNumber());
+
+            vo.setInstrumentName("紫外可见分光光度计");
+            vo.setInstrumentModel("T600");
+
+            if (StringUtils.hasText(name)) {
+                vo.setInstrumentName(name);
+            }
+            if (StringUtils.hasText(modelName)) {
+                vo.setInstrumentModel(modelName);
             }
 
-            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
-
-                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
-                vo.setInstrumentModel(info.getDeviceModelName());
-            } else {
-                vo.setInstrumentName("紫外可见分光光度计");
-                vo.setInstrumentModel("T600");
-            }
 
             StringBuilder steps = new StringBuilder();
             if (parameter.getPreProcessParameters() != null) {
@@ -1055,20 +1057,22 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setMethodName(method.getMethodName());
             vo.setTaskName(task.getTaskName());
 
-            DeviceInfoPO info = null;
             if (StringUtils.hasText(task.getDeviceSerialNumber())) {
                 vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
+            }
+            String name = deviceInfoService.queryDeviceName(task.getDeviceSerialNumber());
+            String modelName = deviceInfoService.queryDeviceModelName(task.getDeviceSerialNumber());
+
+            vo.setInstrumentName("紫外可见分光光度计");
+            vo.setInstrumentModel("T600");
+
+            if (StringUtils.hasText(name)) {
+                vo.setInstrumentName(name);
+            }
+            if (StringUtils.hasText(modelName)) {
+                vo.setInstrumentModel(modelName);
             }
 
-            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
-
-                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
-                vo.setInstrumentModel(info.getDeviceModelName());
-            } else {
-                vo.setInstrumentName("紫外可见分光光度计");
-                vo.setInstrumentModel("T600");
-            }
             log.info("报表参数数据输出完毕,内容: {} ", vo);
             return Result.ok(vo);
         } else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())) {
@@ -1122,20 +1126,22 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setTaskName(task.getTaskName());
 
             // 仪器型号
-            DeviceInfoPO info = null;
             if (StringUtils.hasText(task.getDeviceSerialNumber())) {
                 vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
+            }
+            String name = deviceInfoService.queryDeviceName(task.getDeviceSerialNumber());
+            String modelName = deviceInfoService.queryDeviceModelName(task.getDeviceSerialNumber());
+
+            vo.setInstrumentName("紫外可见分光光度计");
+            vo.setInstrumentModel("T600");
+
+            if (StringUtils.hasText(name)) {
+                vo.setInstrumentName(name);
+            }
+            if (StringUtils.hasText(modelName)) {
+                vo.setInstrumentModel(modelName);
             }
 
-            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
-
-                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
-                vo.setInstrumentModel(info.getDeviceModelName());
-            } else {
-                vo.setInstrumentName("紫外可见分光光度计");
-                vo.setInstrumentModel("T600");
-            }
 
             return Result.ok(vo);
         } else {

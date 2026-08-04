@@ -67,6 +67,40 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
     }
 
     @Override
+    public String queryDeviceName(String deviceSerialNumber) {
+        DeviceModelInfoPO modelInfo = getDeviceModelInfo(deviceSerialNumber);
+        if (modelInfo == null) {
+            return null;
+        }
+        return modelInfo.getDevName() + modelInfo.getDevModelName();
+    }
+
+    @Override
+    public String queryDeviceModelName(String deviceSerialNumber) {
+        DeviceModelInfoPO modelInfo = getDeviceModelInfo(deviceSerialNumber);
+        if (modelInfo == null) {
+            return null;
+        }
+        return modelInfo.getDevModelName();
+    }
+
+    private DeviceModelInfoPO getDeviceModelInfo(String deviceSerialNumber) {
+        if (!StringUtils.hasText(deviceSerialNumber) || deviceSerialNumber.length() < 8) {
+            log.info("未传入序列号或序列号有误！");
+            return null;
+        }
+        String devModel = deviceSerialNumber.substring(3, 8);
+        LambdaQueryWrapper<DeviceModelInfoPO> modelQueryWrapper = new LambdaQueryWrapper<>();
+        modelQueryWrapper.eq(DeviceModelInfoPO::getDevModel, devModel);
+        DeviceModelInfoPO modelInfo = deviceModelInfoDAO.selectOne(modelQueryWrapper);
+        if (modelInfo == null) {
+            log.info("未查询到该型号的仪器信息");
+            return null;
+        }
+        return modelInfo;
+    }
+
+    @Override
     public Boolean saveOrUpdateInfo(DeviceInfoPO po) {
         LambdaQueryWrapper<DeviceInfoPO> queryWrapper = new LambdaQueryWrapper<>();
 

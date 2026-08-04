@@ -20,6 +20,9 @@ public interface DeviceInfoService {
 
     DeviceInfoPO getInfo(String deviceSerialNumber);
 
+    String queryDeviceName(String deviceSerialNumber);
+    String queryDeviceModelName(String deviceSerialNumber);
+
     Boolean saveOrUpdateInfo(DeviceInfoPO po);
 
     String getIp(String deviceSerialNumber);

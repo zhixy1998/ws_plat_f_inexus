@@ -31,7 +31,6 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
-import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TMeasureProjectCollaboratorGroup;
@@ -3293,19 +3292,20 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setReferenceMethod(method.getMethodName());
             vo.setReferenceStandard(methodparam.getReferenceStandardName());
 
-            DeviceInfoPO info = null;
             if (StringUtils.hasText(task.getDeviceSerialNumber())) {
                 vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
             }
+            String name = deviceInfoService.queryDeviceName(task.getDeviceSerialNumber());
+            String modelName = deviceInfoService.queryDeviceModelName(task.getDeviceSerialNumber());
 
-            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
+            vo.setInstrumentName("紫外可见分光光度计");
+            vo.setInstrumentModel("T600");
 
-                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
-                vo.setInstrumentModel(info.getDeviceModelName());
-            } else {
-                vo.setInstrumentName("紫外可见分光光度计");
-                vo.setInstrumentModel("T600");
+            if (StringUtils.hasText(name)) {
+                vo.setInstrumentName(name);
+            }
+            if (StringUtils.hasText(modelName)) {
+                vo.setInstrumentModel(modelName);
             }
 
 
@@ -3481,19 +3481,20 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
             vo.setSpectrumBandwidth(parameter.getSpectralBandwidth()+"nm");
 
-            DeviceInfoPO info = null;
             if (StringUtils.hasText(task.getDeviceSerialNumber())) {
                 vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
             }
+            String name = deviceInfoService.queryDeviceName(task.getDeviceSerialNumber());
+            String modelName = deviceInfoService.queryDeviceModelName(task.getDeviceSerialNumber());
 
-            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
+            vo.setInstrumentName("紫外可见分光光度计");
+            vo.setInstrumentModel("T600");
 
-                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
-                vo.setInstrumentModel(info.getDeviceModelName());
-            } else {
-                vo.setInstrumentName("紫外可见分光光度计");
-                vo.setInstrumentModel("T600");
+            if (StringUtils.hasText(name)) {
+                vo.setInstrumentName(name);
+            }
+            if (StringUtils.hasText(modelName)) {
+                vo.setInstrumentModel(modelName);
             }
 
             StringBuilder steps = new StringBuilder();
@@ -3600,20 +3601,22 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setMethodName(method.getMethodName());
             vo.setTaskName(task.getTaskName());
 
-            DeviceInfoPO info = null;
             if (StringUtils.hasText(task.getDeviceSerialNumber())) {
                 vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
+            }
+            String name = deviceInfoService.queryDeviceName(task.getDeviceSerialNumber());
+            String modelName = deviceInfoService.queryDeviceModelName(task.getDeviceSerialNumber());
+
+            vo.setInstrumentName("紫外可见分光光度计");
+            vo.setInstrumentModel("T600");
+
+            if (StringUtils.hasText(name)) {
+                vo.setInstrumentName(name);
+            }
+            if (StringUtils.hasText(modelName)) {
+                vo.setInstrumentModel(modelName);
             }
 
-            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
-
-                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
-                vo.setInstrumentModel(info.getDeviceModelName());
-            } else {
-                vo.setInstrumentName("紫外可见分光光度计");
-                vo.setInstrumentModel("T600");
-            }
             log.info("报表参数数据输出完毕,内容: {} ", vo);
             return Result.ok(vo);
         } else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())) {
@@ -3667,20 +3670,22 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setTaskName(task.getTaskName());
 
             // 仪器型号
-            DeviceInfoPO info = null;
             if (StringUtils.hasText(task.getDeviceSerialNumber())) {
                 vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
+            }
+            String name = deviceInfoService.queryDeviceName(task.getDeviceSerialNumber());
+            String modelName = deviceInfoService.queryDeviceModelName(task.getDeviceSerialNumber());
+
+            vo.setInstrumentName("紫外可见分光光度计");
+            vo.setInstrumentModel("T600");
+
+            if (StringUtils.hasText(name)) {
+                vo.setInstrumentName(name);
+            }
+            if (StringUtils.hasText(modelName)) {
+                vo.setInstrumentModel(modelName);
             }
 
-            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
-
-                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
-                vo.setInstrumentModel(info.getDeviceModelName());
-            } else {
-                vo.setInstrumentName("紫外可见分光光度计");
-                vo.setInstrumentModel("T600");
-            }
             return Result.ok(vo);
         } else {
             return Result.ok();
