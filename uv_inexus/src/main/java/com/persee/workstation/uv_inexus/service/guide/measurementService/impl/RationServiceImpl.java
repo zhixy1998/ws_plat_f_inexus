@@ -739,19 +739,34 @@ public class RationServiceImpl implements RationService {
         }
         // 比对新旧输入参数，删除旧参数生成的表头及映射关系
         Set<String> newUniqueIds = new HashSet<>();
+        Set<String> newResultIdentities = new HashSet<>();
         for (InputParam param : inputParams) {
             if (StringUtils.hasText(param.getUniqueId())) {
                 newUniqueIds.add(param.getUniqueId());
+            }
+            if (StringUtils.hasText(param.getResultIdentity())) {
+                newResultIdentities.add(param.getResultIdentity());
             }
         }
         if (!mapRelation.isEmpty()) {
             List<InputParamMapTableHead> toRemove = new ArrayList<>();
             for (InputParamMapTableHead relation : mapRelation) {
+                boolean shouldRemove = false;
                 if (StringUtils.hasText(relation.getParamUniqueId()) && !newUniqueIds.contains(relation.getParamUniqueId())) {
+                    shouldRemove = true;
+                } else if (!StringUtils.hasText(relation.getParamUniqueId())
+                        && StringUtils.hasText(relation.getParamIdentity())
+                        && !newResultIdentities.contains(relation.getParamIdentity())) {
+                    shouldRemove = true;
+                }
+                if (shouldRemove) {
                     toRemove.add(relation);
-                    String headId = relation.getHeadIdentity();
-                    unknownHeads.removeIf(h -> h.getIdentity().equals(headId));
-                    allHeadIdentity.remove(headId);
+                    // isAddSampleColumn为true时删除其生成的样品表头，为false时不删
+                    if (Boolean.TRUE.equals(relation.getIsAddSampleColumn())) {
+                        String headId = relation.getHeadIdentity();
+                        unknownHeads.removeIf(h -> h.getIdentity().equals(headId));
+                        allHeadIdentity.remove(headId);
+                    }
                 }
             }
             mapRelation.removeAll(toRemove);
@@ -808,6 +823,19 @@ public class RationServiceImpl implements RationService {
                 continue;
             }
 
+            // 检查是否已存在映射关系且表头存在，存在则跳过新增
+            boolean relationAndHeadExist = false;
+            for (InputParamMapTableHead rel : mapRelation) {
+                if (resultIdentity.equals(rel.getParamIdentity())
+                        && allHeadIdentity.contains(rel.getHeadIdentity())) {
+                    relationAndHeadExist = true;
+                    break;
+                }
+            }
+            if (relationAndHeadExist) {
+                continue;
+            }
+
             if (param.getIsAddSampleColumn() != null && param.getIsAddSampleColumn()) {
                 String newHeadIdentity = randomString(8);
                 while (allHeadIdentity.contains(newHeadIdentity)) {
@@ -830,6 +858,7 @@ public class RationServiceImpl implements RationService {
                 relation.setParamName(param.getParamName());
                 relation.setParamIdentity(resultIdentity);
                 relation.setParamUniqueId(uniqueId);
+                relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
                 mapRelation.add(relation);
                 allHeadIdentity.add(newHeadIdentity);
 
@@ -846,6 +875,7 @@ public class RationServiceImpl implements RationService {
             relation.setParamName(param.getParamName());
             relation.setParamIdentity(resultIdentity);
             relation.setParamUniqueId(uniqueId);
+            relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
 
             if ("否".equals(param.getIsSampleAttribute())) {
 
@@ -4789,6 +4819,9 @@ public class RationServiceImpl implements RationService {
 
         String jsonString = JSON.toJSONString(sample);
         JSONObject allData = JSON.parseObject(jsonString);
+        StringBuilder identity = new StringBuilder();
+        StringBuilder values = new StringBuilder();
+
         if (StringUtils.hasText(sample.getNewColData())) {
             JSONObject object = JSONObject.parseObject(sample.getNewColData());
             allData.putAll(object);
@@ -4802,7 +4835,6 @@ public class RationServiceImpl implements RationService {
         if (StringUtils.hasText(emptyFitCon)) {
             allData.put(RationCurveParamEnums.blank_fit.getIdentity(), emptyFitCon);
         }
-
 
         for (RationCountDataInfo dataInfo : countData) {
 
@@ -4823,29 +4855,31 @@ public class RationServiceImpl implements RationService {
 
             if (fittingReceiveInfo != null) {
                 if (fittingReceiveInfo.getRoundCoefficient() != null) {
-                    if(fittingReceiveInfo.getRoundCoefficient().size() == 2) {
-                        allData.put(RationCurveParamEnums.coefficient_one.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(1));
-                        allData.put(RationCurveParamEnums.intercept.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(0));
-                    } else if(fittingReceiveInfo.getRoundCoefficient().size() == 3) {
+                    List<Double> coefficients = fittingReceiveInfo.getRoundCoefficient();
+                    int size = coefficients.size();
 
-                        allData.put(RationCurveParamEnums.coefficient_two.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(2));
-                        allData.put(RationCurveParamEnums.coefficient_one.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(1));
-                        allData.put(RationCurveParamEnums.intercept.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(0));
-                    } else if(fittingReceiveInfo.getRoundCoefficient().size() == 4) {
+                    RationCurveParamEnums[] coeffEnums = {
+                        null,
+                        RationCurveParamEnums.coefficient_one,
+                        RationCurveParamEnums.coefficient_two,
+                        RationCurveParamEnums.coefficient_three,
+                        RationCurveParamEnums.coefficient_four
+                    };
 
-                        allData.put(RationCurveParamEnums.coefficient_three.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(3));
-                        allData.put(RationCurveParamEnums.coefficient_two.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(2));
-                        allData.put(RationCurveParamEnums.coefficient_one.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(1));
-                        allData.put(RationCurveParamEnums.intercept.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(0));
-                    } else if(fittingReceiveInfo.getRoundCoefficient().size() == 5) {
-
-                        allData.put(RationCurveParamEnums.coefficient_four.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(4));
-                        allData.put(RationCurveParamEnums.coefficient_three.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(3));
-                        allData.put(RationCurveParamEnums.coefficient_two.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(2));
-                        allData.put(RationCurveParamEnums.coefficient_one.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(1));
-                        allData.put(RationCurveParamEnums.intercept.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(0));
+                    for (int i = size - 1; i >= 1 && i < coeffEnums.length; i--) {
+                        Double value = coefficients.get(i);
+                        if (value != null) {
+                            allData.put(coeffEnums[i].getIdentity(), value);
+                            identity.append(coeffEnums[i].getIdentity()).append(",");
+                            values.append(value).append(",");
+                        }
                     }
 
+                    Double interceptValue = coefficients.get(0);
+                    if (interceptValue != null) {
+                        identity.append(RationCurveParamEnums.intercept.getIdentity()).append(",");
+                        values.append(interceptValue).append(",");
+                    }
                 }
             }
         }
@@ -4868,18 +4902,11 @@ public class RationServiceImpl implements RationService {
             allData.putAll(object);
         }
 
-
-        StringBuilder values = new StringBuilder();
-
-        StringBuilder identity = new StringBuilder();
-
         Object data = allData.get(RationCurveParamEnums.fit_concentration.getIdentity());
         if (data != null) {
             identity.append(RationCurveParamEnums.fit_concentration.getIdentity()).append(",");
             values.append(data).append(",");
         }
-
-
 
         List<InputParamMapTableHead> mapRelation = snapshot.getMapRelation();
         for (InputParamMapTableHead relation : mapRelation) {

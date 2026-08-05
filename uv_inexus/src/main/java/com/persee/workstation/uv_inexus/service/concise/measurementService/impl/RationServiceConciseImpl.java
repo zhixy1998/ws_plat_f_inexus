@@ -10,53 +10,6 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.math.RoundingMode;
-import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
-
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcBorders;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STPageOrientation;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
 import com.alibaba.fastjson.JSON;
@@ -81,50 +34,16 @@ import com.persee.workstation.uv_inexus.dto.concise.rationDto.NewRationMethodPar
 import com.persee.workstation.uv_inexus.dto.guide.SampleCreateHeadConf;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.PhotoMetricChangeMethodTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.QualityConfEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RationChangeMethodTypeEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RationCurveParamEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RationWeightEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RoundingTypeEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParamMapTableHead;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPreCountResultParam;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FQualityConfVO;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingParamVO;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisDataService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureDataService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureProjectService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.RationConciseService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
@@ -148,22 +67,31 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationDataVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationFitCurveVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationMethodParam;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSampleDataVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSaveCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationTaskHeadSnapShot;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationWavelengthDataInfo;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
+import com.persee.workstation.uv_inexus.vo.concise.ration.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.QualityConfVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCurveDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCurvePointsValue;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
-
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.io.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service("fRationService")
@@ -1368,19 +1296,34 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         // 比对新旧输入参数，删除旧参数生成的表头及映射关系
         Set<String> newUniqueIds = new HashSet<>();
+        Set<String> newResultIdentities = new HashSet<>();
         for (FInputParam param : inputParams) {
             if (StringUtils.hasText(param.getUniqueId())) {
                 newUniqueIds.add(param.getUniqueId());
+            }
+            if (StringUtils.hasText(param.getResultIdentity())) {
+                newResultIdentities.add(param.getResultIdentity());
             }
         }
         if (!mapRelation.isEmpty()) {
             List<FInputParamMapTableHead> toRemove = new ArrayList<>();
             for (FInputParamMapTableHead relation : mapRelation) {
+                boolean shouldRemove = false;
                 if (StringUtils.hasText(relation.getParamUniqueId()) && !newUniqueIds.contains(relation.getParamUniqueId())) {
+                    shouldRemove = true;
+                } else if (!StringUtils.hasText(relation.getParamUniqueId())
+                        && StringUtils.hasText(relation.getParamIdentity())
+                        && !newResultIdentities.contains(relation.getParamIdentity())) {
+                    shouldRemove = true;
+                }
+                if (shouldRemove) {
                     toRemove.add(relation);
-                    String headId = relation.getHeadIdentity();
-                    unknownHeads.removeIf(h -> h.getIdentity().equals(headId));
-                    allHeadIdentity.remove(headId);
+                    // isAddSampleColumn为true时删除其生成的样品表头，为false时不删
+                    if (Boolean.TRUE.equals(relation.getIsAddSampleColumn())) {
+                        String headId = relation.getHeadIdentity();
+                        unknownHeads.removeIf(h -> h.getIdentity().equals(headId));
+                        allHeadIdentity.remove(headId);
+                    }
                 }
             }
             mapRelation.removeAll(toRemove);
@@ -1436,6 +1379,19 @@ public class RationServiceConciseImpl implements RationConciseService {
                 continue;
             }
 
+            // 检查是否已存在映射关系且表头存在，存在则跳过新增
+            boolean relationAndHeadExist = false;
+            for (FInputParamMapTableHead rel : mapRelation) {
+                if (resultIdentity.equals(rel.getParamIdentity())
+                        && allHeadIdentity.contains(rel.getHeadIdentity())) {
+                    relationAndHeadExist = true;
+                    break;
+                }
+            }
+            if (relationAndHeadExist) {
+                continue;
+            }
+
             if (param.getIsAddSampleColumn() != null && param.getIsAddSampleColumn()) {
                 String newHeadIdentity = randomString(8);
                 while (allHeadIdentity.contains(newHeadIdentity)) {
@@ -1458,6 +1414,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 relation.setParamName(param.getParamName());
                 relation.setParamIdentity(resultIdentity);
                 relation.setParamUniqueId(uniqueId);
+                relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
                 mapRelation.add(relation);
                 allHeadIdentity.add(newHeadIdentity);
 
@@ -1480,7 +1437,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                     relation.setParamName(param.getParamName());
                     relation.setParamIdentity(resultIdentity);
                     relation.setParamUniqueId(uniqueId);
-                    mapRelation.add(relation);
+                    relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
+                        mapRelation.add(relation);
                 } else if (resultIdentity.matches("[A-Z]")) {
                     log.info("大写字母，只绑定，不添加");
                     int letterIndex = resultIdentity.charAt(0) - 'A' + 1;
@@ -1492,7 +1450,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                         relation.setParamName(param.getParamName());
                         relation.setParamIdentity(resultIdentity);
                         relation.setParamUniqueId(uniqueId);
-                        mapRelation.add(relation);
+                        relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
+                                mapRelation.add(relation);
                     }
                 }
 
@@ -1518,6 +1477,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 relation.setParamName(param.getParamName());
                 relation.setParamIdentity(resultIdentity);
                 relation.setParamUniqueId(uniqueId);
+                relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
                 mapRelation.add(relation);
                 allHeadIdentity.add(newHeadIdentity);
             }
@@ -5445,6 +5405,8 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         String jsonString = JSON.toJSONString(sample);
         JSONObject allData = JSON.parseObject(jsonString);
+        StringBuilder values = new StringBuilder();
+        StringBuilder identity = new StringBuilder();
         if (StringUtils.hasText(sample.getNewColData())) {
             JSONObject object = JSONObject.parseObject(sample.getNewColData());
             allData.putAll(object);
@@ -5472,29 +5434,31 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             if (fittingReceiveInfo != null) {
                 if (fittingReceiveInfo.getRoundCoefficient() != null) {
-                    if(fittingReceiveInfo.getRoundCoefficient().size() == 2) {
-                        allData.put(RationCurveParamEnums.coefficient_one.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(1));
-                        allData.put(RationCurveParamEnums.intercept.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(0));
-                    } else if(fittingReceiveInfo.getRoundCoefficient().size() == 3) {
+                    List<Double> coefficients = fittingReceiveInfo.getRoundCoefficient();
+                    int size = coefficients.size();
 
-                        allData.put(RationCurveParamEnums.coefficient_two.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(2));
-                        allData.put(RationCurveParamEnums.coefficient_one.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(1));
-                        allData.put(RationCurveParamEnums.intercept.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(0));
-                    } else if(fittingReceiveInfo.getRoundCoefficient().size() == 4) {
+                    RationCurveParamEnums[] coeffEnums = {
+                        null,
+                        RationCurveParamEnums.coefficient_one,
+                        RationCurveParamEnums.coefficient_two,
+                        RationCurveParamEnums.coefficient_three,
+                        RationCurveParamEnums.coefficient_four
+                    };
 
-                        allData.put(RationCurveParamEnums.coefficient_three.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(3));
-                        allData.put(RationCurveParamEnums.coefficient_two.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(2));
-                        allData.put(RationCurveParamEnums.coefficient_one.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(1));
-                        allData.put(RationCurveParamEnums.intercept.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(0));
-                    } else if(fittingReceiveInfo.getRoundCoefficient().size() == 5) {
-
-                        allData.put(RationCurveParamEnums.coefficient_four.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(4));
-                        allData.put(RationCurveParamEnums.coefficient_three.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(3));
-                        allData.put(RationCurveParamEnums.coefficient_two.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(2));
-                        allData.put(RationCurveParamEnums.coefficient_one.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(1));
-                        allData.put(RationCurveParamEnums.intercept.getIdentity(), fittingReceiveInfo.getRoundCoefficient().get(0));
+                    for (int i = size - 1; i >= 1 && i < coeffEnums.length; i--) {
+                        Double value = coefficients.get(i);
+                        if (value != null) {
+                            allData.put(coeffEnums[i].getIdentity(), value);
+                            identity.append(coeffEnums[i].getIdentity()).append(",");
+                            values.append(value).append(",");
+                        }
                     }
 
+                    Double interceptValue = coefficients.get(0);
+                    if (interceptValue != null) {
+                        identity.append(RationCurveParamEnums.intercept.getIdentity()).append(",");
+                        values.append(interceptValue).append(",");
+                    }
                 }
             }
         }
@@ -5516,11 +5480,6 @@ public class RationServiceConciseImpl implements RationConciseService {
             JSONObject object = JSON.parseObject(analysisParam);
             allData.putAll(object);
         }
-
-
-        StringBuilder values = new StringBuilder();
-
-        StringBuilder identity = new StringBuilder();
 
         Object data = allData.get(RationCurveParamEnums.fit_concentration.getIdentity());
         if (data != null) {
@@ -5549,6 +5508,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             String text = split[split.length - 1];
 
             text = text.replace("Con", RationCurveParamEnums.fit_concentration.getIdentity());
+            text = text.replace("k0", RationCurveParamEnums.intercept.getIdentity());
 
             String result = restUtil.sum(text, identity.toString(), values.toString());
             FRationCountDataInfo countDataInfo = new FRationCountDataInfo();

@@ -24,4 +24,6 @@ public class InputParamMapTableHead {
 
     private String paramUniqueId;
 
+    private Boolean isAddSampleColumn;
+
 }

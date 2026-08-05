@@ -52,7 +52,7 @@ public enum RationCurveParamEnums {
     sample_fit("C-fit","样品拟合"),
 
 
-    fit_concentration("C0","拟合浓度"),
+    fit_concentration("拟","拟合浓度"),
 
         //单池重复
     single_pool_repeat("单池重复","单池重复"),

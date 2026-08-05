@@ -1028,19 +1028,34 @@ public class PhotometricServiceImpl implements PhotometricService {
         List<InputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
         // 比对新旧输入参数，删除旧参数生成的表头及映射关系
         Set<String> newUniqueIds = new HashSet<>();
+        Set<String> newResultIdentities = new HashSet<>();
         for (InputParam param : inputParams) {
             if (StringUtils.hasText(param.getUniqueId())) {
                 newUniqueIds.add(param.getUniqueId());
+            }
+            if (StringUtils.hasText(param.getResultIdentity())) {
+                newResultIdentities.add(param.getResultIdentity());
             }
         }
         if (mapRelation != null && !mapRelation.isEmpty()) {
             List<InputParamMapTableHead> toRemove = new ArrayList<>();
             for (InputParamMapTableHead relation : mapRelation) {
+                boolean shouldRemove = false;
                 if (StringUtils.hasText(relation.getParamUniqueId()) && !newUniqueIds.contains(relation.getParamUniqueId())) {
+                    shouldRemove = true;
+                } else if (!StringUtils.hasText(relation.getParamUniqueId())
+                        && StringUtils.hasText(relation.getParamIdentity())
+                        && !newResultIdentities.contains(relation.getParamIdentity())) {
+                    shouldRemove = true;
+                }
+                if (shouldRemove) {
                     toRemove.add(relation);
-                    String headId = relation.getHeadIdentity();
-                    heads.removeIf(h -> h.getIdentity().equals(headId));
-                    allHeadIdentity.remove(headId);
+                    // isAddSampleColumn为true时删除其生成的样品表头，为false时不删
+                    if (Boolean.TRUE.equals(relation.getIsAddSampleColumn())) {
+                        String headId = relation.getHeadIdentity();
+                        heads.removeIf(h -> h.getIdentity().equals(headId));
+                        allHeadIdentity.remove(headId);
+                    }
                 }
             }
             mapRelation.removeAll(toRemove);
@@ -1099,6 +1114,19 @@ public class PhotometricServiceImpl implements PhotometricService {
                 continue;
             }
 
+            // 检查是否已存在映射关系且表头存在，存在则跳过新增
+            boolean relationAndHeadExist = false;
+            for (InputParamMapTableHead rel : mapRelation) {
+                if (resultIdentity.equals(rel.getParamIdentity())
+                        && allHeadIdentity.contains(rel.getHeadIdentity())) {
+                    relationAndHeadExist = true;
+                    break;
+                }
+            }
+            if (relationAndHeadExist) {
+                continue;
+            }
+
             if (param.getIsAddSampleColumn() != null && param.getIsAddSampleColumn()) {
                 String newHeadIdentity = randomString(8);
                 while (allHeadIdentity.contains(newHeadIdentity)) {
@@ -1121,6 +1149,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 relation.setParamName(param.getParamName());
                 relation.setParamIdentity(resultIdentity);
                 relation.setParamUniqueId(uniqueId);
+                relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
                 mapRelation.add(relation);
                 allHeadIdentity.add(newHeadIdentity);
 
@@ -1148,7 +1177,8 @@ public class PhotometricServiceImpl implements PhotometricService {
                             relation.setParamName(param.getParamName());
                             relation.setParamIdentity(resultIdentity);
                             relation.setParamUniqueId(uniqueId);
-                            mapRelation.add(relation);
+                            relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
+                                        mapRelation.add(relation);
                         }
                     }
                     continue;
@@ -1171,7 +1201,8 @@ public class PhotometricServiceImpl implements PhotometricService {
                     relation.setParamName(param.getParamName());
                     relation.setParamIdentity(resultIdentity);
                     relation.setParamUniqueId(uniqueId);
-                    mapRelation.add(relation);
+                    relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
+                        mapRelation.add(relation);
 
                     continue;
                 }
@@ -1186,7 +1217,9 @@ public class PhotometricServiceImpl implements PhotometricService {
                         relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
                         relation.setParamName(param.getParamName());
                         relation.setParamIdentity(resultIdentity);
-                        mapRelation.add(relation);
+                        relation.setParamUniqueId(uniqueId);
+                        relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
+                                mapRelation.add(relation);
                     }
                 }
             } else if ("是".equals(param.getIsSampleAttribute())) {
@@ -1212,6 +1245,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 relation.setParamName(param.getParamName());
                 relation.setParamIdentity(resultIdentity);
                 relation.setParamUniqueId(uniqueId);
+                relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
                 mapRelation.add(relation);
                 allHeadIdentity.add(newHeadIdentity);
 
@@ -2016,7 +2050,9 @@ public class PhotometricServiceImpl implements PhotometricService {
                 //"公式计算出错！" + resultJson.get("message")！
                 return R.fail("00300007",resultJson.get("message"));
             }
-            countDataInfo.setCountValue(resultJson.get("result").toString());
+            String countValue = resultJson.get("result").toString();
+            countValue = DataCountUtil.formatValueWithBigDecimal(digit, countValue);
+            countDataInfo.setCountValue(DataCountUtil.addZero(Double.parseDouble(countValue), digit));
             countList.add(countDataInfo);
         }
 
