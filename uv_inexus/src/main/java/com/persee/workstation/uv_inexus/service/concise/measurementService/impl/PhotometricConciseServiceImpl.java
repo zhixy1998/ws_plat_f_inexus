@@ -3554,6 +3554,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return Result.fail("0000001E");
         }
         List<String> waveLength = photometricParameter.getWaveLength();
+        waveLength.sort(Comparator.reverseOrder());
         // 通过序列号获取ip
 
         String wave = "--";
@@ -3673,6 +3674,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return Result.fail("0000001E");
         }
         List<String> waveLength = photometricParameter.getWaveLength();
+        waveLength.sort(Comparator.reverseOrder());
         // 通过序列号获取ip
 
 

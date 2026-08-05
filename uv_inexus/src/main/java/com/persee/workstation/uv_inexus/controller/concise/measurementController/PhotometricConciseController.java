@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.config.logging.SysLog;
 import com.persee.workstation.uv_inexus.dto.concise.common.CreateSampleDTO;
@@ -205,7 +204,7 @@ public class PhotometricConciseController {
                        @RequestParam String methodId,
                             @RequestParam String taskId,
                             @RequestParam String updateBy) {
-        return fPhotometricService.zero1(deviceSerialNumber,methodId, taskId,updateBy);
+        return fPhotometricService.zero(deviceSerialNumber,methodId, taskId,updateBy);
     }
 
     @GetMapping("saveTask")

@@ -6095,6 +6095,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             return Result.fail("0000001E");
         }
         List<String> waveLength = parameter.getWaveLength();
+        waveLength.sort(Comparator.reverseOrder());
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
@@ -6202,6 +6203,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             return Result.fail("0000001E");
         }
         List<String> waveLength = parameter.getWaveLength();
+        waveLength.sort(Comparator.reverseOrder());
         // 通过序列号获取ip
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         if (RationCurveParamEnums.no_differential.equals(parameter.getDifferentialModeName())){
