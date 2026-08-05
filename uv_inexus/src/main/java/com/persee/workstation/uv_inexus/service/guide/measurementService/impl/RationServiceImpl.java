@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.service.guide.measurementService.impl;
 
 import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.ExcelWriter;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -64,6 +65,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STPageOrientation;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -6292,6 +6294,174 @@ public class RationServiceImpl implements RationService {
     }
 
     @Override
+    public R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit, List<String> option) throws BusinessException {
+        log.info("开始导出（集成children和option，含未知样品），taskId: {}, fileType: {}, option: {}", taskId, fileType, option);
+
+        // 1. 基础参数校验
+        if (!StringUtils.hasText(taskId)) {
+            return R.fail("00000019");
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            log.error("导出失败：任务不存在，taskId: {}", taskId);
+            return R.fail("00000004");
+        }
+        if (!StringUtils.hasText(fileType)) {
+            fileType = "word";
+        } else {
+            fileType = fileType.toLowerCase();
+        }
+        if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
+            return R.fail("00300001");
+        }
+        if (allDisplay == null) {
+            allDisplay = true;
+        }
+
+        // 2. 准备表头和数据
+        String methodId = task.getMethodKey();
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return R.fail("00300009");
+        }
+
+        // 2.1 获取标准样品表头
+        Result<List<HeadVO>> standHeadResult = getStandSampleTableHead(taskId, methodId, allDisplay, task.getDeviceSerialNumber());
+        if (!standHeadResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
+            return R.fail("00102027", standHeadResult.getMessage());
+        }
+        List<HeadVO> standHeads = standHeadResult.getData();
+        // 过滤掉隐藏的列
+        if (standHeads != null) {
+            standHeads.removeIf(head -> head.getIsHidden() != null && head.getIsHidden());
+        }
+
+        // 2.2 获取未知样品表头
+        Result<List<HeadVO>> unknownHeadResult = getUnknownSampleTableHead(taskId, methodId, allDisplay, task.getDeviceSerialNumber());
+        if (!unknownHeadResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
+            return R.fail("00102028", unknownHeadResult.getMessage());
+        }
+        List<HeadVO> unknownHeads = unknownHeadResult.getData();
+        // 过滤掉隐藏的列
+        if (unknownHeads != null) {
+            unknownHeads.removeIf(head -> head.getIsHidden() != null && head.getIsHidden());
+        }
+        // 补充未知样品固定列（序号+样品类型）
+        if (unknownHeads == null) {
+            unknownHeads = new ArrayList<>();
+        }
+        unknownHeads.add(0, new HeadVO("序号", "serialNumber"));
+        unknownHeads.add(1, new HeadVO("样品类型", "sampleType"));
+
+        // 2.3 页面设置参数
+        int vosSize = standHeads != null ? standHeads.size() : 0;
+
+        // 3. 查询数据
+        QueryDataDTO queryDataDTO = new QueryDataDTO();
+        queryDataDTO.setOption(option != null ? option : new ArrayList<>());
+        queryDataDTO.setTaskId(taskId);
+        queryDataDTO.setAllDisplay(allDisplay);
+        queryDataDTO.setDigit(digit);
+        queryDataDTO.setOtherDigit(otherDigit);
+        Result<RationSampleDataVO> sampleDataResult = querySampleData(queryDataDTO);
+        if (!sampleDataResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
+            return R.fail("00B03014", sampleDataResult.getMessage());
+        }
+        RationSampleDataVO dataVO = sampleDataResult.getData();
+        if (dataVO == null) {
+            return R.fail("00B03015");
+        }
+
+        // 4. 处理children数据（展开children到主数据中）
+        List<Map<String, Object>> allData = new ArrayList<>();
+
+        // 处理标准样品数据
+        List<Map<String, Object>> standData = dataVO.getStandSampleData();
+        if (standData != null && !standData.isEmpty()) {
+            for (Map<String, Object> item : standData) {
+                item.put("sampleType", "标准样品");
+                allData.add(item);
+                Object childrenObj = item.get("children");
+                if (childrenObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> children = (List<Map<String, Object>>) childrenObj;
+                    for (Map<String, Object> child : children) {
+                        Map<String, Object> childRow = new HashMap<>(child);
+                        childRow.put("sampleType", "标准样品");
+                        childRow.put("isChildData", true);
+                        allData.add(childRow);
+                    }
+                }
+            }
+        }
+
+        // 处理未知样品数据
+        List<Map<String, Object>> unknownData = dataVO.getUnknowSampleData();
+        if (unknownData != null && !unknownData.isEmpty()) {
+            for (Map<String, Object> item : unknownData) {
+                item.put("sampleType", "未知样品");
+                allData.add(item);
+                Object childrenObj = item.get("children");
+                if (childrenObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> children = (List<Map<String, Object>>) childrenObj;
+                    for (Map<String, Object> child : children) {
+                        Map<String, Object> childRow = new HashMap<>(child);
+                        childRow.put("sampleType", "未知样品");
+                        childRow.put("isChildData", true);
+                        allData.add(childRow);
+                    }
+                }
+            }
+        }
+
+        // 如果没有数据，构造空行
+        if (allData.isEmpty()) {
+            log.warn("无实际数据，构造空行导出，taskId: {}", taskId);
+            Map<String, Object> emptyRow = new HashMap<>();
+            emptyRow.put("serialNumber", 1);
+            emptyRow.put("sampleType", "标准样品");
+            if (standHeads != null) {
+                for (HeadVO head : standHeads) {
+                    if (head != null && StringUtils.hasText(head.getIdentity())) {
+                        emptyRow.put(head.getIdentity(), "");
+                    }
+                }
+            }
+            allData.add(emptyRow);
+        } else {
+            // 重新编号
+            for (int i = 0; i < allData.size(); i++) {
+                allData.get(i).put("serialNumber", i + 1);
+            }
+        }
+
+        // 5. 按格式生成文件（传递独立表头）
+        String fileName = task.getTaskName() + "." + getFileSuffix(fileType);
+        File file = new File(fileName);
+        try {
+            switch (fileType) {
+                case "word":
+                    generateWordFileWithChildren(file, task, method, standHeads, unknownHeads, allData, vosSize);
+                    break;
+                case "txt":
+                    generateTxtFileWithChildren(file, standHeads, unknownHeads, allData);
+                    break;
+                case "xlsx":
+                    generateExcelFileWithChildren(file, standHeads, unknownHeads, allData, taskId, methodId);
+                    break;
+            }
+            return R.ok(file);
+        } catch (Exception e) {
+            log.error("文件生成失败", e);
+            if (file.exists()) {
+                file.delete();
+            }
+            return R.fail("00B02006", e.getMessage());
+        }
+    }
+
+    @Override
     public void test(String a, String b) {
 
         List<Double> list = new ArrayList<>();
@@ -6659,6 +6829,380 @@ public class RationServiceImpl implements RationService {
             throw e; // 向上抛出，由外层处理
         }
     }
+
+    // ==================== 含未知样品的双表头导出方法 ====================
+
+    /**
+     * 生成Word文件（含标准样品和未知样品两个表格）
+     */
+    private void generateWordFileWithChildren(File file, TMeasureTask task, TMeasureMethod method,
+                                               List<HeadVO> standHeads, List<HeadVO> unknownHeads,
+                                               List<Map<String, Object>> allData, int vosSize) throws Exception {
+        XWPFDocument doc = new XWPFDocument();
+        CTDocument1 document = doc.getDocument();
+        CTBody body = document.getBody();
+
+        // 页面设置
+        if (!body.isSetSectPr()) {
+            body.addNewSectPr();
+        }
+        CTSectPr section = body.getSectPr();
+        if (!section.isSetPgSz()) {
+            section.addNewPgSz();
+        }
+        CTPageSz pageSize = section.getPgSz();
+        if (vosSize > 5) {
+            pageSize.setW(BigInteger.valueOf(15840));
+            pageSize.setH(BigInteger.valueOf(12240));
+            pageSize.setOrient(STPageOrientation.LANDSCAPE);
+        } else {
+            pageSize.setOrient(STPageOrientation.PORTRAIT);
+        }
+
+        // 添加标题
+        XWPFParagraph paragraph = doc.createParagraph();
+        XWPFRun run = paragraph.createRun();
+        run.setText("任务：" + task.getTaskName() + "\r");
+        run.setText("方法：" + method.getMethodName() + "\r");
+        run.setText("测试数据：");
+
+        // 标准样品表格
+        List<Map<String, Object>> standData = allData.stream()
+                .filter(row -> row != null && "标准样品".equals(row.get("sampleType")))
+                .collect(Collectors.toList());
+        if (!standData.isEmpty()) {
+            XWPFParagraph standTitlePara = doc.createParagraph();
+            XWPFRun standTitleRun = standTitlePara.createRun();
+            standTitleRun.setText("标准样品数据");
+            standTitleRun.setBold(true);
+            standTitleRun.setFontSize(12);
+
+            int originalColumnCount = standHeads != null ? standHeads.size() : 0;
+            int columnCount = originalColumnCount + 1;
+            XWPFTable standTable = doc.createTable(1, columnCount);
+            standTable.setWidth("100%");
+
+            XWPFTableRow standHeaderRow = standTable.getRow(0);
+            XWPFTableCell indexHeaderCell = standHeaderRow.getCell(0);
+            if (indexHeaderCell != null) {
+                indexHeaderCell.setText("序号");
+            }
+            for (int i = 0; i < originalColumnCount; i++) {
+                HeadVO head = standHeads.get(i);
+                XWPFTableCell cell = standHeaderRow.getCell(i + 1);
+                if (cell != null && head != null) {
+                    cell.setText(head.getName() != null ? head.getName() : "未命名列");
+                }
+            }
+
+            int standRowIndex = 0;
+            for (Map<String, Object> map : standData) {
+                if (map == null) continue;
+                XWPFTableRow row = standTable.createRow();
+                standRowIndex++;
+                XWPFTableCell indexCell = row.getCell(0);
+                if (indexCell != null) {
+                    indexCell.setText(String.valueOf(standRowIndex));
+                }
+                for (int i = 0; i < originalColumnCount; i++) {
+                    HeadVO head = standHeads.get(i);
+                    XWPFTableCell cell = row.getCell(i + 1);
+                    if (cell != null && head != null && head.getIdentity() != null) {
+                        Object value = map.get(head.getIdentity());
+                        cell.setText(value == null ? "-" : value.toString());
+                    }
+                }
+            }
+
+            for (XWPFTableRow row : standTable.getRows()) {
+                for (XWPFTableCell cell : row.getTableCells()) {
+                    XWPFParagraph para = cell.getParagraphArray(0);
+                    if (para != null) {
+                        para.setAlignment(ParagraphAlignment.CENTER);
+                    }
+                    cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
+                }
+            }
+        }
+
+        // 未知样品表格
+        List<Map<String, Object>> unknownData = allData.stream()
+                .filter(row -> row != null && "未知样品".equals(row.get("sampleType")))
+                .collect(Collectors.toList());
+        if (!unknownData.isEmpty()) {
+            doc.createParagraph();
+            XWPFParagraph unknownTitlePara = doc.createParagraph();
+            XWPFRun unknownTitleRun = unknownTitlePara.createRun();
+            unknownTitleRun.setText("未知样品数据");
+            unknownTitleRun.setBold(true);
+            unknownTitleRun.setFontSize(12);
+
+            int unknownColumnCount = unknownHeads != null ? unknownHeads.size() : 0;
+            XWPFTable unknownTable = doc.createTable(1, unknownColumnCount);
+            unknownTable.setWidth("100%");
+
+            XWPFTableRow unknownHeaderRow = unknownTable.getRow(0);
+            for (int i = 0; i < unknownColumnCount; i++) {
+                XWPFTableCell cell = unknownHeaderRow.getCell(i);
+                if (cell != null) {
+                    HeadVO head = unknownHeads.get(i);
+                    cell.setText(head != null && head.getName() != null ? head.getName() : "未命名列");
+                }
+            }
+
+            int unknownRowIndex = 0;
+            for (Map<String, Object> map : unknownData) {
+                if (map == null) continue;
+                XWPFTableRow row = unknownTable.createRow();
+                unknownRowIndex++;
+                for (int i = 0; i < unknownColumnCount; i++) {
+                    HeadVO head = unknownHeads.get(i);
+                    XWPFTableCell cell = row.getCell(i);
+                    if (cell != null && head != null && head.getIdentity() != null) {
+                        if ("serialNumber".equals(head.getIdentity())) {
+                            cell.setText(String.valueOf(unknownRowIndex));
+                        } else if ("sampleType".equals(head.getIdentity())) {
+                            cell.setText("未知样品");
+                        } else {
+                            Object value = map.get(head.getIdentity());
+                            cell.setText(value == null ? "-" : value.toString());
+                        }
+                    }
+                }
+            }
+
+            for (XWPFTableRow row : unknownTable.getRows()) {
+                for (XWPFTableCell cell : row.getTableCells()) {
+                    XWPFParagraph para = cell.getParagraphArray(0);
+                    if (para != null) {
+                        para.setAlignment(ParagraphAlignment.CENTER);
+                    }
+                    cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
+                }
+            }
+        }
+
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            doc.write(out);
+        } finally {
+            doc.close();
+        }
+    }
+
+    /**
+     * 生成TXT文件（含标准样品和未知样品两个区块）
+     */
+    private void generateTxtFileWithChildren(File file,
+                                             List<HeadVO> standHeads,
+                                             List<HeadVO> unknownHeads,
+                                             List<Map<String, Object>> allData) throws Exception {
+        if (file == null) {
+            throw new IllegalArgumentException("输出文件File不能为null");
+        }
+
+        List<Map<String, Object>> standData = allData.stream()
+                .filter(row -> row != null && "标准样品".equals(row.get("sampleType")))
+                .collect(Collectors.toList());
+        List<Map<String, Object>> unknownData = allData.stream()
+                .filter(row -> row != null && "未知样品".equals(row.get("sampleType")))
+                .collect(Collectors.toList());
+
+        try (BufferedWriter writer = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
+
+            // 标准样品
+            if (!standData.isEmpty()) {
+                writer.write("===== 标准样品数据 =====");
+                writer.newLine();
+
+                List<String> standHeaderList = new ArrayList<>();
+                standHeaderList.add("序号");
+                for (HeadVO head : standHeads) {
+                    if (head == null || "serialNumber".equals(head.getIdentity()) || "序号".equals(head.getName())) {
+                        continue;
+                    }
+                    standHeaderList.add(head.getName() != null ? head.getName() : "未命名列");
+                }
+                writer.write(String.join("\t", standHeaderList));
+                writer.newLine();
+
+                int standRowIndex = 0;
+                for (Map<String, Object> map : standData) {
+                    if (map == null) continue;
+                    standRowIndex++;
+                    List<String> rowData = new ArrayList<>();
+                    rowData.add(String.valueOf(standRowIndex));
+                    for (HeadVO head : standHeads) {
+                        if (head == null || "serialNumber".equals(head.getIdentity()) || "序号".equals(head.getName())) {
+                            continue;
+                        }
+                        Object value = map.get(head.getIdentity());
+                        String cellData = value != null ? value.toString().trim() : "-";
+                        if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                            cellData = "-";
+                        }
+                        rowData.add(cellData);
+                    }
+                    writer.write(String.join("\t", rowData));
+                    writer.newLine();
+                }
+                writer.newLine();
+            }
+
+            // 未知样品
+            if (!unknownData.isEmpty()) {
+                writer.write("===== 未知样品数据 =====");
+                writer.newLine();
+
+                List<String> unknownHeaderList = new ArrayList<>();
+                for (HeadVO head : unknownHeads) {
+                    if (head == null) continue;
+                    unknownHeaderList.add(head.getName() != null ? head.getName() : "未命名列");
+                }
+                writer.write(String.join("\t", unknownHeaderList));
+                writer.newLine();
+
+                int unknownRowIndex = 0;
+                for (Map<String, Object> map : unknownData) {
+                    if (map == null) continue;
+                    unknownRowIndex++;
+                    List<String> rowData = new ArrayList<>();
+                    for (HeadVO head : unknownHeads) {
+                        if (head == null || head.getIdentity() == null) {
+                            rowData.add("-");
+                            continue;
+                        }
+                        if ("serialNumber".equals(head.getIdentity())) {
+                            rowData.add(String.valueOf(unknownRowIndex));
+                        } else if ("sampleType".equals(head.getIdentity())) {
+                            rowData.add("未知样品");
+                        } else {
+                            Object value = map.get(head.getIdentity());
+                            String cellData = value != null ? value.toString().trim() : "-";
+                            if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                                cellData = "-";
+                            }
+                            rowData.add(cellData);
+                        }
+                    }
+                    writer.write(String.join("\t", rowData));
+                    writer.newLine();
+                }
+            }
+        }
+    }
+
+    /**
+     * 生成Excel文件（含标准样品和未知样品两个Sheet）
+     */
+    private void generateExcelFileWithChildren(File file,
+                                               List<HeadVO> standHeads,
+                                               List<HeadVO> unknownHeads,
+                                               List<Map<String, Object>> allData,
+                                               String taskId, String methodId) throws Exception {
+        // 标准样品表头
+        List<List<String>> standExcelHeads = new ArrayList<>();
+        standExcelHeads.add(Collections.singletonList(i18nExcelHelper.t("序号")));
+        for (HeadVO head : standHeads) {
+            if (head != null && ("serialNumber".equals(head.getIdentity()) || "序号".equals(head.getName()))) {
+                continue;
+            }
+            String headName = (head != null && head.getName() != null) ? head.getName().trim() : i18nExcelHelper.t("未命名列");
+            standExcelHeads.add(Collections.singletonList(i18nExcelHelper.t(headName)));
+        }
+
+        // 标准样品数据
+        List<List<Object>> standExcelData = new ArrayList<>();
+        List<Map<String, Object>> standData = allData.stream()
+                .filter(row -> row != null && "标准样品".equals(row.get("sampleType")))
+                .collect(Collectors.toList());
+        int standRowIndex = 0;
+        for (Map<String, Object> map : standData) {
+            standRowIndex++;
+            List<Object> row = new ArrayList<>();
+            row.add(standRowIndex);
+            for (HeadVO head : standHeads) {
+                if (head != null && ("serialNumber".equals(head.getIdentity()) || "序号".equals(head.getName()))) {
+                    continue;
+                }
+                Object cellData = "-";
+                if (head != null && head.getIdentity() != null) {
+                    Object value = map.get(head.getIdentity());
+                    if (value != null) {
+                        cellData = convertToNumberIfNeeded(String.valueOf(value).replace("\r", "").replace("\n", "").replace("\t", " "));
+                        if (cellData instanceof String) {
+                            String strValue = (String) cellData;
+                            if (strValue.isEmpty() || "null".equalsIgnoreCase(strValue)) {
+                                cellData = "-";
+                            }
+                        }
+                    }
+                }
+                row.add(cellData);
+            }
+            standExcelData.add(row);
+        }
+
+        // 未知样品表头
+        List<List<String>> unknownExcelHeads = new ArrayList<>();
+        for (HeadVO head : unknownHeads) {
+            String headName = (head != null && head.getName() != null) ? head.getName().trim() : i18nExcelHelper.t("未命名列");
+            unknownExcelHeads.add(Collections.singletonList(i18nExcelHelper.t(headName)));
+        }
+
+        // 未知样品数据
+        List<List<Object>> unknownExcelData = new ArrayList<>();
+        List<Map<String, Object>> unknownData = allData.stream()
+                .filter(row -> row != null && "未知样品".equals(row.get("sampleType")))
+                .collect(Collectors.toList());
+        int unknownRowIndex = 0;
+        for (Map<String, Object> map : unknownData) {
+            unknownRowIndex++;
+            List<Object> row = new ArrayList<>();
+            for (HeadVO head : unknownHeads) {
+                if (head == null || head.getIdentity() == null) {
+                    row.add("-");
+                    continue;
+                }
+                if ("serialNumber".equals(head.getIdentity())) {
+                    row.add(unknownRowIndex);
+                } else if ("sampleType".equals(head.getIdentity())) {
+                    row.add(i18nExcelHelper.t("未知样品"));
+                } else {
+                    Object cellData = "-";
+                    Object value = map.get(head.getIdentity());
+                    if (value != null) {
+                        cellData = convertToNumberIfNeeded(String.valueOf(value).replace("\r", "").replace("\n", "").replace("\t", " "));
+                        if (cellData instanceof String) {
+                            String strValue = (String) cellData;
+                            if (strValue.isEmpty() || "null".equalsIgnoreCase(strValue)) {
+                                cellData = "-";
+                            }
+                        }
+                    }
+                    row.add(cellData);
+                }
+            }
+            unknownExcelData.add(row);
+        }
+
+        // 写入Excel
+        try (OutputStream out = new FileOutputStream(file)) {
+            ExcelWriter writer = EasyExcel.write(out).build();
+            writer.write(standExcelData, EasyExcel.writerSheet(0, i18nExcelHelper.t("标准样品")).head(standExcelHeads).build());
+            if (!unknownExcelData.isEmpty()) {
+                writer.write(unknownExcelData, EasyExcel.writerSheet(1, i18nExcelHelper.t("未知样品")).head(unknownExcelHeads).build());
+            }
+            writer.finish();
+        } catch (Exception e) {
+            log.error("Excel生成失败，taskId={}", taskId, e);
+            if (file.exists() && !file.delete()) {
+                log.warn("删除无效Excel文件失败：{}", file.getAbsolutePath());
+            }
+            throw e;
+        }
+    }
+
     /**
      * 尝试将字符串转换为数值类型
      * @param value 待转换的字符串

@@ -194,6 +194,11 @@ public interface RationService {
      */
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit) throws BusinessException;
 
+    /**
+     * 多格式文件导出（集成children和option数据，含未知样品）
+     */
+    R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, Integer otherDigit, List<String> option) throws BusinessException;
+
     void test(String a, String b);
 
 

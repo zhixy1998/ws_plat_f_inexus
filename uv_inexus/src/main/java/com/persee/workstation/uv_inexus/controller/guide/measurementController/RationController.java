@@ -259,16 +259,17 @@ public class RationController {
 //    @ButtonPermission("wizardModeLumneExportData")
     @OperateLog(module = "实验测试-向导模式-定量测定-导出数据", description = "执行实验测试-向导模式-定量测定-导出数据记录", recordParams = true)
     @GetMapping("downloadDoc")
-    @ApiOperation("多格式文件下载接口（支持word/excel/txt）")
+    @ApiOperation("多格式文件下载接口（支持word/excel/txt）- 集成children和option数据")
     public ResponseEntity<?> downloadDoc(
             @ApiParam("任务ID") @RequestParam String taskId,
             @ApiParam("是否显示全部数据") @RequestParam Boolean allDisplay,
             @ApiParam("导出格式（word/excel/txt）") @RequestParam(required = false) String fileType,
-            @RequestParam Integer digit,
-            @RequestParam Integer otherDigit) throws Exception {
+            @ApiParam(value = "修约", required = false) @RequestParam(value = "digit", required = false) Integer digit,
+            @ApiParam(value = "其他修约", required = false) @RequestParam(value = "otherDigit", required = false) Integer otherDigit,
+            @ApiParam(value = "选项参数列表", required = false) @RequestParam(value = "option", required = false) List<String> option) throws Exception {
 
-        // 调用 Service 层的多格式导出方法
-        R<File> result = rationService.downloadFile(taskId, allDisplay, fileType, digit, otherDigit);
+        // 调用 Service 层的多格式导出方法（集成children和option数据，含未知样品）
+        R<File> result = rationService.downloadFileWithChildren(taskId, allDisplay, fileType, digit, otherDigit, option);
 
         if (result.getSuccess()) {
             File file = result.getData();
@@ -297,6 +298,6 @@ public class RationController {
         }
 
         // 导出失败时，返回错误信息
-        return ResponseEntity.badRequest().body("导出失败：");
+        return ResponseEntity.badRequest().body("导出失败：" + result.getMessage());
     }
 }
