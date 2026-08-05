@@ -824,6 +824,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     fMeasureTaskService.updateById(task);
                     generateTableInfo(task.getId(), methodId,false);
 
+                    // 重新加载task，获取generateTableInfo更新后的tableInfo
+                    task = fMeasureTaskService.getById(task.getId());
 
                     List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
                     if (taskSpecimen != null && !taskSpecimen.isEmpty()) {
@@ -1066,7 +1068,21 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return R.ok();
         }
         List<FInputParam> inputParams = parameter.getSampleInputParams();
+        List<String> waveLength = parameter.getWaveLength();
 
+        // 后端生成唯一标识
+        boolean needUpdate = false;
+        for (FInputParam param : inputParams) {
+            if (!StringUtils.hasText(param.getUniqueId())) {
+                param.setUniqueId(randomString(16));
+                needUpdate = true;
+            }
+        }
+        if (needUpdate) {
+            parameter.setSampleInputParams(inputParams);
+            method.setMeasurementParamInfo(JSON.toJSONString(parameter));
+            fMeasureMethodService.updateById(method);
+        }
 
         FTaskHeadSnapshot taskHeadSnapshot = new FTaskHeadSnapshot();
         if (StringUtils.hasText(task.getTableInfo()) && !clearOld) {
@@ -1089,22 +1105,75 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         List<FInputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation() == null ? new ArrayList<>() : taskHeadSnapshot.getMapRelation();
-        Map<String, String> map = new HashMap<>();
-        if (!mapRelation.isEmpty()) {
-            for (FInputParamMapTableHead relation : mapRelation) {
-                map.put(relation.getParamIdentity(), relation.getHeadIdentity());
+
+        // 比对新旧输入参数，删除旧参数生成的表头及映射关系
+        Set<String> newUniqueIds = new HashSet<>();
+        for (FInputParam param : inputParams) {
+            if (StringUtils.hasText(param.getUniqueId())) {
+                newUniqueIds.add(param.getUniqueId());
             }
         }
+        if (!mapRelation.isEmpty()) {
+            List<FInputParamMapTableHead> toRemove = new ArrayList<>();
+            for (FInputParamMapTableHead relation : mapRelation) {
+                if (StringUtils.hasText(relation.getParamUniqueId()) && !newUniqueIds.contains(relation.getParamUniqueId())) {
+                    toRemove.add(relation);
+                    String headId = relation.getHeadIdentity();
+                    heads.removeIf(h -> h.getIdentity().equals(headId));
+                    allHeadIdentity.remove(headId);
+                }
+            }
+            mapRelation.removeAll(toRemove);
+        }
+
+        // 收集已存在的paramUniqueId，用于判断是否需要新增
+        Set<String> existingUniqueIds = new HashSet<>();
+        for (FInputParamMapTableHead relation : mapRelation) {
+            if (StringUtils.hasText(relation.getParamUniqueId())) {
+                existingUniqueIds.add(relation.getParamUniqueId());
+            }
+        }
+
+        String luminosity = parameter.getLuminosity();
 
         for (FInputParam param : inputParams) {
 
             String resultIdentity = param.getResultIdentity();
-            if (StringUtils.hasText(map.get(resultIdentity))) {
-                log.info("当前输入参数{}已存在", resultIdentity);
-                if (allHeadIdentity.contains(map.get(resultIdentity))) {
-                    log.info("当前输入参数{}绑定的表头{}存在", resultIdentity, map.get(resultIdentity));
-                    continue;
+            String uniqueId = param.getUniqueId();
+            if (!StringUtils.hasText(uniqueId)) {
+                uniqueId = randomString(16);
+            }
+
+            if (param.getIsAddSampleColumn() == null) {
+                param.setIsAddSampleColumn(false);
+            }
+
+            if (!StringUtils.hasText(param.getIsSampleAttribute()) ) {
+                if (!param.getIsAddSampleColumn()) {
+                    param.setIsSampleAttribute("0");
+                } else {
+                    param.setIsSampleAttribute("1");
                 }
+
+            }
+
+            // 已存在的参数（有uniqueId且在映射关系中）：更新名称，跳过新增
+            if (StringUtils.hasText(param.getUniqueId()) && existingUniqueIds.contains(param.getUniqueId())) {
+                for (FInputParamMapTableHead relation : mapRelation) {
+                    if (param.getUniqueId().equals(relation.getParamUniqueId())) {
+                        relation.setHeadName(param.getParamName());
+                        relation.setParamName(param.getParamName());
+                        String headId = relation.getHeadIdentity();
+                        for (FHeadVO head : heads) {
+                            if (head.getIdentity().equals(headId)) {
+                                head.setName(param.getParamName());
+                                head.setPrintTitle(param.getParamName());
+                                break;
+                            }
+                        }
+                    }
+                }
+                continue;
             }
 
             if (param.getIsAddSampleColumn() != null && param.getIsAddSampleColumn()) {
@@ -1128,8 +1197,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 relation.setHeadIdentity(newHeadIdentity);
                 relation.setParamName(param.getParamName());
                 relation.setParamIdentity(resultIdentity);
+                relation.setParamUniqueId(uniqueId);
                 mapRelation.add(relation);
                 allHeadIdentity.add(newHeadIdentity);
+
                 continue;
             }
 
@@ -1140,44 +1211,22 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             if ("0".equals(param.getIsSampleAttribute())) {
 
-                String identifier = param.getCurveIdentifier();
-                if (identifier == null) {
-                    log.info("当前输入参数{}未设置绑定标识", resultIdentity);
-                    continue;
+
+                if (resultIdentity.matches("[A-Z]")) {
+                    log.info("大写字母，只绑定，不添加");
+                    int letterIndex = resultIdentity.charAt(0) - 'A' + 1;
+
+                    if (letterIndex <= waveLength.size()) {
+                        FInputParamMapTableHead relation = new FInputParamMapTableHead();
+                        relation.setHeadName(param.getParamName());
+                        relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
+                        relation.setParamName(param.getParamName());
+                        relation.setParamIdentity(resultIdentity);
+                        relation.setParamUniqueId(uniqueId);
+                        mapRelation.add(relation);
+                    }
                 }
 
-                if (RationCurveParamEnums.getName(identifier) != null) {
-                    log.info("当前参数不适配光度测量");
-                    continue;
-                }
-
-                String[] split = identifier.split("-");
-                if (split.length == 2) {
-                    log.info("当前输入参数{}未设置绑定标识", resultIdentity);
-                    String s = split[1];
-                    String code = WaveLengthEnum.getCode(s);
-
-                    FInputParamMapTableHead relation = new FInputParamMapTableHead();
-                    relation.setHeadName(param.getParamName());
-                    relation.setHeadIdentity(split[0] + "-" + code);
-                    relation.setParamName(param.getParamName());
-                    relation.setParamIdentity(resultIdentity);
-                    mapRelation.add(relation);
-                }
-
-//                if (resultIdentity.matches("[A-Z]")) {
-//                    log.info("大写字母，只绑定，不添加");
-//                    int letterIndex = resultIdentity.charAt(0) - 'A' + 1;
-//
-//                    if (letterIndex <= waveLength.size()) {
-//                        InputParamMapTableHead relation = new InputParamMapTableHead();
-//                        relation.setHeadName(param.getParamName());
-//                        relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
-//                        relation.setParamName(param.getParamName());
-//                        relation.setParamIdentity(resultIdentity);
-//                        mapRelation.add(relation);
-//                    }
-//                }
             } else if ("1".equals(param.getIsSampleAttribute())) {
                 String newHeadIdentity = randomString(8);
                 while (allHeadIdentity.contains(newHeadIdentity)) {
@@ -1200,8 +1249,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 relation.setHeadIdentity(newHeadIdentity);
                 relation.setParamName(param.getParamName());
                 relation.setParamIdentity(resultIdentity);
+                relation.setParamUniqueId(uniqueId);
                 mapRelation.add(relation);
                 allHeadIdentity.add(newHeadIdentity);
+
             }
         }
         taskHeadSnapshot.setSampleHeads(heads);

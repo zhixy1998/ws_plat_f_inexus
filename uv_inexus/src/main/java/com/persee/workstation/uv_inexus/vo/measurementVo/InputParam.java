@@ -32,4 +32,7 @@ public class InputParam {
 
     @ApiModelProperty("是否添加样品列")
     private Boolean isAddSampleColumn;
+
+    @ApiModelProperty("唯一标识")
+    private String uniqueId;
 }

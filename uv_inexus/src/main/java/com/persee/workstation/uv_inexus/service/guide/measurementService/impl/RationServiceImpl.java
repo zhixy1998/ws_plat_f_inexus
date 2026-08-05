@@ -682,6 +682,20 @@ public class RationServiceImpl implements RationService {
         }
         List<InputParam> inputParams = parameter.getSampleInputParams();
 
+        // 后端生成唯一标识
+        boolean needUpdate = false;
+        for (InputParam param : inputParams) {
+            if (!StringUtils.hasText(param.getUniqueId())) {
+                param.setUniqueId(randomString(16));
+                needUpdate = true;
+            }
+        }
+        if (needUpdate) {
+            parameter.setSampleInputParams(inputParams);
+            method.setMeasurementParamInfo(JSON.toJSONString(parameter));
+            tMeasureMethodService.updateById(method);
+        }
+
         RationTaskHeadSnapShot snapShot = new RationTaskHeadSnapShot();
 
         TaskHeadSnapshot unknownHeadSnapshot = new TaskHeadSnapshot();
@@ -721,9 +735,32 @@ public class RationServiceImpl implements RationService {
         if (mapRelation == null) {
             mapRelation = new ArrayList<>();
         }
-        Map<String, String> map = new HashMap<>();
+        // 比对新旧输入参数，删除旧参数生成的表头及映射关系
+        Set<String> newUniqueIds = new HashSet<>();
+        for (InputParam param : inputParams) {
+            if (StringUtils.hasText(param.getUniqueId())) {
+                newUniqueIds.add(param.getUniqueId());
+            }
+        }
+        if (!mapRelation.isEmpty()) {
+            List<InputParamMapTableHead> toRemove = new ArrayList<>();
+            for (InputParamMapTableHead relation : mapRelation) {
+                if (StringUtils.hasText(relation.getParamUniqueId()) && !newUniqueIds.contains(relation.getParamUniqueId())) {
+                    toRemove.add(relation);
+                    String headId = relation.getHeadIdentity();
+                    unknownHeads.removeIf(h -> h.getIdentity().equals(headId));
+                    allHeadIdentity.remove(headId);
+                }
+            }
+            mapRelation.removeAll(toRemove);
+        }
+
+        // 收集已存在的paramUniqueId，用于判断是否需要新增
+        Set<String> existingUniqueIds = new HashSet<>();
         for (InputParamMapTableHead relation : mapRelation) {
-            map.put(relation.getParamIdentity(), relation.getHeadIdentity());
+            if (StringUtils.hasText(relation.getParamUniqueId())) {
+                existingUniqueIds.add(relation.getParamUniqueId());
+            }
         }
 
         String luminosity = WaveLengthEnum.abs.getCode();
@@ -733,16 +770,39 @@ public class RationServiceImpl implements RationService {
 
 
             String resultIdentity = param.getResultIdentity();
-            if (StringUtils.hasText(map.get(resultIdentity))) {
-                log.info("当前输入参数{}已存在", resultIdentity);
-                if (allHeadIdentity.contains(map.get(resultIdentity))) {
-                    log.info("当前输入参数{}绑定的表头{}存在", resultIdentity, map.get(resultIdentity));
-                    continue;
+            String uniqueId = param.getUniqueId();
+            if (!StringUtils.hasText(uniqueId)) {
+                uniqueId = randomString(16);
+            }
+
+            if (param.getIsAddSampleColumn() == null) {
+                param.setIsAddSampleColumn(false);
+            }
+
+            if (!StringUtils.hasText(param.getIsSampleAttribute())) {
+                if (!param.getIsAddSampleColumn()) {
+                    param.setIsSampleAttribute("否");
+                } else {
+                    param.setIsSampleAttribute("是");
                 }
             }
 
-            if (param.getIsSampleAttribute() == null) {
-                log.info("当前输入参数{}未设置属性", resultIdentity);
+            // 已存在的参数（有uniqueId且在映射关系中）：更新名称，跳过新增
+            if (StringUtils.hasText(param.getUniqueId()) && existingUniqueIds.contains(param.getUniqueId())) {
+                for (InputParamMapTableHead relation : mapRelation) {
+                    if (param.getUniqueId().equals(relation.getParamUniqueId())) {
+                        relation.setHeadName(param.getParamName());
+                        relation.setParamName(param.getParamName());
+                        String headId = relation.getHeadIdentity();
+                        for (HeadVO head : unknownHeads) {
+                            if (head.getIdentity().equals(headId)) {
+                                head.setName(param.getParamName());
+                                head.setPrintTitle(param.getParamName());
+                                break;
+                            }
+                        }
+                    }
+                }
                 continue;
             }
 
@@ -767,8 +827,15 @@ public class RationServiceImpl implements RationService {
                 relation.setHeadIdentity(newHeadIdentity);
                 relation.setParamName(param.getParamName());
                 relation.setParamIdentity(resultIdentity);
+                relation.setParamUniqueId(uniqueId);
                 mapRelation.add(relation);
                 allHeadIdentity.add(newHeadIdentity);
+
+                continue;
+            }
+
+            if (param.getIsSampleAttribute() == null) {
+                log.info("当前输入参数{}未设置属性", resultIdentity);
                 continue;
             }
 
@@ -776,12 +843,20 @@ public class RationServiceImpl implements RationService {
             relation.setHeadName(param.getParamName());
             relation.setParamName(param.getParamName());
             relation.setParamIdentity(resultIdentity);
+            relation.setParamUniqueId(uniqueId);
 
             if ("否".equals(param.getIsSampleAttribute())) {
 
                 String identifier = param.getCurveIdentifier();
                 if (identifier == null) {
-                    log.info("当前输入参数{}未设置绑定标识", resultIdentity);
+                    if (resultIdentity.matches("[A-Z]")) {
+                        log.info("大写字母，只绑定，不添加");
+                        int letterIndex = resultIdentity.charAt(0) - 'A' + 1;
+                        if (letterIndex <= waveLength.size()) {
+                            relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
+                            mapRelation.add(relation);
+                        }
+                    }
                     continue;
                 }
                 if (RationCurveParamEnums.getName(identifier) != null) {

@@ -1154,6 +1154,9 @@ public class RationServiceConciseImpl implements RationConciseService {
                     fMeasureTaskService.updateById(task);
                     generateTableInfo(task.getId(), methodId,false);
 
+                    // 重新加载task，获取generateTableInfo更新后的tableInfo
+                    task = fMeasureTaskService.getById(task.getId());
+
                     int digit = Constants.DEFAULT_DECIMAL_NUM;
                     R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(task.getId());
                     if (attachmentR.getSuccess()) {
@@ -1232,6 +1235,20 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
         List<FInputParam> inputParams = parameter.getSampleInputParams();
 
+        // 后端生成唯一标识
+        boolean needUpdate = false;
+        for (FInputParam param : inputParams) {
+            if (!StringUtils.hasText(param.getUniqueId())) {
+                param.setUniqueId(randomString(16));
+                needUpdate = true;
+            }
+        }
+        if (needUpdate) {
+            parameter.setSampleInputParams(inputParams);
+            method.setMeasurementParamInfo(JSON.toJSONString(parameter));
+            fMeasureMethodService.updateById(method);
+        }
+
         FRationTaskHeadSnapShot snapShot = new FRationTaskHeadSnapShot();
 
         FTaskHeadSnapshot unknownHeadSnapshot = new FTaskHeadSnapshot();
@@ -1276,22 +1293,75 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (mapRelation == null) {
             mapRelation = new ArrayList<>();
         }
-        Map<String, String> map = new HashMap<>();
+
+        // 比对新旧输入参数，删除旧参数生成的表头及映射关系
+        Set<String> newUniqueIds = new HashSet<>();
+        for (FInputParam param : inputParams) {
+            if (StringUtils.hasText(param.getUniqueId())) {
+                newUniqueIds.add(param.getUniqueId());
+            }
+        }
+        if (!mapRelation.isEmpty()) {
+            List<FInputParamMapTableHead> toRemove = new ArrayList<>();
+            for (FInputParamMapTableHead relation : mapRelation) {
+                if (StringUtils.hasText(relation.getParamUniqueId()) && !newUniqueIds.contains(relation.getParamUniqueId())) {
+                    toRemove.add(relation);
+                    String headId = relation.getHeadIdentity();
+                    unknownHeads.removeIf(h -> h.getIdentity().equals(headId));
+                    allHeadIdentity.remove(headId);
+                }
+            }
+            mapRelation.removeAll(toRemove);
+        }
+
+        // 收集已存在的paramUniqueId，用于判断是否需要新增
+        Set<String> existingUniqueIds = new HashSet<>();
         for (FInputParamMapTableHead relation : mapRelation) {
-            map.put(relation.getParamIdentity(), relation.getHeadIdentity());
+            if (StringUtils.hasText(relation.getParamUniqueId())) {
+                existingUniqueIds.add(relation.getParamUniqueId());
+            }
         }
 
         String luminosity = WaveLengthEnum.abs.getCode();
+        List<String> waveLength = parameter.getWaveLength();
 
         for (FInputParam param : inputParams) {
 
             String resultIdentity = param.getResultIdentity();
-            if (StringUtils.hasText(map.get(resultIdentity))) {
-                log.info("当前输入参数{}已存在", resultIdentity);
-                if (allHeadIdentity.contains(map.get(resultIdentity))) {
-                    log.info("当前输入参数{}绑定的表头{}存在", resultIdentity, map.get(resultIdentity));
-                    continue;
+            String uniqueId = param.getUniqueId();
+            if (!StringUtils.hasText(uniqueId)) {
+                uniqueId = randomString(16);
+            }
+
+            if (param.getIsAddSampleColumn() == null) {
+                param.setIsAddSampleColumn(false);
+            }
+
+            if (!StringUtils.hasText(param.getIsSampleAttribute())) {
+                if (!param.getIsAddSampleColumn()) {
+                    param.setIsSampleAttribute("否");
+                } else {
+                    param.setIsSampleAttribute("是");
                 }
+            }
+
+            // 已存在的参数（有uniqueId且在映射关系中）：更新名称，跳过新增
+            if (StringUtils.hasText(param.getUniqueId()) && existingUniqueIds.contains(param.getUniqueId())) {
+                for (FInputParamMapTableHead relation : mapRelation) {
+                    if (param.getUniqueId().equals(relation.getParamUniqueId())) {
+                        relation.setHeadName(param.getParamName());
+                        relation.setParamName(param.getParamName());
+                        String headId = relation.getHeadIdentity();
+                        for (FHeadVO head : unknownHeads) {
+                            if (head.getIdentity().equals(headId)) {
+                                head.setName(param.getParamName());
+                                head.setPrintTitle(param.getParamName());
+                                break;
+                            }
+                        }
+                    }
+                }
+                continue;
             }
 
             if (param.getIsAddSampleColumn() != null && param.getIsAddSampleColumn()) {
@@ -1315,8 +1385,10 @@ public class RationServiceConciseImpl implements RationConciseService {
                 relation.setHeadIdentity(newHeadIdentity);
                 relation.setParamName(param.getParamName());
                 relation.setParamIdentity(resultIdentity);
+                relation.setParamUniqueId(uniqueId);
                 mapRelation.add(relation);
                 allHeadIdentity.add(newHeadIdentity);
+
                 continue;
             }
 
@@ -1325,27 +1397,33 @@ public class RationServiceConciseImpl implements RationConciseService {
                 continue;
             }
 
-            FInputParamMapTableHead relation = new FInputParamMapTableHead();
-            relation.setHeadName(param.getParamName());
-            relation.setParamName(param.getParamName());
-            relation.setParamIdentity(resultIdentity);
-
             if ("否".equals(param.getIsSampleAttribute())) {
 
                 String identifier = param.getCurveIdentifier();
-                if (identifier == null) {
-                    log.info("当前输入参数{}未设置绑定标识", resultIdentity);
-                    continue;
-                }
-                if (RationCurveParamEnums.getName(identifier) != null) {
-                    log.info("定量特有参数处理");
+                if (identifier != null && RationCurveParamEnums.getName(identifier) != null) {
+                    // 定量特有参数处理
+                    FInputParamMapTableHead relation = new FInputParamMapTableHead();
+                    relation.setHeadName(param.getParamName());
                     relation.setHeadIdentity(identifier);
-                } else {
-                    String[] split = identifier.split("-");
-                    if (split.length == 2) {
-                        relation.setHeadIdentity(split[0] + "-" + luminosity);
+                    relation.setParamName(param.getParamName());
+                    relation.setParamIdentity(resultIdentity);
+                    relation.setParamUniqueId(uniqueId);
+                    mapRelation.add(relation);
+                } else if (resultIdentity.matches("[A-Z]")) {
+                    log.info("大写字母，只绑定，不添加");
+                    int letterIndex = resultIdentity.charAt(0) - 'A' + 1;
+
+                    if (letterIndex <= waveLength.size()) {
+                        FInputParamMapTableHead relation = new FInputParamMapTableHead();
+                        relation.setHeadName(param.getParamName());
+                        relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
+                        relation.setParamName(param.getParamName());
+                        relation.setParamIdentity(resultIdentity);
+                        relation.setParamUniqueId(uniqueId);
+                        mapRelation.add(relation);
                     }
                 }
+
             } else if ("是".equals(param.getIsSampleAttribute())) {
                 String newHeadIdentity = randomString(8);
                 while (allHeadIdentity.contains(newHeadIdentity)) {
@@ -1362,10 +1440,15 @@ public class RationServiceConciseImpl implements RationConciseService {
                 newHead.setIsSupportHidden(true);
 
                 unknownHeads.add(newHead);
+                FInputParamMapTableHead relation = new FInputParamMapTableHead();
+                relation.setHeadName(param.getParamName());
                 relation.setHeadIdentity(newHeadIdentity);
+                relation.setParamName(param.getParamName());
+                relation.setParamIdentity(resultIdentity);
+                relation.setParamUniqueId(uniqueId);
+                mapRelation.add(relation);
                 allHeadIdentity.add(newHeadIdentity);
             }
-            mapRelation.add(relation);
         }
         unknownHeadSnapshot.setSampleHeads(unknownHeads);
         unknownHeadSnapshot.setMapRelation(mapRelation);

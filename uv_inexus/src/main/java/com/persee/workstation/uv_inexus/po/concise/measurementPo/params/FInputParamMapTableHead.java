@@ -22,4 +22,6 @@ public class FInputParamMapTableHead {
 
     private String paramIdentity;
 
+    private String paramUniqueId;
+
 }
