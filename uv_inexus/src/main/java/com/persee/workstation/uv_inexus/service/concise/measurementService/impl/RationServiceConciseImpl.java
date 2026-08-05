@@ -10,6 +10,53 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
+import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcBorders;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STPageOrientation;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
 import com.alibaba.fastjson.JSON;
@@ -34,16 +81,50 @@ import com.persee.workstation.uv_inexus.dto.concise.rationDto.NewRationMethodPar
 import com.persee.workstation.uv_inexus.dto.guide.SampleCreateHeadConf;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.PhotoMetricChangeMethodTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.QualityConfEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RationChangeMethodTypeEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RationCurveParamEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RationWeightEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RoundingTypeEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParamMapTableHead;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPreCountResultParam;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FQualityConfVO;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingParamVO;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisDataService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureDataService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureProjectService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.RationConciseService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
@@ -67,31 +148,22 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.*;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationCountDataInfo;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationDataVO;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationFitCurveVO;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationMethodParam;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSampleDataVO;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSaveCountDataInfo;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationTaskHeadSnapShot;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationWavelengthDataInfo;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.QualityConfVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCurveDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCurvePointsValue;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.xwpf.usermodel.*;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
-import java.io.*;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.math.RoundingMode;
-import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service("fRationService")
@@ -6553,6 +6625,10 @@ public class RationServiceConciseImpl implements RationConciseService {
             return R.fail("00102027",standHeadResult.getMessage());
         }
         List<FHeadVO> standHeads = standHeadResult.getData();
+        // 过滤掉隐藏的列（isHidden为true的列不导出）
+        if (standHeads != null) {
+            standHeads.removeIf(head -> head.getIsHidden() != null && head.getIsHidden());
+        }
 
         // 2.2 获取未知样品表头
         Result<List<FHeadVO>> unknownHeadResult = getUnknownSampleTableHead(taskId, methodId, allDisplay, null);
@@ -6561,6 +6637,10 @@ public class RationServiceConciseImpl implements RationConciseService {
             return R.fail("00102028",unknownHeadResult.getMessage());
         }
         List<FHeadVO> unknownHeads = unknownHeadResult.getData();
+        // 过滤掉隐藏的列（isHidden为true的列不导出）
+        if (unknownHeads != null) {
+            unknownHeads.removeIf(head -> head.getIsHidden() != null && head.getIsHidden());
+        }
         // 补充未知样品固定列（序号+样品类型）
         if (unknownHeads == null) {
             unknownHeads = new ArrayList<>();

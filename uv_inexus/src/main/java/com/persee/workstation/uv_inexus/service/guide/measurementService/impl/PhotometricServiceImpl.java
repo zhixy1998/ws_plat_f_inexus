@@ -2911,6 +2911,10 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         List<HeadVO> heads = new ArrayList<>();
         List<HeadVO> vos = tableHead(taskId, methodId, allDisplay, task.getDeviceSerialNumber()).getData();
+        // 过滤掉隐藏的列（isHidden为true的列不导出）
+        if (vos != null) {
+            vos.removeIf(head -> head.getIsHidden() != null && head.getIsHidden());
+        }
         heads.addAll(vos);
         heads.add(0, new HeadVO("序号", "serialNumber"));
 

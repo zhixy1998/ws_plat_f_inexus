@@ -6226,6 +6226,10 @@ public class RationServiceImpl implements RationService {
         List<HeadVO> heads = new ArrayList<>();
         // 添加动态表头
         List<HeadVO> vos = getStandSampleTableHead(taskId, methodId, allDisplay, task.getDeviceSerialNumber()).getData();
+        // 过滤掉隐藏的列（isHidden为true的列不导出）
+        if (vos != null) {
+            vos.removeIf(head -> head.getIsHidden() != null && head.getIsHidden());
+        }
         heads.addAll(vos);
         // // 最前面加序号列（所有格式统一需要）
         heads.add(0, new HeadVO("序号", "serialNumber"));
