@@ -13,6 +13,8 @@ import javax.annotation.PreDestroy;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 
 /**
@@ -93,8 +95,7 @@ public class UdpReceiveThread {
                                     packet.getOffset(),
                                     packet.getOffset() + packet.getLength()
                             );
-                            System.out.println("接收数据，来自: " + ip);
-                            System.out.println("接收数据：" + Arrays.toString(data));
+                            System.out.println(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")) + " 接收数据，来自: " + ip + " 报文：" + bytesToHex(data));
 
                             store.addMessage(deviceId, data);
 
@@ -165,8 +166,7 @@ public class UdpReceiveThread {
                                     packet.getOffset(),
                                     packet.getOffset() + packet.getLength()
                             );
-                            System.out.println("接收数据，来自: " + ip);
-                            System.out.println("接收数据：" + Arrays.toString(data));
+                            System.out.println(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")) + " 接收数据，来自: " + ip + " 报文：" + bytesToHex(data));
 
                             store.addMessage(deviceId, data);
 
@@ -205,6 +205,14 @@ public class UdpReceiveThread {
 
     public Boolean isEthernetRunning() {
         return ethernetRunning;
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02X ", b));
+        }
+        return sb.toString().trim();
     }
 
     public Boolean isWifiRunning() {

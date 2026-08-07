@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -286,9 +287,7 @@ public class UdpSendUtil {
     }
 
     private void sendMessageLog(String ip, String cmdId, byte[] bytes) {
-
-        log.info("发送指令 [{}] 报文：{}  到{}", cmdId, bytesToHex(bytes), ip);
-
+        System.out.println(LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")) + " 发送指令 [" + cmdId + "] 报文：" + bytesToHex(bytes) + "  到" + ip);
     }
 
     private void messageGetLog(String deviceId, String ip, byte[] bytes){

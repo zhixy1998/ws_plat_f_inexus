@@ -40,7 +40,6 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
-import com.persee.workstation.uv_inexus.dto.concise.common.FCheckFormulaDto;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
@@ -76,11 +75,11 @@ import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
-import org.springframework.context.annotation.Lazy;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -455,23 +454,23 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
 
             // 校验待计算结果参数的公式合法性：公式引用的参数必须存在于输入参数列表中
-            if (methodParam != null && methodParam.getResultParams() != null && !methodParam.getResultParams().isEmpty()) {
-                List<FInputParam> inputParams = methodParam.getSampleInputParams();
-                List<FPreCountResultParam> resultParams = methodParam.getResultParams();
-                for (FPreCountResultParam resultParam : resultParams) {
-                    if (resultParam == null) {
-                        continue;
-                    }
-                    FCheckFormulaDto checkFormulaDto = new FCheckFormulaDto();
-                    checkFormulaDto.setInputParamList(inputParams);
-                    checkFormulaDto.setNewFormula(resultParam);
-                    checkFormulaDto.setMeasureType(checkDTO.getMeasureType());
-                    Result<Boolean> checkResult = conciseCommonService.checkFormula(checkFormulaDto);
-                    if (checkResult.getCode() != 200 || !Boolean.TRUE.equals(checkResult.getData())) {
-                        return Result.fail(checkResult.getMessage());
-                    }
-                }
-            }
+            // if (methodParam != null && methodParam.getResultParams() != null && !methodParam.getResultParams().isEmpty()) {
+            //     List<FInputParam> inputParams = methodParam.getSampleInputParams();
+            //     List<FPreCountResultParam> resultParams = methodParam.getResultParams();
+            //     for (FPreCountResultParam resultParam : resultParams) {
+            //         if (resultParam == null) {
+            //             continue;
+            //         }
+            //         FCheckFormulaDto checkFormulaDto = new FCheckFormulaDto();
+            //         checkFormulaDto.setInputParamList(inputParams);
+            //         checkFormulaDto.setNewFormula(resultParam);
+            //         checkFormulaDto.setMeasureType(checkDTO.getMeasureType());
+            //         Result<Boolean> checkResult = conciseCommonService.checkFormula(checkFormulaDto);
+            //         if (checkResult.getCode() != 200 || !Boolean.TRUE.equals(checkResult.getData())) {
+            //             return Result.fail(checkResult.getMessage());
+            //         }
+            //     }
+            // }
 
             double minWaveLength = 190.0;
             double maxWaveLength = 1100.0;

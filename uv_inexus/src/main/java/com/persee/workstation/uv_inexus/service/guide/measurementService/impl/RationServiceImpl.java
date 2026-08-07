@@ -1364,10 +1364,10 @@ public class RationServiceImpl implements RationService {
                     return R.fail("00102021",(i + 1));
                 }
                 // 校验公式合法性：公式引用的参数必须存在于输入参数列表中
-                Result<Boolean> checkResult = checkFormula(parameter.getSampleInputParams(), resultParam);
-                if (checkResult.getCode() != 200 || !Boolean.TRUE.equals(checkResult.getData())) {
-                    return R.fail(checkResult.getMessage());
-                }
+                // Result<Boolean> checkResult = checkFormula(parameter.getSampleInputParams(), resultParam);
+                // if (checkResult.getCode() != 200 || !Boolean.TRUE.equals(checkResult.getData())) {
+                //     return R.fail(checkResult.getMessage());
+                // }
             }
         }
 

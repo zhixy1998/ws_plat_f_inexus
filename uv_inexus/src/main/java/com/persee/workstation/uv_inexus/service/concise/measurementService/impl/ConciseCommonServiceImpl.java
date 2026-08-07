@@ -647,12 +647,12 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             paramList.add(param.getResultIdentity());
         }
         // 定量测量时，系统配置的曲线参数也会参与公式计算，需要加入参数列表
-        if (QUANTITATIVE_MEASUREMENT.name().equals(checkFormulaDto.getMeasureType())
-                || QUANTITATIVE_MEASUREMENT.getDescription().equals(checkFormulaDto.getMeasureType())) {
-            for (RationCurveParamEnums curveEnum : RationCurveParamEnums.values()) {
-                paramList.add(curveEnum.getIdentity());
-            }
-        }
+        // if (QUANTITATIVE_MEASUREMENT.name().equals(checkFormulaDto.getMeasureType())
+        //         || QUANTITATIVE_MEASUREMENT.getDescription().equals(checkFormulaDto.getMeasureType())) {
+        //     for (RationCurveParamEnums curveEnum : RationCurveParamEnums.values()) {
+        //         paramList.add(curveEnum.getIdentity());
+        //     }
+        // }
 
         List<String> formulaList = new ArrayList<>();
         formulaList.add(newFormula.getFormulaText());
