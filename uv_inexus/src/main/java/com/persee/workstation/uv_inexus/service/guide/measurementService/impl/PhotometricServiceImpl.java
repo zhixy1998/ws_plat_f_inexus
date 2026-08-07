@@ -842,7 +842,8 @@ public class PhotometricServiceImpl implements PhotometricService {
                 task.setTaskName(methodDto.getNewTaskName());
             }
             tMeasureTaskService.updateById(task);
-            generateTableInfo(task.getId(), task.getMethodKey(),true);
+            Boolean b = methodDto.getIsApplyToCurrent() != null && !methodDto.getIsApplyToCurrent();
+            generateTableInfo(task.getId(), task.getMethodKey(),b);
             vo.setTaskId(task.getId());
             vo.setTaskName(task.getTaskName());
             vo.setTaskStatus(task.getTaskStatus());
@@ -1025,7 +1026,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             allHeadIdentity.add(head.getIdentity());
         }
 
-        List<InputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
+        List<InputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation() == null ? new ArrayList<>() : taskHeadSnapshot.getMapRelation();;
         // 比对新旧输入参数，删除旧参数生成的表头及映射关系
         Set<String> newUniqueIds = new HashSet<>();
         Set<String> newResultIdentities = new HashSet<>();
@@ -1037,7 +1038,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 newResultIdentities.add(param.getResultIdentity());
             }
         }
-        if (mapRelation != null && !mapRelation.isEmpty()) {
+        if (!mapRelation.isEmpty()) {
             List<InputParamMapTableHead> toRemove = new ArrayList<>();
             for (InputParamMapTableHead relation : mapRelation) {
                 boolean shouldRemove = false;
@@ -1063,14 +1064,11 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         // 收集已存在的paramUniqueId，用于判断是否需要新增
         Set<String> existingUniqueIds = new HashSet<>();
-        if (mapRelation != null) {
-            for (InputParamMapTableHead relation : mapRelation) {
-                if (StringUtils.hasText(relation.getParamUniqueId())) {
-                    existingUniqueIds.add(relation.getParamUniqueId());
-                }
+        for (InputParamMapTableHead relation : mapRelation) {
+            if (StringUtils.hasText(relation.getParamUniqueId())) {
+                existingUniqueIds.add(relation.getParamUniqueId());
             }
         }
-
 
         String luminosity = parameter.getLuminosity();
         List<String> waveLength = parameter.getWaveLength();
@@ -1178,7 +1176,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                             relation.setParamIdentity(resultIdentity);
                             relation.setParamUniqueId(uniqueId);
                             relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
-                                        mapRelation.add(relation);
+                            mapRelation.add(relation);
                         }
                     }
                     continue;
@@ -1202,7 +1200,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                     relation.setParamIdentity(resultIdentity);
                     relation.setParamUniqueId(uniqueId);
                     relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
-                        mapRelation.add(relation);
+                    mapRelation.add(relation);
 
                     continue;
                 }
@@ -1219,7 +1217,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                         relation.setParamIdentity(resultIdentity);
                         relation.setParamUniqueId(uniqueId);
                         relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
-                                mapRelation.add(relation);
+                        mapRelation.add(relation);
                     }
                 }
             } else if ("是".equals(param.getIsSampleAttribute())) {
@@ -1768,54 +1766,6 @@ public class PhotometricServiceImpl implements PhotometricService {
             List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(method.getMeasurementType(), null);
             ans.addAll(preHead);
         }
-
-        if (StringUtils.hasText(task.getSampleKey())) {
-
-            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            for (TaskSpecimen specimen : taskSpecimen) {
-                //过滤掉已删除的内容
-                if (specimen.getDeleteType().equals(deleteType)) {
-                    continue;
-                }
-
-                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                if (StringUtils.hasText(measureSample.getHeads())){
-                    List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
-
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
-            }
-
-        }
-
-        // 从样品读取表头已停用，表头统一从任务快照(tableInfo)读取，避免isHidden变化导致重复
-//        if (StringUtils.hasText(task.getSampleKey())) {
-//
-//            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-//            for (TaskSpecimen specimen : taskSpecimen) {
-//                //过滤掉已删除的内容
-//                if (specimen.getDeleteType().equals(deleteType)) {
-//                    continue;
-//                }
-//
-//                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-//                if (StringUtils.hasText(measureSample.getHeads())){
-//                    List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
-//
-//                    if (heads != null && !heads.isEmpty()) {
-//                        Set<String> existingIdentities = ans.stream().map(HeadVO::getIdentity).collect(Collectors.toSet());
-//                        for (HeadVO head : heads) {
-//                            if (!existingIdentities.contains(head.getIdentity())) {
-//                                ans.add(head);
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//
-//        }
 
         List<HeadVO> vos = dealHeads(new ArrayList<>(ans), parameter, allDisplay, deviceSerialNumber);
 
@@ -3419,6 +3369,67 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (task == null) {
             //没有找到该任务
             return R.fail("00000004");
+        }
+
+        // 前端传入的 mapRelation 中 paramUniqueId/isAddSampleColumn/paramName/headName 可能为 null，
+        // 这里根据 paramIdentity 从方法输入参数中补全前三个字段，根据 headIdentity 从 taskHeads 中补全 headName
+        List<InputParamMapTableHead> mapRelationRaw = snapshotDTO.getMapRelation();
+        if (mapRelationRaw != null && !mapRelationRaw.isEmpty()) {
+            // 构建方法输入参数映射: resultIdentity -> InputParam
+            Map<String, InputParam> inputParamMap = new HashMap<>();
+            if (StringUtils.hasText(task.getMethodKey())) {
+                TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+                if (method != null && StringUtils.hasText(method.getMeasurementParamInfo())) {
+                    PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+                    if (parameter != null && parameter.getSampleInputParams() != null) {
+                        for (InputParam param : parameter.getSampleInputParams()) {
+                            if (param != null && StringUtils.hasText(param.getResultIdentity())) {
+                                inputParamMap.put(param.getResultIdentity(), param);
+                            }
+                        }
+                    }
+                }
+            }
+            // 构建 taskHeads 映射: identity -> HeadVO
+            Map<String, HeadVO> taskHeadMap = new HashMap<>();
+            if (snapshotDTO.getTaskHeads() != null) {
+                for (HeadVO head : snapshotDTO.getTaskHeads()) {
+                    if (head != null && StringUtils.hasText(head.getIdentity())) {
+                        taskHeadMap.put(head.getIdentity(), head);
+                    }
+                }
+            }
+            // 补全每个映射关系中为 null 的字段
+            for (InputParamMapTableHead relation : mapRelationRaw) {
+                if (relation == null) {
+                    continue;
+                }
+                // 任意一个为 null 时，根据 paramIdentity 找到方法输入参数补全
+                boolean anyParamFieldNull = relation.getParamUniqueId() == null
+                        || relation.getIsAddSampleColumn() == null
+                        || relation.getParamName() == null;
+                if (anyParamFieldNull && StringUtils.hasText(relation.getParamIdentity())) {
+                    InputParam param = inputParamMap.get(relation.getParamIdentity());
+                    if (param != null) {
+                        if (relation.getParamUniqueId() == null) {
+                            relation.setParamUniqueId(param.getUniqueId());
+                        }
+                        if (relation.getIsAddSampleColumn() == null) {
+                            relation.setIsAddSampleColumn(param.getIsAddSampleColumn());
+                        }
+                        if (relation.getParamName() == null) {
+                            relation.setParamName(param.getParamName());
+                        }
+                    }
+                }
+                // headName 为 null 时，根据 headIdentity 在 taskHeads 中匹配补全
+                if (relation.getHeadName() == null && StringUtils.hasText(relation.getHeadIdentity())) {
+                    HeadVO headVO = taskHeadMap.get(relation.getHeadIdentity());
+                    if (headVO != null) {
+                        relation.setHeadName(headVO.getName());
+                    }
+                }
+            }
         }
 
         TaskHeadSnapshot taskHeadSnapshot = new TaskHeadSnapshot();
