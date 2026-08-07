@@ -646,19 +646,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         for (FInputParam param : inputParamList) {
             paramList.add(param.getResultIdentity());
         }
-//        if (checkFormulaDto.getMeasureType().equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
-//            paramList.add("Abs");
-//            paramList.add("ΔAbs");
-//            paramList.add("k0");
-//            paramList.add("k1");
-//            paramList.add("k2");
-//            paramList.add("k3");
-//            paramList.add("k4");
-//        }
-//
-//        /**
-//         * 如果定量，将公式中Abs或ΔAbs替换为：
-//         */
+        // 定量测量时，系统配置的曲线参数也会参与公式计算，需要加入参数列表
+        if (QUANTITATIVE_MEASUREMENT.name().equals(checkFormulaDto.getMeasureType())
+                || QUANTITATIVE_MEASUREMENT.getDescription().equals(checkFormulaDto.getMeasureType())) {
+            for (RationCurveParamEnums curveEnum : RationCurveParamEnums.values()) {
+                paramList.add(curveEnum.getIdentity());
+            }
+        }
 
         List<String> formulaList = new ArrayList<>();
         formulaList.add(newFormula.getFormulaText());

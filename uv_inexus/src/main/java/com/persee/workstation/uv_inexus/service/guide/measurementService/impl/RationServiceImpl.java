@@ -51,6 +51,7 @@ import com.persee.workstation.uv_inexus.util.pythonUtil.FittingParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
+import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
@@ -124,6 +125,9 @@ public class RationServiceImpl implements RationService {
 
     @Autowired
     GuidePublicUtilService guidePublicUtilService;
+
+    @Autowired
+    LaTeXConverter latexConverter;
 
     @Autowired
     DevOperationUtilService devOperationUtilService;
@@ -1359,6 +1363,11 @@ public class RationServiceImpl implements RationService {
                     //"第" + (i + 1) + "个待计算结果参数标题或公式不能为空"
                     return R.fail("00102021",(i + 1));
                 }
+                // 校验公式合法性：公式引用的参数必须存在于输入参数列表中
+                Result<Boolean> checkResult = checkFormula(parameter.getSampleInputParams(), resultParam);
+                if (checkResult.getCode() != 200 || !Boolean.TRUE.equals(checkResult.getData())) {
+                    return R.fail(checkResult.getMessage());
+                }
             }
         }
 
@@ -1408,6 +1417,43 @@ public class RationServiceImpl implements RationService {
 
     private boolean isBlank(String str) {
         return str == null || str.trim().isEmpty();
+    }
+
+    /**
+     * 校验待计算结果参数的公式合法性
+     * 公式引用的参数必须存在于输入参数列表中
+     */
+    private Result<Boolean> checkFormula(List<InputParam> inputParamList, PreCountResultParam newFormula) {
+        if (newFormula == null || !StringUtils.hasText(newFormula.getFormulaText())) {
+            return Result.fail("0010100C");
+        }
+        if (!StringUtils.hasText(newFormula.getResultName())) {
+            return Result.fail("00101017");
+        }
+        if (!StringUtils.hasText(newFormula.getResultIdentity())) {
+            return Result.fail("00101018");
+        }
+        if (!StringUtils.hasText(newFormula.getUnit())) {
+            return Result.fail("00101019");
+        }
+        if (inputParamList == null || inputParamList.isEmpty()) {
+            return Result.fail("0010100D");
+        }
+        List<String> paramList = new ArrayList<>();
+        for (InputParam param : inputParamList) {
+            paramList.add(param.getResultIdentity());
+        }
+        // 定量测量的系统配置曲线参数也会参与公式计算，需要加入参数列表
+        for (RationCurveParamEnums curveEnum : RationCurveParamEnums.values()) {
+            paramList.add(curveEnum.getIdentity());
+        }
+        List<String> formulaList = new ArrayList<>();
+        formulaList.add(newFormula.getFormulaText());
+        R<String> verified = latexConverter.verifyFormulasAgainstParamList(paramList, formulaList);
+        if (!verified.getSuccess()) {
+            return Result.fail(verified.getMessage());
+        }
+        return Result.ok(true);
     }
 
     @Override
