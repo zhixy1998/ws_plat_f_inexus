@@ -1791,6 +1791,21 @@ public class RationServiceImpl implements RationService {
             if (unknownHead.getTaskHeads() != null) {
                 unknownHead.getTaskHeads().forEach(head -> allHeadIdentity.add(head.getIdentity()));
             }
+            // 保护系统表头映射关系：波长-光度绑定表头（如 500-Abs）
+            TMeasureMethod rationMethod = tMeasureMethodService.getById(task.getMethodKey());
+            if (rationMethod != null && StringUtils.hasText(rationMethod.getMeasurementParamInfo())) {
+                RationParameter rationParam = JSON.parseObject(rationMethod.getMeasurementParamInfo(), RationParameter.class);
+                if (rationParam != null && rationParam.getWaveLength() != null) {
+                    String luminosity = WaveLengthEnum.abs.getCode();
+                    for (String wl : rationParam.getWaveLength()) {
+                        allHeadIdentity.add(wl + "-" + luminosity);
+                    }
+                }
+            }
+            // 保护定量特有系统表头（k1、b 等 RationCurveParamEnums）
+            for (RationCurveParamEnums curveEnum : RationCurveParamEnums.values()) {
+                allHeadIdentity.add(curveEnum.getIdentity());
+            }
             List<InputParamMapTableHead> unknownMapRelation = unknownHead.getMapRelation();
             if (unknownMapRelation != null && !unknownMapRelation.isEmpty()) {
                 List<InputParamMapTableHead> newMapRelation = new ArrayList<>();

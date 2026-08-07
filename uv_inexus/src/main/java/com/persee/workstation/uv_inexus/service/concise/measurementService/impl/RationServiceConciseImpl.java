@@ -2095,6 +2095,21 @@ public class RationServiceConciseImpl implements RationConciseService {
             if (unknownHead.getTaskHeads() != null) {
                 unknownHead.getTaskHeads().forEach(head -> allHeadIdentity.add(head.getIdentity()));
             }
+            // 保护系统表头映射关系：波长-光度绑定表头（如 500-Abs）
+            FMeasureMethod rationMethod = fMeasureMethodService.getById(task.getMethodKey());
+            if (rationMethod != null && StringUtils.hasText(rationMethod.getMeasurementParamInfo())) {
+                FRationParameter rationParam = JSON.parseObject(rationMethod.getMeasurementParamInfo(), FRationParameter.class);
+                if (rationParam != null && rationParam.getWaveLength() != null) {
+                    String luminosity = WaveLengthEnum.abs.getCode();
+                    for (String wl : rationParam.getWaveLength()) {
+                        allHeadIdentity.add(wl + "-" + luminosity);
+                    }
+                }
+            }
+            // 保护定量特有系统表头（k1、b 等 RationCurveParamEnums）
+            for (RationCurveParamEnums curveEnum : RationCurveParamEnums.values()) {
+                allHeadIdentity.add(curveEnum.getIdentity());
+            }
             List<FInputParamMapTableHead> unknownMapRelation = unknownHead.getMapRelation();
             if (unknownMapRelation != null && !unknownMapRelation.isEmpty()) {
                 List<FInputParamMapTableHead> newMapRelation = new ArrayList<>();
