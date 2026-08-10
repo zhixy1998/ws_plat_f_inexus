@@ -1634,6 +1634,11 @@ messages:
     en-US: 'Instrument parameter setting failed!'
     ru-RU: 'Не удалось установить параметры прибора!'
 
+  '00300024':
+    zh-CN: '参数校验失败：{0}'
+    en-US: 'Parameter validation failed: {0}'
+    ru-RU: 'Ошибка проверки параметров: {0}'
+
   # 实验测试模块=01
   '00301001':
     zh-CN: '该项目已存在'
