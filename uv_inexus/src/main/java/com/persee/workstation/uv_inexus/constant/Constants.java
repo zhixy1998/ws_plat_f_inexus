@@ -26,7 +26,7 @@ public class Constants {
     public Constants() {
     }
 
-    public static final String SUPER_USER_NAME = "admin";
+    public static final String SUPER_USER_NAME = "Admin";
 
     public final static String DEFAULT_USER_NAME = "default";
 

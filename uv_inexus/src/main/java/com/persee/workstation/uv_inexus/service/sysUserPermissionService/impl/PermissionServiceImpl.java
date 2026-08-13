@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDeleteDTO;
@@ -101,7 +102,7 @@ public class PermissionServiceImpl implements PermissionService {
         }
         
         LoginUserInfoVO currentUser = UserContext.getCurrentUser();
-        String currentUserName = (currentUser != null && currentUser.getUsername() != null) ? currentUser.getUsername() : "admin";
+        String currentUserName = (currentUser != null && currentUser.getUsername() != null) ? currentUser.getUsername() : Constants.SUPER_USER_NAME;
         po.setCreateBy(currentUserName);
         po.setCreated(LocalDateTime.now());
 
@@ -223,7 +224,7 @@ public class PermissionServiceImpl implements PermissionService {
         }
 
         LoginUserInfoVO currentUser = UserContext.getCurrentUser();
-        String currentUserName = (currentUser != null && currentUser.getUsername() != null) ? currentUser.getUsername() : "admin";
+        String currentUserName = (currentUser != null && currentUser.getUsername() != null) ? currentUser.getUsername() : Constants.SUPER_USER_NAME;
         po.setUpdateBy(currentUserName);
         po.setUpdated(LocalDateTime.now());
 

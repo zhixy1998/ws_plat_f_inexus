@@ -1,4 +1,4 @@
-﻿# =====================================================
+# =====================================================
 # UI 文本翻译字典 - 中英日俄四语
 #
 # 本文件: i18n-ui-texts.yaml — WebSocket 推送 / 前端展示的中文文本翻译
@@ -2424,12 +2424,42 @@ messages:
 
   '波长校正':
     zh-CN: '波长校正'
-    en-US: 'Wavelength correction'
+    en-US: 'Wavelength Correction'
     ru-RU: 'Коррекция длины волны'
+
+  '多点波长校正':
+    zh-CN: '多点波长校正'
+    en-US: 'Multi-Point Wavelength Correction'
+    ru-RU: 'Многоточечная коррекция длины волны'
+
+  '多波长校正':
+    zh-CN: '多波长校正'
+    en-US: 'Multi-Wavelength Correction'
+    ru-RU: 'Много длин волн коррекция'
+
+  '标准波长':
+    zh-CN: '标准波长'
+    en-US: 'Standard Wavelength'
+    ru-RU: 'Стандартная длина волны'
+
+  '实际波长':
+    zh-CN: '实际波长'
+    en-US: 'Actual Wavelength'
+    ru-RU: 'Фактическая длина волны'
+
+  '标准波长(nm)':
+    zh-CN: '标准波长(nm)'
+    en-US: 'Standard Wavelength(nm)'
+    ru-RU: 'Стандартная длина волны(nm)'
+
+  '实际波长(nm)':
+    zh-CN: '实际波长(nm)'
+    en-US: 'Actual Wavelength(nm)'
+    ru-RU: 'Фактическая длина волны(nm)'
 
   '暗电流校正':
     zh-CN: '暗电流校正'
-    en-US: 'Dark current correction'
+    en-US: 'Dark Current Correction'
     ru-RU: 'Коррекция темнового тока'
 
   '经典模式':
@@ -2908,12 +2938,12 @@ messages:
 
   '光谱扫描':
     zh-CN: '光谱扫描'
-    en-US: 'Spectrum Scan'
+    en-US: 'Spectral Scan'
     ru-RU: 'Спектральное сканирование'
 
   '时间扫描':
     zh-CN: '时间扫描'
-    en-US: 'Kinetic Scan'
+    en-US: 'Time Scan'
     ru-RU: 'Сканирование по времени'
 
   '默认方法':
@@ -2924,8 +2954,13 @@ messages:
   # ========== 预设表头名称 (t_measure_preset_head) ==========
   '样品编号':
     zh-CN: '样品编号'
-    en-US: 'Sample No.'
+    en-US: 'Sample ID'
     ru-RU: 'Номер образца'
+
+  '拟合浓度':
+    zh-CN: '拟合浓度'
+    en-US: 'Fitted Concentration'
+    ru-RU: 'Подгоночная концентрация'
 
   '样品名称':
     zh-CN: '样品名称'
