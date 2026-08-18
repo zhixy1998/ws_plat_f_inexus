@@ -6015,7 +6015,9 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                 R<List<FRationCountDataInfo>> formula = formula(currentList, list, sample, task, parameter, emptyValue, digit);
                 if (formula.getData() != null) {
-                    currentList.addAll(formula.getData());
+                    List<FRationCountDataInfo> formulaData = formula.getData();
+                    formulaData = dataRounding(formulaData, parameter);
+                    currentList.addAll(formulaData);
                 }
 
                 dealData.setCountData(currentList);
