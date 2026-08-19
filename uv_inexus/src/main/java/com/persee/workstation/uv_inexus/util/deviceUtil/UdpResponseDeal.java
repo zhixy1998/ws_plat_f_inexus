@@ -135,6 +135,7 @@ public class UdpResponseDeal {
                 return parseCellPos(responses, sendBytes);
             case "GetWLampStatus":
             case "GetDLampStatus":
+            case "GetMLamp":
                 return getLampStatus(responses);
 
             case "GetInitStatus":
@@ -1380,6 +1381,13 @@ public class UdpResponseDeal {
             resultEntity.setIsSuccess(false);
             resultEntity.setErrorCode("0020A018");
             resultEntity.setErrorArgs(new Object[]{lastResponse == null ? 0 : lastResponse.length});
+            return resultEntity;
+        }
+
+        if ((lastResponse[0] & 0xFF) == 0xFF && (lastResponse[1] & 0xFF) == 0x65 && (lastResponse[2] & 0xFF) == 0xFF && (lastResponse[3] & 0xFF) == 0x01){
+            resultEntity.setIsSuccess(false);
+            resultEntity.setErrorCode("0030000D");
+            resultEntity.setErrorArgs(new Object[]{lastResponse.length});
             return resultEntity;
         }
 

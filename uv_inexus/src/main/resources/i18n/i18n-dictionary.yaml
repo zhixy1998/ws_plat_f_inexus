@@ -1639,6 +1639,12 @@ messages:
     en-US: 'Parameter validation failed: {0}'
     ru-RU: 'Ошибка проверки параметров: {0}'
 
+  '0030000D':
+    zh-CN: '波长超出限制，请重新初始化仪器！'
+    en-US: 'Wavelength exceeds limit, please reinitialize instrument!'
+    ru-RU: 'Волна выходит за пределы, пожалуйста, переинициализируйте прибор!'
+
+
   # 实验测试模块=01
   '00301001':
     zh-CN: '该项目已存在'

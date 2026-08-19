@@ -186,6 +186,28 @@
         </HeadReceiveBytes>
     </ProtocolItem>
     <ProtocolItem>
+        <ID>GetMLamp</ID>
+        <Describe>获取汞灯开关</Describe>
+        <Timeout>6000</Timeout>
+        <ACK>Y</ACK>
+        <InputString>
+            <string>汞灯状态:I4:0关1开</string>
+        </InputString>
+        <OutputString>
+            <string>汞灯状态:I4:0关1开</string>
+        </OutputString>
+        <SendBytes>
+            <string>101:255:1:15:I4:0:0:0:0:0:0:Check</string>
+        </SendBytes>
+        <ReadBytes>
+            <string>255:101:1:15:I4:0:0:0:0:0:0:Check</string>
+        </ReadBytes>
+        <ReplyNumber>24</ReplyNumber>
+        <HeadReceiveBytes>
+            <string>255:101:1:15</string>
+        </HeadReceiveBytes>
+    </ProtocolItem>
+    <ProtocolItem>
         <ID>GotoMLamp</ID>
         <Describe>汞灯定位</Describe>
         <Timeout>40000</Timeout>
@@ -341,6 +363,7 @@
     <ReplyNumber>24</ReplyNumber>
     <HeadReceiveBytes>
         <string>255:101:10:1</string>
+        <string>255:101:255:1</string>
     </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
@@ -363,6 +386,7 @@
     <ReplyNumber>24</ReplyNumber>
     <HeadReceiveBytes>
         <string>255:101:10:2</string>
+        <string>255:101:255:1</string>
     </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
@@ -385,6 +409,7 @@
     <ReplyNumber>24</ReplyNumber>
     <HeadReceiveBytes>
         <string>255:101:10:3</string>
+        <string>255:101:255:1</string>
     </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
