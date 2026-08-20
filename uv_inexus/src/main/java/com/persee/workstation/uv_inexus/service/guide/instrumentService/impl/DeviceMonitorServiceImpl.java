@@ -20,7 +20,6 @@ import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceUsageCountDTO;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceMonitorEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceTaskStatusEnum;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
-import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
@@ -320,7 +319,7 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
 
         IPage<HistoryTaskVO> resultPage = tMeasureTaskMapper.selectHistoryTaskPage(page, queryDto);
 
-        DateTimeFormatter zhFormatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm:ss");
+        DateTimeFormatter zhFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         resultPage.convert(item -> {
             // 开始时间展示
             item.setStartTimeDisplay(item.getStartTime() != null ? item.getStartTime().format(zhFormatter) : "-");

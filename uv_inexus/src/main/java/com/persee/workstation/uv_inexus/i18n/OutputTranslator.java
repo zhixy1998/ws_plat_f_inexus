@@ -17,7 +17,11 @@ public class OutputTranslator {
     private static final Set<String> SKIP_KEYS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             "taskId", "sessionId", "type", "action", "command",
             "code", "id", "itemId", "deviceSerialNumber", "templateCode",
-            "params", "method", "result", "beforeData", "afterData"
+            "params", "method", "result", "beforeData", "afterData",
+            // 测量类型字段：值为中文（光度测量/定量测定/光谱扫描/时间扫描），前端以中文作为匹配 key，不能翻译
+            "measureType", "methodType", "measurementType", "measureMode",
+            // 统计接口按测量类型分组的结果 map：中文 key 是前端匹配 key，不能翻译
+            "taskTypeCounts"
     )));
 
     @Autowired
@@ -94,7 +98,7 @@ public class OutputTranslator {
     }
 
     /**
-     * 统一的文本翻译方法：先精确匹配，失败后做子串替换。
+     * 统一的文本翻译方法：先精确匹配，再剥离非中文前缀匹配，最后做子串替换。
      * 所有内部翻译字符串的地方都应调用此方法。
      */
     private String translateText(String text, String locale) {
@@ -103,7 +107,18 @@ public class OutputTranslator {
         if (!text.equals(translated)) {
             return translated;
         }
-        // 2. 子串替换：按key长度降序排列，优先匹配更长的中文片段
+        // 2. 前缀剥离：处理"型号前缀+附件名"的拼接文案（如 T600B标准及微量样品池、T1960双光束固定样品池），
+        //    剥离开头非中文前缀后对剩余部分精确匹配，成功则返回 前缀 + 空格 + 译文
+        int cjkIndex = indexOfChinese(text);
+        if (cjkIndex > 0) {
+            String prefix = text.substring(0, cjkIndex);
+            String rest = text.substring(cjkIndex);
+            String restTranslated = messageSource.getMessage(rest, locale);
+            if (!rest.equals(restTranslated)) {
+                return prefix + " " + restTranslated;
+            }
+        }
+        // 3. 子串替换：按key长度降序排列，优先匹配更长的中文片段
         String result = text;
         for (Map.Entry<String, Map<String, String>> entry : getSortedDictEntries()) {
             String key = entry.getKey();
@@ -311,6 +326,22 @@ public class OutputTranslator {
 
     private boolean containsChinese(String value) {
         return value != null && CJK_PATTERN.matcher(value).find();
+    }
+
+    /**
+     * 返回首个中文字符的下标，无中文时返回 -1。
+     */
+    private int indexOfChinese(String value) {
+        if (value == null) {
+            return -1;
+        }
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c >= '\u4e00' && c <= '\u9fff') {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private boolean isDefaultLocale(String locale) {
