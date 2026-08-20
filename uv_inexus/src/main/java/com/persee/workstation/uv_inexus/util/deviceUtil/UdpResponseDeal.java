@@ -703,10 +703,17 @@ public class UdpResponseDeal {
     }
 
     private static OperationResultEntity goToMlLamp(List<byte[]> responses) {
-        if (responses.size() < 4) {
+
+        if (responses == null || responses.size() < 4) {
+            result = "false"; // 设置全局变量
             resultEntity.setIsSuccess(false);
             return resultEntity;
         }
+
+        byte[] last = responses.get(responses.size() - 1);
+        boolean success = last.length >= 5 && (last[4] & 0xFF) == 0 && (last[3] & 0xFF) == 7;
+        resultEntity.setIsSuccess(success);
+
         return resultEntity; // 返回处理后的结果
     }
 
@@ -716,6 +723,7 @@ public class UdpResponseDeal {
     private static OperationResultEntity parseType(List<byte[]> responses) {
         if (responses ==  null || responses.isEmpty()) {
             resultEntity.setIsSuccess(false);
+            resultEntity.setErrorCode("0020A015");
             return resultEntity;
         }
 

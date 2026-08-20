@@ -2006,7 +2006,20 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     dataList.add(status);
 
                     resultEntity.setDataList(dataList);
-                } else if (comId.equals(LiveDetectionCmdEnum.GetCellPos.getComId())) {
+                }else if (comId.equals(LiveDetectionCmdEnum.GetMLamp.getComId())) {
+                    if (resultEntity.getDataList() == null) {
+                        resultEntity.setDataList(new ArrayList<>());
+                    }
+
+                    DetectionManyDevicesLampStatus status = new DetectionManyDevicesLampStatus();
+                    status.setLabel("汞灯");
+                    status.setValue(entity.getLampStatus() ? "亮" : "不亮");
+                    List<DetectionManyDevicesLampStatus> dataList = resultEntity.getDataList();
+                    dataList.add(status);
+
+                    resultEntity.setDataList(dataList);
+                }
+                else if (comId.equals(LiveDetectionCmdEnum.GetCellPos.getComId())) {
                     Integer currentPoolNum = resultEntity.getCurrentPoolNum();
                     deviceManager.setCurrentPoolNum(deviceId, currentPoolNum);
                 }
