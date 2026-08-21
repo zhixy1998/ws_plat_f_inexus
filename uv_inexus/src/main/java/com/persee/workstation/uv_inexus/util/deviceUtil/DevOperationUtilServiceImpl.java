@@ -851,7 +851,17 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         String deviceMac = info.getDeviceMac();
         Integer connectType = info.getConnectType();
 
+        if (!StringUtils.hasText(xmlKey) || !StringUtils.hasText(deviceMac) || connectType == null) {
+            return null;
+        }
+
         String deviceId = deviceManager.getOrCreateDeviceId(ip, port, connectType);
+
+        if(!StringUtils.hasText(deviceId) || !deviceId.startsWith("temp-")) {
+            log.info("仪器不存在或当前仪器已连接！");
+            return null;
+        }
+
         deviceManager.updateDeviceInfo(deviceId, Constants.CONNECT_DEVICE_NO, deviceMac, xmlKey);
 
         SearchInfo result = new SearchInfo();
@@ -1385,27 +1395,29 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
         }
 
-        if (allDevice.isEmpty()) {
-            //连接上次连接的仪器
-                List<DeviceInfoPO> poList = infoService.getUserLastConnectDevice(inputParam.getUpdateBy());
-
-            if (poList != null && !poList.isEmpty()) {
-
-                for (DeviceInfoPO infoPO : poList) {
-
-                    SearchInfo info = addLastDevice(infoPO);
-                    Boolean b = checkDeviceConnect(info);
-                    if (b) {
-                        allDevice.add(info);
-                        xmlManage.setDevice(info.getDeviceIp(), infoPO.getXmlKey());
-                        xmlManage.setDevice(info.getDeviceMac(), infoPO.getXmlKey());
-                    }
-
-
-                }
-            }
-
-        }
+        //20260821注释，下位机支持连接后再次搜索，故去该功能
+//        if (allDevice.isEmpty()) {
+//            //连接上次连接的仪器
+//                List<DeviceInfoPO> poList = infoService.getUserLastConnectDevice(inputParam.getUpdateBy());
+//
+//            if (poList != null && !poList.isEmpty()) {
+//
+//                for (DeviceInfoPO infoPO : poList) {
+//
+//                    SearchInfo info = addLastDevice(infoPO);
+//                    if (info == null) {
+//                        continue;
+//                    }
+//                    Boolean b = checkDeviceConnect(info);
+//                    if (b) {
+//                        allDevice.add(info);
+//                        xmlManage.setDevice(info.getDeviceIp(), infoPO.getXmlKey());
+//                        xmlManage.setDevice(info.getDeviceMac(), infoPO.getXmlKey());
+//                    }
+//                }
+//            }
+//
+//        }
 
         operationResultEntity.setSearchInfo(allDevice);
 
