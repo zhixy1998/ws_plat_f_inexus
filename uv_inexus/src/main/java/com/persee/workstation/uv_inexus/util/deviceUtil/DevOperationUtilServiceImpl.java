@@ -259,6 +259,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     if (isInited.equals(Constants.INIT_STATUS_SUCCESS)) {
                         log.info("已初始化！");
                         newPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
+                        udpSendUtil.startHeartbeat(s);
                     } else {
                         log.info("未初始化！");
                         newPO.setIsInited(Constants.INIT_STATUS_NO);
@@ -1667,6 +1668,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         if (result.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
             setDeviceDefaultStatus(result.getDeviceId(), result.getDeviceSerialNumber());
+            udpSendUtil.startHeartbeat(deviceId);
         }
         result.setXmlKey(devType);
         result.setDeviceMac(macAddress);
@@ -1889,7 +1891,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
             log.info("{}成功", recordPO.getInitCmdName());
             updateSuccess(recordPO);
-
         }
         log.info("自检结束");
         setInitStatus(deviceId, 1);
@@ -1898,6 +1899,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         infoPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
         infoService.saveOrUpdateInfo(infoPO);
         infoService.newReleaseDevice(deviceSerialNumber);
+        udpSendUtil.startHeartbeat(deviceId);
 
     }
 
@@ -1977,6 +1979,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     infoService.saveOrUpdateInfo(infoPO);
                 }
                 //TODO 实时回显指令出错需要另外处理
+                udpSendUtil.stopHeartbeat(deviceId);
                 deviceManager.removeDevice(deviceId);
 
                 log.error("{}指令执行失败", comId);
@@ -2980,8 +2983,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
         }
         MessageStoreManager.getInstance().clearDevice(deviceId);
-
+        udpSendUtil.stopHeartbeat(deviceId);
         deviceManager.removeDevice(deviceId);
+
 
         return R.ok();
     }
