@@ -122,60 +122,71 @@ public class DataCountUtil {
         return null;
     }
 
+    /**
+     * 旧签名：默认 RS 正常模式，行为与原来一致（27 个旧调用方零改动）
+     */
     public static String countTPercent(ChangeParam origin, ChangeParam real, Double z) {
+        return countTPercent(origin, real, z, true);
+    }
 
+    /**
+     * 新重载：rsMode=false 时 SR 完全交换（样品/参比光路对调）
+     */
+    public static String countTPercent(ChangeParam origin, ChangeParam real, Double z, boolean rsMode) {
         try {
-
             double d1 = Double.parseDouble(real.getD());
-            double r1 = Double.parseDouble(real.getR());
-            double s1 = Double.parseDouble(real.getS());
+            double r1 = getReferenceSignal(real, rsMode);
+            double s1 = getSampleSignal(real, rsMode);
             double a1;
             if (origin == null || origin.isEmpty()) {
                 a1 = 1;
-                System.out.println("a1:" + a1);
             } else {
-                double r0 = Double.parseDouble(origin.getR());
-                double s0 = Double.parseDouble(origin.getS());
+                double r0 = getReferenceSignal(origin, rsMode);
+                double s0 = getSampleSignal(origin, rsMode);
                 double d0 = Double.parseDouble(origin.getD());
 
                 double v0 = z * d0;
                 double m1 = r0 - v0;
                 double m2 = s0 - v0;
                 a1 = m2 / m1;
-                System.out.println("a1:" + a1);
             }
 
             double v1 = z * d1;
             double m3 = r1 - v1;
             double m4 = s1 - v1;
             double a2 = m4 / m3;
-            System.out.println("a2:" + a2);
 
             double ans = a2 / a1 * 100;
-            System.out.println("ans:" + ans);
             BigDecimal bd = new BigDecimal(ans);
             bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
-            return java.lang.String.valueOf(bd);
+            return String.valueOf(bd);
         } catch (Exception e) {
             return "0";
         }
     }
 
     /**
-     *T800计算公式
+     *T800计算公式 —— 旧签名：默认 RS 正常模式，行为与原来一致
      */
     public static String calcTPercent1960(ChangeParam origin, ChangeParam real, Double z) {
+        return calcTPercent1960(origin, real, z, true);
+    }
+
+    /**
+     *T800计算公式 —— 新重载：rsMode=false 时 SR 完全交换
+     */
+    public static String calcTPercent1960(ChangeParam origin, ChangeParam real, Double z, boolean rsMode) {
         try {
             double d1 = Double.parseDouble(real.getD());
-            double r1 = Double.parseDouble(real.getR());
-            double s1 = Double.parseDouble(real.getS());
+            double r1 = getReferenceSignal(real, rsMode);
+            double s1 = getSampleSignal(real, rsMode);
 
             double a1;
             if (origin == null || origin.isEmpty()) {
                 a1 = 1.0;
             } else {
-                double r0 = Double.parseDouble(origin.getR());
-                double s0 = Double.parseDouble(origin.getS());
+                double r0 = getReferenceSignal(origin, rsMode);
+                double s0 = getSampleSignal(origin, rsMode);
                 double d0 = Double.parseDouble(origin.getD());
 
                 double v = z * r0;
@@ -183,9 +194,6 @@ public class DataCountUtil {
                 double m2 = 1 - z;
                 double v0 = m1 / m2;
 
-
-
-//                double v0 = (d0 - z * r0) / (1 - z);
                 a1 = (s0 - v0) / (r0 - v0);
             }
 
@@ -194,7 +202,6 @@ public class DataCountUtil {
             double m2 = 1 - z;
             double v1 = m1 / m2;
 
-//            double v1 =  (d1 - z * r1) / (1 - z);
             double a2 = (s1 - v1) / (r1 - v1);
 
             double ans = a2 / a1 * 100.0;
@@ -210,42 +217,74 @@ public class DataCountUtil {
 
 
 
+    /**
+     * 旧签名：默认 RS 正常模式，行为与原来一致
+     */
     public static String countErOrEs(ChangeParam real, String identity) {
+        return countErOrEs(real, identity, true);
+    }
 
+    /**
+     * 新重载：rsMode=false 时 SR 完全交换（Es 取 R 光路、Er 取 S 光路）
+     */
+    public static String countErOrEs(ChangeParam real, String identity, boolean rsMode) {
         String value = null;
         if (identity.equals(WaveLengthEnum.es.getCode())) {
-            double s = Double.parseDouble(real.getS());
-            value = java.lang.String.valueOf((s / 8388607) * 100);
+            double s = getSampleSignal(real, rsMode);
+            value = String.valueOf((s / 8388607) * 100);
         }
         if (identity.equals(WaveLengthEnum.er.getCode())) {
-            double r = Double.parseDouble(real.getR());
-            value = java.lang.String.valueOf((r / 8388607) * 100);
+            double r = getReferenceSignal(real, rsMode);
+            value = String.valueOf((r / 8388607) * 100);
         }
         if (StringUtils.hasText(value)) {
             BigDecimal bd = new BigDecimal(value);
             bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
-            value = java.lang.String.valueOf(bd);
+            value = String.valueOf(bd);
         }
         return value;
     }
 
+    /**
+     * 旧签名：默认 RS 正常模式，行为与原来一致
+     */
     public static String count1960ErOrEs(ChangeParam real, String identity) {
+        return count1960ErOrEs(real, identity, true);
+    }
 
+    /**
+     * 新重载：rsMode=false 时 SR 完全交换（Es 取 R 光路、Er 取 S 光路）
+     */
+    public static String count1960ErOrEs(ChangeParam real, String identity, boolean rsMode) {
         String value = null;
         if (identity.equals(WaveLengthEnum.es.getCode())) {
-            double s = Double.parseDouble(real.getS());
-            value = java.lang.String.valueOf((s * 64 / 8388607) * 100);
+            double s = getSampleSignal(real, rsMode);
+            value = String.valueOf((s * 64 / 8388607) * 100);
         }
         if (identity.equals(WaveLengthEnum.er.getCode())) {
-            double r = Double.parseDouble(real.getR());
-            value = java.lang.String.valueOf((r * 64 / 8388607) * 100);
+            double r = getReferenceSignal(real, rsMode);
+            value = String.valueOf((r * 64 / 8388607) * 100);
         }
         if (StringUtils.hasText(value)) {
             BigDecimal bd = new BigDecimal(value);
             bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
-            value = java.lang.String.valueOf(bd);
+            value = String.valueOf(bd);
         }
         return value;
+    }
+
+    /**
+     * 样品信号：RS 样品在 S 光路；SR 完全交换后样品在 R 光路
+     */
+    private static double getSampleSignal(ChangeParam scan, boolean rsMode) {
+        return rsMode ? Double.parseDouble(scan.getS()) : Double.parseDouble(scan.getR());
+    }
+
+    /**
+     * 参比信号：RS 参比在 R 光路；SR 完全交换后参比在 S 光路
+     */
+    private static double getReferenceSignal(ChangeParam scan, boolean rsMode) {
+        return rsMode ? Double.parseDouble(scan.getR()) : Double.parseDouble(scan.getS());
     }
 
 

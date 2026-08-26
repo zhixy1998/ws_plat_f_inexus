@@ -150,7 +150,17 @@ public class ConciseCommonController {
             return Result.fail(r.getMessage());
         }
     }
-
+    @PostMapping("changeSphereMode")
+    @ApiOperation("应用积分球使用场景")
+    public  Result<Boolean> changeSphereMode(@RequestBody FSamplePoolInfoChangeDto dto){
+        dto.setUpdateDatabase(DatabaseEnum.CONCISE.getCode());
+        R<Boolean> r = fSamplePoolConfigService.updatesphereMode(dto);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
     @GetMapping("querySampleAttachmentInfo")
     @ApiOperation("查询附件信息")
     public Result<FSamplePoolInfoVO> querySampleAttachmentInfo(@RequestParam String deviceSerialNumber) {

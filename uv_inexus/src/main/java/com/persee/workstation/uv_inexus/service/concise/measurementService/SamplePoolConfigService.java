@@ -45,5 +45,5 @@ public interface SamplePoolConfigService  extends IService<SamplePoolConfigPO> {
 
     String applyPoolCorrection(String measuredValue, String correctionValue, String currentLuminosity);
 
-
+    R<Boolean> updatesphereMode(FSamplePoolInfoChangeDto changeDto);
 }

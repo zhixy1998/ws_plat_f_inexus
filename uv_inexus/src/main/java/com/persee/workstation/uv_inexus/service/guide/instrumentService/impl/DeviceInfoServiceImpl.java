@@ -598,7 +598,14 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
     }
 
-
+    @Override
+    public  List<DeviceAttachmentTypeVO> getAttachmentListByName(String keyword){
+        if (!StringUtils.hasText(keyword)) {
+            log.info("未传入附件名称关键字");
+            return null;
+        }
+        return dao.getAttachmentListByName(keyword);
+    }
 
 
 
