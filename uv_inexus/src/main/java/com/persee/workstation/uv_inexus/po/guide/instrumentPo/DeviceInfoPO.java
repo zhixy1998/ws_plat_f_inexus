@@ -100,7 +100,7 @@ public class DeviceInfoPO extends BasePO {
 
     @ApiModelProperty("暗电流参数")
     @TableField(value = "dark_info", typeHandler = JacksonTypeHandler.class)
-    private Map<String,String> darkInfo;
+    private Map<String,  Map<String,  String> > darkInfo;
 
     @ApiModelProperty("计算公式")
     @TableField("linear_segment")

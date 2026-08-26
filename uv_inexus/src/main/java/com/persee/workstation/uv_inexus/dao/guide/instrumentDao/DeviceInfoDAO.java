@@ -15,6 +15,8 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 @DS("guide")
 public interface DeviceInfoDAO extends BaseMapper<DeviceInfoPO> {
 
@@ -34,4 +36,6 @@ public interface DeviceInfoDAO extends BaseMapper<DeviceInfoPO> {
     Integer queryDeviceActivateStatus(@Param("deviceSerialNumber") String deviceSerialNumber);
 
     void updateDeviceActivateStatus(@Param("deviceSerialNumber") String deviceSerialNumber, @Param("activateStatus") Integer activateStatus);
+
+    List<DeviceAttachmentTypeVO> getAttachmentListByName(@Param("keyword") String keyword);
 }

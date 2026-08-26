@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
 import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.sphereUsedEnum;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -53,7 +54,7 @@ public class MessageOnTimeDeal {
             new ConcurrentHashMap<>();
 
     // 设备序列号 -> (wl -> z)
-    private static final Map<String, Map<String, String>> darkCache = new ConcurrentHashMap<>();
+    private static final Map<String, Map<String, Map<String, String>>> darkCache = new ConcurrentHashMap<>();
 
 
     @Autowired
@@ -339,7 +340,7 @@ public class MessageOnTimeDeal {
                 int recvCount = 0;
                 int flag = 0;
                 boolean[] isFirstFlag = {true};// 标记首条光谱
-                Constants.lastStepParam=null;
+                Constants.lastStepParam = null;
                 try {
                     while (!Thread.currentThread().isInterrupted() && ScanSessionManager.isRunning(deviceId)
                             && System.currentTimeMillis() - startTime < currentTimeout) {
@@ -350,18 +351,18 @@ public class MessageOnTimeDeal {
                             Thread.sleep(5);
                             continue;
                         }
-                        if (isStartMessage(message,deviceId)) {
+                        if (isStartMessage(message, deviceId)) {
                             log.info("07报文");
                             store.getMessage(deviceId);
                             startTime = System.currentTimeMillis();
                             continue;
                         }
 
-                        if (message[2] == 0x00 && message[3] == 0x00 && message[4] == 0x00 && message[5] == 0x00){
+                        if (message[2] == 0x00 && message[3] == 0x00 && message[4] == 0x00 && message[5] == 0x00) {
                             flag = 3;
                             return;
                         }
-                        if ((message[2] & 0xFF) == 0xFF && (message[3] & 0xFF) == 0x01 && (message[4] & 0xFF) == 0x09 && (message[5] & 0xFF) == 0x00){
+                        if ((message[2] & 0xFF) == 0xFF && (message[3] & 0xFF) == 0x01 && (message[4] & 0xFF) == 0x09 && (message[5] & 0xFF) == 0x00) {
                             flag = 4;
                             return;
                         }
@@ -381,7 +382,7 @@ public class MessageOnTimeDeal {
                         recvCount++;
                         if (recvCount >= 2) {
                             currentTimeout = 15000L;
-                            if (cmdId.equals("ScanFast") || cmdId.equals("BaseLineFast")){
+                            if (cmdId.equals("ScanFast") || cmdId.equals("BaseLineFast")) {
                                 currentTimeout = 1000L;
                             }
                             startTime = System.currentTimeMillis();
@@ -396,16 +397,16 @@ public class MessageOnTimeDeal {
                         // ----------------- 3. 拼装半成品 -----------------
                         ChangeParam temp = tempMap.computeIfAbsent(deviceSerialNumber, z -> new ChangeParam());
                         if (partial.getWl() != null) temp.setWl(partial.getWl());
-                        if (partial.getS() != null)  temp.setS(partial.getS());
-                        if (partial.getR() != null)  temp.setR(partial.getR());
-                        if (partial.getD() != null)  temp.setD(partial.getD());
+                        if (partial.getS() != null) temp.setS(partial.getS());
+                        if (partial.getR() != null) temp.setR(partial.getR());
+                        if (partial.getD() != null) temp.setD(partial.getD());
 
                         // ----------------- 4. 如果完整，再计算光谱 -----------------
                         if (temp.getWl() != null && temp.getS() != null && temp.getR() != null && temp.getD() != null) {
 
 
                             double constrainedWl = spectrumDataProcessor.getConstrainedWavelength();
-                            if (Double.isNaN(constrainedWl)){
+                            if (Double.isNaN(constrainedWl)) {
                                 log.info("[光谱扫描]:跳过最后一条");
                                 break;
                             }
@@ -431,9 +432,9 @@ public class MessageOnTimeDeal {
                                                 sp.getScanRsdS(),
                                                 sp.getScanRsdD());
                                         SpectrumCalcResult absResult = calculator.calculate(1, sp, RANGE, deviceSerialNumber);
-                                        SpectrumCalcResult tResult   = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
-                                        SpectrumCalcResult esResult  = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
-                                        SpectrumCalcResult erResult  = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
+                                        SpectrumCalcResult tResult = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
+                                        SpectrumCalcResult esResult = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
+                                        SpectrumCalcResult erResult = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
                                         SpectrumCalcResult rResult = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
                                         rResult.setRPercent(rResult.getTPercent());
 
@@ -451,24 +452,24 @@ public class MessageOnTimeDeal {
                                                 erResult != null ? erResult.getEr() : "-",
                                                 System.currentTimeMillis());
 
-                                        if (Constants.firstDataTime != null && Constants.secondDataTime != null){
+                                        if (Constants.firstDataTime != null && Constants.secondDataTime != null) {
                                             Constants.pushInterval = (Constants.secondDataTime - Constants.firstDataTime) / 1000.0;
                                             log.info("计算得到推送间隔: {} 秒", Constants.pushInterval);
-                                            Constants.firstDataTime= null;
-                                            Constants.secondDataTime= null;
+                                            Constants.firstDataTime = null;
+                                            Constants.secondDataTime = null;
                                         }
 
-                                        if (Constants.firstDataTime != null && Constants.secondDataTime == null){
-                                            Constants.secondDataTime=System.currentTimeMillis();
+                                        if (Constants.firstDataTime != null && Constants.secondDataTime == null) {
+                                            Constants.secondDataTime = System.currentTimeMillis();
                                         }
-                                        if (Constants.firstDataTime == null){
-                                            Constants.firstDataTime=System.currentTimeMillis();
+                                        if (Constants.firstDataTime == null) {
+                                            Constants.firstDataTime = System.currentTimeMillis();
                                         }
                                     } else {
                                         sp.setBaselineRsd(fittedParam);
-                                        deviceManager.addZeroResult(deviceId,String.valueOf(sp.getWavelength()),fittedParam);
+                                        deviceManager.addZeroResult(deviceId, String.valueOf(sp.getWavelength()), fittedParam);
                                     }
-;
+                                    ;
                                     // ----------------- 放入未知队列 -----------------
                                     if (isScan || isBaseline) {
                                         if (isFirstFlag[0]) {
@@ -482,8 +483,7 @@ public class MessageOnTimeDeal {
                                         }
                                     }
                                 });
-                            }
-                            else {
+                            } else {
                                 // 不拟合，直接使用 temp
                                 SpectrumPoint sp = pointStore.getOrCreate(constrainedWl);
 
@@ -512,36 +512,35 @@ public class MessageOnTimeDeal {
                                     sp.setRResult(rResult);
 
 
+                                    log.info("[光谱计算] wl={}, Abs={}, T%={}, Es={}, Er={}",
+                                            sp.getWavelength(),
+                                            absResult != null ? absResult.getAbs() : "-",
+                                            tResult != null ? tResult.getTPercent() : "-",
+                                            esResult != null ? esResult.getEs() : "-",
+                                            erResult != null ? erResult.getEr() : "-");
 
-                                log.info("[光谱计算] wl={}, Abs={}, T%={}, Es={}, Er={}",
-                                        sp.getWavelength(),
-                                        absResult != null ? absResult.getAbs() : "-",
-                                        tResult != null ? tResult.getTPercent() : "-",
-                                        esResult != null ? esResult.getEs() : "-",
-                                        erResult != null ? erResult.getEr() : "-");
+                                    if (Constants.firstDataTime != null && Constants.secondDataTime != null) {
+                                        Constants.pushInterval = (Constants.secondDataTime - Constants.firstDataTime) / 1000.0;
+                                        log.info("计算得到推送间隔: {} 秒", Constants.pushInterval);
+                                        Constants.firstDataTime = null;
+                                        Constants.secondDataTime = null;
+                                    }
 
-                                if (Constants.firstDataTime != null && Constants.secondDataTime != null){
-                                    Constants.pushInterval = (Constants.secondDataTime - Constants.firstDataTime) / 1000.0;
-                                    log.info("计算得到推送间隔: {} 秒", Constants.pushInterval);
-                                    Constants.firstDataTime= null;
-                                    Constants.secondDataTime= null;
+                                    if (Constants.firstDataTime != null && Constants.secondDataTime == null) {
+                                        Constants.secondDataTime = System.currentTimeMillis();
+                                    }
+                                    if (Constants.firstDataTime == null) {
+                                        Constants.firstDataTime = System.currentTimeMillis();
+                                    }
+
+                                } else {
+                                    sp.setBaselineRsd(temp);
+                                    log.info("[光谱计算] wl={}, r={}, s={}, d={}",
+                                            sp.getWavelength(),
+                                            sp.getBaselineRsdR(),
+                                            sp.getBaselineRsdS(),
+                                            sp.getBaselineRsdD());
                                 }
-
-                                if (Constants.firstDataTime != null && Constants.secondDataTime == null){
-                                    Constants.secondDataTime=System.currentTimeMillis();
-                                }
-                                if (Constants.firstDataTime == null){
-                                    Constants.firstDataTime=System.currentTimeMillis();
-                                }
-
-                            } else {
-                                sp.setBaselineRsd(temp);
-                                log.info("[光谱计算] wl={}, r={}, s={}, d={}",
-                                        sp.getWavelength(),
-                                        sp.getBaselineRsdR(),
-                                        sp.getBaselineRsdS(),
-                                        sp.getBaselineRsdD());
-                            }
                                 spectrumDataProcessor.dataPointIndex();
 
                                 if (isScan || isBaseline) {
@@ -572,26 +571,26 @@ public class MessageOnTimeDeal {
                     Thread.currentThread().interrupt();
                     flag = 2;
                 } finally {
-                    if (flag == 1 || flag == 2){
+                    if (flag == 1 || flag == 2) {
                         unknowCountMessageQueue.putMessage(
                                 deviceSerialNumber,
                                 cmdId,
                                 EndMarker.unNormal(deviceSerialNumber, cmdId)
                         );
-                    } else if(flag == 3){
+                    } else if (flag == 3) {
                         unknowCountMessageQueue.putMessage(
                                 deviceSerialNumber,
                                 cmdId,
                                 EndMarker.NormalStop(deviceSerialNumber, cmdId)
                         );
                         log.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
-                    } else if (flag == 4){
+                    } else if (flag == 4) {
                         unknowCountMessageQueue.putMessage(
                                 deviceSerialNumber,
                                 cmdId,
                                 EndMarker.unNormalOverPower(deviceSerialNumber, cmdId)
                         );
-                    }else{
+                    } else {
                         unknowCountMessageQueue.putMessage(
                                 deviceSerialNumber,
                                 cmdId,
@@ -654,10 +653,11 @@ public class MessageOnTimeDeal {
         log.info("[ON-TIME] stop parser thread, device={}", deviceSerialNumber);
     }
 
-    private void handleDarkRsd(ChangeParam rsd, String deviceSerialNumber,SpectrumPoint sp) {
+    private void handleDarkRsd(ChangeParam rsd, String deviceSerialNumber, SpectrumPoint sp) {
 
         String dStr = rsd.getD();
         String sStr = rsd.getS();
+        String rStr = rsd.getR();
         BigDecimal bigDecimal = BigDecimal.valueOf(sp.getWavelength());
         String wlStr = bigDecimal.stripTrailingZeros().toPlainString();
 //        String wlStr = String.valueOf(sp.getWavelength());
@@ -665,20 +665,32 @@ public class MessageOnTimeDeal {
         if (!StringUtils.hasText(dStr) || !StringUtils.hasText(sStr)) return;
 
         double d = Double.parseDouble(dStr);
-        double z;
+        double z, z2;
 
         if (d == 0.0) {
-            z = 1.0;
+            z2 = z = 1.0;
         } else {
+            //-----RS
             double s = Double.parseDouble(sStr);
             z = s / d;
+            //-----SR交换
+            double r = Double.parseDouble(rStr);
+            z2 = r / d;
         }
 
-        darkCache.computeIfAbsent(deviceSerialNumber, k -> new ConcurrentHashMap<>())
+//        darkCache.computeIfAbsent(deviceSerialNumber, k -> new ConcurrentHashMap<>())
+//         .put(wlStr, String.valueOf(z));
+        Map<String, Map<String, String>> darkMap = darkCache.computeIfAbsent(deviceSerialNumber, k -> new ConcurrentHashMap<>());
+        darkMap.computeIfAbsent(sphereUsedEnum.RS.getName(), k -> new ConcurrentHashMap<>())
                 .put(wlStr, String.valueOf(z));
+        darkMap.computeIfAbsent(sphereUsedEnum.SR.getName(), k -> new ConcurrentHashMap<>())
+                .put(wlStr, String.valueOf(z2));
 
-        log.info("[Dark] device={},wl={}, d={}, s={}, Z={}",
-                deviceSerialNumber, sp.getWavelength(),dStr, sStr, z);
+
+        log.info("[Dark->RS] device={},wl={}, d={}, s={}, Z={}",
+                deviceSerialNumber, sp.getWavelength(), dStr, sStr, z);
+        log.info("[Dark->SR] device={}, wl={}, D={}, S={}, R={}, Z={}",
+                deviceSerialNumber, sp.getWavelength(), dStr, sStr, rStr, z2);
     }
 
     private void handleDarkRsdT1960(ChangeParam rsd, String deviceSerialNumber, SpectrumPoint sp) {
@@ -700,6 +712,8 @@ public class MessageOnTimeDeal {
         double S = Double.parseDouble(sStr);
         double R = Double.parseDouble(rStr);
 
+
+        //-----RS
         double f;
         double diffRS = R - S;
         if (Math.abs(diffRS) > 1.0e-10) {
@@ -708,12 +722,25 @@ public class MessageOnTimeDeal {
             f = (D - S) / 1.0e-10;
         }
         double z = Math.min(f, 0.1);
-
-        darkCache.computeIfAbsent(deviceSerialNumber, k -> new ConcurrentHashMap<>())
+        //-----SR交换
+        double f2;
+        double diffSR = S - R;
+        if (Math.abs(diffSR) > 1.0e-10) {
+            f2 = (D - R) / diffRS;
+        } else {
+            f2 = (D - R) / 1.0e-10;
+        }
+        double z2 = Math.min(f2, 0.1);
+        Map<String, Map<String, String>> darkMap = darkCache.computeIfAbsent(deviceSerialNumber, k -> new ConcurrentHashMap<>());
+        darkMap.computeIfAbsent(sphereUsedEnum.RS.getName(), k -> new ConcurrentHashMap<>())
                 .put(wlStr, String.valueOf(z));
+        darkMap.computeIfAbsent(sphereUsedEnum.SR.getName(), k -> new ConcurrentHashMap<>())
+                .put(wlStr, String.valueOf(z2));
 
-        log.info("[Dark] device={}, wl={}, D={}, S={}, R={}, Z={}",
+        log.info("[Dark->RS] device={}, wl={}, D={}, S={}, R={}, Z={}",
                 deviceSerialNumber, sp.getWavelength(), dStr, sStr, rStr, z);
+        log.info("[Dark->SR] device={}, wl={}, D={}, S={}, R={}, Z={}",
+                deviceSerialNumber, sp.getWavelength(), dStr, sStr, rStr, z2);
     }
 
     private void clearDarkZ(SpectrumPointStore store, String deviceSerialNumber) {
@@ -729,18 +756,19 @@ public class MessageOnTimeDeal {
     }
 
     private void saveDarkInfoToDb(String deviceSerialNumber) {
-        Map<String, String> map = darkCache.get(deviceSerialNumber);
+        Map<String, Map<String, String>> map = darkCache.get(deviceSerialNumber);
         if (map == null || map.isEmpty()) return;
 
         DeviceInfoPO po = infoService.getInfo(deviceSerialNumber);
         if (po != null) {
-            Map<String, String> darkInfo = po.getDarkInfo() == null ? new HashMap<>() : po.getDarkInfo();
-            darkInfo.putAll(map);
+            Map<String, Map<String,  String> > darkInfo = po.getDarkInfo() == null ? new HashMap<>() : po.getDarkInfo();
+            map.forEach((sphere, wlMap) ->
+                    darkInfo.computeIfAbsent(sphere, k -> new HashMap<>()).putAll(wlMap));
+
             po.setDarkInfo(darkInfo);
 
-//            po.setDarkInfo(map); // 保存整个Map
             Boolean b = infoService.saveOrUpdateInfo(po);
-            if (b){
+            if (b) {
                 log.info("[Dark] device={} darkInfo写入数据库成功", deviceSerialNumber);
             } else {
                 log.warn("[Dark] device={} darkInfo写入数据库失败", deviceSerialNumber);

@@ -21,6 +21,7 @@ public interface DeviceInfoService {
     DeviceInfoPO getInfo(String deviceSerialNumber);
 
     String queryDeviceName(String deviceSerialNumber);
+
     String queryDeviceModelName(String deviceSerialNumber);
 
     Boolean saveOrUpdateInfo(DeviceInfoPO po);
@@ -37,6 +38,7 @@ public interface DeviceInfoService {
     void updateDeviceCurrentStatus(String deviceSerialNumber, Integer currentStatus);
 
     void updateDeviceCurrentStatus(String deviceSerialNumber, String useType, Integer currentStatus);
+
     void updateDeviceCurrentStatus(String deviceSerialNumber, String useType, String taskId, Integer currentStatus);
 
     Boolean changeDeviceName(String deviceSerialNumber, String newDeviceName, String updateBy);
@@ -48,6 +50,7 @@ public interface DeviceInfoService {
 
     //释放仪器
     void releaseDevice(String deviceSerialNumber);
+
     void newReleaseDevice(String deviceSerialNumber);
 
     //激活仪器
@@ -55,7 +58,7 @@ public interface DeviceInfoService {
 
     //查询仪器激活状态
     Integer queryDeviceActivationStatus(String deviceSerialNumber);
-    
+
     Boolean isNeedSetSit(String deviceSerialNumber);
 
     List<DeviceInfoPO> getLastConnectDevice();
@@ -70,11 +73,13 @@ public interface DeviceInfoService {
      * 没有波长列表时的系数
      */
     Double queryCoefficient(String deviceSerialNumber);
+
     /**
      * 获取设备类型
      */
     String queryDeviceTypeBySerialNumber(String deviceSerialNumber);
 
-
-
+    /*
+     * 查询所有积分球类型信息*/
+    List<DeviceAttachmentTypeVO> getAttachmentListByName(String keyword);
 }

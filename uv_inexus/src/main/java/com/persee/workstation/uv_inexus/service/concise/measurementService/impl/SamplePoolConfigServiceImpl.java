@@ -17,6 +17,7 @@ import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceSamplePoolPurpose;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.sphereUsedEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
 import com.persee.workstation.uv_inexus.model.R;
@@ -30,6 +31,7 @@ import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service("FSamplePoolConfig")
@@ -93,6 +96,24 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         }
     }
 
+    //积分球的应用场景选项添加
+    private static List<FSamplePoolStatus> createFSampleSphereStatuses() {
+        List<FSamplePoolStatus> poolInfo = new ArrayList<>();
+        poolInfo.add(createStatus(0, sphereUsedEnum.RS.getCode(), "纸板、哑光板材、粗糙塑料等无镜面反光样品"));
+        poolInfo.add(createStatus(1, sphereUsedEnum.SR.getCode(), "抛光金属、光盘、粉末压片、高光泽塑料"));
+        poolInfo.add(createStatus(2, sphereUsedEnum.RS.getCode(), "薄膜、镜片、太阳膜"));
+        return poolInfo;
+    }
+
+    private static FSamplePoolStatus createStatus(Integer poolNum, Integer poolPurpose, String poolPurposeName) {
+        FSamplePoolStatus status = new FSamplePoolStatus();
+        status.setPoolNum(poolNum);
+        status.setPoolStatus(false);
+        status.setPoolPurpose(poolPurpose);
+        status.setPoolPurposeName(poolPurposeName);
+        return status;
+    }
+
     private static List<FSamplePoolStatus> createFSamplePoolStatuses(Integer totalPoolNum) {
         List<FSamplePoolStatus> poolInfo = new ArrayList<>();
 
@@ -126,7 +147,27 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         String s = dto.getDeviceSerialNumber().substring(3, 8);
 
         DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(dto.getAttachmentType(), s);
-        List<FSamplePoolStatus> list = createFSamplePoolStatuses(attachmentInfo.getSamplePoolNum());
+        //此处判断附件类型，对积分球作特殊处理 xzr20260819
+        List<DeviceAttachmentTypeVO> shpjereTypelist = deviceInfoService.getAttachmentListByName("球");
+        Integer currentAttachmentType = po.getAttachmentType();
+        boolean isShpjere = false;
+        if (shpjereTypelist != null && !shpjereTypelist.isEmpty()) {
+            for (DeviceAttachmentTypeVO vo : shpjereTypelist) {
+                //todo xzr 积分球附件查询
+                if (Objects.equals(vo.getAttachmentNum(), currentAttachmentType) && attachmentInfo.getSamplePoolNum() == 1) {
+                //if (Objects.equals(vo.getAttachmentNum(), currentAttachmentType)) {
+                    isShpjere = true;
+                    break;
+                }
+            }
+        }
+
+        List<FSamplePoolStatus> list;
+        if (isShpjere) {
+            list = createFSampleSphereStatuses();
+        } else {
+            list = createFSamplePoolStatuses(attachmentInfo.getSamplePoolNum());
+        }
         po.setPoolInfo(list);
         po.setIsAutoChangePool(false);
 
@@ -223,9 +264,10 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         }
         if (StringUtils.hasText(changeDto.getTaskId()) && po.getIsAutoChangePool()) {
             List<Integer> usefulLocation = getUsefulLocation(changeDto.getDeviceSerialNumber());
-            if (changeDto.getUpdateDatabase().equals("concise")){
+            if (changeDto.getUpdateDatabase().equals("concise")) {
                 concisePublicUtilService.changeSampleLocation(changeDto.getTaskId(), usefulLocation);
-            } if (changeDto.getUpdateDatabase().equals("guide")){
+            }
+            if (changeDto.getUpdateDatabase().equals("guide")) {
                 concisePublicUtilService.changeSampleLocationTwo(changeDto.getTaskId(), usefulLocation);
             }
 
@@ -256,6 +298,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
 
     /**
      * 获取可用的样本位置
+     *
      * @param deviceSerialNumber
      * @return
      */
@@ -283,6 +326,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
 
     /**
      * 获取可用的样本位置(含校零池)
+     *
      * @param deviceSerialNumber
      * @return
      */
@@ -436,5 +480,41 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         return correctedValue.toPlainString();
     }
 
+    @Override
+    public R<Boolean> updatesphereMode(FSamplePoolInfoChangeDto changeDto) {
+        Boolean res = false;
+        if (!StringUtils.hasText(changeDto.getDeviceSerialNumber())) {
+            log.info("未连接仪器");
+            //未连接仪器
+            return R.fail("0000001D");
+        }
+
+        if (!StringUtils.hasText(changeDto.getUpdateBy())) {
+            log.info("缺少更新人信息");
+            //请登录后操作！
+            return R.fail("00307004");
+        }
+        LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(SamplePoolConfigPO::getDeviceSerialNumber, changeDto.getDeviceSerialNumber());
+        SamplePoolConfigPO po = dao.selectOne(query);
+        if (po == null) {
+            //未找到该仪器附件配置
+            return R.fail("00106001");
+        }
+        //借用池号 poolNum 设置使用场景
+        po.setCurrentPoolNum(changeDto.getPoolNum());
+        //更新config表
+        po.getPoolInfo().stream()
+                .filter(item->changeDto.getPoolNum().equals(item.getPoolNum()))
+                .findFirst()
+                .ifPresent(item->item.setPoolStatus(true));
+        boolean b = dao.updateById(po) > 0;
+        if (!b) {
+            //更新失败
+            return R.fail("00000048");
+        }
+        return R.ok();
+        //后面调用暗电流系数和计算反转的时候调用这个表的模式
+    }
 
 }

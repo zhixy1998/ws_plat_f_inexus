@@ -433,6 +433,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     private R<OperationResultEntity> samplePoolCalibration(DevOperationInputParam inputParam) {
         OperationResultEntity resultEntity = new OperationResultEntity();
         String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        boolean rsMode = spectrumResultCalculator.isRs(deviceSerialNumber);
         List<String> wavelength = inputParam.getWavelength();
         Integer cellPos = inputParam.getCellPos();
 
@@ -510,16 +511,16 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                     if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
 
-                        String value = DataCountUtil.countErOrEs(measureResult, mode);
+                        String value = DataCountUtil.countErOrEs(measureResult, mode, rsMode);
 
                         if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                            value = DataCountUtil.count1960ErOrEs(measureResult, mode);
+                            value = DataCountUtil.count1960ErOrEs(measureResult, mode, rsMode);
                         }
 
                         measureResult.setValue(value);
 
                     } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
-                        Map<String, String> darkInfo = info.getDarkInfo();
+                        Map<String,  Map<String, String>> darkInfo = info.getDarkInfo();
                         String z = "1";
                         if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                             z = "0.1";
@@ -531,10 +532,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         if (zVal != null) {
                             z = String.valueOf(zVal);
                         }
-                        String tPercent = DataCountUtil.countTPercent(null, measureResult, Double.parseDouble(z));
+                        String tPercent = DataCountUtil.countTPercent(null, measureResult, Double.parseDouble(z), rsMode);
 
                         if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                            tPercent = DataCountUtil.calcTPercent1960(null, measureResult, Double.parseDouble(z));
+                            tPercent = DataCountUtil.calcTPercent1960(null, measureResult, Double.parseDouble(z), rsMode);
                         }
 
                         String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
@@ -547,7 +548,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         }
                     } else if (mode.equals(WaveLengthEnum.rPercent.getCode())) {
 
-                        Map<String, String> darkInfo = info.getDarkInfo();
+                        Map<String,  Map<String, String>> darkInfo = info.getDarkInfo();
                         String z = "1";
                         if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                             z = "0.1";
@@ -559,10 +560,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         if (zVal != null) {
                             z = String.valueOf(zVal);
                         }
-                        String tPercent = DataCountUtil.countTPercent(null, measureResult, Double.parseDouble(z));
+                        String tPercent = DataCountUtil.countTPercent(null, measureResult, Double.parseDouble(z), rsMode);
 
                         if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                            tPercent = DataCountUtil.calcTPercent1960(null, measureResult, Double.parseDouble(z));
+                            tPercent = DataCountUtil.calcTPercent1960(null, measureResult, Double.parseDouble(z), rsMode);
                         }
 
                         measureResult.setValue(tPercent);
@@ -1891,6 +1892,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
     private R<OperationResultEntity> liveDetection(String deviceSerialNumber) {
 
+        boolean rsMode = spectrumResultCalculator.isRs(deviceSerialNumber);
         OperationResultEntity resultEntity = new OperationResultEntity();
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
 
@@ -2020,7 +2022,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         device = deviceManager.getDevice(deviceId);
 
-        Map<String, String> darkInfo = info.getDarkInfo();
+        Map<String,  Map<String, String>> darkInfo = info.getDarkInfo();
         String z = "1";
         if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
             z = "0.1";
@@ -2063,14 +2065,14 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 String s;
                 if (!Objects.isNull(zeroParam)) {
-                    s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z));
+                    s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z), rsMode);
                     if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z));
+                        s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z), rsMode);
                     }
                 } else {
-                    s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z));
+                    s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z), rsMode);
                     if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z));
+                        s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z), rsMode);
                     }
                 }
                 String abs = DataCountUtil.changeTPercentOrAbs(null, s);
@@ -2080,10 +2082,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, abs));
             } else if (luminosity.equals(WaveLengthEnum.es.getCode()) || luminosity.equals(WaveLengthEnum.er.getCode())) {
-                String s = DataCountUtil.countErOrEs(measureParam, luminosity);
+                String s = DataCountUtil.countErOrEs(measureParam, luminosity, rsMode);
 
                 if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                    s = DataCountUtil.count1960ErOrEs(measureParam, luminosity);
+                    s = DataCountUtil.count1960ErOrEs(measureParam, luminosity, rsMode);
                 }
 
                 resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
@@ -2092,15 +2094,15 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 String s;
 
                 if (!Objects.isNull(zeroParam)) {
-                    s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z));
+                    s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z), rsMode);
 
                     if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z));
+                        s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z), rsMode);
                     }
                 } else {
-                    s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z));
+                    s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z), rsMode);
                     if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z));
+                        s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z), rsMode);
                     }
                 }
 
@@ -2113,15 +2115,15 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 String s;
 
                 if (!Objects.isNull(zeroParam)) {
-                    s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z));
+                    s = DataCountUtil.countTPercent(zeroParam, measureParam, Double.valueOf(z), rsMode);
 
                     if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z));
+                        s = DataCountUtil.calcTPercent1960(zeroParam, measureParam, Double.parseDouble(z), rsMode);
                     }
                 } else {
-                    s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z));
+                    s = DataCountUtil.countTPercent(null, measureParam, Double.valueOf(z), rsMode);
                     if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z));
+                        s = DataCountUtil.calcTPercent1960(null, measureParam, Double.parseDouble(z), rsMode);
                     }
                 }
 
@@ -2372,6 +2374,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     private R<OperationResultEntity> measure(DevOperationInputParam inputParam) {
         OperationResultEntity resultEntity = new OperationResultEntity();
         String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        boolean rsMode = spectrumResultCalculator.isRs(deviceSerialNumber);
         List<String> wavelength = inputParam.getWavelength();
 
         if (wavelength == null || wavelength.isEmpty()) {
@@ -2435,16 +2438,16 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                     if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
 
-                        String value = DataCountUtil.countErOrEs(measureResult, mode);
+                        String value = DataCountUtil.countErOrEs(measureResult, mode, rsMode);
 
                         if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                            value = DataCountUtil.count1960ErOrEs(measureResult, mode);
+                            value = DataCountUtil.count1960ErOrEs(measureResult, mode, rsMode);
                         }
 
                         measureResult.setValue(value);
 
                     } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
-                        Map<String, String> darkInfo = info.getDarkInfo();
+                        Map<String,  Map<String, String>> darkInfo = info.getDarkInfo();
                         String z = "1";
                         if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                             z = "0.1";
@@ -2456,10 +2459,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         if (zVal != null) {
                             z = String.valueOf(zVal);
                         }
-                        String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
+                        String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z), rsMode);
 
                         if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                            tPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
+                            tPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z), rsMode);
                         }
 
                         String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
@@ -2484,10 +2487,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                             z = String.valueOf(zVal);
                         }
 
-                        String rPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
+                        String rPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z), rsMode);
 
                         if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                            rPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
+                            rPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z), rsMode);
                         }
                         measureResult.setValue(rPercent);
 
@@ -2508,6 +2511,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     private R<OperationResultEntity> singWaveLengthMeasure(DevOperationInputParam inputParam) {
         OperationResultEntity resultEntity = new OperationResultEntity();
         String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        boolean rsMode = spectrumResultCalculator.isRs(deviceSerialNumber);
         String wavelength = inputParam.getSingleWavelength();
 
 
@@ -2581,15 +2585,15 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
 
-                    String value = DataCountUtil.countErOrEs(measureResult, mode);
+                    String value = DataCountUtil.countErOrEs(measureResult, mode, rsMode);
                     if(Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        value = DataCountUtil.count1960ErOrEs(measureResult, mode);
+                        value = DataCountUtil.count1960ErOrEs(measureResult, mode, rsMode);
                     }
 
                     measureResult.setValue(value);
 
                 } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
-                    Map<String, String> darkInfo = info.getDarkInfo();
+                    Map<String,  Map<String, String>> darkInfo = info.getDarkInfo();
                     String z = "1";
                     if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
                         z = "0.1";
@@ -2602,10 +2606,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         z = String.valueOf(zVal);
                     }
 
-                    String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
+                    String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z), rsMode);
 
                     if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        tPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
+                        tPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z), rsMode);
                     }
                     String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
@@ -2638,10 +2642,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         z = String.valueOf(zVal);
                     }
 
-                    String rPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
+                    String rPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z), rsMode);
 
                     if (Objects.equals(DevXmlEnums.T800.getDevType(), device.getXmlKey())) {
-                        rPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z));
+                        rPercent = DataCountUtil.calcTPercent1960(zeroResult, measureResult, Double.parseDouble(z), rsMode);
                     }
 
                     if (poolValue != null) {
