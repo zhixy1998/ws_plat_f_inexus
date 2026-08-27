@@ -216,8 +216,9 @@ public class ConciseCommonController {
     public Result reportTableDataQuery(@RequestParam String taskId,
                                        @RequestParam(required = false) String analysisId,
                                        @RequestParam(required = false) Boolean allDisplay,
-                                       @RequestParam(required = false) Integer digit){
-        return conciseCommonService.newReportTableDataQuery(taskId, analysisId,allDisplay,digit);
+                                       @RequestParam(required = false) Integer digit,
+                                       @RequestParam(required = false) String showType){
+        return conciseCommonService.newReportTableDataQuery(taskId, analysisId,allDisplay,digit,showType);
     }
 
 

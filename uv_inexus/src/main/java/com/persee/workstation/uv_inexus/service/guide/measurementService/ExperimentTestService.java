@@ -61,7 +61,7 @@ public interface ExperimentTestService {
 
     // 新的报表数据查询
 //    Result newReportTableDataQuery(String taskId, List<String> sampleIds);
-    Result newReportTableDataQuery(String taskId,String analysisId, Boolean allDisplay,Integer digit);
+    Result newReportTableDataQuery(String taskId,String analysisId, Boolean allDisplay,Integer digit,String showType);
 
     Result<MeasurementCurrentInfoVO> getProjectInfo(String projectId, String measureType);
 

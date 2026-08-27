@@ -2030,7 +2030,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
      * @return
      */
     @Override
-    public Result newReportTableDataQuery(String taskId, String analysisId, Boolean allDisplay, Integer decimalDigits) {
+    public Result newReportTableDataQuery(String taskId, String analysisId, Boolean allDisplay, Integer decimalDigits, String showType) {
 
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
@@ -2193,6 +2193,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
                 // 获取数据
                 List<Map<String, Object>> dataList = spectrumService.queryTableData(taskId, analysisIdList, decimalDigits);
+                // 单样品时根据showType过滤峰/谷/标记点数据
+                if (analysisIdList.size() == 1) {
+                    dataList = filterReportDataByShowType(dataList, showType);
+                }
                 if (dataList != null) {
                     vo.setDataList(dataList);
                 } else {
@@ -2249,6 +2253,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
                 // 获取数据
                 List<Map<String, Object>> dataList = timeSweepService.queryTableData(taskId, analysisIdList, decimalDigits);
+                // 单样品时根据showType过滤峰/谷/标记点数据
+                if (analysisIdList.size() == 1) {
+                    dataList = filterReportDataByShowType(dataList, showType);
+                }
                 if (dataList != null) {
                     vo.setDataList(dataList);
                 } else {
@@ -2289,6 +2297,47 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 //类型错误,请重新选择
                 return Result.fail("00000005");
         }
+    }
+
+    /**
+     * 根据showType过滤单样品的峰/谷/标记点数据
+     * showType为逗号分隔的数字:1-允许返回峰,2-允许返回谷,3-允许返回标记点;为空则返回空数据
+     *
+     * @param dataList 报表数据
+     * @param showType 允许返回的数据类型
+     * @return 过滤后的数据
+     */
+    private List<Map<String, Object>> filterReportDataByShowType(List<Map<String, Object>> dataList, String showType) {
+        // showType为空时不返回数据
+        if (showType == null || !StringUtils.hasText(showType.trim())) {
+            return new ArrayList<>();
+        }
+        if (dataList == null || dataList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        // 解析允许返回的类型数字集合
+        Set<String> allowedTypes = Arrays.stream(showType.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toSet());
+        return dataList.stream()
+                .filter(map -> {
+                    Object type = map.get(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity());
+                    if (type == null) {
+                        // 非峰/谷/标记点数据默认保留
+                        return true;
+                    }
+                    String value = type.toString();
+                    if ("峰".equals(value)) {
+                        return allowedTypes.contains("1");
+                    } else if ("谷".equals(value)) {
+                        return allowedTypes.contains("2");
+                    } else if ("标记点".equals(value)) {
+                        return allowedTypes.contains("3");
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
     }
 
     /**
