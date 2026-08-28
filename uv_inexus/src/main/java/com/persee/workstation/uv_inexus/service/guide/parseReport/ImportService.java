@@ -135,7 +135,7 @@ public class ImportService {
                     jsonObject.put("系数3", model.getCoefficient3());
                     jsonObject.put("光谱带宽", model.getSpectralBandwidth());
                     jsonObject.put("拟合公式", model.getFittingFormula());
-                    jsonObject.put("推荐标样浓度", model.getRecommendedStandardConcentration());
+                    jsonObject.put("推荐标样浓度", normalizeConcentration(model.getRecommendedStandardConcentration()));
                     jsonObject.put("推荐单位", model.getRecommendedUnits());
                     jsonObject.put("曲线方程", model.getCurveEquation());
                     jsonObject.put("是否需要扣空白", model.getIsBlank());
@@ -1198,5 +1198,21 @@ public class ImportService {
         if (!allErrors.isEmpty()) {
             throw new IllegalArgumentException("导入失败，共" + allErrors.size() + "条错误：\n" + String.join("\n", allErrors));
         }
+    }
+
+    /**
+     * 规范化推荐标样浓度：中文逗号转英文逗号，去除空格
+     * 例: "0，3，6, 9,12，15" -> "0,3,6,9,12,15"
+     */
+    private String normalizeConcentration(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return value;
+        }
+        // \uFF0C = 中文全角逗号，\u3000 = 全角空格
+        return value.replace("\uFF0C", ",")
+                     .replace("\u3000", "")
+                     .replace(" ", "")
+                     .replace("\t", "")
+                     .trim();
     }
 }
