@@ -133,10 +133,10 @@ public interface TimeSweepService {
     List<PeakValleyMarking>queryReportFormData(String taskId, String sampleId);
 
     // (实验测试)表格头接口
-    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIdList);
+    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIdList, Boolean isOneSample);
 
     // (实验测试)查询表格数据接口
-    List<Map<String, Object>> queryTableData(String taskId, List<String> analysisIdList,Integer decimalDigits);
+    List<Map<String, Object>> queryTableData(String taskId, List<String> analysisIdList,Integer decimalDigits, Boolean isOneSample);
 
     // 停止测量接口
     Result stopMeasure(String deviceSerialNumber);

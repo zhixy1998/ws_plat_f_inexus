@@ -2030,7 +2030,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
      * @return
      */
     @Override
-    public Result newReportTableDataQuery(String taskId, String analysisId, Boolean allDisplay, Integer decimalDigits, String showType) {
+    public Result newReportTableDataQuery(String taskId, String analysisId, Boolean allDisplay, Integer decimalDigits, String showType, Boolean isOneSample) {
 
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
@@ -2185,16 +2185,16 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
                 // 获取数据
                 SpectrumReportDataVO vo = new SpectrumReportDataVO();
-                Result<List<HeadVO>> result = spectrumService.tableHead(taskId, task.getMethodKey(), analysisIdList);
+                Result<List<HeadVO>> result = spectrumService.tableHead(taskId, task.getMethodKey(), analysisIdList, isOneSample);
                 if (result.getCode() == 200) {
                     List<HeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
 
                 // 获取数据
-                List<Map<String, Object>> dataList = spectrumService.queryTableData(taskId, analysisIdList, decimalDigits);
+                List<Map<String, Object>> dataList = spectrumService.queryTableData(taskId, analysisIdList, decimalDigits, isOneSample);
                 // 单样品时根据showType过滤峰/谷/标记点数据
-                if (analysisIdList.size() == 1) {
+                if (Boolean.TRUE.equals(isOneSample)) {
                     dataList = filterReportDataByShowType(dataList, showType);
                 }
                 if (dataList != null) {
@@ -2245,16 +2245,16 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         .collect(Collectors.toList());
 
                 // 获取表头
-                Result<List<HeadVO>> result = timeSweepService.tableHead(taskId, task.getMethodKey(), analysisIdList);
+                Result<List<HeadVO>> result = timeSweepService.tableHead(taskId, task.getMethodKey(), analysisIdList, isOneSample);
                 if (result.getCode() == 200) {
                     List<HeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
 
                 // 获取数据
-                List<Map<String, Object>> dataList = timeSweepService.queryTableData(taskId, analysisIdList, decimalDigits);
+                List<Map<String, Object>> dataList = timeSweepService.queryTableData(taskId, analysisIdList, decimalDigits, isOneSample);
                 // 单样品时根据showType过滤峰/谷/标记点数据
-                if (analysisIdList.size() == 1) {
+                if (Boolean.TRUE.equals(isOneSample)) {
                     dataList = filterReportDataByShowType(dataList, showType);
                 }
                 if (dataList != null) {

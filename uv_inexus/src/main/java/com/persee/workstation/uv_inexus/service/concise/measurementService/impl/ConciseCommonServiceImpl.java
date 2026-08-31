@@ -1336,7 +1336,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
      * @return
      */
     @Override
-    public Result newReportTableDataQuery(String taskId, String analysisId, Boolean allDisplay, Integer decimalDigits, String showType) {
+    public Result newReportTableDataQuery(String taskId, String analysisId, Boolean allDisplay, Integer decimalDigits, String showType, Boolean isOneSample) {
 
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
@@ -1490,16 +1490,16 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
                 // 获取数据
                 FSpectrumReportDataVO vo = new FSpectrumReportDataVO();
-                Result<List<FHeadVO>> result = spectrumConciseService.tableHead(taskId, task.getMethodKey(), analysisIdList);
+                Result<List<FHeadVO>> result = spectrumConciseService.tableHead(taskId, task.getMethodKey(), analysisIdList, isOneSample);
                 if (result.getCode() == 200) {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
 
                 // 获取数据
-                List<Map<String, Object>> dataList = spectrumConciseService.queryTableData(taskId, analysisIdList, decimalDigits);
+                List<Map<String, Object>> dataList = spectrumConciseService.queryTableData(taskId, analysisIdList, decimalDigits, isOneSample);
                 // 单样品时根据showType过滤峰/谷/标记点数据
-                if (analysisIdList.size() == 1) {
+                if (Boolean.TRUE.equals(isOneSample)) {
                     dataList = filterReportDataByShowType(dataList, showType);
                 }
                 if (dataList != null) {
@@ -1550,16 +1550,16 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                         .collect(Collectors.toList());
 
                 // 获取表头
-                Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(), analysisIdList);
+                Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(), analysisIdList, isOneSample);
                 if (result.getCode() == 200) {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
 
                 // 获取数据
-                List<Map<String, Object>> dataList = timeSweepConciseService.queryTableData(taskId, analysisIdList, decimalDigits);
+                List<Map<String, Object>> dataList = timeSweepConciseService.queryTableData(taskId, analysisIdList, decimalDigits, isOneSample);
                 // 单样品时根据showType过滤峰/谷/标记点数据
-                if (analysisIdList.size() == 1) {
+                if (Boolean.TRUE.equals(isOneSample)) {
                     dataList = filterReportDataByShowType(dataList, showType);
                 }
                 if (dataList != null) {
