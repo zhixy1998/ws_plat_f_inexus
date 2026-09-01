@@ -55,6 +55,7 @@ import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
@@ -5006,8 +5007,7 @@ public class RationServiceImpl implements RationService {
                 return R.fail("00300007",resultJson.get("message"));
             }
             String object = resultJson.get("result").toString();
-            String s = DataCountUtil.formatValueWithBigDecimal(digit, object);
-            countDataInfo.setColValue(DataCountUtil.addZero(Double.parseDouble(s), digit));
+            countDataInfo.setColValue(object);
             countDataInfo.setOriginalValue(object);
             countList.add(countDataInfo);
         }
@@ -5589,7 +5589,9 @@ public class RationServiceImpl implements RationService {
                 //公式计算，待做
                 R<List<RationCountDataInfo>> formula = formula(currentList, list, sample, task, parameter, emptyValue, digit, emptyFitCon);
                 if (formula.getData() != null) {
-                    currentList.addAll(formula.getData());
+                    List<RationCountDataInfo> formulaData = formula.getData();
+                    formulaData = dataRounding(formulaData, parameter);
+                    currentList.addAll(formulaData);
                 }
 
                 dealData.setCountData(currentList);

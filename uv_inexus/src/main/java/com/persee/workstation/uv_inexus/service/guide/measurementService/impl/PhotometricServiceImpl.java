@@ -2000,9 +2000,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 //"公式计算出错！" + resultJson.get("message")！
                 return R.fail("00300007",resultJson.get("message"));
             }
-            String countValue = resultJson.get("result").toString();
-            countValue = DataCountUtil.formatValueWithBigDecimal(digit, countValue);
-            countDataInfo.setCountValue(DataCountUtil.addZero(Double.parseDouble(countValue), digit));
+            countDataInfo.setCountValue(resultJson.get("result").toString());
             countList.add(countDataInfo);
         }
 

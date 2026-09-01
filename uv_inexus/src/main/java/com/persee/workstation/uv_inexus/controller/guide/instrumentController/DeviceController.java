@@ -636,7 +636,7 @@ public class DeviceController {
 
     //汞灯开关
     @GetMapping("/setMercuryLampStatus")
-    @ApiOperation("汞灯开关，1-开汞灯，2-关汞灯")
+    @ApiOperation("汞灯开关，1-开汞灯，0-关汞灯")
     public Result<Boolean> setMercuryLampStatus(@RequestParam String deviceSerialNumber, @RequestParam Integer status) {
         R<Boolean> r = deviceManageService.switchHgLamp(deviceSerialNumber, status);
         if (r.getSuccess()) {

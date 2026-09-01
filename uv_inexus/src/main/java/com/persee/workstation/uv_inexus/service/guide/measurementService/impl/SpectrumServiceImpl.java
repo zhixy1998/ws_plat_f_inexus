@@ -3482,7 +3482,7 @@ public class SpectrumServiceImpl implements SpectrumService {
      * @return
      */
     @Override
-    public Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIds) {
+    public Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIds, Boolean isOneSample) {
         // 根据方法id查找方法
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         SpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
@@ -3493,8 +3493,9 @@ public class SpectrumServiceImpl implements SpectrumService {
 
         // 2. 波长
         ans.add(new HeadVO("波长(nm)", "waveLength", "measure", "波长(nm)"));
-        // 如果样品长度为1则是单样品表头,如果样品长度超过1则是多样品表头
-        if (analysisIds.size() == 1) {
+        // isOneSample为空时沿用原样品数量判断;非空时以isOneSample为准(选择重叠/平铺/3D时即使ids为1也走多样品)
+        boolean isOneSampleLogic = isOneSample != null ? isOneSample : (analysisIds.size() == 1);
+        if (isOneSampleLogic) {
             addLuminosityMode(ans, parameter.getLuminosity());
             ans.add(new HeadVO("峰谷/标记点", "peakValleyGaugePoint", "measure", "峰谷"));
             ans.add(new HeadVO("备注", "remark", "analysis", "备注"));
@@ -3540,15 +3541,17 @@ public class SpectrumServiceImpl implements SpectrumService {
     @Override
     public List<Map<String, Object>> queryTableData(String taskId,
                                                     List<String> analysisIds,
-                                                    Integer digit) {
+                                                    Integer digit,
+                                                    Boolean isOneSample) {
         // 校验参数
         if (StringUtils.isEmpty(taskId) || analysisIds == null || analysisIds.isEmpty()) {
             return null;
         }
         List<Map<String, Object>> arrayList = new ArrayList<>();
 
-        // 非重复模式 - 单样品
-        if (analysisIds.size() == 1) {
+        // isOneSample为空时沿用原样品数量判断;非空时以isOneSample为准(选择重叠/平铺/3D时即使ids为1也走多样品)
+        boolean isOneSampleLogic = isOneSample != null ? isOneSample : (analysisIds.size() == 1);
+        if (isOneSampleLogic) {
             // 单样品表数据
             TMeasureAnalysisData measureAnalysisData = tMeasureAnalysisDataService.getById(analysisIds.get(0));
             if (measureAnalysisData == null) {

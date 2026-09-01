@@ -2613,9 +2613,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             if (!resultJson.get("code").equals("200") && !resultJson.get("code").equals(200)) {
                 return R.fail("00300007",resultJson.get("message"));
             }
-            String countValue = resultJson.get("result").toString();
-            countValue = DataCountUtil.formatValueWithBigDecimal(digit, countValue);
-            countDataInfo.setCountValue(DataCountUtil.addZero(Double.parseDouble(countValue), digit));
+            countDataInfo.setCountValue(resultJson.get("result").toString());
             countList.add(countDataInfo);
         }
 

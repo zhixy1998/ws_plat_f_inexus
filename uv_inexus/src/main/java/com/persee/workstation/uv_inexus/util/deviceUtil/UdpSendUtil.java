@@ -63,6 +63,23 @@ public class UdpSendUtil {
     //时间扫描线程测量是否结束，true-结束，false-未结束
     public final static ConcurrentMap<String, Boolean> timeMeasureIsStop = new ConcurrentHashMap<>();
 
+    // ================= ARP 心跳保活 =================
+    //心跳发送间隔（毫秒），需短于下位机 W5500 的 ARP 缓存过期时间
+    private static final long HEARTBEAT_INTERVAL_MILLIS = 4000L;
+
+    //心跳报文内容（1 字节占位包，仅用于保持链路活跃，下位机无需回应；如协议有专用心跳指令可替换）
+    private static final byte[] HEARTBEAT_DATA = new byte[]{0x00};
+
+    //每个 deviceId 对应一个心跳任务，防止重复创建
+    private final ConcurrentMap<String, ScheduledFuture<?>> heartbeatTasks = new ConcurrentHashMap<>();
+
+    //所有心跳共用一个守护线程调度器
+    private final ScheduledExecutorService heartbeatScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "udp-arp-heartbeat");
+        t.setDaemon(true);
+        return t;
+    });
+
     private static UnknowCountMessageQueue unknowCountMessageQueue = UnknowCountMessageQueue.getInstance();
 
     private final AtomicInteger scanResultIndex = new AtomicInteger(0);
@@ -1099,6 +1116,91 @@ public class UdpSendUtil {
 
         log.info("时间扫描单次结束");
         log.info("执行完成，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
+    }
+
+    // ================= ARP 心跳保活：启动/停止 =================
+
+    /**
+     * 启动指定设备的心跳线程（幂等，重复调用不会重复创建）
+     * 在连接并初始化成功之后调用
+     *
+     * @param deviceId 设备ID
+     */
+    public void startHeartbeat(String deviceId) {
+        if (deviceId == null) {
+            return;
+        }
+        heartbeatTasks.compute(deviceId, (id, existing) -> {
+            // 已存在且未结束的任务，直接复用，不重复创建
+            if (existing != null && !existing.isDone()) {
+                log.info("心跳线程已存在，跳过创建，deviceId={}", id);
+                return existing;
+            }
+            try {
+                DeviceConnectInfo device = deviceManager.getDevice(id);
+                if (device == null) {
+                    log.warn("启动心跳失败，设备不存在，deviceId={}", id);
+                    return null;
+                }
+                String sendIp = device.getConnectIdentity();
+                DevXmlEnums anEnum = DevXmlEnums.getEnum(device.getXmlKey());
+
+                DatagramPacket packet = new DatagramPacket(
+                        HEARTBEAT_DATA,
+                        HEARTBEAT_DATA.length,
+                        InetAddress.getByName(sendIp),
+                        anEnum.getPort()
+                );
+
+                ScheduledFuture<?> future = heartbeatScheduler.scheduleAtFixedRate(() -> {
+                    try {
+                        DatagramSocket socket = connectUtil.getSocket(device.getConnectType(), ethernetReceivePort);
+                        if (socket == null) {
+                            log.warn("心跳发送失败，socket不可用，deviceId={}", id);
+                            return;
+                        }
+                        socket.send(packet);
+                    } catch (Exception e) {
+                        //单次发送失败不能让定时任务终止（scheduleAtFixedRate 遇异常会停止），只记录日志
+                        log.warn("心跳发送异常，deviceId={}，原因：{}", id, e.getMessage());
+                    }
+                }, 0, HEARTBEAT_INTERVAL_MILLIS, TimeUnit.MILLISECONDS);
+
+                log.info("心跳线程启动成功，deviceId={}，目标={}:{}，间隔={}ms",
+                        id, sendIp, anEnum.getPort(), HEARTBEAT_INTERVAL_MILLIS);
+                return future;
+            } catch (Exception e) {
+                log.error("启动心跳线程失败，deviceId={}", id, e);
+                return null;
+            }
+        });
+    }
+
+    /**
+     * 停止指定设备的心跳线程
+     * 在移除仪器之后调用
+     *
+     * @param deviceId 设备ID
+     */
+    public void stopHeartbeat(String deviceId) {
+        if (deviceId == null) {
+            return;
+        }
+        ScheduledFuture<?> future = heartbeatTasks.remove(deviceId);
+        if (future != null) {
+            future.cancel(false);
+            log.info("心跳线程已停止，deviceId={}", deviceId);
+        }
+    }
+
+    /**
+     * 停止所有心跳线程（可选，用于程序退出或全部断开时清理）
+     */
+    public void stopAllHeartbeat() {
+        int count = heartbeatTasks.size();
+        heartbeatTasks.forEach((id, future) -> future.cancel(false));
+        heartbeatTasks.clear();
+        log.info("所有心跳线程已停止，共清理 {} 个", count);
     }
 
 }

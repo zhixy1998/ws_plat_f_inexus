@@ -13,6 +13,8 @@ import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import com.persee.workstation.uv_inexus.constant.Constants;
+
 import javax.validation.constraints.NotBlank;
 
 /**
@@ -22,7 +24,7 @@ import javax.validation.constraints.NotBlank;
 @ApiModel("用户登录请求参数")
 public class UserLoginDTO {
 
-    @ApiModelProperty(value = "用户名", example = "admin")
+    @ApiModelProperty(value = "用户名", example = "Admin")
     @NotBlank(message = "用户名不能为空")
     private String userName;
 
@@ -39,7 +41,7 @@ public class UserLoginDTO {
      */
     public void completeFastLogin() {
         if (this.isFastLogin != null && this.isFastLogin == 1) {
-            this.userName = "admin"; // 建议在Constants类定义默认值，此处先硬编码示例
+            this.userName = Constants.SUPER_USER_NAME;
             this.password = "1234561";
         }
     }

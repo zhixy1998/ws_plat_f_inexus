@@ -1,4 +1,4 @@
-﻿# =====================================================
+# =====================================================
 # UI 文本翻译字典 - 中英日俄四语
 #
 # 本文件: i18n-ui-texts.yaml — WebSocket 推送 / 前端展示的中文文本翻译
@@ -1988,9 +1988,13 @@ messages:
     ru-RU: 'Дрейф'
 
   # ========== 仪器型号名称 ==========
+  '紫外可见光分光光度计':
+    zh-CN: '紫外可见光分光光度计'
+    en-US: 'UV-Vis Spectrophotometer'
+    ru-RU: 'УФ-видимый спектрофотометр'
   'T600A紫外可见分光光度计':
     zh-CN: 'T600A紫外可见分光光度计'
-    en-US: 'T600A'
+    en-US: 'T600A UV-Vis Spectrophotometer'
     ru-RU: 'УФ-видимый спектрофотометр T600A'
 
   'T600B紫外可见分光光度计状态图':
@@ -1999,8 +2003,8 @@ messages:
     ru-RU: 'Диаграмма состояния T600B'
   'T600B紫外可见分光光度计':
     zh-CN: 'T600B紫外可见分光光度计'
-    en-US: 'T600B'
-    ru-RU: 'T600B'
+    en-US: 'T600B UV-Vis Spectrophotometer'
+    ru-RU: 'T600B УФ-видимый спектрофотометр'
 
   'T600S紫外可见分光光度计':
     zh-CN: 'T600S紫外可见分光光度计'
@@ -2301,13 +2305,18 @@ messages:
   # ========== 设备标签 ==========
   '钨灯':
     zh-CN: '钨灯'
-    en-US: 'Tungsten lamp'
+    en-US: 'Tungsten Lamp'
     ru-RU: 'Вольфрамовая лампа'
 
   '氘灯':
     zh-CN: '氘灯'
-    en-US: 'Deuterium lamp'
+    en-US: 'Deuterium Lamp'
     ru-RU: 'Дейтериевая лампа'
+
+  '汞灯':
+    zh-CN: '汞灯'
+    en-US: 'Mercury Lamp'
+    ru-RU: 'Меркурий'
 
   '秒(s)':
     zh-CN: '秒(s)'
@@ -2424,12 +2433,42 @@ messages:
 
   '波长校正':
     zh-CN: '波长校正'
-    en-US: 'Wavelength correction'
+    en-US: 'Wavelength Correction'
     ru-RU: 'Коррекция длины волны'
+
+  '多点波长校正':
+    zh-CN: '多点波长校正'
+    en-US: 'Multi-Point Wavelength Correction'
+    ru-RU: 'Многоточечная коррекция длины волны'
+
+  '多波长校正':
+    zh-CN: '多波长校正'
+    en-US: 'Multi-Wavelength Correction'
+    ru-RU: 'Много длин волн коррекция'
+
+  '标准波长':
+    zh-CN: '标准波长'
+    en-US: 'Standard Wavelength'
+    ru-RU: 'Стандартная длина волны'
+
+  '实际波长':
+    zh-CN: '实际波长'
+    en-US: 'Actual Wavelength'
+    ru-RU: 'Фактическая длина волны'
+
+  '标准波长(nm)':
+    zh-CN: '标准波长(nm)'
+    en-US: 'Standard Wavelength(nm)'
+    ru-RU: 'Стандартная длина волны(nm)'
+
+  '实际波长(nm)':
+    zh-CN: '实际波长(nm)'
+    en-US: 'Actual Wavelength(nm)'
+    ru-RU: 'Фактическая длина волны(nm)'
 
   '暗电流校正':
     zh-CN: '暗电流校正'
-    en-US: 'Dark current correction'
+    en-US: 'Dark Current Correction'
     ru-RU: 'Коррекция темнового тока'
 
   '经典模式':
@@ -2908,12 +2947,12 @@ messages:
 
   '光谱扫描':
     zh-CN: '光谱扫描'
-    en-US: 'Spectrum Scan'
+    en-US: 'Spectral Scan'
     ru-RU: 'Спектральное сканирование'
 
   '时间扫描':
     zh-CN: '时间扫描'
-    en-US: 'Kinetic Scan'
+    en-US: 'Time Scan'
     ru-RU: 'Сканирование по времени'
 
   '默认方法':
@@ -2924,8 +2963,13 @@ messages:
   # ========== 预设表头名称 (t_measure_preset_head) ==========
   '样品编号':
     zh-CN: '样品编号'
-    en-US: 'Sample No.'
+    en-US: 'Sample ID'
     ru-RU: 'Номер образца'
+
+  '拟合浓度':
+    zh-CN: '拟合浓度'
+    en-US: 'Fitted Concentration'
+    ru-RU: 'Подгоночная концентрация'
 
   '样品名称':
     zh-CN: '样品名称'
@@ -3089,6 +3133,202 @@ messages:
     zh-CN: 'T600镜面反射附件'
     en-US: 'T600 Specular Reflectance Accessory'
     ru-RU: 'T600 Зеркальный отражательный аксессуар'
+
+  # ========== 附件名称 (queryDeviceInfo attachmentName，无型号前缀) ==========
+  '固体样品池':
+    zh-CN: '固体样品池'
+    en-US: 'Solid Sample Cell'
+    ru-RU: 'Твёрдая кювета'
+
+  '镜面反射附件':
+    zh-CN: '镜面反射附件'
+    en-US: 'Specular Reflectance Accessory'
+    ru-RU: 'Зеркальный отражательный аксессуар'
+
+  '固定100mm长样池':
+    zh-CN: '固定100mm长样池'
+    en-US: 'Fixed 100mm Long Path Cell'
+    ru-RU: 'Фиксированная кювета 100 мм'
+
+  '标准及微量样品池':
+    zh-CN: '标准及微量样品池'
+    en-US: 'Standard & Micro Sample Cell'
+    ru-RU: 'Стандартная и микрокювета'
+
+  '五联恒温池':
+    zh-CN: '五联恒温池'
+    en-US: '5-Position Thermostatic Cell'
+    ru-RU: '5-позиционная термокювета'
+
+  '五联100mm长样池':
+    zh-CN: '五联100mm长样池'
+    en-US: '5-Position 100mm Long Path Cell'
+    ru-RU: '5-позиционная кювета 100 мм'
+
+  '可变角度样品架':
+    zh-CN: '可变角度样品架'
+    en-US: 'Variable Angle Sample Holder'
+    ru-RU: 'Держатель образца с переменным углом'
+
+  '超微量样品池':
+    zh-CN: '超微量样品池'
+    en-US: 'Ultra-Micro Sample Cell'
+    ru-RU: 'Ультрамикрокювета'
+
+  '八联池':
+    zh-CN: '八联池'
+    en-US: '8-Position Cell'
+    ru-RU: '8-позиционная кювета'
+
+  '试管架':
+    zh-CN: '试管架'
+    en-US: 'Test Tube Rack'
+    ru-RU: 'Штатив для пробирок'
+
+  '固定恒温池':
+    zh-CN: '固定恒温池'
+    en-US: 'Fixed Thermostatic Cell'
+    ru-RU: 'Фиксированная термокювета'
+
+  '积分椭球':
+    zh-CN: '积分椭球'
+    en-US: 'Integrating Sphere'
+    ru-RU: 'Интегрирующая сфера'
+
+  '双光束固定样品池':
+    zh-CN: '双光束固定样品池'
+    en-US: 'Dual-Beam Fixed Sample Cell'
+    ru-RU: 'Двухлучевая фиксированная кювета'
+
+  '双光束流通池':
+    zh-CN: '双光束流通池'
+    en-US: 'Dual-Beam Flow Cell'
+    ru-RU: 'Двухлучевая проточная кювета'
+
+  '双光束100mm长样品池':
+    zh-CN: '双光束100mm长样品池'
+    en-US: 'Dual-Beam 100mm Long Path Cell'
+    ru-RU: 'Двухлучевая кювета 100 мм'
+
+  '双光束微量样品池':
+    zh-CN: '双光束微量样品池'
+    en-US: 'Dual-Beam Micro Sample Cell'
+    ru-RU: 'Двухлучевая микрокювета'
+
+  '双光束五联恒温池':
+    zh-CN: '双光束五联恒温池'
+    en-US: 'Dual-Beam 5-Position Thermostatic Cell'
+    ru-RU: 'Двухлучевая 5-позиционная термокювета'
+
+  '双光束五联50mm长样品池':
+    zh-CN: '双光束五联50mm长样品池'
+    en-US: 'Dual-Beam 5-Position 50mm Long Path Cell'
+    ru-RU: 'Двухлучевая 5-позиционная кювета 50 мм'
+
+  '双光束可变角度样品台':
+    zh-CN: '双光束可变角度样品台'
+    en-US: 'Dual-Beam Variable Angle Sample Stage'
+    ru-RU: 'Двухлучевой держатель образца с переменным углом'
+
+  '双光束超微量样品池':
+    zh-CN: '双光束超微量样品池'
+    en-US: 'Dual-Beam Ultra-Micro Sample Cell'
+    ru-RU: 'Двухлучевая ультрамикрокювета'
+
+  '双光束八联池':
+    zh-CN: '双光束八联池'
+    en-US: 'Dual-Beam 8-Position Cell'
+    ru-RU: 'Двухлучевая 8-позиционная кювета'
+
+  '双光束试管架':
+    zh-CN: '双光束试管架'
+    en-US: 'Dual-Beam Test Tube Rack'
+    ru-RU: 'Двухлучевой штатив для пробирок'
+
+  '双光束恒温样品池':
+    zh-CN: '双光束恒温样品池'
+    en-US: 'Dual-Beam Thermostatic Sample Cell'
+    ru-RU: 'Двухлучевая термостатированная кювета'
+
+  '双光束偏振':
+    zh-CN: '双光束偏振'
+    en-US: 'Dual-Beam Polarizer'
+    ru-RU: 'Двухлучевой поляризатор'
+
+  '双光束溶出度仪':
+    zh-CN: '双光束溶出度仪'
+    en-US: 'Dual-Beam Dissolution Tester'
+    ru-RU: 'Двухлучевой тестер растворения'
+
+  '双光束固体样品池架':
+    zh-CN: '双光束固体样品池架'
+    en-US: 'Dual-Beam Solid Sample Cell Holder'
+    ru-RU: 'Двухлучевой держатель твёрдых образцов'
+
+  '双光束相对镜面反射':
+    zh-CN: '双光束相对镜面反射'
+    en-US: 'Dual-Beam Relative Specular Reflectance'
+    ru-RU: 'Двухлучевое относительное зеркальное отражение'
+
+  '双光束绝对镜面反射':
+    zh-CN: '双光束绝对镜面反射'
+    en-US: 'Dual-Beam Absolute Specular Reflectance'
+    ru-RU: 'Двухлучевое абсолютное зеркальное отражение'
+
+  '双光束五联100mm长样品池':
+    zh-CN: '双光束五联100mm长样品池'
+    en-US: 'Dual-Beam 5-Position 100mm Long Path Cell'
+    ru-RU: 'Двухлучевая 5-позиционная кювета 100 мм'
+
+  '双光束150mm积分球':
+    zh-CN: '双光束150mm积分球'
+    en-US: 'Dual-Beam 150mm Integrating Sphere'
+    ru-RU: 'Двухлучевая интегрирующая сфера 150 мм'
+
+  '双光束60mm积分球':
+    zh-CN: '双光束60mm积分球'
+    en-US: 'Dual-Beam 60mm Integrating Sphere'
+    ru-RU: 'Двухлучевая интегрирующая сфера 60 мм'
+
+  '双光束绝对反射':
+    zh-CN: '双光束绝对反射'
+    en-US: 'Dual-Beam Absolute Reflectance'
+    ru-RU: 'Двухлучевое абсолютное отражение'
+
+  '双光束微量流通池':
+    zh-CN: '双光束微量流通池'
+    en-US: 'Dual-Beam Micro Flow Cell'
+    ru-RU: 'Двухлучевая микропроточная кювета'
+
+  '双光束绝对反射率测定':
+    zh-CN: '双光束绝对反射率测定'
+    en-US: 'Dual-Beam Absolute Reflectance Measurement'
+    ru-RU: 'Двухлучевое измерение абсолютной отражательной способности'
+
+  '双光束50mm长样品池':
+    zh-CN: '双光束50mm长样品池'
+    en-US: 'Dual-Beam 50mm Long Path Cell'
+    ru-RU: 'Двухлучевая кювета 50 мм'
+
+  '双光束150mm积分球--眼镜':
+    zh-CN: '双光束150mm积分球--眼镜'
+    en-US: 'Dual-Beam 150mm Integrating Sphere -- Spectacles'
+    ru-RU: 'Двухлучевая интегрирующая сфера 150 мм — очки'
+
+  '双光束150mm积分球--扫描':
+    zh-CN: '双光束150mm积分球--扫描'
+    en-US: 'Dual-Beam 150mm Integrating Sphere -- Scanning'
+    ru-RU: 'Двухлучевая интегрирующая сфера 150 мм — сканирование'
+
+  '双光束150mm积分球--透镜':
+    zh-CN: '双光束150mm积分球--透镜'
+    en-US: 'Dual-Beam 150mm Integrating Sphere -- Lens'
+    ru-RU: 'Двухлучевая интегрирующая сфера 150 мм — линза'
+
+  '第二样品室积分球':
+    zh-CN: '第二样品室积分球'
+    en-US: 'Second Sample Chamber Integrating Sphere'
+    ru-RU: 'Интегрирующая сфера второй камеры для образцов'
 
   # ========== 用户组 (t_sys_group) ==========
   '研发组':

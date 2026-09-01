@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
@@ -50,15 +51,15 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
     public R<LoginUserInfoVO> login(UserLoginDTO loginDTO) {
         // 1. 处理快捷登录：补全默认用户名/密码（参照你原有逻辑）
         if (loginDTO.getIsFastLogin() != null && loginDTO.getIsFastLogin() == 1) {
-            log.info("触发快捷登录，使用admin用户");
-            // 从数据库查询admin用户的密码
-            SysUserPO adminUser = sysUserDAO.selectByUsername("admin");
+            log.info("触发快捷登录，使用Admin用户");
+            // 从数据库查询Admin用户的密码
+            SysUserPO adminUser = sysUserDAO.selectByUsername(Constants.SUPER_USER_NAME);
             if (adminUser != null && adminUser.getPassword() != null) {
-                loginDTO.setUserName("admin");
+                loginDTO.setUserName(Constants.SUPER_USER_NAME);
                 loginDTO.setPassword(adminUser.getPassword());
-                log.info("快捷登录：成功获取admin用户密码");
+                log.info("快捷登录：成功获取Admin用户密码");
             } else {
-                log.warn("快捷登录：未找到admin用户或密码为空");
+                log.warn("快捷登录：未找到Admin用户或密码为空");
             }
         }
 

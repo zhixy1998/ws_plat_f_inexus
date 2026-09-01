@@ -152,10 +152,10 @@ public interface SpectrumService {
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter);
 
     // (实验测试)查询表格头
-    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIds);
+    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIds, Boolean isOneSample);
 
     // (实验测试)查询表格数据
-    List<Map<String, Object>> queryTableData(String taskId,List<String> analysisIds, Integer digit);
+    List<Map<String, Object>> queryTableData(String taskId,List<String> analysisIds, Integer digit, Boolean isOneSample);
 
     // 仪器设置参数
     boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam);

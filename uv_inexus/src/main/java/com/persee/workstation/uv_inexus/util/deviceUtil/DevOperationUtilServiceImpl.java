@@ -259,6 +259,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     if (isInited.equals(Constants.INIT_STATUS_SUCCESS)) {
                         log.info("已初始化！");
                         newPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
+                        udpSendUtil.startHeartbeat(s);
                     } else {
                         log.info("未初始化！");
                         newPO.setIsInited(Constants.INIT_STATUS_NO);
@@ -852,7 +853,17 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         String deviceMac = info.getDeviceMac();
         Integer connectType = info.getConnectType();
 
+        if (!StringUtils.hasText(xmlKey) || !StringUtils.hasText(deviceMac) || connectType == null) {
+            return null;
+        }
+
         String deviceId = deviceManager.getOrCreateDeviceId(ip, port, connectType);
+
+        if(!StringUtils.hasText(deviceId) || !deviceId.startsWith("temp-")) {
+            log.info("仪器不存在或当前仪器已连接！");
+            return null;
+        }
+
         deviceManager.updateDeviceInfo(deviceId, Constants.CONNECT_DEVICE_NO, deviceMac, xmlKey);
 
         SearchInfo result = new SearchInfo();
@@ -1386,27 +1397,29 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
         }
 
-        if (allDevice.isEmpty()) {
-            //连接上次连接的仪器
-                List<DeviceInfoPO> poList = infoService.getUserLastConnectDevice(inputParam.getUpdateBy());
-
-            if (poList != null && !poList.isEmpty()) {
-
-                for (DeviceInfoPO infoPO : poList) {
-
-                    SearchInfo info = addLastDevice(infoPO);
-                    Boolean b = checkDeviceConnect(info);
-                    if (b) {
-                        allDevice.add(info);
-                        xmlManage.setDevice(info.getDeviceIp(), infoPO.getXmlKey());
-                        xmlManage.setDevice(info.getDeviceMac(), infoPO.getXmlKey());
-                    }
-
-
-                }
-            }
-
-        }
+        //20260821注释，下位机支持连接后再次搜索，故去该功能
+//        if (allDevice.isEmpty()) {
+//            //连接上次连接的仪器
+//                List<DeviceInfoPO> poList = infoService.getUserLastConnectDevice(inputParam.getUpdateBy());
+//
+//            if (poList != null && !poList.isEmpty()) {
+//
+//                for (DeviceInfoPO infoPO : poList) {
+//
+//                    SearchInfo info = addLastDevice(infoPO);
+//                    if (info == null) {
+//                        continue;
+//                    }
+//                    Boolean b = checkDeviceConnect(info);
+//                    if (b) {
+//                        allDevice.add(info);
+//                        xmlManage.setDevice(info.getDeviceIp(), infoPO.getXmlKey());
+//                        xmlManage.setDevice(info.getDeviceMac(), infoPO.getXmlKey());
+//                    }
+//                }
+//            }
+//
+//        }
 
         operationResultEntity.setSearchInfo(allDevice);
 
@@ -1656,6 +1669,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         if (result.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
             setDeviceDefaultStatus(result.getDeviceId(), result.getDeviceSerialNumber());
+            udpSendUtil.startHeartbeat(deviceId);
         }
         result.setXmlKey(devType);
         result.setDeviceMac(macAddress);
@@ -1878,7 +1892,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
             log.info("{}成功", recordPO.getInitCmdName());
             updateSuccess(recordPO);
-
         }
         log.info("自检结束");
         setInitStatus(deviceId, 1);
@@ -1887,6 +1900,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         infoPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
         infoService.saveOrUpdateInfo(infoPO);
         infoService.newReleaseDevice(deviceSerialNumber);
+        udpSendUtil.startHeartbeat(deviceId);
 
     }
 
@@ -1967,6 +1981,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     infoService.saveOrUpdateInfo(infoPO);
                 }
                 //TODO 实时回显指令出错需要另外处理
+                udpSendUtil.stopHeartbeat(deviceId);
                 deviceManager.removeDevice(deviceId);
 
                 log.error("{}指令执行失败", comId);
@@ -2008,7 +2023,20 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     dataList.add(status);
 
                     resultEntity.setDataList(dataList);
-                } else if (comId.equals(LiveDetectionCmdEnum.GetCellPos.getComId())) {
+                }else if (comId.equals(LiveDetectionCmdEnum.GetMLamp.getComId())) {
+                    if (resultEntity.getDataList() == null) {
+                        resultEntity.setDataList(new ArrayList<>());
+                    }
+
+                    DetectionManyDevicesLampStatus status = new DetectionManyDevicesLampStatus();
+                    status.setLabel("汞灯");
+                    status.setValue(entity.getLampStatus() ? "亮" : "不亮");
+                    List<DetectionManyDevicesLampStatus> dataList = resultEntity.getDataList();
+                    dataList.add(status);
+
+                    resultEntity.setDataList(dataList);
+                }
+                else if (comId.equals(LiveDetectionCmdEnum.GetCellPos.getComId())) {
                     Integer currentPoolNum = resultEntity.getCurrentPoolNum();
                     deviceManager.setCurrentPoolNum(deviceId, currentPoolNum);
                 }
@@ -2959,8 +2987,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
         }
         MessageStoreManager.getInstance().clearDevice(deviceId);
-
+        udpSendUtil.stopHeartbeat(deviceId);
         deviceManager.removeDevice(deviceId);
+
 
         return R.ok();
     }

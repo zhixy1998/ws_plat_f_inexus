@@ -22,7 +22,7 @@ public enum DevXmlEnums {
 
     T800("T800", "newFile/T800.xml", "T800", 8000,
             Arrays.asList("Connect", "GetSn", "GetAccessoryType", "SetCellPos", "GetInitStatus", "GetCellPos", "T800GetWlList"),
-            Arrays.asList("GetPhotoMode", "GetResponseTime", "LiveMeasure", "GetChangeLampWl", "GetCellPos", "GetLampPos", "GetWLampStatus", "GetDLampStatus", "GetCurrentNegativeHV"),
+            Arrays.asList("GetPhotoMode", "GetResponseTime", "LiveMeasure", "GetChangeLampWl", "GetCellPos", "GetLampPos", "GetWLampStatus", "GetDLampStatus", "GetMLamp", "GetCurrentNegativeHV"),
  new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A},
