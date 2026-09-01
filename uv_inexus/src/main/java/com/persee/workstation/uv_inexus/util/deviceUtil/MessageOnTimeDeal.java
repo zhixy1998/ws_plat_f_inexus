@@ -675,6 +675,7 @@ public class MessageOnTimeDeal {
             z = s / d;
             //-----SR交换
             double r = Double.parseDouble(rStr);
+            r=Math.min(Math.abs(r),Math.abs(s));
             z2 = r / d;
         }
 
@@ -724,11 +725,14 @@ public class MessageOnTimeDeal {
         double z = Math.min(f, 0.1);
         //-----SR交换
         double f2;
-        double diffSR = S - R;
-        if (Math.abs(diffSR) > 1.0e-10) {
-            f2 = (D - R) / diffRS;
+        double diffSR = Math.abs(S - R);
+        //double Molecule= Math.min(Math.abs(D - R), Math.abs(D - S));
+        double Molecule = D - (Math.abs(D - R) <= Math.abs(D - S) ? R : S);
+
+        if ( diffSR> 1.0e-10) {
+            f2 = Molecule / diffRS;
         } else {
-            f2 = (D - R) / 1.0e-10;
+            f2 = Molecule / 1.0e-10;
         }
         double z2 = Math.min(f2, 0.1);
         Map<String, Map<String, String>> darkMap = darkCache.computeIfAbsent(deviceSerialNumber, k -> new ConcurrentHashMap<>());
