@@ -59,4 +59,12 @@ public class SystemPanelConfPO extends BasePO {
     @TableField(value = "is_simple_tip")
     private Boolean isSimpleTip;
 
+    @ApiModelProperty("是否全屏，true-是，false-否")
+    @TableField(value = "is_full_screen")
+    private Boolean isFullScreen;
+
+    @ApiModelProperty("是否展开导航栏，true-展开，false-收起")
+    @TableField(value = "is_expand_nav_bar")
+    private Boolean isExpandNavBar;
+
 }

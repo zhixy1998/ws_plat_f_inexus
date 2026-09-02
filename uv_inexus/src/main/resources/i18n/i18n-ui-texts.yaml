@@ -37,23 +37,23 @@ messages:
 
   '未检测':
     zh-CN: '未检测'
-    en-US: 'Not tested'
+    en-US: 'Not Tested'
     ru-RU: 'Не проверено'
 
   '检测成功':
     zh-CN: '检测成功'
-    en-US: 'Test passed'
+    en-US: 'Test Passed'
     ru-RU: 'Проверка пройдена'
 
   '检测失败':
     zh-CN: '检测失败'
-    en-US: 'Test failed'
+    en-US: 'Test Failed'
     ru-RU: 'Проверка не пройдена'
 
   # ========== 标准物质 ==========
   '黑挡块':
     zh-CN: '黑挡块'
-    en-US: 'Black block'
+    en-US: 'Black Block'
     ru-RU: 'Чёрный блок'
 
   '空气':
@@ -63,17 +63,17 @@ messages:
 
   '内置物':
     zh-CN: '内置物'
-    en-US: 'Built-in material'
+    en-US: 'Built-In Material'
     ru-RU: 'Встроенный материал'
 
   '初始固定不可删除物质':
     zh-CN: '初始固定不可删除物质'
-    en-US: 'Fixed material (non-deletable)'
+    en-US: 'Fixed Material (Non-Deletable)'
     ru-RU: 'Фиксированный материал'
 
   '外部参考物':
     zh-CN: '外部参考物'
-    en-US: 'External reference'
+    en-US: 'External Reference'
     ru-RU: 'Внешний эталон'
 
   # ========== 通用布尔 ==========
@@ -90,7 +90,7 @@ messages:
   # ========== 删除状态 ==========
   '未删除':
     zh-CN: '未删除'
-    en-US: 'Not deleted'
+    en-US: 'Not Deleted'
     ru-RU: 'Не удалено'
 
   '已删除':
@@ -101,28 +101,28 @@ messages:
   # ========== 检测模式 ==========
   '单项检测':
     zh-CN: '单项检测'
-    en-US: 'Single item test'
+    en-US: 'Single Item Test'
     ru-RU: 'Одиночная проверка'
 
   '自动检测':
     zh-CN: '自动检测'
-    en-US: 'Auto test'
+    en-US: 'Auto Test'
     ru-RU: 'Автоматическая проверка'
 
   '设置标准物':
     zh-CN: '设置标准物'
-    en-US: 'Set standard material'
+    en-US: 'Set Standard Material'
     ru-RU: 'Установить стандартный материал'
 
   # ========== 任务状态 ==========
   '未开始':
     zh-CN: '未开始'
-    en-US: 'Not started'
+    en-US: 'Not Started'
     ru-RU: 'Не начато'
 
   '未完成':
     zh-CN: '未完成'
-    en-US: 'In progress'
+    en-US: 'In Progress'
     ru-RU: 'В процессе'
 
   '已完成':
@@ -134,47 +134,47 @@ messages:
   # ========== 任务类型 ==========
   '默认任务':
     zh-CN: '默认任务'
-    en-US: 'Default task'
+    en-US: 'Default Task'
     ru-RU: 'Задача по умолчанию'
 
   '校准任务':
     zh-CN: '校准任务'
-    en-US: 'Calibration task'
+    en-US: 'Calibration Task'
     ru-RU: 'Задача калибровки'
 
   '期间核查':
     zh-CN: '期间核查'
-    en-US: 'Periodic inspection'
+    en-US: 'Periodic Inspection'
     ru-RU: 'Периодическая проверка'
 
   '开箱检验':
     zh-CN: '开箱检验'
-    en-US: 'Installation acceptance'
+    en-US: 'Installation Acceptance'
     ru-RU: 'Входной контроль'
 
   '出厂检验':
     zh-CN: '出厂检验'
-    en-US: 'Factory inspection'
+    en-US: 'Factory Inspection'
     ru-RU: 'Заводской контроль'
 
   '检定任务':
     zh-CN: '检定任务'
-    en-US: 'Verification task'
+    en-US: 'Verification Task'
     ru-RU: 'Задача поверки'
 
   '出厂检验任务':
     zh-CN: '出厂检验任务'
-    en-US: 'Factory inspection task'
+    en-US: 'Factory Inspection Task'
     ru-RU: 'Задача заводского контроля'
 
   '开箱检验任务':
     zh-CN: '开箱检验任务'
-    en-US: 'Installation acceptance task'
+    en-US: 'Installation Acceptance Task'
     ru-RU: 'Задача входного контроля'
 
   '期间核查任务':
     zh-CN: '期间核查任务'
-    en-US: 'Periodic inspection task'
+    en-US: 'Periodic Inspection Task'
     ru-RU: 'Задача периодической проверки'
 
   '校准':
@@ -185,114 +185,114 @@ messages:
   # ========== 模板类型 ==========
   '内置模板':
     zh-CN: '内置模板'
-    en-US: 'Built-in template'
+    en-US: 'Built-In Template'
     ru-RU: 'Встроенный шаблон'
 
   '用户模板':
     zh-CN: '用户模板'
-    en-US: 'User template'
+    en-US: 'User Template'
     ru-RU: 'Пользовательский шаблон'
 
   '检定校准模板':
     zh-CN: '检定校准模板'
-    en-US: 'Verification & calibration template'
+    en-US: 'Verification & Calibration Template'
     ru-RU: 'Шаблон поверки и калибровки'
 
   '出厂检验模板':
     zh-CN: '出厂检验模板'
-    en-US: 'Factory inspection template'
+    en-US: 'Factory Inspection Template'
     ru-RU: 'Шаблон заводского контроля'
 
   '开箱验证模板':
     zh-CN: '开箱验证模板'
-    en-US: 'Installation acceptance template'
+    en-US: 'Installation Acceptance Template'
     ru-RU: 'Шаблон входного контроля'
 
   '开箱检验模板':
     zh-CN: '开箱检验模板'
-    en-US: 'Installation acceptance template'
+    en-US: 'Installation Acceptance Template'
     ru-RU: 'Шаблон входного контроля'
 
   '从源模板-新建模板':
     zh-CN: '从源模板-新建模板'
-    en-US: 'Create from source template'
+    en-US: 'Create from Source Template'
     ru-RU: 'Создать из исходного шаблона'
 
   '修改原模板':
     zh-CN: '修改原模板'
-    en-US: 'Modify original template'
+    en-US: 'Modify Original Template'
     ru-RU: 'Изменить исходный шаблон'
 
   '检定校准':
     zh-CN: '检定校准'
-    en-US: 'Verification & calibration'
+    en-US: 'Verification & Calibration'
     ru-RU: 'Поверка и калибровка'
 
   # ========== Excel 工作表名称 ==========
   '波长示值误差与重复性校验':
     zh-CN: '波长示值误差与重复性校验'
-    en-US: 'Wavelength accuracy & repeatability'
+    en-US: 'Wavelength Accuracy & Repeatability'
     ru-RU: 'Погрешность и повторяемость длины волны'
 
   '透射比示值误差与重复性校验':
     zh-CN: '透射比示值误差与重复性校验'
-    en-US: 'Transmittance accuracy & repeatability'
+    en-US: 'Transmittance Accuracy & Repeatability'
     ru-RU: 'Погрешность и повторяемость пропускания'
 
   '杂散光校验':
     zh-CN: '杂散光校验'
-    en-US: 'Stray light verification'
+    en-US: 'Stray Light Verification'
     ru-RU: 'Проверка рассеянного света'
 
   '基线平直度检验':
     zh-CN: '基线平直度检验'
-    en-US: 'Baseline flatness test'
+    en-US: 'Baseline Flatness Test'
     ru-RU: 'Проверка прямолинейности базовой линии'
 
   '基线暗噪声检验':
     zh-CN: '基线暗噪声检验'
-    en-US: 'Baseline dark noise test'
+    en-US: 'Baseline Dark Noise Test'
     ru-RU: 'Проверка тёмного шума базовой линии'
 
   '光谱带宽与仪器最小光谱带宽':
     zh-CN: '光谱带宽与仪器最小光谱带宽'
-    en-US: 'Spectral bandwidth & minimum bandwidth'
+    en-US: 'Spectral Bandwidth & Minimum Bandwidth'
     ru-RU: 'Спектральная полоса и минимальная полоса пропускания'
 
   '噪声检验':
     zh-CN: '噪声检验'
-    en-US: 'Noise test'
+    en-US: 'Noise Test'
     ru-RU: 'Проверка шума'
 
   '漂移检验':
     zh-CN: '漂移检验'
-    en-US: 'Drift test'
+    en-US: 'Drift Test'
     ru-RU: 'Проверка дрейфа'
 
   '波长边缘噪声':
     zh-CN: '波长边缘噪声'
-    en-US: 'Wavelength edge noise'
+    en-US: 'Wavelength Edge Noise'
     ru-RU: 'Шум на краях длины волны'
 
   # ========== Excel 指标名称 ==========
   '波长示值误差':
     zh-CN: '波长示值误差'
-    en-US: 'Wavelength error'
+    en-US: 'Wavelength Error'
     ru-RU: 'Погрешность длины волны'
 
   '波长重复性':
     zh-CN: '波长重复性'
-    en-US: 'Wavelength repeatability'
+    en-US: 'Wavelength Repeatability'
     ru-RU: 'Повторяемость длины волны'
 
   '透射比示值误差':
     zh-CN: '透射比示值误差'
-    en-US: 'Transmittance error'
+    en-US: 'Transmittance Error'
     ru-RU: 'Погрешность пропускания'
 
   '判定结果':
     zh-CN: '判定结果'
-    en-US: 'Judgment result'
+    en-US: 'Judgment Result'
     ru-RU: 'Результат оценки'
 
   # ========== 其他 ==========
@@ -308,12 +308,12 @@ messages:
 
   '期间核查提醒':
     zh-CN: '期间核查提醒'
-    en-US: 'Periodic inspection reminder'
+    en-US: 'Periodic Inspection Reminder'
     ru-RU: 'Напоминание о периодической проверке'
 
   '标准物到期提醒':
     zh-CN: '标准物到期提醒'
-    en-US: 'Standard material expiry reminder'
+    en-US: 'Standard Material Expiry Reminder'
     ru-RU: 'Напоминание об истечении срока материала'
 
   # ========== API 消息中文翻译 (自动生成) ==========
@@ -422,43 +422,43 @@ messages:
   # ========== 附件类型 ==========
   'T600A八联池':
     zh-CN: 'T600A八联池'
-    en-US: 'T600A 8-Cell changer'
+    en-US: 'T600A 8-Cell Changer'
     ru-RU: 'T600A 8-позиционный кюветодержатель'
 
   # ========== 自检项目 ==========
   '附件初始化':
     zh-CN: '附件初始化'
-    en-US: 'Accessory initialization'
+    en-US: 'Accessory Initialization'
     ru-RU: 'Инициализация аксессуаров'
   '初始化滤色片':
     zh-CN: '初始化滤色片'
-    en-US: 'Filter initialization'
+    en-US: 'Filter Initialization'
     ru-RU: 'Инициализация фильтра'
   '初始化光源电机':
     zh-CN: '初始化光源电机'
-    en-US: 'Light source motor initialization'
+    en-US: 'Light Source Motor Initialization'
     ru-RU: 'Инициализация двигателя источника света'
   '初始化波长':
     zh-CN: '初始化波长'
-    en-US: 'Wavelength initialization'
+    en-US: 'Wavelength Initialization'
     ru-RU: 'Инициализация длины волны'
   '检查钨灯能量':
     zh-CN: '检查钨灯能量'
-    en-US: 'Tungsten lamp energy check'
+    en-US: 'Tungsten Lamp Energy Check'
     ru-RU: 'Проверка энергии вольфрамовой лампы'
   '检查氘灯能量':
     zh-CN: '检查氘灯能量'
-    en-US: 'Deuterium lamp energy check'
+    en-US: 'Deuterium Lamp Energy Check'
     ru-RU: 'Проверка энергии дейтериевой лампы'
   '检查波长':
     zh-CN: '检查波长'
-    en-US: 'Wavelength check'
+    en-US: 'Wavelength Check'
     ru-RU: 'Проверка длины волны'
 
   # ========== 任务状态 ==========
   '未测':
     zh-CN: '未测'
-    en-US: 'Not tested'
+    en-US: 'Not Tested'
     ru-RU: 'Не измерено'
   '已测':
     zh-CN: '已测'
@@ -472,27 +472,27 @@ messages:
   # ========== 时间维度 ==========
   '最近一周':
     zh-CN: '最近一周'
-    en-US: 'Last week'
+    en-US: 'Last Week'
     ru-RU: 'Последняя неделя'
   '最近一个月':
     zh-CN: '最近一个月'
-    en-US: 'Last month'
+    en-US: 'Last Month'
     ru-RU: 'Последний месяц'
   '最近半年':
     zh-CN: '最近半年'
-    en-US: 'Last 6 months'
+    en-US: 'Last 6 Months'
     ru-RU: 'Последние 6 месяцев'
   '最近一年':
     zh-CN: '最近一年'
-    en-US: 'Last year'
+    en-US: 'Last Year'
     ru-RU: 'Последний год'
   '最近三年':
     zh-CN: '最近三年'
-    en-US: 'Last 3 years'
+    en-US: 'Last 3 Years'
     ru-RU: 'Последние 3 года'
   '所有时间':
     zh-CN: '所有时间'
-    en-US: 'All time'
+    en-US: 'All Time'
     ru-RU: 'Всё время'
 
   # ========== 全局响应消息 ==========
@@ -1999,7 +1999,7 @@ messages:
 
   'T600B紫外可见分光光度计状态图':
     zh-CN: 'T600B紫外可见分光光度计状态图'
-    en-US: 'T600B status chart'
+    en-US: 'T600B Status Chart'
     ru-RU: 'Диаграмма состояния T600B'
   'T600B紫外可见分光光度计':
     zh-CN: 'T600B紫外可见分光光度计'
@@ -2342,12 +2342,12 @@ messages:
   # ========== 样品类型 ==========
   '标准样品':
     zh-CN: '标准样品'
-    en-US: 'Standard sample'
+    en-US: 'Standard Sample'
     ru-RU: 'Стандартный образец'
 
   '未知样品':
     zh-CN: '未知样品'
-    en-US: 'Unknown sample'
+    en-US: 'Unknown Sample'
     ru-RU: 'Неизвестный образец'
 
   # ========== 操作日志 ==========
@@ -2373,62 +2373,62 @@ messages:
 
   '光谱扫描-扫描':
     zh-CN: '光谱扫描-扫描'
-    en-US: 'Spectral scan - Scan'
+    en-US: 'Spectral Scan - Scan'
     ru-RU: 'Спектральное сканирование'
 
   '时间扫描-扫描':
     zh-CN: '时间扫描-扫描'
-    en-US: 'Time scan - Scan'
+    en-US: 'Time Scan - Scan'
     ru-RU: 'Сканирование по времени'
 
   '光谱扫描-基线':
     zh-CN: '光谱扫描-基线'
-    en-US: 'Spectral scan - Baseline'
+    en-US: 'Spectral Scan - Baseline'
     ru-RU: 'Спектральное сканирование - Базовая линия'
 
   '时间扫描-校零':
     zh-CN: '时间扫描-校零'
-    en-US: 'Time scan - Zero calibration'
+    en-US: 'Time Scan - Zero Calibration'
     ru-RU: 'Сканирование по времени - Калибровка нуля'
 
   '光度测量-预览报告':
     zh-CN: '光度测量-预览报告'
-    en-US: 'Photometric - Preview report'
+    en-US: 'Photometric - Preview Report'
     ru-RU: 'Фотометрия - Предпросмотр отчёта'
 
   '定量测定-预览报告':
     zh-CN: '定量测定-预览报告'
-    en-US: 'Quantitative - Preview report'
+    en-US: 'Quantitative - Preview Report'
     ru-RU: 'Количественный - Предпросмотр отчёта'
 
   '光谱扫描-预览报告':
     zh-CN: '光谱扫描-预览报告'
-    en-US: 'Spectral scan - Preview report'
+    en-US: 'Spectral Scan - Preview Report'
     ru-RU: 'Спектральное сканирование - Предпросмотр отчёта'
 
   '时间扫描-预览报告':
     zh-CN: '时间扫描-预览报告'
-    en-US: 'Time scan - Preview report'
+    en-US: 'Time Scan - Preview Report'
     ru-RU: 'Сканирование по времени - Предпросмотр отчёта'
 
   '光度测量-生成报告':
     zh-CN: '光度测量-生成报告'
-    en-US: 'Photometric - Generate report'
+    en-US: 'Photometric - Generate Report'
     ru-RU: 'Фотометрия - Генерация отчёта'
 
   '定量测定-生成报告':
     zh-CN: '定量测定-生成报告'
-    en-US: 'Quantitative - Generate report'
+    en-US: 'Quantitative - Generate Report'
     ru-RU: 'Количественный - Генерация отчёта'
 
   '光谱扫描-生成报告':
     zh-CN: '光谱扫描-生成报告'
-    en-US: 'Spectral scan - Generate report'
+    en-US: 'Spectral Scan - Generate Report'
     ru-RU: 'Спектральное сканирование - Генерация отчёта'
 
   '时间扫描-生成报告':
     zh-CN: '时间扫描-生成报告'
-    en-US: 'Time scan - Generate report'
+    en-US: 'Time Scan - Generate Report'
     ru-RU: 'Сканирование по времени - Генерация отчёта'
 
   '波长校正':
@@ -2473,12 +2473,12 @@ messages:
 
   '经典模式':
     zh-CN: '经典模式'
-    en-US: 'Classic mode'
+    en-US: 'Classic Mode'
     ru-RU: 'Классический режим'
 
   '向导模式':
     zh-CN: '向导模式'
-    en-US: 'Guide mode'
+    en-US: 'Guide Mode'
     ru-RU: 'Режим мастера'
 
   # ========== RuntimeException 异常消息（经全局异常处理器返回前端） ==========
@@ -2690,12 +2690,12 @@ messages:
 
   '未检出':
     zh-CN: '未检出'
-    en-US: 'Not detected'
+    en-US: 'Not Detected'
     ru-RU: 'Не обнаружено'
 
   '单池重复':
     zh-CN: '单池重复'
-    en-US: 'Single cuvette repeat'
+    en-US: 'Single Cuvette Repeat'
     ru-RU: 'Повтор одного пула'
 
   '导出失败: ':
@@ -2957,7 +2957,7 @@ messages:
 
   '默认方法':
     zh-CN: '默认方法'
-    en-US: 'Default item'
+    en-US: 'Default Item'
     ru-RU: 'Метод по умолчанию'
 
   # ========== 预设表头名称 (t_measure_preset_head) ==========
@@ -3015,12 +3015,12 @@ messages:
 
   '期间核查任务提醒':
     zh-CN: '期间核查任务提醒'
-    en-US: 'Periodic inspection task reminder'
+    en-US: 'Periodic Inspection Task Reminder'
     ru-RU: 'Напоминание о задаче периодической проверки'
 
   '标准物质有效期到期提醒':
     zh-CN: '标准物质有效期到期提醒'
-    en-US: 'Standard material expiry reminder'
+    en-US: 'Standard Material Expiry Reminder'
     ru-RU: 'Напоминание об истечении срока стандартного материала'
 
   # ========== 样品池附件 (t_measure_pool / f_t_measure_pool) ==========
@@ -4236,23 +4236,23 @@ messages:
     ru-RU: 'Длина волны переключения лампы'
   '自动进样器':
     zh-CN: '自动进样器'
-    en-US: 'Auto sampler'
+    en-US: 'Auto Sampler'
     ru-RU: 'Автосамплер'
   '样品仓':
     zh-CN: '样品仓'
-    en-US: 'sample cell holder'
+    en-US: 'Sample Cell Holder'
     ru-RU: 'Держатель кюветы'
   '控制终端':
     zh-CN: '控制终端'
-    en-US: 'Terminal control'
+    en-US: 'Terminal Control'
     ru-RU: 'Управление терминалом'
   '附件类型':
     zh-CN: '附件类型'
-    en-US: 'Accessory model'
+    en-US: 'Accessory Model'
     ru-RU: 'Тип аксессуара'
   '灯位置':
     zh-CN: '灯位置'
-    en-US: 'Lamp mirror position'
+    en-US: 'Lamp Mirror Position'
     ru-RU: 'Положение лампы'
   'PC电脑':
     zh-CN: 'PC电脑'
@@ -6083,11 +6083,11 @@ messages:
 #    ru-RU: 'Образец'
   '修改样品信息':
     zh-CN: '修改样品信息'
-    en-US: 'Edit sample info'
+    en-US: 'Edit Sample Info'
     ru-RU: 'Изменение информации об образце'
   '修改附件参数':
     zh-CN: '修改附件参数'
-    en-US: 'Edit attachment params'
+    en-US: 'Edit Attachment Params'
     ru-RU: 'Изменение параметров аксессуара'
 
   # ========== 消息类型 (MessageTypeEnum) ==========
@@ -6133,7 +6133,7 @@ messages:
     ru-RU: 'Прибор не отвечает'
   '系统消息':
     zh-CN: '系统消息'
-    en-US: 'System message'
+    en-US: 'System Message'
     ru-RU: 'Системное сообщение'
 #  '期间核查提醒':
 #    zh-CN: '期间核查提醒'
@@ -6147,11 +6147,11 @@ messages:
   # ========== 消息内容固定片段（标准物质效期提醒等） ==========
   '已过期的标准物质':
     zh-CN: '已过期的标准物质'
-    en-US: 'Expired reference materials'
+    en-US: 'Expired Reference Materials'
     ru-RU: 'Просроченные эталонные материалы'
   '标准物质效期提醒':
     zh-CN: '标准物质效期提醒'
-    en-US: 'Reference material expiry reminder'
+    en-US: 'Reference Material Expiry Reminder'
     ru-RU: 'Напоминание о сроке эталонных материалов'
   '已过期':
     zh-CN: '已过期'
