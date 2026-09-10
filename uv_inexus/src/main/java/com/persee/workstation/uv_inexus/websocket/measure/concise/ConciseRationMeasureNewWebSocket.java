@@ -1236,7 +1236,9 @@ public class ConciseRationMeasureNewWebSocket {
         List<FRationCountDataInfo> countData = new ArrayList<>();
         FRationDataVO dataInfo = new FRationDataVO();
 
-        List<String> waveLengths = parameter.getWaveLength();
+        //测量按波长降序执行，但波长与波长系数(waveLengthParams)在parameter中按索引一一对应，
+        //不能原地排序parameter的波长列表（会导致countAbsValue按索引取系数时错乱），这里只排序副本
+        List<String> waveLengths = new ArrayList<>(parameter.getWaveLength());
         waveLengths.sort(Comparator.reverseOrder());
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
@@ -1379,7 +1381,9 @@ public class ConciseRationMeasureNewWebSocket {
         List<FRationCountDataInfo> countData = new ArrayList<>();
         FRationDataVO ans = new FRationDataVO();
 
-        List<String> waveLengths = parameter.getWaveLength();
+        //测量按波长降序执行，但波长与波长系数(waveLengthParams)在parameter中按索引一一对应，
+        //不能原地排序parameter的波长列表（会导致countAbsValue按索引取系数时错乱），这里只排序副本
+        List<String> waveLengths = new ArrayList<>(parameter.getWaveLength());
         waveLengths.sort(Comparator.reverseOrder());
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
