@@ -67,6 +67,12 @@ public class ConciseCommonController {
         return conciseCommonService.querySaveState(taskId);
     }
 
+    @GetMapping("queryTaskDataParam")
+    @ApiOperation("根据任务id查询数据参数配置(小数位数、显示选项等)")
+    public Result<FQueryDataDTO> queryTaskDataParam(@RequestParam String taskId) {
+        return conciseCommonService.queryTaskDataParam(taskId);
+    }
+
     @GetMapping("queryDeviceStatus")
     @ApiOperation("查询设备状态")
     public Result queryDeviceStatus(@RequestParam String deviceSerialNumber) {

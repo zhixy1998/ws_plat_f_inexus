@@ -297,6 +297,51 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     }
 
     /**
+     * 根据任务id查询数据参数配置(小数位数、显示选项等)
+     *
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result<FQueryDataDTO> queryTaskDataParam(String taskId) {
+        if (taskId == null) {
+            //任务id不能为空
+            return Result.fail("00000003");
+        }
+        // 根据任务id查询附属表数据参数
+        LambdaQueryWrapper<FMeasureTaskAttachment> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureTaskAttachment::getTaskId, taskId);
+        FMeasureTaskAttachment attachment = fMeasureTaskAttachmentService.getOne(queryWrapper);
+        if (attachment != null && StringUtils.hasText(attachment.getDataParam())) {
+            FQueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+            if (dataDTO == null) {
+                dataDTO = new FQueryDataDTO();
+            }
+            dataDTO.setTaskId(taskId);
+            if (dataDTO.getOption() == null) {
+                dataDTO.setOption(new ArrayList<>());
+            }
+            if (dataDTO.getAllDisplay() == null) {
+                dataDTO.setAllDisplay(false);
+            }
+            return Result.ok(dataDTO);
+        }
+        // 附件或数据参数不存在时，根据系统业务参数的测量值小数位数返回默认配置
+        FQueryDataDTO dataDTO = new FQueryDataDTO();
+        dataDTO.setTaskId(taskId);
+        dataDTO.setAllDisplay(false);
+        dataDTO.setOption(new ArrayList<>());
+        SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
+        Integer measureDigits = businessParamVO == null ? null : businessParamVO.getMeasureDigits();
+        if (measureDigits == null) {
+            measureDigits = Constants.DEFAULT_DECIMAL_NUM;
+        }
+        dataDTO.setDigit(measureDigits);
+        dataDTO.setOtherDigit(measureDigits);
+        return Result.ok(dataDTO);
+    }
+
+    /**
      * 保存草稿按钮
      *
      * @param taskId

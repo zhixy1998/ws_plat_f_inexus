@@ -38,4 +38,10 @@ public class SystemPanelConfVO {
 
     @ApiModelProperty("是否精简提示，true-是，false-否")
     private Boolean isSimpleTip;
+
+    @ApiModelProperty("是否全屏，true-是，false-否")
+    private Boolean isFullScreen;
+
+    @ApiModelProperty("是否展开导航栏，true-展开，false-收起")
+    private Boolean isExpandNavBar;
 }

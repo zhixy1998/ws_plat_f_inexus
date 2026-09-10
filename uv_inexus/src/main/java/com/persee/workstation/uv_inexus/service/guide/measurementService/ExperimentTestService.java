@@ -109,6 +109,9 @@ public interface ExperimentTestService {
     // 查询保存状态
     Result querySaveState(String taskId);
 
+    // 根据任务id查询数据参数配置(小数位数、显示选项等)
+    Result<QueryDataDTO> queryTaskDataParam(String taskId);
+
     // 方法名称重复性检查
     Result methodDuplicationCheck(String projectId, String methodName, String measureType);
 

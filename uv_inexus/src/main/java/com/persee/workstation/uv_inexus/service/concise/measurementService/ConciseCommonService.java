@@ -31,6 +31,9 @@ public interface ConciseCommonService {
     // 查询保存状态
     Result querySaveState(String taskId);
 
+    // 根据任务id查询数据参数配置(小数位数、显示选项等)
+    Result<FQueryDataDTO> queryTaskDataParam(String taskId);
+
     // 保存草稿按钮
     Result saveDraftButton(String taskId);
 
