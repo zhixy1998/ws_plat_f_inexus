@@ -15,6 +15,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakSearchParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
@@ -2540,6 +2541,18 @@ public class SpectrumNewWebSocket {
                 if (markings != null) {
                     analysisData.setGrain(JSON.toJSONString(markings));
                 }
+                // 保存本次寻峰使用的参数
+                PeakSearchParam peakSearchParam;
+                String existingPeakParam = analysisData.getPeakSearchParam();
+                if (existingPeakParam != null) {
+                    peakSearchParam = JSON.parseObject(existingPeakParam, PeakSearchParam.class);
+                } else {
+                    peakSearchParam = new PeakSearchParam();
+                }
+                peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+                peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+                peakSearchParam.setIsSelected("1");
+                analysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
                 analysisData.setColor(ColorUtil.getRandomColor());
                 analysisData.setIsDelete("0");
                 analysisData.setIsSave("1");
@@ -2581,6 +2594,18 @@ public class SpectrumNewWebSocket {
                     if (markings != null) {
                         analysisData.setGrain(JSON.toJSONString(markings));
                     }
+                    // 保存本次寻峰使用的参数
+                    PeakSearchParam peakSearchParam2;
+                    String existingPeakParam2 = analysisData.getPeakSearchParam();
+                    if (existingPeakParam2 != null) {
+                        peakSearchParam2 = JSON.parseObject(existingPeakParam2, PeakSearchParam.class);
+                    } else {
+                        peakSearchParam2 = new PeakSearchParam();
+                    }
+                    peakSearchParam2.setPeakValleyDiff(confVO.getPeakValleyDiff());
+                    peakSearchParam2.setPeakInterval(confVO.getPeakInterval());
+                    peakSearchParam2.setIsSelected("1");
+                    analysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam2));
                     analysisData.setColor(ColorUtil.getRandomColor());
                     analysisData.setIsSave("1");
                     tMeasureAnalysisDataService.saveOrUpdate(analysisData);
@@ -2612,6 +2637,18 @@ public class SpectrumNewWebSocket {
                     if (markings != null) {
                         analysis.setGrain(JSON.toJSONString(markings));
                     }
+                    // 保存本次寻峰使用的参数
+                    PeakSearchParam peakSearchParam3;
+                    String existingPeakParam3 = analysis.getPeakSearchParam();
+                    if (existingPeakParam3 != null) {
+                        peakSearchParam3 = JSON.parseObject(existingPeakParam3, PeakSearchParam.class);
+                    } else {
+                        peakSearchParam3 = new PeakSearchParam();
+                    }
+                    peakSearchParam3.setPeakValleyDiff(confVO.getPeakValleyDiff());
+                    peakSearchParam3.setPeakInterval(confVO.getPeakInterval());
+                    peakSearchParam3.setIsSelected("1");
+                    analysis.setPeakSearchParam(JSON.toJSONString(peakSearchParam3));
                     analysis.setColor(ColorUtil.getRandomColor());
                     analysis.setIsDelete("0");
                     analysis.setIsSave("1");

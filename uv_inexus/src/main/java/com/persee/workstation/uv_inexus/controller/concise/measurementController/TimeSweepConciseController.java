@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
@@ -145,6 +144,12 @@ public class TimeSweepConciseController {
     @ApiOperation("删除样品列表接口")
     public Result deleteSampleListPort(@RequestParam String taskId,@RequestParam String sampleId,@RequestParam String analysisId) {
         return timeSweepConciseService.deleteSampleListPort(taskId,sampleId,analysisId);
+    }
+
+    @GetMapping("updateSampleSelected")
+    @ApiOperation("更新样品选中状态")
+    public Result updateSampleSelected(@RequestParam String analysisId, @RequestParam String isSelected) {
+        return timeSweepConciseService.updateSampleSelected(analysisId, isSelected);
     }
 
     @GetMapping("changeTheListPort")

@@ -45,6 +45,9 @@ public interface TimeSweepService {
     // 删除样品列表接口
     Result deleteSampleListPort(String sampleId, String taskId);
 
+    // 更新样品选中状态
+    Result updateSampleSelected(String analysisId, String isSelected);
+
     // 获取变换列表接口
     Result changeTheListPort(String taskId, String type,Integer  digit);
 

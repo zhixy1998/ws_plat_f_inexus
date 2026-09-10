@@ -20,8 +20,10 @@ import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakSearchParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
@@ -36,8 +38,6 @@ import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.utils.OperateLog.LogManualUtil;
-import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
-import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
@@ -1240,6 +1240,18 @@ public class TimeNewOneWebSocket {
             if (valleys!=null){
                 analysisData.setGrain(com.alibaba.fastjson2.JSON.toJSONString(valleys));
             }
+            // 保存本次寻峰使用的参数
+            PeakSearchParam peakSearchParam;
+            String existingPeakParam = analysisData.getPeakSearchParam();
+            if (existingPeakParam != null) {
+                peakSearchParam = com.alibaba.fastjson2.JSON.parseObject(existingPeakParam, PeakSearchParam.class);
+            } else {
+                peakSearchParam = new PeakSearchParam();
+            }
+            peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+            peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+            peakSearchParam.setIsSelected("1");
+            analysisData.setPeakSearchParam(com.alibaba.fastjson2.JSON.toJSONString(peakSearchParam));
             analysisData.setColor(ColorUtil.getRandomColor());
             analysisData.setIsDelete("0");
             analysisData.setIsSave("1");

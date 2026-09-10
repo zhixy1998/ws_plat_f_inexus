@@ -36,6 +36,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.common.FTaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakSearchParam;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
@@ -1398,6 +1399,13 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     }
                     vo.setDeleteType(taskSpeciman.getDeleteType());
                 }
+                // 解析峰搜索参数
+                if (measureData != null && measureData.getPeakSearchParam() != null) {
+                    FPeakSearchParam peakParam = JSON.parseObject(measureData.getPeakSearchParam(), FPeakSearchParam.class);
+                    vo.setPeakValleyDiff(peakParam.getPeakValleyDiff());
+                    vo.setPeakInterval(peakParam.getPeakInterval());
+                    vo.setIsSelected(peakParam.getIsSelected());
+                }
                 vo.setType("0");
                 listVos.add(vo);
             }
@@ -1451,6 +1459,36 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         } else {
             //删除失败
             return Result.fail("00100008");
+        }
+    }
+
+    /**
+     * 更新样品选中状态
+     *
+     * @param analysisId
+     * @param isSelected
+     * @return
+     */
+    @Override
+    public Result updateSampleSelected(String analysisId, String isSelected) {
+        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
+        if (analysisData == null) {
+            return Result.fail("0000003D");
+        }
+        String peakSearchParamJson = analysisData.getPeakSearchParam();
+        FPeakSearchParam peakSearchParam;
+        if (peakSearchParamJson != null) {
+            peakSearchParam = JSON.parseObject(peakSearchParamJson, FPeakSearchParam.class);
+        } else {
+            peakSearchParam = new FPeakSearchParam();
+        }
+        peakSearchParam.setIsSelected(isSelected);
+        analysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
+        boolean update = fMeasureAnalysisDataService.updateById(analysisData);
+        if (update) {
+            return Result.ok();
+        } else {
+            return Result.fail("00000044");
         }
     }
 
@@ -1850,6 +1888,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (paramDto.getDistance() == null || paramDto.getDistance().isEmpty()) {
             paramDto.setDistance(confVO.getPeakValleyDiff());
         }
+        // 保存原始峰搜索参数(divide by 100前)
+        String originalHeight = paramDto.getHeight();
+        String originalDistance = paramDto.getDistance();
         double value = Double.parseDouble(paramDto.getDistance());
         int i1 = (int) value;
         if (i1 < 1) {
@@ -1922,6 +1963,17 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         analysisData.setPeak(JSON.toJSONString(peakData));
         analysisData.setGrain(JSON.toJSONString(valleyData));
+        // 保存本次寻峰使用的参数
+        FPeakSearchParam peakSearchParam;
+        String existingPeakParam = analysisData.getPeakSearchParam();
+        if (existingPeakParam != null) {
+            peakSearchParam = JSON.parseObject(existingPeakParam, FPeakSearchParam.class);
+        } else {
+            peakSearchParam = new FPeakSearchParam();
+        }
+        peakSearchParam.setPeakValleyDiff(originalHeight);
+        peakSearchParam.setPeakInterval(originalDistance);
+        analysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
         flag = fMeasureAnalysisDataService.updateById(analysisData);
         //数据保存失败
         return flag ? Result.ok() : Result.fail("00000034");
@@ -2307,6 +2359,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         tMeasureAnalysisData.setAnalysisType("0");
         tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        // 保存本次寻峰使用的参数
+        FPeakSearchParam peakSearchParam;
+        String existingPeakParam = tMeasureAnalysisData.getPeakSearchParam();
+        if (existingPeakParam != null) {
+            peakSearchParam = JSON.parseObject(existingPeakParam, FPeakSearchParam.class);
+        } else {
+            peakSearchParam = new FPeakSearchParam();
+        }
+        peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+        peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+        peakSearchParam.setIsSelected("1");
+        tMeasureAnalysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
@@ -2464,6 +2528,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         tMeasureAnalysisData.setAnalysisType("1");
         tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        // 保存本次寻峰使用的参数
+        FPeakSearchParam peakSearchParam;
+        String existingPeakParam = tMeasureAnalysisData.getPeakSearchParam();
+        if (existingPeakParam != null) {
+            peakSearchParam = JSON.parseObject(existingPeakParam, FPeakSearchParam.class);
+        } else {
+            peakSearchParam = new FPeakSearchParam();
+        }
+        peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+        peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+        peakSearchParam.setIsSelected("1");
+        tMeasureAnalysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
@@ -2605,6 +2681,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         tMeasureAnalysisData.setAnalysisType("2");
         tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        // 保存本次寻峰使用的参数
+        FPeakSearchParam peakSearchParam;
+        String existingPeakParam = tMeasureAnalysisData.getPeakSearchParam();
+        if (existingPeakParam != null) {
+            peakSearchParam = JSON.parseObject(existingPeakParam, FPeakSearchParam.class);
+        } else {
+            peakSearchParam = new FPeakSearchParam();
+        }
+        peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+        peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+        peakSearchParam.setIsSelected("1");
+        tMeasureAnalysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
@@ -2747,6 +2835,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         tMeasureAnalysisData.setAnalysisType("3");
         tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        // 保存本次寻峰使用的参数
+        FPeakSearchParam peakSearchParam;
+        String existingPeakParam = tMeasureAnalysisData.getPeakSearchParam();
+        if (existingPeakParam != null) {
+            peakSearchParam = JSON.parseObject(existingPeakParam, FPeakSearchParam.class);
+        } else {
+            peakSearchParam = new FPeakSearchParam();
+        }
+        peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+        peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+        peakSearchParam.setIsSelected("1");
+        tMeasureAnalysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
@@ -2908,6 +3008,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         tMeasureAnalysisData.setAnalysisType("4");
         tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        // 保存本次寻峰使用的参数
+        FPeakSearchParam peakSearchParam;
+        String existingPeakParam = tMeasureAnalysisData.getPeakSearchParam();
+        if (existingPeakParam != null) {
+            peakSearchParam = JSON.parseObject(existingPeakParam, FPeakSearchParam.class);
+        } else {
+            peakSearchParam = new FPeakSearchParam();
+        }
+        peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+        peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+        peakSearchParam.setIsSelected("1");
+        tMeasureAnalysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
@@ -4194,6 +4306,13 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                         vo.setOriginalData(getOriginalSampleData(measureData, digit));
                     }
                     vo.setDeleteType(taskSpeciman.getDeleteType());
+                }
+                // 解析峰搜索参数
+                if (measureData != null && measureData.getPeakSearchParam() != null) {
+                    FPeakSearchParam peakParam = JSON.parseObject(measureData.getPeakSearchParam(), FPeakSearchParam.class);
+                    vo.setPeakValleyDiff(peakParam.getPeakValleyDiff());
+                    vo.setPeakInterval(peakParam.getPeakInterval());
+                    vo.setIsSelected(peakParam.getIsSelected());
                 }
                 vo.setType("0");
                 listVos.add(vo);

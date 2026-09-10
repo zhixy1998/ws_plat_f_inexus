@@ -37,6 +37,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectru
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakSearchParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
@@ -578,6 +579,13 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                     }
                     vo.setDeleteType(taskSpeciman.getDeleteType());
                 }
+                // 解析峰搜索参数
+                if (measureData != null && measureData.getPeakSearchParam() != null) {
+                    PeakSearchParam peakParam = JSON.parseObject(measureData.getPeakSearchParam(), PeakSearchParam.class);
+                    vo.setPeakValleyDiff(peakParam.getPeakValleyDiff());
+                    vo.setPeakInterval(peakParam.getPeakInterval());
+                    vo.setIsSelected(peakParam.getIsSelected());
+                }
                 vo.setType("0");
                 listVos.add(vo);
             }
@@ -630,6 +638,36 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         } else {
             //删除失败
             return Result.fail("00100008");
+        }
+    }
+
+    /**
+     * 更新样品选中状态
+     *
+     * @param analysisId
+     * @param isSelected
+     * @return
+     */
+    @Override
+    public Result updateSampleSelected(String analysisId, String isSelected) {
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getById(analysisId);
+        if (analysisData == null) {
+            return Result.fail("0000003D");
+        }
+        String peakSearchParamJson = analysisData.getPeakSearchParam();
+        PeakSearchParam peakSearchParam;
+        if (peakSearchParamJson != null) {
+            peakSearchParam = JSON.parseObject(peakSearchParamJson, PeakSearchParam.class);
+        } else {
+            peakSearchParam = new PeakSearchParam();
+        }
+        peakSearchParam.setIsSelected(isSelected);
+        analysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
+        boolean update = tMeasureAnalysisDataService.updateById(analysisData);
+        if (update) {
+            return Result.ok();
+        } else {
+            return Result.fail("00000044");
         }
     }
 
@@ -1320,6 +1358,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (paramDto.getDistance() == null || paramDto.getDistance().isEmpty()) {
             paramDto.setDistance(confVO.getPeakInterval());
         }
+        // 保存原始峰搜索参数(divide by 100前)
+        String originalHeight = paramDto.getHeight();
+        String originalDistance = paramDto.getDistance();
         double distance = Double.parseDouble(paramDto.getDistance());
         int i1 = (int) distance;
         if (i1 < 1) {
@@ -1392,6 +1433,17 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         analysisData.setPeak(JSON.toJSONString(peakData));
         analysisData.setGrain(JSON.toJSONString(valleyData));
+        // 保存本次寻峰使用的参数
+        PeakSearchParam peakSearchParam;
+        String existingPeakParam = analysisData.getPeakSearchParam();
+        if (existingPeakParam != null) {
+            peakSearchParam = JSON.parseObject(existingPeakParam, PeakSearchParam.class);
+        } else {
+            peakSearchParam = new PeakSearchParam();
+        }
+        peakSearchParam.setPeakValleyDiff(originalHeight);
+        peakSearchParam.setPeakInterval(originalDistance);
+        analysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
         flag=tMeasureAnalysisDataService.updateById(analysisData);
         //数据保存失败
         return flag?Result.ok():Result.fail("00000034");
@@ -1846,6 +1898,18 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureAnalysisData.setAnalysisType("0");
         tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        // 保存本次寻峰使用的参数
+        PeakSearchParam peakSearchParam;
+        String existingPeakParam = tMeasureAnalysisData.getPeakSearchParam();
+        if (existingPeakParam != null) {
+            peakSearchParam = JSON.parseObject(existingPeakParam, PeakSearchParam.class);
+        } else {
+            peakSearchParam = new PeakSearchParam();
+        }
+        peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+        peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+        peakSearchParam.setIsSelected("1");
+        tMeasureAnalysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
@@ -2002,6 +2066,18 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureAnalysisData.setAnalysisType("1");
         tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        // 保存本次寻峰使用的参数
+        PeakSearchParam peakSearchParam;
+        String existingPeakParam = tMeasureAnalysisData.getPeakSearchParam();
+        if (existingPeakParam != null) {
+            peakSearchParam = JSON.parseObject(existingPeakParam, PeakSearchParam.class);
+        } else {
+            peakSearchParam = new PeakSearchParam();
+        }
+        peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+        peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+        peakSearchParam.setIsSelected("1");
+        tMeasureAnalysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
@@ -2142,6 +2218,18 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureAnalysisData.setAnalysisType("2");
         tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        // 保存本次寻峰使用的参数
+        PeakSearchParam peakSearchParam;
+        String existingPeakParam = tMeasureAnalysisData.getPeakSearchParam();
+        if (existingPeakParam != null) {
+            peakSearchParam = JSON.parseObject(existingPeakParam, PeakSearchParam.class);
+        } else {
+            peakSearchParam = new PeakSearchParam();
+        }
+        peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+        peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+        peakSearchParam.setIsSelected("1");
+        tMeasureAnalysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
@@ -2283,6 +2371,18 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureAnalysisData.setAnalysisType("3");
         tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        // 保存本次寻峰使用的参数
+        PeakSearchParam peakSearchParam;
+        String existingPeakParam = tMeasureAnalysisData.getPeakSearchParam();
+        if (existingPeakParam != null) {
+            peakSearchParam = JSON.parseObject(existingPeakParam, PeakSearchParam.class);
+        } else {
+            peakSearchParam = new PeakSearchParam();
+        }
+        peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+        peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+        peakSearchParam.setIsSelected("1");
+        tMeasureAnalysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
@@ -2443,6 +2543,18 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureAnalysisData.setAnalysisType("4");
         tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        // 保存本次寻峰使用的参数
+        PeakSearchParam peakSearchParam;
+        String existingPeakParam = tMeasureAnalysisData.getPeakSearchParam();
+        if (existingPeakParam != null) {
+            peakSearchParam = JSON.parseObject(existingPeakParam, PeakSearchParam.class);
+        } else {
+            peakSearchParam = new PeakSearchParam();
+        }
+        peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+        peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+        peakSearchParam.setIsSelected("1");
+        tMeasureAnalysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
