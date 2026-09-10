@@ -152,6 +152,11 @@ messages:
     en-US: 'Installation Acceptance'
     ru-RU: 'Входной контроль'
 
+  '安装检验':
+    zh-CN: '安装检验'
+    en-US: 'Installation Inspection'
+    ru-RU: 'Установка контроля'
+
   '出厂检验':
     zh-CN: '出厂检验'
     en-US: 'Factory Inspection'
@@ -167,8 +172,8 @@ messages:
     en-US: 'Factory Inspection Task'
     ru-RU: 'Задача заводского контроля'
 
-  '开箱检验任务':
-    zh-CN: '开箱检验任务'
+  '安装检验任务':
+    zh-CN: '安装检验任务'
     en-US: 'Installation Acceptance Task'
     ru-RU: 'Задача входного контроля'
 
@@ -208,8 +213,8 @@ messages:
     en-US: 'Installation Acceptance Template'
     ru-RU: 'Шаблон входного контроля'
 
-  '开箱检验模板':
-    zh-CN: '开箱检验模板'
+  '安装检验模板':
+    zh-CN: '安装检验模板'
     en-US: 'Installation Acceptance Template'
     ru-RU: 'Шаблон входного контроля'
 
@@ -4648,8 +4653,8 @@ messages:
 #    en-US: 'Factory Inspection'
 #    ru-RU: 'Заводской контроль'
 #
-#  '开箱检验':
-#    zh-CN: '开箱检验'
+#  '安装检验':
+#    zh-CN: '安装检验'
 #    en-US: 'Unboxing Inspection'
 #    ru-RU: 'Распаковочный контроль'
 #
@@ -5748,25 +5753,25 @@ messages:
     en-US: 'Notification - Delete'
     ru-RU: 'Notification - Delete'
 
-  # ========== 开箱检验 操作权限 ==========
-  '开箱检验-创建任务':
-    zh-CN: '开箱检验-创建任务'
+  # ========== 安装检验 操作权限 ==========
+  '安装检验-创建任务':
+    zh-CN: '安装检验-创建任务'
     en-US: 'Unboxing - Create Task'
     ru-RU: 'Unboxing - Create Task'
-  '开箱检验-查看历史任务':
-    zh-CN: '开箱检验-查看历史任务'
+  '安装检验-查看历史任务':
+    zh-CN: '安装检验-查看历史任务'
     en-US: 'Unboxing - View History'
     ru-RU: 'Unboxing - View History'
-  '开箱检验-单项测量':
-    zh-CN: '开箱检验-单项测量'
+  '安装检验-单项测量':
+    zh-CN: '安装检验-单项测量'
     en-US: 'Unboxing - Single Measure'
     ru-RU: 'Unboxing - Single Measure'
-  '开箱检验-自动测量':
-    zh-CN: '开箱检验-自动测量'
+  '安装检验-自动测量':
+    zh-CN: '安装检验-自动测量'
     en-US: 'Unboxing - Auto Measure'
     ru-RU: 'Unboxing - Auto Measure'
-  '开箱检验-停止测量':
-    zh-CN: '开箱检验-停止测量'
+  '安装检验-停止测量':
+    zh-CN: '安装检验-停止测量'
     en-US: 'Unboxing - Stop Measure'
     ru-RU: 'Unboxing - Stop Measure'
 
