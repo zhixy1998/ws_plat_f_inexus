@@ -13,6 +13,7 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService;
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.concise.common.CreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FModifySampleDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDeleteSampleDTO;
@@ -121,6 +122,11 @@ public interface RationConciseService {
     R<FRationCountDataInfo> countAbsValue(List<FRationWavelengthDataInfo> originData, FRationParameter parameter);
 
     Result<FRationSampleDataVO> querySampleData(FQueryDataDTO queryDataDTO);
+
+    /**
+     * 修改单个样品的单个表头数据（如样品名称、标准浓度等），保存成功即返回成功；重算失败时分析结果置空
+     */
+    Result<Boolean> modifySampleData(FModifySampleDataDTO dto);
 
     //暂时不用
     Result<List<Map<String, Object>>> queryStandSampleData(String taskId, Boolean allDisplay);

@@ -69,6 +69,8 @@ import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT;
@@ -626,12 +628,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail("00000020");
         }
 
-        String methodMark = newInputParam.getResultIdentity();
-        if (!Constants.PARAM_PATTERN.matcher(methodMark).matches()) {
-            //标识格式错误：必须以大写字母开头，后跟1-10位数字
-            return Result.fail("0010100A");
-        }
-
         if (!dto.getType()) {
             if (dto.getInputParamList() != null && !dto.getInputParamList().isEmpty()) {
 
@@ -688,26 +684,81 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
 
         List<String> paramList = new ArrayList<>();
+        Map<String, String> identityToLetter = new HashMap<>();
+        int letterIndex = 0;
         for (FInputParam param : inputParamList) {
-            paramList.add(param.getResultIdentity());
+            String identity = param.getResultIdentity();
+            paramList.add(identity);
+            if (!identityToLetter.containsKey(identity)) {
+                identityToLetter.put(identity, generateFormulaLetter(letterIndex++));
+            }
         }
-        // 定量测量时，系统配置的曲线参数也会参与公式计算，需要加入参数列表
-        // if (QUANTITATIVE_MEASUREMENT.name().equals(checkFormulaDto.getMeasureType())
-        //         || QUANTITATIVE_MEASUREMENT.getDescription().equals(checkFormulaDto.getMeasureType())) {
-        //     for (RationCurveParamEnums curveEnum : RationCurveParamEnums.values()) {
-        //         paramList.add(curveEnum.getIdentity());
-        //     }
-        // }
+
+        //将公式中的输入参数标识替换为大写字母，与公式计算时的转换保持一致
+        String replacedFormula = replaceFormulaIdentities(newFormula.getFormulaText(), identityToLetter);
+
+        //替换后的参数列表（A, B, C...）
+        List<String> replacedParamList = new ArrayList<>();
+        for (String param : paramList) {
+            replacedParamList.add(identityToLetter.get(param));
+        }
 
         List<String> formulaList = new ArrayList<>();
-        formulaList.add(newFormula.getFormulaText());
+        formulaList.add(replacedFormula);
 
-        R<String> verified = latexConverter.verifyFormulasAgainstParamList(paramList, formulaList);
+        R<String> verified = latexConverter.verifyFormulasAgainstParamList(replacedParamList, formulaList);
         if (!verified.getSuccess()) {
             return Result.fail(verified.getMessage());
         }
 
         return Result.ok(true);
+    }
+
+    /**
+     * 根据索引生成公式占位字母：A-Z, A1-Z1, A11-Z99
+     */
+    private String generateFormulaLetter(int index) {
+        int tier = index / 26;
+        char letter = (char) ('A' + (index % 26));
+        if (tier == 0) {
+            return String.valueOf(letter);
+        }
+        if (tier == 1) {
+            return String.valueOf(letter) + "1";
+        }
+        return String.valueOf(letter) + (tier + 9);
+    }
+
+    /**
+     * 将表达式中的输入参数标识替换为占位字母
+     */
+    private String replaceFormulaIdentities(String expression, Map<String, String> identityToLetter) {
+        if (identityToLetter == null || identityToLetter.isEmpty() || !StringUtils.hasText(expression)) {
+            return expression;
+        }
+        List<String> orderedIdentities = new ArrayList<>(identityToLetter.keySet());
+        orderedIdentities.sort((a, b) -> b.length() - a.length());
+
+        StringBuilder regex = new StringBuilder("(?<![a-zA-Z0-9_])(?:");
+        for (int i = 0; i < orderedIdentities.size(); i++) {
+            if (i > 0) {
+                regex.append("|");
+            }
+            regex.append(Pattern.quote(orderedIdentities.get(i)));
+        }
+        regex.append(")(?![a-zA-Z0-9_])");
+
+        Pattern pattern = Pattern.compile(regex.toString());
+        Matcher matcher = pattern.matcher(expression);
+        StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            String letter = identityToLetter.get(matcher.group());
+            if (letter != null) {
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(letter));
+            }
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
     }
 
 

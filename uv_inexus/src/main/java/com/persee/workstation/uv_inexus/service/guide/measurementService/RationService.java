@@ -115,6 +115,11 @@ public interface RationService {
 
     Result<RationSampleDataVO> querySampleData(QueryDataDTO queryDataDTO);
 
+    /**
+     * 修改单个样品的单个表头数据（如样品名称、标准浓度等），保存成功即返回成功；重算失败时分析结果置空
+     */
+    Result<Boolean> modifySampleData(ModifySampleDataDTO dto);
+
 
     Result<List<Map<String, Object>>> queryUnknowSampleData(String taskId, Boolean allDisplay);
 

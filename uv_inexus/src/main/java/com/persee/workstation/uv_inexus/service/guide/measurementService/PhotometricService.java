@@ -101,6 +101,11 @@ public interface PhotometricService {
     Result<List<Map<String, Object>>> queryData(QueryDataDTO queryDataDTO);
 
     /**
+     * 修改单个样品的单个表头数据（如样品名称等），样品表头修改后自动重新计算分析结果
+     */
+    Result<Map<String, String>> modifySampleData(ModifySampleDataDTO dto);
+
+    /**
      * 计算公式
      */
     R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, TMeasureSample sample, TMeasureTask task, PhotometricParameter parameter, Integer digit);

@@ -21,7 +21,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
@@ -934,7 +933,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (attachmentR.getSuccess()) {
             TMeasureTaskAttachment attachment = attachmentR.getData();
             if (StringUtils.hasText(attachment.getDataParam())) {
-                FQueryDataDTO queryDataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+                QueryDataDTO queryDataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
                 if (queryDataDTO.getDigit() != null) {
                     digit = queryDataDTO.getDigit();
                 }
@@ -1967,30 +1966,47 @@ public class PhotometricServiceImpl implements PhotometricService {
             }
         }
 
+        // 输入参数的标识较自由(可能含有 '-' 等特殊字符，例如 Abs-Blank、C-fit)，计算服务难以将其与运算符区分。
+        // 这里按输入参数顺序为每个参数分配唯一占位字母(A, B, ..., Z, A1, B1, ...)，
+        // 并将公式中引用的标识同步替换为该占位字母，保证“标识串”与“数值串”按位置一一对应、计算结果准确。
+        // 输入参数可能多于公式实际引用的参数，未被引用的参数仅作为冗余变量传入，不影响计算。
+        List<InputParamMapTableHead> mapRelation = snapshot.getMapRelation();
+
+        // 输入参数标识 -> 占位字母（用于同步替换公式中的标识）
+        Map<String, String> identityToLetter = new LinkedHashMap<>();
+        StringBuilder identity = new StringBuilder();
         StringBuilder values = new StringBuilder();
 
-        StringBuilder identity = new StringBuilder();
-
-        List<InputParamMapTableHead> mapRelation = snapshot.getMapRelation();
+        int letterIndex = 0;
         for (InputParamMapTableHead relation : mapRelation) {
-
             String s = allData.getString(relation.getHeadIdentity());
             if (!StringUtils.hasText(s)) {
                 //缺少数据！
                 return R.fail("00300006");
             }
-            identity.append(relation.getParamIdentity()).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
-            values.append(s).append(",");
-        }
 
-        identity.deleteCharAt(identity.length()-1);
-        values.deleteCharAt(values.length()-1);
+            String letter = generateFormulaLetter(letterIndex++);
+            identity.append(letter).append(",");
+            values.append(s).append(",");
+
+            // 同一标识只记录首个占位字母，避免重复标识造成替换歧义
+            String paramIdentity = relation.getParamIdentity();
+            if (StringUtils.hasText(paramIdentity) && !identityToLetter.containsKey(paramIdentity)) {
+                identityToLetter.put(paramIdentity, letter);
+            }
+        }
+        if (identity.length() > 0) {
+            identity.deleteCharAt(identity.length() - 1);
+            values.deleteCharAt(values.length() - 1);
+        }
 
         List<PhotometricCountDataInfo> countList = new ArrayList<>();
         for (PreCountResultParam param : parameter.getResultParams()) {
             String[] split = param.getFormulaText().split("=");
             String text = split[split.length - 1];
+            // 将公式中的自由标识同步替换为占位字母
+            text = replaceFormulaIdentities(text, identityToLetter);
             String result = restUtil.sum(text, identity.toString(), values.toString());
             PhotometricCountDataInfo countDataInfo = new PhotometricCountDataInfo();
             BeanUtils.copyProperties(param, countDataInfo);
@@ -2005,6 +2021,61 @@ public class PhotometricServiceImpl implements PhotometricService {
         }
 
         return R.ok(countList);
+    }
+
+    /**
+     * 根据序号生成公式占位字母：A, B, ..., Z, A1, B1, ..., Z1, A11, B11, ..., Z11, A12, ..., Z99, ...
+     * 用于替换公式中自由命名的输入参数标识，避免特殊字符(如 '-')导致计算服务无法识别变量。
+     * 注意：输入参数本身可能就是 A/B/C 等单字母(如波长绑定)，replaceFormulaIdentities 会一次性
+     * 同步替换(长标识优先 + 字符边界断言)，匹配器只扫描原始表达式、不重扫已替换结果，
+     * 故单字母标识的取值与参数匹配同样准确；超过 26 个时依次使用 A1/B1、A11/B11 等占位字母。
+     */
+    private String generateFormulaLetter(int index) {
+        int tier = index / 26;
+        char letter = (char) ('A' + (index % 26));
+        if (tier == 0) {
+            return String.valueOf(letter);
+        }
+        if (tier == 1) {
+            return String.valueOf(letter) + "1";
+        }
+        // tier >= 2: 后缀从 11 开始递增(tier=2 -> 11, tier=3 -> 12, ..., tier=90 -> 99)
+        return String.valueOf(letter) + (tier + 9);
+    }
+
+    /**
+     * 将公式表达式中的输入参数标识同步替换为占位字母。
+     * 标识按长度降序匹配(长标识优先)，并以字符边界断言保证只匹配完整标识，
+     * 避免短标识误匹配长标识子串、数字(如科学计数法 1E5 中的 E)或函数名中的字母。
+     */
+    private String replaceFormulaIdentities(String expression, Map<String, String> identityToLetter) {
+        if (identityToLetter == null || identityToLetter.isEmpty() || !StringUtils.hasText(expression)) {
+            return expression;
+        }
+        // 按长度降序，长标识优先匹配，避免短标识误匹配长标识的子串
+        List<String> orderedIdentities = new ArrayList<>(identityToLetter.keySet());
+        orderedIdentities.sort((a, b) -> b.length() - a.length());
+
+        StringBuilder regex = new StringBuilder("(?<![a-zA-Z0-9_])(?:");
+        for (int i = 0; i < orderedIdentities.size(); i++) {
+            if (i > 0) {
+                regex.append("|");
+            }
+            regex.append(Pattern.quote(orderedIdentities.get(i)));
+        }
+        regex.append(")(?![a-zA-Z0-9_])");
+
+        Pattern pattern = Pattern.compile(regex.toString());
+        Matcher matcher = pattern.matcher(expression);
+        StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            String letter = identityToLetter.get(matcher.group());
+            if (letter != null) {
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(letter));
+            }
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
     }
 
 
@@ -2045,6 +2116,16 @@ public class PhotometricServiceImpl implements PhotometricService {
         TMeasureTaskAttachment attachment = attachmentResult.getData();
         if (attachment == null) {
             attachment = new TMeasureTaskAttachment();
+        }
+
+        //判断小数位数是否一致，决定是否需要重算
+        boolean needReCount = true;
+        if (StringUtils.hasText(attachment.getDataParam())) {
+            QueryDataDTO lastDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
+            Integer lastDigit = lastDTO.getDigit();
+            if (lastDigit != null && lastDigit.equals(digit)) {
+                needReCount = false;
+            }
         }
 
         attachment.setTaskId(taskId);
@@ -2156,7 +2237,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                             map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
                             map.put("samplingTime", data.getSamplingTime());
                         }
-                        Map<String, String> countData = getCountData(task, sample, parameter, digit, wlDataList);
+                        Map<String, String> countData = getCountData(task, sample, parameter, digit, wlDataList, needReCount);
                         map.putAll(countData);
                     }
                 }
@@ -2271,7 +2352,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                         countDataList.forEach((key, value) -> middle.add(value));
 
                         map.put("children", middle);
-                        Map<String, String> countData = getCountData(task, sample, parameter, digit, wlDataList);
+                        Map<String, String> countData = getCountData(task, sample, parameter, digit, wlDataList, needReCount);
                         map.putAll(countData);
                     }
                     map.put("remark", data.getRemark());
@@ -2305,12 +2386,263 @@ public class PhotometricServiceImpl implements PhotometricService {
             }
 
             ans.add(map);
+
         }
 
         return Result.ok(ans);
     }
 
-    public Map<String,String> getCountData(TMeasureTask task, TMeasureSample sample, PhotometricParameter parameter, Integer digit, List<PhotometricOriginDataInfo> wlDataList) {
+    /**
+     * 修改单个样品的单个表头数据。仅system/sample/data定位允许修改；
+     * 样品表头变化后重算该样品公式并更新分析结果；保存成功即返回成功，重算失败仅置空该样品分析结果。
+     */
+    @Override
+    public Result<Map<String, String>> modifySampleData(ModifySampleDataDTO dto) {
+        if (dto == null || !StringUtils.hasText(dto.getTaskId())) {
+            //任务id不能为空
+            return Result.fail("00000003");
+        }
+        if (!StringUtils.hasText(dto.getSampleId())) {
+            //缺少样品id
+            return Result.fail("0000001C");
+        }
+        if (!StringUtils.hasText(dto.getIdentity())) {
+            //缺少参数
+            return Result.fail("00000007");
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(dto.getTaskId());
+        if (task == null) {
+            //没有找到该任务
+            return Result.fail("00000004");
+        }
+        TMeasureSample sample = tMeasureSampleService.getById(dto.getSampleId());
+        if (sample == null) {
+            //样品不存在
+            return Result.fail("0000000B");
+        }
+        //样品必须属于该任务
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        boolean inTask = taskSpecimen != null && taskSpecimen.stream()
+                .anyMatch(s -> dto.getSampleId().equals(s.getSpecimenKey()));
+        if (!inTask) {
+            //样品不存在
+            return Result.fail("0000000B");
+        }
+
+        //从任务快照中查找目标表头，确定locate
+        HeadVO targetHead = null;
+        TaskHeadSnapshot snapshot = null;
+        if (StringUtils.hasText(task.getTableInfo())) {
+            snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+            if (snapshot != null) {
+                if (snapshot.getTaskHeads() != null) {
+                    targetHead = snapshot.getTaskHeads().stream()
+                            .filter(h -> dto.getIdentity().equals(h.getIdentity()))
+                            .findFirst().orElse(null);
+                }
+                if (targetHead == null && snapshot.getSampleHeads() != null) {
+                    targetHead = snapshot.getSampleHeads().stream()
+                            .filter(h -> dto.getIdentity().equals(h.getIdentity()))
+                            .findFirst().orElse(null);
+                }
+            }
+        }
+        //任务未生成快照时，回退到系统预置表头查询（与tableHead的回退逻辑一致）
+        if (targetHead == null && StringUtils.hasText(task.getMeasureType())) {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(task.getMeasureType(), null);
+            if (preHead != null) {
+                targetHead = preHead.stream()
+                        .filter(h -> dto.getIdentity().equals(h.getIdentity()))
+                        .findFirst().orElse(null);
+            }
+        }
+        if (targetHead == null) {
+            //表头不存在（可能是波长测量列、分析结果列等动态表头）
+            return Result.fail("00300025");
+        }
+        String locate = targetHead.getLocate();
+        boolean isSystem = TableHeadILocateEnums.system.getIdentity().equals(locate);
+        boolean isSample = TableHeadILocateEnums.sample.getIdentity().equals(locate);
+        boolean isData = TableHeadILocateEnums.data.getIdentity().equals(locate);
+        if (!isSystem && !isSample && !isData) {
+            //measure/analyze/curve/other/remark/location等定位不允许修改
+            return Result.fail("00300025");
+        }
+
+        //保留修改前样品用于日志对比
+        TMeasureSample oldSample = JSON.parseObject(JSON.toJSONString(sample), TMeasureSample.class);
+
+        if (isSystem) {
+            //系统预置表头：保存到样品对应字段
+            switch (dto.getIdentity()) {
+                case "sampleName":
+                    if (dto.getValue() != null && dto.getValue().length() > 256) {
+                        return Result.fail("00B02004");
+                    }
+                    sample.setSampleName(dto.getValue());
+                    break;
+                case "sampleNumber":
+                    if (dto.getValue() != null && dto.getValue().length() > 256) {
+                        return Result.fail("00B02003");
+                    }
+                    //样品编号不能与同任务其他样品重复
+                    String no = dto.getValue();
+                    if (StringUtils.hasText(no)) {
+                        for (TaskSpecimen specimen : taskSpecimen) {
+                            if (specimen.getSpecimenKey().equals(dto.getSampleId())) {
+                                continue;
+                            }
+                            TMeasureSample other = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                            if (other != null && no.equals(other.getSampleNumber())) {
+                                //标准样品编号重复
+                                return Result.fail("00102001");
+                            }
+                        }
+                    }
+                    sample.setSampleNumber(no);
+                    break;
+                case "sampleType":
+                    //表格中展示的是名称，存储的是编码，这里做兼容转换
+                    sample.setSampleType(convertSampleTypeValue(dto.getValue()));
+                    break;
+                case "sampleLocation":
+                    sample.setSampleLocation(dto.getValue());
+                    break;
+                default:
+                    return Result.fail("00300025");
+            }
+        } else {
+            //样品表头/测量页用户新增表头：保存到样品newColData
+            Map<String, String> newColData;
+            if (StringUtils.hasText(sample.getNewColData())) {
+                newColData = JSON.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
+            } else {
+                newColData = new HashMap<>();
+            }
+            if (dto.getValue() == null) {
+                newColData.remove(dto.getIdentity());
+            } else {
+                newColData.put(dto.getIdentity(), dto.getValue());
+            }
+            sample.setNewColData(JSON.toJSONString(newColData));
+        }
+
+        //样品表头/用户新增表头数据可能被公式引用，修改后需要重新分析计算
+        Map<String, String> countResult = new HashMap<>();
+        if ((isSample || isData) && snapshot != null
+                && snapshot.getMapRelation() != null && !snapshot.getMapRelation().isEmpty()) {
+            PhotometricParameter parameter = null;
+            if (StringUtils.hasText(task.getMethodKey())) {
+                TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+                if (method != null && StringUtils.hasText(method.getMeasurementParamInfo())) {
+                    parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+                }
+            }
+            if (parameter != null && parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
+                LambdaQueryWrapper<TMeasureData> dataQueryWrapper = new LambdaQueryWrapper<>();
+                dataQueryWrapper.eq(TMeasureData::getTaskId, task.getId())
+                        .eq(TMeasureData::getSampleKey, sample.getId())
+                        .orderByDesc(TMeasureData::getSerialNumber)
+                        .last("limit 1");
+                TMeasureData data = tMeasureDataService.getOne(dataQueryWrapper);
+                if (data != null && StringUtils.hasText(data.getOriginalCalculationData())) {
+                    List<PhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), PhotometricOriginDataInfo.class);
+                    //小数位数取任务保存的显示配置，无则用默认值
+                    Integer digit = null;
+                    R<TMeasureTaskAttachment> attachmentResult = tMeasureTaskAttachmentService.queryByTaskId(task.getId());
+                    if (attachmentResult.getSuccess() && attachmentResult.getData() != null
+                            && StringUtils.hasText(attachmentResult.getData().getDataParam())) {
+                        QueryDataDTO lastDTO = JSON.parseObject(attachmentResult.getData().getDataParam(), QueryDataDTO.class);
+                        if (lastDTO != null) {
+                            digit = lastDTO.getDigit();
+                        }
+                    }
+                    if (digit == null || digit < 0) {
+                        digit = Constants.DEFAULT_DECIMAL_NUM;
+                    }
+                    //重算失败不拦截保存：置空该样品分析结果，保存修改后正常返回
+                    R<List<PhotometricCountDataInfo>> formulaResult = formula(wlDataList, sample, task, parameter, digit);
+                    if (!formulaResult.getSuccess()) {
+                        log.warn("样品公式重算失败，taskId:{}, sampleId:{}, code:{}", task.getId(), sample.getId(), formulaResult.getMessageCode());
+                        clearAnalysisResult(task.getId(), sample.getId());
+                    } else {
+                        List<PhotometricCountDataInfo> formulaData = dataRounding(formulaResult.getData(), parameter);
+                        for (PhotometricCountDataInfo count : formulaData) {
+                            countResult.put(count.getResultIdentity() + "-" + count.getFormulaText(), count.getCountValue());
+                        }
+                        //保存新的计算结果到分析数据
+                        saveAnalysisResult(task.getId(), sample.getId(), data.getId(), formulaData);
+                    }
+                }
+            }
+        }
+
+        boolean updated = tMeasureSampleService.updateById(sample);
+        if (!updated) {
+            //系统出错
+            return Result.fail("00000014");
+        }
+        LogManualUtil.saveUpdateLog("实验测试-向导模式-光度测量-修改样品数据", oldSample, sample, dto.getUpdateBy(), dto);
+
+        return Result.ok(countResult);
+    }
+
+    /**
+     * 样品类型值转换：表格展示的是名称，样品表存储的是编码，两者兼容
+     */
+    private String convertSampleTypeValue(String value) {
+        if (!StringUtils.hasText(value)) {
+            return value;
+        }
+        for (SampleTypeEnum e : SampleTypeEnum.values()) {
+            if (e.getIdentity().equals(value)) {
+                return value;
+            }
+        }
+        for (SampleTypeEnum e : SampleTypeEnum.values()) {
+            if (e.getName().equals(value)) {
+                return e.getIdentity();
+            }
+        }
+        return value;
+    }
+
+    /**
+     * 保存重新计算后的分析结果（就地更新最新一条分析数据，不存在时新建）
+     */
+    private void saveAnalysisResult(String taskId, String sampleId, String measureDataId, List<PhotometricCountDataInfo> countList) {
+        LambdaQueryWrapper<TMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                .eq(TMeasureAnalysisData::getSampleKey, sampleId)
+                .orderByDesc(TMeasureAnalysisData::getDataVersion)
+                .last("limit 1");
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
+        if (analysisData != null) {
+            analysisData.setAnalysisResult(JSON.toJSONString(countList));
+        } else {
+            analysisData = new TMeasureAnalysisData();
+            analysisData.setTaskId(taskId);
+            analysisData.setSampleKey(sampleId);
+            analysisData.setAnalysisResult(JSON.toJSONString(countList));
+            analysisData.setDataVersion(0);
+            analysisData.setMeasureDataId(measureDataId);
+            analysisData.setIsDelete(createType);
+        }
+        tMeasureAnalysisDataService.saveOrUpdate(analysisData);
+    }
+
+    /**
+     * 重算失败时置空样品的分析结果（updateById默认忽略null字段，需用UpdateWrapper）
+     */
+    private void clearAnalysisResult(String taskId, String sampleId) {
+        tMeasureAnalysisDataService.update(Wrappers.lambdaUpdate(TMeasureAnalysisData.class)
+                .set(TMeasureAnalysisData::getAnalysisResult, null)
+                .eq(TMeasureAnalysisData::getTaskId, taskId)
+                .eq(TMeasureAnalysisData::getSampleKey, sampleId));
+    }
+
+    public Map<String,String> getCountData(TMeasureTask task, TMeasureSample sample, PhotometricParameter parameter, Integer digit, List<PhotometricOriginDataInfo> wlDataList, boolean needReCount) {
 
         Map<String, String> map = new HashMap<>();
 
@@ -2322,36 +2654,46 @@ public class PhotometricServiceImpl implements PhotometricService {
                 .last("limit 1");
         TMeasureData data = tMeasureDataService.getOne(queryWrapper);
 
-        R<List<PhotometricCountDataInfo>> formula = formula(wlDataList, sample, task, parameter, digit);
-        if (formula.getSuccess()) {
-            List<PhotometricCountDataInfo> formulaData = formula.getData();
+        LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+        analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, task.getId())
+                .eq(TMeasureAnalysisData::getSampleKey, sample.getId());
+        if (data != null) {
+            analysisDataQueryWrapper.eq(TMeasureAnalysisData::getMeasureDataId, data.getId());
+        }
+        analysisDataQueryWrapper.orderByDesc(TMeasureAnalysisData::getDataVersion).last("limit 1");
+        TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
 
-            formulaData = dataRounding(formulaData, parameter);
-            for (PhotometricCountDataInfo count : formulaData) {
-                String s = count.getCountValue();
-                map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
+        if (needReCount) {
+            //需要重算：先清掉原来的计算结果，避免旧结果残留
+            if (one != null && StringUtils.hasText(one.getAnalysisResult())) {
+                one.setAnalysisResult(null);
+                tMeasureAnalysisDataService.update(one, analysisDataQueryWrapper);
             }
-        } else {
-            LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
-            analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, task.getId())
-                    .eq(TMeasureAnalysisData::getSampleKey, sample.getId());
-            if (data != null) {
-                analysisDataQueryWrapper.eq(TMeasureAnalysisData::getMeasureDataId, data.getId());
+
+            R<List<PhotometricCountDataInfo>> formula = formula(wlDataList, sample, task, parameter, digit);
+            if (formula.getSuccess()) {
+                List<PhotometricCountDataInfo> formulaData = formula.getData();
+
+                formulaData = dataRounding(formulaData, parameter);
+                for (PhotometricCountDataInfo count : formulaData) {
+                    String s = count.getCountValue();
+                    map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
+                }
+                return map;
             }
-            analysisDataQueryWrapper.orderByDesc(TMeasureAnalysisData::getDataVersion).last("limit 1");
+        }
 
-            TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-            if (one != null) {
-                List<PhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), PhotometricCountDataInfo.class);
+        //不需要重算 或 formula失败：从 analysisResult 读取旧结果
+        if (one != null) {
+            List<PhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), PhotometricCountDataInfo.class);
 
-                countList = dataRounding(countList, parameter);
+            countList = dataRounding(countList, parameter);
 
-                if (countList != null) {
-                    for (PhotometricCountDataInfo count : countList) {
-                        if (count.getCountValue() != null) {
-                            String s = count.getCountValue();
-                            map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
-                        }
+            if (countList != null) {
+                for (PhotometricCountDataInfo count : countList) {
+                    if (count.getCountValue() != null) {
+                        String s = count.getCountValue();
+                        map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
                     }
                 }
             }

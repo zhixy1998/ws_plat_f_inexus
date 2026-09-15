@@ -102,6 +102,11 @@ public interface PhotometricConciseService {
     Result<List<Map<String, Object>>> queryData(FQueryDataDTO queryDataDTO);
 
     /**
+     * 修改单个样品的单个表头数据（如样品名称等），样品表头修改后自动重新计算分析结果
+     */
+    Result<Map<String, String>> modifySampleData(FModifySampleDataDTO dto);
+
+    /**
      * 重新分析数据
      */
     R<Boolean> reAnalyze(String taskId, String updateBy);

@@ -125,7 +125,8 @@ public enum CalibrationTypeEnum {
     //期间核查任务
     PERIODIC_INSPECTION("periodic_inspection", "期间核查"),
     //开箱检验任务
-    OPEN_BOX_INSPECTION("installation_acceptance", "开箱检验"),
+//    OPEN_BOX_INSPECTION("installation_acceptance", "开箱检验"),
+    OPEN_BOX_INSPECTION("installation_acceptance", "安装检验"),
 
     //出厂检验任务
     FACTORY_INSPECTION("factory_inspection", "出厂检验"),

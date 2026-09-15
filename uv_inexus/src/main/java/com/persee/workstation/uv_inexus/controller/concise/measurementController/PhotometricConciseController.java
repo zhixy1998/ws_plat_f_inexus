@@ -13,6 +13,7 @@ import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.config.logging.SysLog;
 import com.persee.workstation.uv_inexus.dto.concise.common.CreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.FModifySampleDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
@@ -175,6 +176,13 @@ public class PhotometricConciseController {
     @ApiOperation("获取数据信息接口")
     public Result<List<Map<String, Object>>> queryDataInfo(@RequestBody FQueryDataDTO queryDataDTO) {
         return fPhotometricService.queryData(queryDataDTO);
+    }
+
+    @OperateLog(module = "实验测试-经典模式-光度测量-修改样品数据", description = "执行实验测试-经典模式-光度测量-修改样品数据操作", recordParams = true, ignore = true)
+    @PostMapping("modifySampleData")
+    @ApiOperation("修改样品数据接口（单个样品单个表头，如样品名称等）")
+    public Result<Map<String, String>> modifySampleData(@RequestBody FModifySampleDataDTO dto) {
+        return fPhotometricService.modifySampleData(dto);
     }
 
     @GetMapping("reAnalyze")
