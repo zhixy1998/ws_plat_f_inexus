@@ -1721,6 +1721,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             } catch (Exception e) {
                 log.error("解析任务里的校零参数异常: {}", e.getMessage());
             }
+            generateTableInfo(task.getId(), method.getId(), false);
 
             return Result.ok(vo);
         }
@@ -1764,6 +1765,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         boolean save = fMeasureTaskService.save(fMeasureTask);
         vo.setTaskId(fMeasureTask.getId());
         vo.setTaskName(fMeasureTask.getTaskName());
+        generateTableInfo(fMeasureTask.getId(), vo.getMethodId(), false);
         return Result.ok(vo);
     }
 
