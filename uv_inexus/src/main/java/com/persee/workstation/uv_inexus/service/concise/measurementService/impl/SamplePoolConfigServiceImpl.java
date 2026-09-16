@@ -101,7 +101,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         List<FSamplePoolStatus> poolInfo = new ArrayList<>();
         poolInfo.add(createStatus(0, sphereUsedEnum.RS.getCode(), "漫反射：纸板、哑光板材、粉末压片、粗糙塑料等无镜面反光样品"));
         poolInfo.add(createStatus(1, sphereUsedEnum.SR.getCode(), "总反射：抛光金属、光盘、高光泽塑料"));
-        poolInfo.add(createStatus(2, sphereUsedEnum.RS.getCode(), "透过率：薄膜、镜片、太阳膜"));
+        poolInfo.add(createStatus(2, sphereUsedEnum.SR.getCode(), "透过率：薄膜、镜片、太阳膜"));
         return poolInfo;
     }
 
