@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
 import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.ModifySampleDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskHeadSnapshotDTO;
@@ -161,6 +162,13 @@ public class PhotometricController {
     @ApiOperation("获取数据信息接口")
     public Result<List<Map<String, Object>>> queryDataInfo(@RequestBody QueryDataDTO queryDataDTO) {
         return photometricService.queryData(queryDataDTO);
+    }
+
+    @OperateLog(module = "实验测试-向导模式-光度测量-修改样品数据", description = "执行实验测试-向导模式-光度测量-修改样品数据操作", recordParams = true, ignore = true)
+    @PostMapping("modifySampleData")
+    @ApiOperation("修改样品数据接口（单个样品单个表头，如样品名称等）")
+    public Result<Map<String, String>> modifySampleData(@RequestBody ModifySampleDataDTO dto) {
+        return photometricService.modifySampleData(dto);
     }
 
     @PostMapping("saveDataInfo")

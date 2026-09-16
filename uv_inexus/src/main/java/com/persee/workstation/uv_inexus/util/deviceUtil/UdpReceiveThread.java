@@ -109,6 +109,14 @@ public class UdpReceiveThread {
                             if (socket.isClosed()) {
                                 return;
                             }
+                            // 网卡变动（如USB网口拔出）时receive会持续抛异常，
+                            // 短暂休眠避免CPU空转，等待socket重建
+                            try {
+                                Thread.sleep(200);
+                            } catch (InterruptedException ie) {
+                                Thread.currentThread().interrupt();
+                                return;
+                            }
                         } catch (Exception e) {
                             if (wifiRunning) {
                                 System.out.println(socket.getSoTimeout());
@@ -178,6 +186,14 @@ public class UdpReceiveThread {
                                 System.err.println("以太网Socket异常关闭: " + e.getMessage());
                             }
                             if (socket.isClosed()) {
+                                return;
+                            }
+                            // 网卡变动（如USB网口拔出）时receive会持续抛异常，
+                            // 短暂休眠避免CPU空转，等待socket重建
+                            try {
+                                Thread.sleep(200);
+                            } catch (InterruptedException ie) {
+                                Thread.currentThread().interrupt();
                                 return;
                             }
                         } catch (Exception e) {

@@ -1590,12 +1590,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             Integer i = infoService.queryDeviceActivationStatus(vo.getDeviceSerialNumber());
 
-            if (i.equals(Constants.DEVICE_ACTIVE_NO)) {
-                boolean b = checkDog();
-                if (b) {
-                    i = Constants.DEVICE_ACTIVE_YES;
-                }
-            }
+//            if (i.equals(Constants.DEVICE_ACTIVE_NO)) {
+//                boolean b = checkDog();
+//                if (b) {
+//                    i = Constants.DEVICE_ACTIVE_YES;
+//                }
+//            }
+            i = Constants.DEVICE_ACTIVE_YES;
 
             info.setIsActivated(i);
 

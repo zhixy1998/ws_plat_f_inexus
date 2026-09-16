@@ -1912,6 +1912,17 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         String deviceId = info.getDeviceId();
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        if (device == null) {
+            // 设备连接信息已被移除但数据库状态未同步（异常断线路径漏更新状态），
+            // 按断线处理：同步数据库状态为断开，避免实时回显持续拿到失败结果又被当作设备忙死循环
+            log.warn("设备连接信息不存在，按断线处理，deviceId={}", deviceId);
+            if (Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
+                info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+                infoService.saveOrUpdateInfo(info);
+            }
+            udpSendUtil.stopHeartbeat(deviceId);
+            return R.fail(DeviceConstants.unCountResponse);
+        }
         String xmlKey = device.getXmlKey();
         Integer connectType = device.getConnectType();
 

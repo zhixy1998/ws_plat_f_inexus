@@ -9,8 +9,8 @@
 
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.concise.common.CreateSampleDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.FModifySampleDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDeleteSampleDTO;
@@ -165,6 +165,13 @@ public class RationConciseController {
     @ApiOperation("查询样品数据接口")
     public Result<FRationSampleDataVO> querySampleData(@RequestBody FQueryDataDTO queryDataDTO) {
         return rationService.querySampleData(queryDataDTO);
+    }
+
+    @OperateLog(module = "实验测试-经典模式-定量测量-修改样品数据", description = "执行实验测试-经典模式-定量测量-修改样品数据操作", recordParams = true, ignore = true)
+    @PostMapping("modifySampleData")
+    @ApiOperation("修改样品数据接口（单个样品单个表头，如样品名称、标准浓度等）")
+    public Result<Boolean> modifySampleData(@RequestBody FModifySampleDataDTO dto) {
+        return rationService.modifySampleData(dto);
     }
 
     @GetMapping("getCurveInfo")
