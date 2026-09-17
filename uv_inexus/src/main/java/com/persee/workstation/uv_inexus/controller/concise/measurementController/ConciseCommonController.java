@@ -228,6 +228,18 @@ public class ConciseCommonController {
         return conciseCommonService.newReportTableDataQuery(taskId, analysisId,allDisplay,digit,showType,isOneSample);
     }
 
+    @GetMapping("reAnalyze")
+    @ApiOperation("重新分析")
+    public Result reAnalyse(@RequestParam String taskId,
+                            @RequestParam String updateBy) {
+        R<Boolean> r = conciseCommonService.reAnalyze(taskId, updateBy);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
 
     @PostMapping("isAddSample")
     @ApiOperation("是否添加样品")

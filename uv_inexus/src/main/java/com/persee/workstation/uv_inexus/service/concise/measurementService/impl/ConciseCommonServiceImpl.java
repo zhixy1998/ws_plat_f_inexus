@@ -2271,6 +2271,49 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         return Result.ok(resultList);
     }
 
+    @Override
+    public R<Boolean> reAnalyze(String taskId, String updateBy) {
+        if(!StringUtils.hasText(taskId)){
+            return R.fail("00000003");
+        }
+
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return R.fail("00000004");
+        }
+        String measureType = task.getMeasureType();
+
+        MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
+        if (measureTypeEnum == null){
+            return R.fail("00305002");
+        }
+        switch (Objects.requireNonNull(measureTypeEnum)) {
+            case PHOTOMETRIC_MEASUREMENT:
+                return photometricService.reAnalyze(taskId, updateBy);
+            case QUANTITATIVE_MEASUREMENT:{
+                Integer digit = Constants.DEFAULT_DECIMAL_NUM;
+
+                R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(task.getId());
+                if (attachmentR.getSuccess()) {
+                    FMeasureTaskAttachment attachment = attachmentR.getData();
+                    if (StringUtils.hasText(attachment.getDataParam())) {
+                        FQueryDataDTO queryDataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+                        if (queryDataDTO.getDigit() != null) {
+                            digit = queryDataDTO.getDigit();
+                        }
+                    }
+                }
+                rationConciseService.changeStandSampleDataDigit(taskId, digit);
+                rationConciseService.changeUnknowSampleDigit(taskId, digit);
+                return R.ok(true);
+
+            }
+            default:
+                log.info("其他测量类型无需分析");
+                return R.ok(true);
+        }
+    }
+
     @PreDestroy //
     public void cleanDeletedData() {
         // 清理30天前被逻辑删除的数据
