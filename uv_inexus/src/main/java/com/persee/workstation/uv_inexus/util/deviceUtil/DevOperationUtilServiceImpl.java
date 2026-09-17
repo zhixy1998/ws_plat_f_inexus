@@ -31,12 +31,14 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.Sampl
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceUsageLogService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.ConnectEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.DefaultStatusCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.*;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionCmdEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.DetectionManyDevicesLampStatus;
 import lombok.Data;
@@ -103,6 +105,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     @Autowired
     SpectrumResultCalculator spectrumResultCalculator;
 
+
+    @Autowired
+    SystemBusinessParamService businessParamService;
     private final static ConnectUtil connectUtil = ConnectUtil.getInstance();
 
     private final static String defaultIp = "255.255.255.255";
@@ -2059,6 +2064,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
         }
 
+        SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
+        Integer measureDigits = businessParamVO == null ? null : businessParamVO.getMeasureDigits();
+        if (measureDigits == null) {
+            measureDigits = Constants.DEFAULT_DECIMAL_NUM;
+        }
+
         device = deviceManager.getDevice(deviceId);
 
         Map<String,  Map<String, String>> darkInfo = info.getDarkInfo();
@@ -2119,7 +2130,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     abs = samplePoolConfigService.applyPoolCorrection(abs, poolValue, luminosity);
                 }
 
-                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, abs));
+                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(measureDigits, abs));
             } else if (luminosity.equals(WaveLengthEnum.es.getCode()) || luminosity.equals(WaveLengthEnum.er.getCode())) {
                 String s = DataCountUtil.countErOrEs(measureParam, luminosity, rsMode);
 
@@ -2127,7 +2138,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     s = DataCountUtil.count1960ErOrEs(measureParam, luminosity, rsMode);
                 }
 
-                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
+                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(measureDigits, s));
             } else if (luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
                 ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
                 String s;
@@ -2148,7 +2159,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (poolValue != null) {
                     s = samplePoolConfigService.applyPoolCorrection(s, poolValue, luminosity);
                 }
-                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
+                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(measureDigits, s));
             } else if (luminosity.equals(WaveLengthEnum.rPercent.getCode())) {
                 ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
                 String s;
@@ -2169,7 +2180,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (poolValue != null) {
                     s = samplePoolConfigService.applyPoolCorrection(s, poolValue, luminosity);
                 }
-                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
+                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(measureDigits, s));
             }
         }
         deviceManager.setMeasureValue(deviceId, resultEntity.getY());
