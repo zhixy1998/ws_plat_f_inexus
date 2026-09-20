@@ -38,4 +38,10 @@ public class FSampleListVo {
     private String deleteType;
     // 是否已测(0.未测,1.已测)
     private String isTested;
+    // 峰谷差
+    private String peakValleyDiff;
+    // 峰间距
+    private String peakInterval;
+    // 是否选中(0.未选中,1.已选中)
+    private String isSelected;
 }

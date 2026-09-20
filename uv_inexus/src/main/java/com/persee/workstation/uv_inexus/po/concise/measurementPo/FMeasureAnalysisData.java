@@ -76,6 +76,10 @@ public class FMeasureAnalysisData {
     @TableField("grain")
     private String grain;
 
+    // 峰搜索参数(峰谷差+间距)
+    @TableField("peak_search_param")
+    private String peakSearchParam;
+
     // 颜色
     @TableField("color")
     private String color;
@@ -92,4 +96,3 @@ public class FMeasureAnalysisData {
     @TableField("is_delete")
     private String isDelete;
 }
-

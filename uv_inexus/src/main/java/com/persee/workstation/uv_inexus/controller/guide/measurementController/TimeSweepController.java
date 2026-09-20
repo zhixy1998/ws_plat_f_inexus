@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.experimentTest.TimeSweepMethodParamsDto;
 import com.persee.workstation.uv_inexus.model.R;
@@ -102,6 +101,12 @@ public class TimeSweepController {
     @ApiOperation("删除样品列表接口")
     public Result deleteSampleListPort(@RequestParam String sampleId,@RequestParam String taskId) {
         return timeSweepService.deleteSampleListPort(sampleId,taskId);
+    }
+
+    @GetMapping("updateSampleSelected")
+    @ApiOperation("更新样品选中状态")
+    public Result updateSampleSelected(@RequestParam String analysisId, @RequestParam String isSelected) {
+        return timeSweepService.updateSampleSelected(analysisId, isSelected);
     }
 
     @GetMapping("changeTheListPort")

@@ -10,6 +10,7 @@ import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakSearchParam;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
@@ -902,6 +903,18 @@ public class ConciseTimeNewWebSocket {
             if (valleys != null) {
                 analysisData.setGrain(com.alibaba.fastjson2.JSON.toJSONString(valleys));
             }
+            // 保存本次寻峰使用的参数
+            FPeakSearchParam peakSearchParam;
+            String existingPeakParam = analysisData.getPeakSearchParam();
+            if (existingPeakParam != null) {
+                peakSearchParam = com.alibaba.fastjson2.JSON.parseObject(existingPeakParam, FPeakSearchParam.class);
+            } else {
+                peakSearchParam = new FPeakSearchParam();
+            }
+            peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+            peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+            peakSearchParam.setIsSelected("1");
+            analysisData.setPeakSearchParam(com.alibaba.fastjson2.JSON.toJSONString(peakSearchParam));
             analysisData.setColor(ColorUtil.getRandomColor());
             analysisData.setIsDelete("0");
             analysisData.setIsSave("1");
