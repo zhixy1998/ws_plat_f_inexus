@@ -1778,8 +1778,11 @@ public class PhotometricServiceImpl implements PhotometricService {
         Map<String, List<HeadVO>> headsMap = new HashMap<>();
 
         Map<String, HeadVO> analyzeMap = new HashMap<>();
-
+        Boolean locationHidden = false;
         for (HeadVO head : heads) {
+            if (head.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                locationHidden = head.getIsHidden();
+            }
 
             if (head.getIdentity().equals("remark")) {
                 head.setLocate(TableHeadILocateEnums.remark.getIdentity());
@@ -1847,8 +1850,10 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (systemHeads != null) {
             ans.addAll(systemHeads);
         }
+
         for (HeadVO an : ans) {
             if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                locationHidden = an.getIsHidden();
                 ans.remove(an);
                 break;
             }
@@ -1863,7 +1868,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                     String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
                     String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
                     HeadVO sampleLocation = new HeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
-                    sampleLocation.setIsHidden(false);
+                    sampleLocation.setIsHidden(locationHidden);
                     sampleLocation.setIsSupportHidden(true);
                     ans.add(sampleLocation);
                 }

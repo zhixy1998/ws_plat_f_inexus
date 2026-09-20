@@ -2677,7 +2677,12 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         Map<String, FHeadVO> analyzeMap = new HashMap<>();
 
+        Boolean locationHidden = false;
+
         for (FHeadVO head : heads) {
+            if (head.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                locationHidden = head.getIsHidden();
+            }
             if (SampleTableEnum.REMARK.getIdentity().equals(head.getIdentity())) {
                 head.setLocate(TableHeadILocateEnums.remark.getIdentity());
             }
@@ -2751,9 +2756,9 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
 
         List<FHeadVO> middleHeads = new ArrayList<>();
-
         for (FHeadVO an : ans) {
             if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                locationHidden = an.getIsHidden();
                 ans.remove(an);
                 continue;
             }
@@ -2787,7 +2792,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                     String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
                     String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
                     FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
-                    sampleLocation.setIsHidden(false);
+                    sampleLocation.setIsHidden(locationHidden);
                     sampleLocation.setIsSupportHidden(true);
                     ans.add(sampleLocation);
                 }
@@ -2931,6 +2936,10 @@ public class RationServiceConciseImpl implements RationConciseService {
             List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
             for (FTaskSpecimen specimen : taskSpecimen) {
                 FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+
+                if (specimen.getDeleteType().equals(deleteType) || !specimen.getSampleKind().equals(SampleTypeEnum.unKnown.getIdentity())) {
+                    continue;
+                }
 
                 if(sample == null || !SampleTypeEnum.kind_unknown.getIdentity().equals(sample.getSampleKind())) {
                     log.info("跳过该样品");
