@@ -147,9 +147,12 @@ public class TimeSweepConciseController {
     }
 
     @GetMapping("updateSampleSelected")
-    @ApiOperation("更新样品选中状态")
-    public Result updateSampleSelected(@RequestParam String analysisId, @RequestParam String isSelected) {
-        return timeSweepConciseService.updateSampleSelected(analysisId, isSelected);
+    @ApiOperation("更新样品选中状态(单个/全选全取消)")
+    public Result updateSampleSelected(@RequestParam(required = false) String analysisId,
+                                       @RequestParam String isSelected,
+                                       @RequestParam(required = false) String taskId,
+                                       @RequestParam(required = false) String allSelectType) {
+        return timeSweepConciseService.updateSampleSelected(analysisId, isSelected, taskId, allSelectType);
     }
 
     @GetMapping("changeTheListPort")

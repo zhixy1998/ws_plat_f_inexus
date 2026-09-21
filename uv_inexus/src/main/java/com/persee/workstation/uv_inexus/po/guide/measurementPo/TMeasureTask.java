@@ -102,5 +102,9 @@ public class TMeasureTask{
     // 表头信息
     @TableField("table_info")
     private String tableInfo;
+
+    // 分析样品选中状态(由AnalysisSampleSelect列表转JSONString,存分析数据id与是否选中)
+    @TableField("analysis_sample")
+    private String analysisSample;
 }
 

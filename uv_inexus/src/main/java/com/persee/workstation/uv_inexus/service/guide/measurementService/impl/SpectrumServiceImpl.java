@@ -32,6 +32,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfi
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.AnalysisSampleSelect;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakSearchParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
@@ -1260,8 +1261,9 @@ public class SpectrumServiceImpl implements SpectrumService {
                     PeakSearchParam peakParam = JSON.parseObject(measureData.getPeakSearchParam(), PeakSearchParam.class);
                     vo.setPeakValleyDiff(peakParam.getPeakValleyDiff());
                     vo.setPeakInterval(peakParam.getPeakInterval());
-                    vo.setIsSelected(peakParam.getIsSelected());
                 }
+                // 选中状态优先取任务分析样品字段,兼容分析数据中的旧值,均无则默认已选中
+                vo.setIsSelected(getTaskSampleSelected(task, measureData));
                 vo.setType("0");
                 vo.setDeleteType(taskSpeciman.getDeleteType());
                 listVos.add(vo);
@@ -1338,8 +1340,9 @@ public class SpectrumServiceImpl implements SpectrumService {
                         PeakSearchParam peakParam = JSON.parseObject(measureData.getPeakSearchParam(), PeakSearchParam.class);
                         vo.setPeakValleyDiff(peakParam.getPeakValleyDiff());
                         vo.setPeakInterval(peakParam.getPeakInterval());
-                        vo.setIsSelected(peakParam.getIsSelected());
                     }
+                    // 选中状态优先取任务分析样品字段,兼容分析数据中的旧值,均无则默认已选中
+                    vo.setIsSelected(getTaskSampleSelected(task, measureData));
                     vo.setType("0");
 
                     listVos.add(vo);
@@ -1389,6 +1392,8 @@ public class SpectrumServiceImpl implements SpectrumService {
                     taskSpecimen.setDeleteType("1");
                 }
             }
+            // 同步移除任务分析样品字段中的选中记录
+            removeAnalysisSampleFromTask(task, analysisId);
             task.setSampleKey(JSON.toJSONString(taskSpecimenList));
             boolean update1 = tMeasureTaskService.updateById(task);
             if (update && update1) {
@@ -1417,6 +1422,8 @@ public class SpectrumServiceImpl implements SpectrumService {
                         break;
                     }
                 }
+                // 同步移除任务分析样品字段中的选中记录
+                removeAnalysisSampleFromTask(task, analysisId);
                 task.setSampleKey(JSON.toJSONString(taskSpecimenList));
                 boolean update1 = tMeasureTaskService.updateById(task);
                 if (update && update1) {
@@ -1426,6 +1433,10 @@ public class SpectrumServiceImpl implements SpectrumService {
                     //删除数据失败
                     return Result.fail("00000044");
                 }
+            }
+            // 该样品仍有其它未删除的分析数据,仅同步移除任务中的选中记录
+            if (removeAnalysisSampleFromTask(task, analysisId)) {
+                tMeasureTaskService.updateById(task);
             }
             if (update) {
                 //成功删除数据
@@ -1445,25 +1456,204 @@ public class SpectrumServiceImpl implements SpectrumService {
      * @return
      */
     @Override
-    public Result updateSampleSelected(String analysisId, String isSelected) {
+    public Result updateSampleSelected(String analysisId, String isSelected, String taskId, String allSelectType) {
+        // 全选/全取消:allSelectType为1表示当前任务所有样品,为2表示当前任务所有分析样品
+        if (StringUtils.hasText(allSelectType)) {
+            if (!StringUtils.hasText(taskId)) {
+                //缺少参数
+                return Result.fail("00000007");
+            }
+            TMeasureTask task = tMeasureTaskService.getById(taskId);
+            if (task == null) {
+                //没有找到该任务
+                return Result.fail("00000004");
+            }
+            QueryWrapper<TMeasureAnalysisData> wrapper = new QueryWrapper<>();
+            wrapper.eq("task_id", taskId);
+            wrapper.eq("is_delete", "0");
+            if ("1".equals(allSelectType)) {
+                // 当前任务所有样品(测量数据)
+                wrapper.eq("analysis_type", "5");
+            } else if ("2".equals(allSelectType)) {
+                // 当前任务所有分析样品(计算得出的分析数据)
+                wrapper.ne("analysis_type", "5");
+            } else {
+                //参数错误
+                return Result.fail("00104003");
+            }
+            List<TMeasureAnalysisData> dataList = tMeasureAnalysisDataService.list(wrapper);
+            batchUpdateTaskSampleSelected(task, dataList, isSelected);
+            boolean update = tMeasureTaskService.updateById(task);
+            if (update) {
+                return Result.ok();
+            } else {
+                return Result.fail("00000044");
+            }
+        }
+        // 单个分析数据选中状态
+        if (!StringUtils.hasText(analysisId)) {
+            //缺少参数
+            return Result.fail("00000007");
+        }
         TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getById(analysisId);
         if (analysisData == null) {
             return Result.fail("0000003D");
         }
-        String peakSearchParamJson = analysisData.getPeakSearchParam();
-        PeakSearchParam peakSearchParam;
-        if (peakSearchParamJson != null) {
-            peakSearchParam = JSON.parseObject(peakSearchParamJson, PeakSearchParam.class);
-        } else {
-            peakSearchParam = new PeakSearchParam();
+        // 选中状态改为保存在任务的分析样品字段中
+        TMeasureTask task = tMeasureTaskService.getById(analysisData.getTaskId());
+        if (task == null) {
+            //没有找到该任务
+            return Result.fail("00000004");
         }
-        peakSearchParam.setIsSelected(isSelected);
-        analysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
-        boolean update = tMeasureAnalysisDataService.updateById(analysisData);
+        upsertTaskSampleSelected(task, analysisId, isSelected);
+        boolean update = tMeasureTaskService.updateById(task);
         if (update) {
             return Result.ok();
         } else {
             return Result.fail("00000044");
+        }
+    }
+
+    /**
+     * 批量更新任务的分析样品选中状态(全选/全取消)
+     *
+     * @param task       任务
+     * @param dataList   需要更新的分析数据列表
+     * @param isSelected 选中状态(0.未选中,1.已选中)
+     */
+    private void batchUpdateTaskSampleSelected(TMeasureTask task, List<TMeasureAnalysisData> dataList, String isSelected) {
+        Map<String, AnalysisSampleSelect> selectMap = new LinkedHashMap<>();
+        if (StringUtils.hasText(task.getAnalysisSample())) {
+            List<AnalysisSampleSelect> parsed = JSON.parseArray(task.getAnalysisSample(), AnalysisSampleSelect.class);
+            if (parsed != null) {
+                for (AnalysisSampleSelect item : parsed) {
+                    selectMap.put(item.getAnalysisId(), item);
+                }
+            }
+        }
+        if (dataList != null) {
+            for (TMeasureAnalysisData data : dataList) {
+                selectMap.put(data.getId(), new AnalysisSampleSelect(data.getId(), isSelected));
+            }
+        }
+        task.setAnalysisSample(JSON.toJSONString(new ArrayList<>(selectMap.values())));
+    }
+
+    /**
+     * 获取分析数据对应的选中状态
+     * 优先取任务的分析样品字段;无记录时兼容分析数据中保存的旧值;均无则默认已选中(未测样品)
+     *
+     * @param task        任务
+     * @param measureData 分析数据(未测样品可能为null)
+     * @return 选中状态(0.未选中,1.已选中)
+     */
+    private String getTaskSampleSelected(TMeasureTask task, TMeasureAnalysisData measureData) {
+        // 未测样品(无分析数据)默认已选中
+        if (measureData == null) {
+            return "1";
+        }
+        String analysisId = measureData.getId();
+        // 1. 优先使用任务的分析样品字段
+        if (task != null && StringUtils.hasText(analysisId) && StringUtils.hasText(task.getAnalysisSample())) {
+            List<AnalysisSampleSelect> selectList = JSON.parseArray(task.getAnalysisSample(), AnalysisSampleSelect.class);
+            if (selectList != null) {
+                for (AnalysisSampleSelect item : selectList) {
+                    if (analysisId.equals(item.getAnalysisId())) {
+                        return item.getIsSelected();
+                    }
+                }
+            }
+        }
+        // 2. 兼容分析数据中保存的选中状态(历史数据)
+        if (StringUtils.hasText(measureData.getPeakSearchParam())) {
+            PeakSearchParam peakParam = JSON.parseObject(measureData.getPeakSearchParam(), PeakSearchParam.class);
+            if (peakParam != null && StringUtils.hasText(peakParam.getIsSelected())) {
+                return peakParam.getIsSelected();
+            }
+        }
+        // 3. 默认已选中
+        return "1";
+    }
+
+    /**
+     * 新增/更新任务的分析样品字段中指定分析数据的选中状态
+     *
+     * @param task       任务
+     * @param analysisId 分析数据id
+     * @param isSelected 选中状态(0.未选中,1.已选中)
+     */
+    private void upsertTaskSampleSelected(TMeasureTask task, String analysisId, String isSelected) {
+        List<AnalysisSampleSelect> selectList = new ArrayList<>();
+        if (StringUtils.hasText(task.getAnalysisSample())) {
+            List<AnalysisSampleSelect> parsed = JSON.parseArray(task.getAnalysisSample(), AnalysisSampleSelect.class);
+            if (parsed != null) {
+                selectList = parsed;
+            }
+        }
+        for (AnalysisSampleSelect item : selectList) {
+            if (analysisId.equals(item.getAnalysisId())) {
+                item.setIsSelected(isSelected);
+                task.setAnalysisSample(JSON.toJSONString(selectList));
+                return;
+            }
+        }
+        selectList.add(new AnalysisSampleSelect(analysisId, isSelected));
+        task.setAnalysisSample(JSON.toJSONString(selectList));
+    }
+
+    /**
+     * 分析数据创建完成后,将其选中状态(默认已选中)写入任务的"分析样品"字段
+     *
+     * @param taskId     任务id
+     * @param analysisId 分析数据id
+     */
+    private void addTaskSampleSelected(String taskId, String analysisId) {
+        if (!StringUtils.hasText(taskId) || !StringUtils.hasText(analysisId)) {
+            return;
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return;
+        }
+        upsertTaskSampleSelected(task, analysisId, "1");
+        tMeasureTaskService.updateById(task);
+    }
+
+    /**
+     * 从任务的分析样品字段中移除指定分析数据的选中记录(仅修改入参任务对象,需调用方自行持久化)
+     *
+     * @param task       任务
+     * @param analysisId 分析数据id
+     * @return 是否发生了移除
+     */
+    private boolean removeAnalysisSampleFromTask(TMeasureTask task, String analysisId) {
+        if (task == null || !StringUtils.hasText(analysisId) || !StringUtils.hasText(task.getAnalysisSample())) {
+            return false;
+        }
+        List<AnalysisSampleSelect> selectList = JSON.parseArray(task.getAnalysisSample(), AnalysisSampleSelect.class);
+        if (selectList == null || selectList.isEmpty()) {
+            return false;
+        }
+        if (selectList.removeIf(item -> analysisId.equals(item.getAnalysisId()))) {
+            task.setAnalysisSample(JSON.toJSONString(selectList));
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 从任务的分析样品字段中移除指定分析数据的选中记录并持久化
+     *
+     * @param taskId     任务id
+     * @param analysisId 分析数据id
+     */
+    private void removeTaskSampleSelected(String taskId, String analysisId) {
+        if (!StringUtils.hasText(taskId) || !StringUtils.hasText(analysisId)) {
+            return;
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task != null && removeAnalysisSampleFromTask(task, analysisId)) {
+            tMeasureTaskService.updateById(task);
         }
     }
 
@@ -1541,6 +1731,10 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 删除测量数据
         byId.setIsDelete("1");
         boolean update = tMeasureAnalysisDataService.updateById(byId);
+        // 同步移除任务分析样品字段中的选中记录
+        if (update) {
+            removeTaskSampleSelected(byId.getTaskId(), analysisId);
+        }
         if (update) {
             return Result.ok(true);
         } else {
@@ -2264,6 +2458,10 @@ public class SpectrumServiceImpl implements SpectrumService {
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (save) {
+            // 分析数据创建完成后,将选中状态(默认已选中)保存到任务的分析样品字段
+            addTaskSampleSelected(tMeasureAnalysisData.getTaskId(), tMeasureAnalysisData.getId());
+        }
         if (!save) {
             //保存失败
             return Result.fail("00300008");
@@ -2433,6 +2631,10 @@ public class SpectrumServiceImpl implements SpectrumService {
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (save) {
+            // 分析数据创建完成后,将选中状态(默认已选中)保存到任务的分析样品字段
+            addTaskSampleSelected(tMeasureAnalysisData.getTaskId(), tMeasureAnalysisData.getId());
+        }
         if (!save) {
             return Result.fail("00000034");
         }
@@ -2587,6 +2789,10 @@ public class SpectrumServiceImpl implements SpectrumService {
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (save) {
+            // 分析数据创建完成后,将选中状态(默认已选中)保存到任务的分析样品字段
+            addTaskSampleSelected(tMeasureAnalysisData.getTaskId(), tMeasureAnalysisData.getId());
+        }
         if (!save) {
             //数据保存失败
             return Result.fail("00000034");
@@ -2746,6 +2952,10 @@ public class SpectrumServiceImpl implements SpectrumService {
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (save) {
+            // 分析数据创建完成后,将选中状态(默认已选中)保存到任务的分析样品字段
+            addTaskSampleSelected(tMeasureAnalysisData.getTaskId(), tMeasureAnalysisData.getId());
+        }
         if (!save) {
             //数据保存失败
             return Result.fail("00000034");
@@ -2921,6 +3131,10 @@ public class SpectrumServiceImpl implements SpectrumService {
         tMeasureAnalysisData.setIsDelete("0");
         tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (save) {
+            // 分析数据创建完成后,将选中状态(默认已选中)保存到任务的分析样品字段
+            addTaskSampleSelected(tMeasureAnalysisData.getTaskId(), tMeasureAnalysisData.getId());
+        }
         if (!save) {
             //数据保存失败
             return Result.fail("00000034");
