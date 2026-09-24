@@ -3895,6 +3895,10 @@ public class RationServiceConciseImpl implements RationConciseService {
         FMeasureTaskAttachment attachment;
         boolean recount = false;
 
+        SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
+        Integer kDigits = businessParamVO.getKDigits();
+        queryDataDTO.setKDigit(kDigits);
+
         R<FMeasureTaskAttachment> r = fMeasureTaskAttachmentService.queryByTaskId(taskId);
         if (!r.getSuccess()) {
             log.info("未查询到任务附件信息");
@@ -3918,6 +3922,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                     recount = true;
                 } else if (dataDTO.getOtherDigit() == null || !dataDTO.getOtherDigit().equals(otherDigit)) {
                     recount = true;
+                } else if (dataDTO.getKDigit() == null || !dataDTO.getKDigit().equals(kDigits)) {
+                    recount = true;
                 }
             }
         }
@@ -3928,6 +3934,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         if (recount) {
             changeStandSampleDataDigit(taskId, digit);
+            queryCurveInfo(taskId, task.getMethodKey());
             changeUnknowSampleDigit(taskId, digit);
         }
 
@@ -4734,6 +4741,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
         int rSquareDigits = businessParamVO.getRSquareDigits();
         Integer kDigits = businessParamVO.getKDigits();
+        Integer lastKDigits = businessParamVO.getKDigits();
 
         R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(taskId);
         if (attachmentR.getSuccess()) {
@@ -4742,6 +4750,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FQueryDataDTO dataDTO = JSON.parseObject(data.getDataParam(), FQueryDataDTO.class);
                 if (dataDTO!=null && dataDTO.getDigit() != null) {
                     digit = dataDTO.getDigit();
+                    lastKDigits = dataDTO.getKDigit();
                 }
             }
         }
@@ -4781,7 +4790,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                     List<Double> coefficients = fittingParam.getCoefficients();
                     List<Double> roundCoefficient = new ArrayList<>();
-                    if (kDigits != null) {
+                    if (kDigits != null && kDigits != lastKDigits) {
                         for (Double coefficient : coefficients) {
                             Double v = DataCountUtil.formatValue(kDigits, coefficient);
                             String s = DataCountUtil.addZero(v, kDigits);

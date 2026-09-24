@@ -2032,13 +2032,19 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 );
                 task.setSampleKey(JSON.toJSONString(taskSpecimen));
             }
+            R<FMeasureTaskAttachment> r = fMeasureTaskAttachmentService.queryByTaskId(copyParam.getTaskId());
+            FMeasureTaskAttachment data = r.getData();
+            FQueryDataDTO dataDTO = null;
+            if (data != null && StringUtils.hasText(data.getDataParam())) {
+                dataDTO = JSONObject.parseObject(data.getDataParam(), FQueryDataDTO.class);
+            }
 
 //            task.setId(null);
             task.setTaskName(taskName);
             //另存为之后的设置为保存
             task.setIsSave("0");
             task.setCreateTime(LocalDateTime.now());
-            fMeasureTaskService.save(task);
+            fMeasureTaskService.save(task, dataDTO);
             //拷贝成功
             return Result.ok("00101014");
 

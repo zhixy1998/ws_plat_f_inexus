@@ -2977,6 +2977,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
         String deviceId = info.getDeviceId();
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+
+        if (device == null) {
+            log.info("设备{}未连接", deviceId);
+            return R.ok();
+        }
         Integer connectType = device.getConnectType();
         String xmlKey = device.getXmlKey();
 

@@ -1688,7 +1688,7 @@ messages:
 
   '0030100A':
     zh-CN: '请选择时间扫描'
-    en-US: 'Please select time scan'
+    en-US: 'Please select kinetics'
     ru-RU: 'Пожалуйста, выберите временное сканирование'
 
   '0030100B':
