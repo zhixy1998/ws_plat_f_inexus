@@ -2301,8 +2301,12 @@ public class RationServiceImpl implements RationService {
         Map<String, List<HeadVO>> headsMap = new HashMap<>();
 
         Map<String, HeadVO> analyzeMap = new HashMap<>();
-
+        Boolean locationHidden = false;
         for (HeadVO head : heads) {
+
+            if (head.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                locationHidden = head.getIsHidden();
+            }
             if (SampleTableEnum.REMARK.getIdentity().equals(head.getIdentity())) {
                 head.setLocate(TableHeadILocateEnums.remark.getIdentity());
             }
@@ -2375,6 +2379,7 @@ public class RationServiceImpl implements RationService {
         }
         for (HeadVO an : ans) {
             if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                locationHidden = an.getIsHidden();
                 ans.remove(an);
                 continue;
             }
@@ -2404,7 +2409,7 @@ public class RationServiceImpl implements RationService {
                     String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
                     String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
                     HeadVO sampleLocation = new HeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
-                    sampleLocation.setIsHidden(false);
+                    sampleLocation.setIsHidden(locationHidden);
                     sampleLocation.setIsSupportHidden(true);
                     ans.add(sampleLocation);
                 }
@@ -2563,6 +2568,10 @@ public class RationServiceImpl implements RationService {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             for (TaskSpecimen specimen : taskSpecimen) {
                 TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+
+                if (specimen.getDeleteType().equals(deleteType) || !specimen.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+                    continue;
+                }
 
                 if (sample == null || !SampleTypeEnum.kind_unknown.getIdentity().equals(sample.getSampleKind())) {
                     log.info("跳过该样品");
@@ -4903,7 +4912,7 @@ public class RationServiceImpl implements RationService {
 
         for (RationCountDataInfo dataInfo : countData) {
 
-            if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity()) && minuend == null) {
+            if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
 
                 allData.put(RationCurveParamEnums.abs.getIdentity(), dataInfo.getColValue());
             } else if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity()) && minuend != null) {

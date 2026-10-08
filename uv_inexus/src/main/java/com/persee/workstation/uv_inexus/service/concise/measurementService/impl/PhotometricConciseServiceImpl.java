@@ -2376,7 +2376,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         Map<String, FHeadVO> analyzeMap = new HashMap<>();
 
+        Boolean locationHidden = false;
+
         for (FHeadVO head : heads) {
+
+            if (head.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                locationHidden = head.getIsHidden();
+            }
+
             if (head.getIdentity().equals("remark")) {
                 head.setLocate(TableHeadILocateEnums.remark.getIdentity());
             }
@@ -2459,13 +2466,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 //            }
 //        }
 
-                List<FHeadVO> ans = new ArrayList<>();
+        List<FHeadVO> ans = new ArrayList<>();
         List<FHeadVO> systemHeads = headsMap.get(TableHeadILocateEnums.system.getIdentity());
         if (systemHeads != null) {
             ans.addAll(systemHeads);
         }
+
         for (FHeadVO an : ans) {
             if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                locationHidden = an.getIsHidden();
                 ans.remove(an);
                 break;
             }
@@ -2480,7 +2489,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
                     String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
                     FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
-                    sampleLocation.setIsHidden(false);
+                    sampleLocation.setIsHidden(locationHidden);
                     sampleLocation.setIsSupportHidden(true);
                     ans.add(sampleLocation);
                 }

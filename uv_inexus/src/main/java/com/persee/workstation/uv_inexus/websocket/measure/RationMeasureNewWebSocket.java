@@ -689,6 +689,7 @@ public class RationMeasureNewWebSocket{
                  * 删除的过滤
                  * 测过的，要处理
                  */
+                String emptyFitCon = null;
                 for (TaskSpecimen specimen : taskSpecimen) {
 
                     if (!isAutoChangePool && measureCount == 1) {
@@ -775,6 +776,7 @@ public class RationMeasureNewWebSocket{
                                     if (ans != null && fittingInfo.getRoundCoefficient() != null) {
 
                                         String s = rationService.fitDataRounding(ans, parameter);
+                                        emptyFitCon = s;
 
                                         //平行样处理
                                         handleParallelGroup(sample, parallelData, taskId, data.getId(), Double.parseDouble(ans), digit, false);
@@ -839,8 +841,6 @@ public class RationMeasureNewWebSocket{
                             break;
                         }
                     }
-
-                    String emptyFitCon = null;
 
                     if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
 
@@ -962,10 +962,14 @@ public class RationMeasureNewWebSocket{
 
                             }
                         }
+                        saveDataInfo.setCountData(measureAbsDataList);
+                        rationService.saveAnalyzeData(saveDataInfo);
+
                         if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
                             Double emptyValue = null;
                             if (empty) {
                                 emptyValue = minuend;
+                                emptyFitCon = rationService.valueCalculate(fittingInfo, minuend, parameter.getEquationType());
                             }
                             R<RationDataVO> formulaCount = formulaCont(deviceSerialNumber, data, sample, task, parameter, emptyValue, emptyFitCon);
                             if (formulaCount.getSuccess()) {

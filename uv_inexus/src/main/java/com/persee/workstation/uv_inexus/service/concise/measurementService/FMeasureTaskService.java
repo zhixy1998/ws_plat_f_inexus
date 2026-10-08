@@ -13,6 +13,7 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMeasureTaskDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.SelectTaskDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
@@ -23,6 +24,8 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 public interface FMeasureTaskService extends IService<FMeasureTask> {
 
     boolean save(FMeasureTask entity);
+
+    boolean save(FMeasureTask entity, FQueryDataDTO taskAttachment);
 
     Result<Page<FMeasureTaskDTO>> queryByName(SelectTaskDto selectTaskDto);
 }

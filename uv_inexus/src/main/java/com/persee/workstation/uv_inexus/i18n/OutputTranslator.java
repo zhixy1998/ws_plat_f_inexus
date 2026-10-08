@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
@@ -14,6 +16,8 @@ import java.util.regex.Pattern;
 public class OutputTranslator {
 
     private static final Pattern CJK_PATTERN = Pattern.compile("[\\u4e00-\\u9fff]");
+    /** 型号词条 key 的判定模式：字母前缀+数字+可选字母后缀，如 T600A、F700、A500（见 yaml 仪器型号映射区块） */
+    private static final Pattern MODEL_KEY_PATTERN = Pattern.compile("^[A-Z]{1,3}\\d+[A-Z]{0,3}$");
     private static final Set<String> SKIP_KEYS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             "taskId", "sessionId", "type", "action", "command",
             "code", "id", "itemId", "deviceSerialNumber", "templateCode",
@@ -33,6 +37,10 @@ public class OutputTranslator {
     /** 缓存排序后的字典条目，避免每次翻译都重新排序 */
     private volatile List<Map.Entry<String, Map<String, String>>> sortedDictEntries;
     private volatile int cachedDictSize = -1;
+
+    /** 缓存型号改写映射（[中文版型号, 当前语言型号]），按语言分组，字典变化时自动重建 */
+    private volatile Map<String, List<String[]>> deviceModelRenames = new ConcurrentHashMap<>();
+    private volatile int cachedModelRenameSize = -1;
 
     public JSONObject translate(JSONObject json) {
         if (json == null) {
@@ -107,15 +115,17 @@ public class OutputTranslator {
         if (!text.equals(translated)) {
             return translated;
         }
-        // 2. 前缀剥离：处理"型号前缀+附件名"的拼接文案（如 T600B标准及微量样品池、T1960双光束固定样品池），
-        //    剥离开头非中文前缀后对剩余部分精确匹配，成功则返回 前缀 + 空格 + 译文
+        // 2. 前缀剥离：处理"型号前缀+仪器名称"的拼接文案（如 T600A紫外可见分光光度计、T700固体样品池），
+        //    剥离开头非中文前缀后对剩余部分精确匹配；前缀若配置了型号映射（如 T600A→TU600A）则一并改写，
+        //    未配置时前缀原样保留
         int cjkIndex = indexOfChinese(text);
         if (cjkIndex > 0) {
             String prefix = text.substring(0, cjkIndex);
             String rest = text.substring(cjkIndex);
             String restTranslated = messageSource.getMessage(rest, locale);
             if (!rest.equals(restTranslated)) {
-                return prefix + " " + restTranslated;
+                String prefixTranslated = messageSource.getMessage(prefix, locale);
+                return prefixTranslated + " " + restTranslated;
             }
         }
         // 3. 子串替换：按key长度降序排列，优先匹配更长的中文片段
@@ -137,7 +147,61 @@ public class OutputTranslator {
                 result = result.replace(key, translatedVal);
             }
         }
+        // 4. 型号改写：将 T600A 等原型号按词边界替换为当前语言的型号写法（如 TU600A）
+        return renameDeviceModels(result, locale);
+    }
+
+    /**
+     * 将文本中的原型号（T600A 等）替换为当前语言的型号写法（如 TU600A）。
+     * 型号映射来自字典中 key 形如 T600A 的条目（见 i18n-ui-texts.yaml 仪器型号映射区块）。
+     */
+    private String renameDeviceModels(String text, String locale) {
+        List<String[]> renames = getDeviceModelRenames(locale);
+        if (renames.isEmpty()) {
+            return text;
+        }
+        String result = text;
+        for (String[] rename : renames) {
+            if (result.contains(rename[0])) {
+                result = result.replaceAll("\\b" + Pattern.quote(rename[0]) + "\\b",
+                        Matcher.quoteReplacement(rename[1]));
+            }
+        }
         return result;
+    }
+
+    /**
+     * 获取当前语言的型号改写映射 [原型号, 国际版型号]，按型号长度降序排列（带缓存，字典变化时自动重建）。
+     */
+    private List<String[]> getDeviceModelRenames(String locale) {
+        Map<String, Map<String, String>> all = messageSource.getAllMessages();
+        if (cachedModelRenameSize != all.size()) {
+            deviceModelRenames = new ConcurrentHashMap<>();
+            cachedModelRenameSize = all.size();
+        }
+        List<String[]> cached = deviceModelRenames.get(locale);
+        if (cached != null) {
+            return cached;
+        }
+        List<String[]> renames = new ArrayList<>();
+        for (Map.Entry<String, Map<String, String>> entry : all.entrySet()) {
+            String key = entry.getKey();
+            if (!MODEL_KEY_PATTERN.matcher(key).matches()) {
+                continue;
+            }
+            // 与 resolvePattern 的语言回退规则一致：当前语言缺失时回退 zh-CN
+            String value = entry.getValue().get(locale);
+            if (value == null) {
+                value = entry.getValue().get("zh-CN");
+            }
+            if (value != null && !value.equals(key)) {
+                renames.add(new String[]{key, value});
+            }
+        }
+        renames.sort((a, b) -> Integer.compare(b[0].length(), a[0].length()));
+        cached = Collections.unmodifiableList(renames);
+        deviceModelRenames.put(locale, cached);
+        return cached;
     }
 
     /**

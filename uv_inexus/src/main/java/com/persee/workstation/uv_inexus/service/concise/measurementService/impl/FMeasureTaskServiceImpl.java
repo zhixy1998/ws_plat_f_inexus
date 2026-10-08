@@ -67,6 +67,31 @@ public class FMeasureTaskServiceImpl extends ServiceImpl<FMeasureTaskMapper, FMe
     }
 
 
+    public boolean save(FMeasureTask entity, FQueryDataDTO queryDataDTO) {
+        boolean save = super.save(entity);
+        if (!save) {
+            return false;
+        }
+
+        FMeasureTaskAttachment taskAttachment = new FMeasureTaskAttachment();
+        taskAttachment.setTaskId(entity.getId());
+
+        if (queryDataDTO == null) {
+            queryDataDTO = new FQueryDataDTO();
+            queryDataDTO.setTaskId(entity.getId());
+            queryDataDTO.setAllDisplay(false);
+            queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
+            queryDataDTO.setOption(new ArrayList<>());
+        }
+        taskAttachment.setDataParam(JSON.toJSONString(queryDataDTO));
+
+        fMeasureTaskAttachmentService.save(taskAttachment);
+
+        return true;
+    }
+
+
+
 
     @Override
     public Result<Page<FMeasureTaskDTO>> queryByName(SelectTaskDto selectTaskDto) {

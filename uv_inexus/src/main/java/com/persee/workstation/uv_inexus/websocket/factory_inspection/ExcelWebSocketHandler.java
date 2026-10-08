@@ -3193,6 +3193,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                     this.realTimeEcho(taskId, "光谱-基线停止");
                                     break;
                                 }
+                                if (marker.getReason() == EndMarker.Reason.NORMAL_OVERPOWER) {
+                                    this.realTimeEcho(taskId, "能量异常，请重新测量");
+                                    break;
+                                }
                             }
                         } catch (Exception e) {
                             log.error("基线数据获取错误：", e);
@@ -3381,6 +3385,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             }
                             if (endMarker.getReason() == EndMarker.Reason.NORMAL_STOP) {
                                 this.realTimeEcho(taskId, "光谱-扫描停止");
+                                map.put("line", list);
+                                return R.fail(map);
+                            }
+                            if (endMarker.getReason() == EndMarker.Reason.NORMAL_OVERPOWER) {
+                                this.realTimeEcho(taskId, "能量异常，请重新测量");
                                 map.put("line", list);
                                 return R.fail(map);
                             }
