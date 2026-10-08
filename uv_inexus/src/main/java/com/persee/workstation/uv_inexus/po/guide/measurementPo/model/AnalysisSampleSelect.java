@@ -22,8 +22,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AnalysisSampleSelect {
-    // 分析数据id
+    // 分析数据id(已测行)
     private String analysisId;
+    // 样品id(未测行,用于在没有分析数据时保存选中状态)
+    private String sampleId;
     // 是否选中(0.未选中,1.已选中)
     private String isSelected;
 }

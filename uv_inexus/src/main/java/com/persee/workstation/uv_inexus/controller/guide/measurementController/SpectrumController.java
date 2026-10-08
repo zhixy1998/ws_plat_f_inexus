@@ -196,12 +196,13 @@ public class SpectrumController {
     }
 
     @GetMapping("updateSampleSelected")
-    @ApiOperation("更新样品选中状态(单个/全选全取消)")
+    @ApiOperation("更新样品选中状态(单个/未测样品/全选全取消)")
     public Result updateSampleSelected(@RequestParam(required = false) String analysisId,
                                        @RequestParam String isSelected,
                                        @RequestParam(required = false) String taskId,
-                                       @RequestParam(required = false) String allSelectType) {
-        return spectrumService.updateSampleSelected(analysisId, isSelected, taskId, allSelectType);
+                                       @RequestParam(required = false) String allSelectType,
+                                       @RequestParam(required = false) String sampleId) {
+        return spectrumService.updateSampleSelected(analysisId, isSelected, taskId, allSelectType, sampleId);
     }
 
 

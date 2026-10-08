@@ -587,7 +587,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                     vo.setPeakInterval(peakParam.getPeakInterval());
                 }
                 // 选中状态优先取任务分析样品字段,兼容分析数据中的旧值,均无则默认已选中
-                vo.setIsSelected(getTaskSampleSelected(task, measureData));
+                vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey()));
                 vo.setType("0");
                 listVos.add(vo);
             }
@@ -633,7 +633,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         measureData.setIsDelete("1");
         boolean update1 = tMeasureAnalysisDataService.updateById(measureData);
         // 同步移除任务分析样品字段中的选中记录
-        removeAnalysisSampleFromTask(task, measureData.getId());
+        removeAnalysisSampleFromTask(task, measureData.getId(), sampleId);
         task.setSampleKey(JSON.toJSONString(taskSpecimenList));
         boolean update = tMeasureTaskService.updateById(task);
         if ( update1 && update) {
@@ -653,7 +653,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @return
      */
     @Override
-    public Result updateSampleSelected(String analysisId, String isSelected, String taskId, String allSelectType) {
+    public Result updateSampleSelected(String analysisId, String isSelected, String taskId, String allSelectType, String sampleId) {
         // 全选/全取消:allSelectType为1表示当前任务所有样品,为2表示当前任务所有分析样品
         if (StringUtils.hasText(allSelectType)) {
             if (!StringUtils.hasText(taskId)) {
@@ -665,21 +665,28 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 //没有找到该任务
                 return Result.fail("00000004");
             }
-            QueryWrapper<TMeasureAnalysisData> wrapper = new QueryWrapper<>();
-            wrapper.eq("task_id", taskId);
-            wrapper.eq("is_delete", "0");
             if ("1".equals(allSelectType)) {
-                // 当前任务所有样品(测量数据)
+                // 当前任务所有样品(测量数据 + 未测样品)
+                QueryWrapper<TMeasureAnalysisData> wrapper = new QueryWrapper<>();
+                wrapper.eq("task_id", taskId);
+                wrapper.eq("is_delete", "0");
                 wrapper.eq("analysis_type", "5");
+                List<TMeasureAnalysisData> dataList = tMeasureAnalysisDataService.list(wrapper);
+                List<TaskSpecimen> specimenList = StringUtils.hasText(task.getSampleKey())
+                        ? JSON.parseArray(task.getSampleKey(), TaskSpecimen.class) : null;
+                batchUpdateTaskSampleSelected(task, dataList, specimenList, isSelected);
             } else if ("2".equals(allSelectType)) {
                 // 当前任务所有分析样品(计算得出的分析数据)
+                QueryWrapper<TMeasureAnalysisData> wrapper = new QueryWrapper<>();
+                wrapper.eq("task_id", taskId);
+                wrapper.eq("is_delete", "0");
                 wrapper.ne("analysis_type", "5");
+                List<TMeasureAnalysisData> dataList = tMeasureAnalysisDataService.list(wrapper);
+                batchUpdateTaskSampleSelected(task, dataList, null, isSelected);
             } else {
                 //参数错误
                 return Result.fail("00104003");
             }
-            List<TMeasureAnalysisData> dataList = tMeasureAnalysisDataService.list(wrapper);
-            batchUpdateTaskSampleSelected(task, dataList, isSelected);
             boolean update = tMeasureTaskService.updateById(task);
             if (update) {
                 return Result.ok();
@@ -688,88 +695,153 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             }
         }
         // 单个分析数据选中状态
-        if (!StringUtils.hasText(analysisId)) {
-            //缺少参数
-            return Result.fail("00000007");
+        if (StringUtils.hasText(analysisId)) {
+            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getById(analysisId);
+            if (analysisData == null) {
+                return Result.fail("0000003D");
+            }
+            // 选中状态改为保存在任务的分析样品字段中
+            TMeasureTask task = tMeasureTaskService.getById(analysisData.getTaskId());
+            if (task == null) {
+                //没有找到该任务
+                return Result.fail("00000004");
+            }
+            upsertTaskSampleSelected(task, analysisId, isSelected);
+            boolean update = tMeasureTaskService.updateById(task);
+            if (update) {
+                return Result.ok();
+            } else {
+                return Result.fail("00000044");
+            }
         }
-        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getById(analysisId);
-        if (analysisData == null) {
-            return Result.fail("0000003D");
+        // 单个未测样品(无分析数据)选中状态,按样品id保存
+        if (StringUtils.hasText(sampleId)) {
+            if (!StringUtils.hasText(taskId)) {
+                //缺少参数
+                return Result.fail("00000007");
+            }
+            TMeasureTask task = tMeasureTaskService.getById(taskId);
+            if (task == null) {
+                //没有找到该任务
+                return Result.fail("00000004");
+            }
+            upsertTaskSampleSelectedBySampleId(task, sampleId, isSelected);
+            boolean update = tMeasureTaskService.updateById(task);
+            if (update) {
+                return Result.ok();
+            } else {
+                return Result.fail("00000044");
+            }
         }
-        // 选中状态改为保存在任务的分析样品字段中
-        TMeasureTask task = tMeasureTaskService.getById(analysisData.getTaskId());
-        if (task == null) {
-            //没有找到该任务
-            return Result.fail("00000004");
-        }
-        upsertTaskSampleSelected(task, analysisId, isSelected);
-        boolean update = tMeasureTaskService.updateById(task);
-        if (update) {
-            return Result.ok();
-        } else {
-            return Result.fail("00000044");
-        }
+        //缺少参数
+        return Result.fail("00000007");
     }
 
     /**
      * 批量更新任务的分析样品选中状态(全选/全取消)
      *
-     * @param task       任务
-     * @param dataList   需要更新的分析数据列表
-     * @param isSelected 选中状态(0.未选中,1.已选中)
+     * @param task         任务
+     * @param dataList     需要更新的分析数据列表
+     * @param specimenList 需要更新的样品列表(覆盖未测样品的默认选中,可为null)
+     * @param isSelected   选中状态(0.未选中,1.已选中)
      */
-    private void batchUpdateTaskSampleSelected(TMeasureTask task, List<TMeasureAnalysisData> dataList, String isSelected) {
-        Map<String, AnalysisSampleSelect> selectMap = new LinkedHashMap<>();
-        if (StringUtils.hasText(task.getAnalysisSample())) {
-            List<AnalysisSampleSelect> parsed = JSON.parseArray(task.getAnalysisSample(), AnalysisSampleSelect.class);
-            if (parsed != null) {
-                for (AnalysisSampleSelect item : parsed) {
-                    selectMap.put(item.getAnalysisId(), item);
-                }
-            }
-        }
+    private void batchUpdateTaskSampleSelected(TMeasureTask task, List<TMeasureAnalysisData> dataList,
+                                               List<TaskSpecimen> specimenList, String isSelected) {
+        List<AnalysisSampleSelect> selectList = parseTaskSampleSelected(task);
         if (dataList != null) {
             for (TMeasureAnalysisData data : dataList) {
-                selectMap.put(data.getId(), new AnalysisSampleSelect(data.getId(), isSelected));
+                upsertSampleSelect(selectList, data.getId(), null, isSelected);
             }
         }
-        task.setAnalysisSample(JSON.toJSONString(new ArrayList<>(selectMap.values())));
+        if (specimenList != null) {
+            for (TaskSpecimen specimen : specimenList) {
+                upsertSampleSelect(selectList, null, specimen.getSpecimenKey(), isSelected);
+            }
+        }
+        task.setAnalysisSample(JSON.toJSONString(selectList));
     }
 
     /**
-     * 获取分析数据对应的选中状态
-     * 优先取任务的分析样品字段;无记录时兼容分析数据中保存的旧值;均无则默认已选中(未测样品)
+     * 获取某一行对应的选中状态
+     * 依次按分析数据id、样品id(未测行)在任务的分析样品字段中查找,都取不到时兼容分析数据中的旧值,均无则默认已选中
      *
      * @param task        任务
-     * @param measureData 分析数据(未测样品可能为null)
+     * @param measureData 分析数据(未测样品为null)
+     * @param sampleId    样品id
      * @return 选中状态(0.未选中,1.已选中)
      */
-    private String getTaskSampleSelected(TMeasureTask task, TMeasureAnalysisData measureData) {
-        // 未测样品(无分析数据)默认已选中
-        if (measureData == null) {
-            return "1";
-        }
-        String analysisId = measureData.getId();
-        // 1. 优先使用任务的分析样品字段
-        if (task != null && StringUtils.hasText(analysisId) && StringUtils.hasText(task.getAnalysisSample())) {
-            List<AnalysisSampleSelect> selectList = JSON.parseArray(task.getAnalysisSample(), AnalysisSampleSelect.class);
-            if (selectList != null) {
-                for (AnalysisSampleSelect item : selectList) {
-                    if (analysisId.equals(item.getAnalysisId())) {
-                        return item.getIsSelected();
-                    }
+    private String getTaskSampleSelected(TMeasureTask task, TMeasureAnalysisData measureData, String sampleId) {
+        String analysisId = measureData == null ? null : measureData.getId();
+        List<AnalysisSampleSelect> selectList = parseTaskSampleSelected(task);
+        // 1. 优先按分析数据id匹配
+        if (StringUtils.hasText(analysisId)) {
+            for (AnalysisSampleSelect item : selectList) {
+                if (StringUtils.hasText(item.getAnalysisId()) && analysisId.equals(item.getAnalysisId())) {
+                    return item.getIsSelected();
                 }
             }
         }
-        // 2. 兼容分析数据中保存的选中状态(历史数据)
-        if (StringUtils.hasText(measureData.getPeakSearchParam())) {
+        // 2. 再按样品id匹配(未测样品行)
+        if (StringUtils.hasText(sampleId)) {
+            for (AnalysisSampleSelect item : selectList) {
+                if (!StringUtils.hasText(item.getAnalysisId()) && sampleId.equals(item.getSampleId())) {
+                    return item.getIsSelected();
+                }
+            }
+        }
+        // 3. 兼容分析数据中保存的选中状态(历史数据)
+        if (measureData != null && StringUtils.hasText(measureData.getPeakSearchParam())) {
             PeakSearchParam peakParam = JSON.parseObject(measureData.getPeakSearchParam(), PeakSearchParam.class);
             if (peakParam != null && StringUtils.hasText(peakParam.getIsSelected())) {
                 return peakParam.getIsSelected();
             }
         }
-        // 3. 默认已选中
+        // 4. 默认已选中
         return "1";
+    }
+
+    /**
+     * 解析任务的分析样品字段
+     *
+     * @param task 任务
+     * @return 选中状态列表
+     */
+    private List<AnalysisSampleSelect> parseTaskSampleSelected(TMeasureTask task) {
+        if (task == null || !StringUtils.hasText(task.getAnalysisSample())) {
+            return new ArrayList<>();
+        }
+        List<AnalysisSampleSelect> parsed = JSON.parseArray(task.getAnalysisSample(), AnalysisSampleSelect.class);
+        return parsed == null ? new ArrayList<>() : parsed;
+    }
+
+    /**
+     * 按分析数据id或样品id更新选中状态(存在则改,不存在则追加)
+     *
+     * @param selectList 选中状态列表
+     * @param analysisId 分析数据id
+     * @param sampleId   样品id
+     * @param isSelected 选中状态(0.未选中,1.已选中)
+     */
+    private void upsertSampleSelect(List<AnalysisSampleSelect> selectList, String analysisId, String sampleId, String isSelected) {
+        if (StringUtils.hasText(analysisId)) {
+            for (AnalysisSampleSelect item : selectList) {
+                if (StringUtils.hasText(item.getAnalysisId()) && analysisId.equals(item.getAnalysisId())) {
+                    item.setIsSelected(isSelected);
+                    return;
+                }
+            }
+            selectList.add(new AnalysisSampleSelect(analysisId, null, isSelected));
+            return;
+        }
+        if (StringUtils.hasText(sampleId)) {
+            for (AnalysisSampleSelect item : selectList) {
+                if (!StringUtils.hasText(item.getAnalysisId()) && sampleId.equals(item.getSampleId())) {
+                    item.setIsSelected(isSelected);
+                    return;
+                }
+            }
+            selectList.add(new AnalysisSampleSelect(null, sampleId, isSelected));
+        }
     }
 
     /**
@@ -780,21 +852,31 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @param isSelected 选中状态(0.未选中,1.已选中)
      */
     private void upsertTaskSampleSelected(TMeasureTask task, String analysisId, String isSelected) {
-        List<AnalysisSampleSelect> selectList = new ArrayList<>();
-        if (StringUtils.hasText(task.getAnalysisSample())) {
-            List<AnalysisSampleSelect> parsed = JSON.parseArray(task.getAnalysisSample(), AnalysisSampleSelect.class);
-            if (parsed != null) {
-                selectList = parsed;
-            }
-        }
-        for (AnalysisSampleSelect item : selectList) {
-            if (analysisId.equals(item.getAnalysisId())) {
-                item.setIsSelected(isSelected);
-                task.setAnalysisSample(JSON.toJSONString(selectList));
-                return;
-            }
-        }
-        selectList.add(new AnalysisSampleSelect(analysisId, isSelected));
+        upsertTaskSampleSelected(task, analysisId, null, isSelected);
+    }
+
+    /**
+     * 新增/更新任务的分析样品字段中指定样品(未测行)的选中状态
+     *
+     * @param task       任务
+     * @param sampleId   样品id
+     * @param isSelected 选中状态(0.未选中,1.已选中)
+     */
+    private void upsertTaskSampleSelectedBySampleId(TMeasureTask task, String sampleId, String isSelected) {
+        upsertTaskSampleSelected(task, null, sampleId, isSelected);
+    }
+
+    /**
+     * 新增/更新任务的分析样品字段中的选中状态(analysisId与sampleId二选一)
+     *
+     * @param task       任务
+     * @param analysisId 分析数据id
+     * @param sampleId   样品id
+     * @param isSelected 选中状态(0.未选中,1.已选中)
+     */
+    private void upsertTaskSampleSelected(TMeasureTask task, String analysisId, String sampleId, String isSelected) {
+        List<AnalysisSampleSelect> selectList = parseTaskSampleSelected(task);
+        upsertSampleSelect(selectList, analysisId, sampleId, isSelected);
         task.setAnalysisSample(JSON.toJSONString(selectList));
     }
 
@@ -817,25 +899,28 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 从任务的分析样品字段中移除指定分析数据的选中记录(仅修改入参任务对象,需调用方自行持久化)
+     * 从任务的分析样品字段中移除指定分析数据/样品的选中记录(仅修改入参任务对象,需调用方自行持久化)
      *
      * @param task       任务
      * @param analysisId 分析数据id
+     * @param sampleId   样品id
      * @return 是否发生了移除
      */
-    private boolean removeAnalysisSampleFromTask(TMeasureTask task, String analysisId) {
-        if (task == null || !StringUtils.hasText(analysisId) || !StringUtils.hasText(task.getAnalysisSample())) {
+    private boolean removeAnalysisSampleFromTask(TMeasureTask task, String analysisId, String sampleId) {
+        if (task == null || !StringUtils.hasText(task.getAnalysisSample())) {
             return false;
         }
         List<AnalysisSampleSelect> selectList = JSON.parseArray(task.getAnalysisSample(), AnalysisSampleSelect.class);
         if (selectList == null || selectList.isEmpty()) {
             return false;
         }
-        if (selectList.removeIf(item -> analysisId.equals(item.getAnalysisId()))) {
+        boolean removed = selectList.removeIf(item ->
+                (StringUtils.hasText(analysisId) && analysisId.equals(item.getAnalysisId()))
+                        || (!StringUtils.hasText(item.getAnalysisId()) && StringUtils.hasText(sampleId) && sampleId.equals(item.getSampleId())));
+        if (removed) {
             task.setAnalysisSample(JSON.toJSONString(selectList));
-            return true;
         }
-        return false;
+        return removed;
     }
 
     /**
@@ -849,7 +934,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return;
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
-        if (task != null && removeAnalysisSampleFromTask(task, analysisId)) {
+        if (task != null && removeAnalysisSampleFromTask(task, analysisId, null)) {
             tMeasureTaskService.updateById(task);
         }
     }
