@@ -2045,6 +2045,16 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             task.setIsSave("0");
             task.setCreateTime(LocalDateTime.now());
             fMeasureTaskService.save(task, dataDTO);
+            // 拷贝成功后,将该方法的最近使用时间更新为当前时间
+            try {
+                FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
+                if (method != null) {
+                    method.setMethodUseTime(LocalDateTime.now());
+                    fMeasureMethodService.updateById(method);
+                }
+            } catch (Exception e) {
+                log.error("更新方法使用时间失败", e);
+            }
             //拷贝成功
             return Result.ok("00101014");
 
