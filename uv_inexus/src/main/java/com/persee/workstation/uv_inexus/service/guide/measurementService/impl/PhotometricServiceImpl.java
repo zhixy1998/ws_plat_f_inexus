@@ -2108,6 +2108,11 @@ public class PhotometricServiceImpl implements PhotometricService {
             queryDataDTO.setDigit(digit);
         }
 
+        if (otherDigit == null || digit < 0) {
+            otherDigit = Constants.DEFAULT_DECIMAL_NUM;
+            queryDataDTO.setOtherDigit(otherDigit);
+        }
+
         R<TMeasureTaskAttachment> attachmentResult = tMeasureTaskAttachmentService.queryByTaskId(taskId);
         if (!attachmentResult.getSuccess()) {
             TMeasureTaskAttachment attachment = new TMeasureTaskAttachment();
