@@ -60,6 +60,7 @@ import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
@@ -3957,6 +3958,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         String wave = "--";
 
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.ConciseZeroCalibration.getOperation(), taskId, Constants.DEVICE_STATUS_ZERO);
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
@@ -3993,6 +3995,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return Result.fail(operation.getMessage());
         }
 
@@ -4000,6 +4003,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         inputParam.setWavelength(waveLength);
         R<OperationResultEntity> zero = devOperationUtilService.operation(inputParam);
         if (!zero.getSuccess()) {
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return Result.fail(zero.getMessage());
         }
         OperationResultEntity data = zero.getData();
@@ -4009,6 +4013,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         fMeasureTaskService.updateById(task);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("waveLength", wave + "nm");
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         return Result.ok(jsonObject);
     }
 

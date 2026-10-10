@@ -74,6 +74,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCurvePointsValue;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
@@ -6522,6 +6523,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
         List<String> waveLength = parameter.getWaveLength();
         waveLength.sort(Comparator.reverseOrder());
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.ConciseZeroCalibration.getOperation(), taskId, Constants.DEVICE_STATUS_ZERO);
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
@@ -6558,6 +6560,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return Result.fail(operation.getMessage());
         }
 
@@ -6565,6 +6568,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         inputParam.setWavelength(waveLength);
         R<OperationResultEntity> zero = operationUtilService.operation(inputParam);
         if (!zero.getSuccess()) {
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return Result.fail(zero.getMessage());
         }
         OperationResultEntity data = zero.getData();
@@ -6573,6 +6577,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         task.setZeroParam(JSON.toJSONString(zeroResult));
 
         boolean update = fMeasureTaskService.updateById(task);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         return update ? Result.ok() : Result.fail();
     }
 
