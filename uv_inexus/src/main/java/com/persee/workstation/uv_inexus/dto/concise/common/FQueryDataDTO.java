@@ -19,7 +19,7 @@ public class FQueryDataDTO {
     private String taskId;
     @ApiModelProperty("是否显示被删除的数据")
     private Boolean allDisplay;
-    @ApiModelProperty("小数位数")
+    @ApiModelProperty("小数位数(光谱/时间扫描即显示位数)")
     private Integer digit;
 
     @ApiModelProperty("其他小数位数")
@@ -32,4 +32,11 @@ public class FQueryDataDTO {
 
     @ApiModelProperty("仪器序列号")
     private String deviceSerialNumber;
- }
+
+    @ApiModelProperty("波峰")
+    private Boolean showPeak;
+    @ApiModelProperty("波谷")
+    private Boolean showValley;
+    @ApiModelProperty("标记点")
+    private Boolean showMarkPoint;
+}

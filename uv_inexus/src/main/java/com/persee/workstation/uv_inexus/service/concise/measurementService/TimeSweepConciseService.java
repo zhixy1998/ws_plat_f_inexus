@@ -57,7 +57,8 @@ public interface TimeSweepConciseService {
     Result saveDraftButton(String taskId, String taskName);
 
     // 查询样品数据列表
-    Result querySampleDataList(String taskId, String type, Integer digit,String deviceSerialNumber);
+    Result querySampleDataList(String taskId, String type, Integer digit,String deviceSerialNumber,
+                               Boolean showPeak, Boolean showValley, Boolean showMarkPoint);
 
     // 删除样品列表接口
     Result deleteSampleListPort(String taskId, String sampleId, String analysisId);

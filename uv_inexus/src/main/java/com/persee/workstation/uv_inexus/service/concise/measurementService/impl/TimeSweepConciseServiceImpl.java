@@ -1322,7 +1322,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @return
      */
     @Override
-    public Result querySampleDataList(String taskId, String type, Integer digit, String deviceSerialNumber) {
+    public Result querySampleDataList(String taskId, String type, Integer digit, String deviceSerialNumber,
+                                      Boolean showPeak, Boolean showValley, Boolean showMarkPoint) {
         // 先对前端传过来的数据进行校验
         if (taskId == null || taskId.equals("")) {
             //任务id不能为空
@@ -1333,6 +1334,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             //没有找到该任务
             return Result.fail("00000004");
         }
+        // 查询样品信息时一并保存显示设置(显示位数/波峰/波谷/标记点)
+        saveDisplayParam(taskId, digit, showPeak, showValley, showMarkPoint);
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         List<FSampleListVo> listVos = new ArrayList<>();
         // 根据序列号查询对应的附件配置表信息
@@ -1594,10 +1597,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     private String getTaskSampleSelected(FMeasureTask task, FMeasureAnalysisData measureData, String sampleId) {
         String analysisId = measureData == null ? null : measureData.getId();
         List<FAnalysisSampleSelect> selectList = parseTaskSampleSelected(task);
-        // 1. 优先按分析数据id匹配
+        // 1. 优先按分析数据id匹配(命中但值为空时不返回null,继续向下兜底)
         if (StringUtils.hasText(analysisId)) {
             for (FAnalysisSampleSelect item : selectList) {
-                if (StringUtils.hasText(item.getAnalysisId()) && analysisId.equals(item.getAnalysisId())) {
+                if (StringUtils.hasText(item.getAnalysisId()) && analysisId.equals(item.getAnalysisId())
+                        && StringUtils.hasText(item.getIsSelected())) {
                     return item.getIsSelected();
                 }
             }
@@ -1605,7 +1609,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         // 2. 再按样品id匹配(未测样品行)
         if (StringUtils.hasText(sampleId)) {
             for (FAnalysisSampleSelect item : selectList) {
-                if (!StringUtils.hasText(item.getAnalysisId()) && sampleId.equals(item.getSampleId())) {
+                if (!StringUtils.hasText(item.getAnalysisId()) && sampleId.equals(item.getSampleId())
+                        && StringUtils.hasText(item.getIsSelected())) {
                     return item.getIsSelected();
                 }
             }
@@ -1628,11 +1633,79 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @return 选中状态列表
      */
     private List<FAnalysisSampleSelect> parseTaskSampleSelected(FMeasureTask task) {
+        List<FAnalysisSampleSelect> selectList = new ArrayList<>();
         if (task == null || !StringUtils.hasText(task.getAnalysisSample())) {
-            return new ArrayList<>();
+            return selectList;
         }
-        List<FAnalysisSampleSelect> parsed = JSON.parseArray(task.getAnalysisSample(), FAnalysisSampleSelect.class);
-        return parsed == null ? new ArrayList<>() : parsed;
+        JSONArray array = JSON.parseArray(task.getAnalysisSample());
+        if (array == null) {
+            return selectList;
+        }
+        for (int i = 0; i < array.size(); i++) {
+            JSONObject json = array.getJSONObject(i);
+            if (json == null) {
+                continue;
+            }
+            // 兼容历史数据中可能出现的字段名差异
+            String isSelected = json.getString("isSelected");
+            if (isSelected == null) {
+                isSelected = json.getString("selected");
+            }
+            if (isSelected == null) {
+                isSelected = json.getString("IsSelected");
+            }
+            selectList.add(new FAnalysisSampleSelect(json.getString("analysisId"),
+                    json.getString("sampleId"), isSelected));
+        }
+        return selectList;
+    }
+
+    /**
+     * 保存光谱/时间扫描的显示设置(显示位数/波峰/波谷/标记点)
+     * <p>
+     * 与 queryTaskDataParam 成对使用,不新增表字段,合并写回任务附属表的 data_param,
+     * 只覆盖本次传入的字段,未传的字段保持原值;都没传时不做任何写操作
+     *
+     * @param taskId        任务id
+     * @param digit         显示位数
+     * @param showPeak      波峰
+     * @param showValley    波谷
+     * @param showMarkPoint 标记点
+     */
+    private void saveDisplayParam(String taskId, Integer digit, Boolean showPeak, Boolean showValley,
+                                  Boolean showMarkPoint) {
+        if (digit == null && showPeak == null && showValley == null && showMarkPoint == null) {
+            return;
+        }
+        LambdaQueryWrapper<FMeasureTaskAttachment> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureTaskAttachment::getTaskId, taskId);
+        FMeasureTaskAttachment attachment = fMeasureTaskAttachmentService.getOne(queryWrapper);
+        FQueryDataDTO dataDTO = null;
+        if (attachment != null && StringUtils.hasText(attachment.getDataParam())) {
+            dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+        }
+        if (dataDTO == null) {
+            dataDTO = new FQueryDataDTO();
+        }
+        dataDTO.setTaskId(taskId);
+        if (digit != null) {
+            dataDTO.setDigit(digit);
+        }
+        if (showPeak != null) {
+            dataDTO.setShowPeak(showPeak);
+        }
+        if (showValley != null) {
+            dataDTO.setShowValley(showValley);
+        }
+        if (showMarkPoint != null) {
+            dataDTO.setShowMarkPoint(showMarkPoint);
+        }
+        if (attachment == null) {
+            attachment = new FMeasureTaskAttachment();
+        }
+        attachment.setTaskId(taskId);
+        attachment.setDataParam(JSON.toJSONString(dataDTO));
+        fMeasureTaskAttachmentService.saveOrUpdate(attachment);
     }
 
     /**
@@ -1811,6 +1884,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 vo.setData(getSampleData(fMeasureAnalysisData, digit));
                 vo.setOriginalData(getOriginalSampleData(fMeasureAnalysisData, digit));
             }
+            // 选中状态优先取任务分析样品字段,兼容分析数据中的旧值,均无则默认已选中
+            vo.setIsSelected(getTaskSampleSelected(task, fMeasureAnalysisData, null));
             vo.setType("1");
             listVos.add(vo);
         }
@@ -3615,7 +3690,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         List<FSampleListVo> allSamples = new ArrayList<>();
 
         // 处理sampleListPort数据
-        Result<List<FSampleListVo>> sampleListResult = querySampleDataList(taskId, null, digit,deviceSerialNumber);
+        Result<List<FSampleListVo>> sampleListResult = querySampleDataList(taskId, null, digit,deviceSerialNumber,
+                null, null, null);
         if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
             // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
             allSamples.addAll(sampleListResult.getData());

@@ -40,7 +40,8 @@ public interface TimeSweepService {
     Result updateMethodParameter(TimeSweepMethodParameterDto params);
 
     // 获取样本列表接口
-    Result sampleListPort(String taskId, String type,Integer  digit,String deviceSerialNumber);
+    Result sampleListPort(String taskId, String type,Integer  digit,String deviceSerialNumber,
+                          Boolean showPeak, Boolean showValley, Boolean showMarkPoint);
 
     // 删除样品列表接口
     Result deleteSampleListPort(String sampleId, String taskId);

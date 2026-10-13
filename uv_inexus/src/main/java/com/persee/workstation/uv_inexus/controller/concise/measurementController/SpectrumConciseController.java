@@ -152,8 +152,12 @@ public class SpectrumConciseController {
     public Result queryNearestSampleData(@RequestParam String taskId,
                                          @RequestParam(required = false) String type,
                                          @RequestParam(required = false) Integer digit,
-                                         @RequestParam String deviceSerialNumber) {
-        return spectrumConciseService.querySampleDataList(taskId,type,digit,deviceSerialNumber);
+                                         @RequestParam String deviceSerialNumber,
+                                         @RequestParam(required = false) Boolean showPeak,
+                                         @RequestParam(required = false) Boolean showValley,
+                                         @RequestParam(required = false) Boolean showMarkPoint) {
+        return spectrumConciseService.querySampleDataList(taskId,type,digit,deviceSerialNumber,
+                showPeak, showValley, showMarkPoint);
     }
 
     @GetMapping("deleteSampleListPort")

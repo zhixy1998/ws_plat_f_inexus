@@ -184,8 +184,12 @@ public class SpectrumController {
     public Result sampleListPort(@RequestParam String taskId,
                                  @RequestParam(required = false) String type,
                                  @RequestParam(required = false) Integer digit,
-                                 @RequestParam String deviceSerialNumber) {
-        return spectrumService.sampleListPort(taskId, type, digit,deviceSerialNumber);
+                                 @RequestParam String deviceSerialNumber,
+                                 @RequestParam(required = false) Boolean showPeak,
+                                 @RequestParam(required = false) Boolean showValley,
+                                 @RequestParam(required = false) Boolean showMarkPoint) {
+        return spectrumService.sampleListPort(taskId, type, digit,deviceSerialNumber,
+                showPeak, showValley, showMarkPoint);
     }
 
 
