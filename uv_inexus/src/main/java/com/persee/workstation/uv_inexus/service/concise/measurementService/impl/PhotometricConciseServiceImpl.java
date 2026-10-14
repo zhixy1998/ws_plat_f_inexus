@@ -60,6 +60,7 @@ import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
@@ -2671,8 +2672,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     /**
      * 将公式表达式中的输入参数标识同步替换为占位字母。
-     * 标识按长度降序匹配(长标识优先)，并以字符边界断言保证只匹配完整标识，
-     * 避免短标识误匹配长标识子串、数字(如科学计数法 1E5 中的 E)或函数名中的字母。
+     * 标识按长度降序匹配(长标识优先)，并以字符边界断言保证只匹配完整标识。
+     * 负向后行断言仅排除字母/下划线：标识紧跟数字属隐式乘法(如 2c 中的 c)，需正常识别；
+     * 科学计数法(如 1E5 中的 E，后随数字)和函数名(如 cos 中的 c，后随字母)由负向先行断言排除。
      */
     private String replaceFormulaIdentities(String expression, Map<String, String> identityToLetter) {
         if (identityToLetter == null || identityToLetter.isEmpty() || !StringUtils.hasText(expression)) {
@@ -2682,7 +2684,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         List<String> orderedIdentities = new ArrayList<>(identityToLetter.keySet());
         orderedIdentities.sort((a, b) -> b.length() - a.length());
 
-        StringBuilder regex = new StringBuilder("(?<![a-zA-Z0-9_])(?:");
+        StringBuilder regex = new StringBuilder("(?<![a-zA-Z_])(?:");
         for (int i = 0; i < orderedIdentities.size(); i++) {
             if (i > 0) {
                 regex.append("|");
@@ -3957,6 +3959,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         String wave = "--";
 
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.ConciseZeroCalibration.getOperation(), taskId, Constants.DEVICE_STATUS_ZERO);
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
@@ -3993,6 +3996,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return Result.fail(operation.getMessage());
         }
 
@@ -4000,6 +4004,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         inputParam.setWavelength(waveLength);
         R<OperationResultEntity> zero = devOperationUtilService.operation(inputParam);
         if (!zero.getSuccess()) {
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return Result.fail(zero.getMessage());
         }
         OperationResultEntity data = zero.getData();
@@ -4009,6 +4014,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         fMeasureTaskService.updateById(task);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("waveLength", wave + "nm");
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         return Result.ok(jsonObject);
     }
 

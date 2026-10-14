@@ -739,7 +739,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         List<String> orderedIdentities = new ArrayList<>(identityToLetter.keySet());
         orderedIdentities.sort((a, b) -> b.length() - a.length());
 
-        StringBuilder regex = new StringBuilder("(?<![a-zA-Z0-9_])(?:");
+        StringBuilder regex = new StringBuilder("(?<![a-zA-Z_])(?:");
         for (int i = 0; i < orderedIdentities.size(); i++) {
             if (i > 0) {
                 regex.append("|");
@@ -1986,42 +1986,32 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                             //构建新的数据list
                             if (!CollectionUtils.isEmpty(fMeasureDataList)) {
                                 fMeasureDataList.forEach(m -> {
-                                    String uuid1 = UUID.randomUUID().toString().replace("-", "");
+                                    //留存原始测量数据id，用于精确关联其下的分析数据
+                                    String oldMeasureDataId = m.getId();
+                                    String newMeasureDataId = UUID.randomUUID().toString().replace("-", "");
 
-                                    m.setId(uuid1);
+                                    m.setId(newMeasureDataId);
                                     m.setTaskId(task.getId());
                                     //数据拿到新的样本ID进行关联
                                     m.setSampleKey(newSample.getId());
                                     m.setIsSave("0");
+                                    //按measureDataId精确复制，保证每条分析数据只复制一次
                                     LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper1 = new LambdaQueryWrapper<>();
                                     queryWrapper1.eq(FMeasureAnalysisData::getTaskId, taskId);
-                                    queryWrapper1.eq(FMeasureAnalysisData::getSampleKey, specimenKey);
+                                    queryWrapper1.eq(FMeasureAnalysisData::getMeasureDataId, oldMeasureDataId);
                                     List<FMeasureAnalysisData> fMeasureAnalysisDataList = fMeasureAnalysisDataService.list(queryWrapper1);
 
                                     if (!CollectionUtils.isEmpty(fMeasureAnalysisDataList)) {
                                         fMeasureAnalysisDataList.forEach(analysisData -> {
                                             analysisData.setId(null);
-                                            analysisData.setMeasureDataId(m.getId());
                                             analysisData.setTaskId(task.getId());
                                             analysisData.setSampleKey(newSample.getId());
+                                            analysisData.setMeasureDataId(newMeasureDataId);
                                             analysisData.setIsSave("0");
                                         });
                                         fMeasureAnalysisDataService.saveBatch(fMeasureAnalysisDataList);
                                     }
                                 });
-                                LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper3 = new LambdaQueryWrapper<>();
-                                queryWrapper3.eq(FMeasureAnalysisData::getTaskId, taskId)
-                                        .notIn(FMeasureAnalysisData::getAnalysisType, "5");
-                                List<FMeasureAnalysisData> list = fMeasureAnalysisDataService.list(queryWrapper3);
-                                if (!CollectionUtils.isEmpty(list)) {
-                                    list.forEach(analysisData -> {
-                                        analysisData.setId(null);
-                                        analysisData.setTaskId(task.getId());
-                                        analysisData.setIsSave("0");
-                                    });
-                                    fMeasureAnalysisDataService.saveBatch(list);
-                                }
-
                             }
                             fMeasureDataService.saveBatch(fMeasureDataList);
 

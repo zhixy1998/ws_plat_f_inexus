@@ -1018,8 +1018,10 @@ public class SpectrumNewWebSocket {
             state.sessionClosing.set(true);
 
             // 等待任务线程完全结束（包括数据保存）
+            // 若清理由任务线程自身触发（sendClose/sendError），跳过 interrupt+join：
+            // 自中断会留下中断标志，导致清理后继续发送的指令在 sleep 中立即抛 InterruptedException
             Thread thread = taskThreads.get(sessionId);
-            if (thread != null && thread.isAlive()) {
+            if (thread != null && thread.isAlive() && thread != Thread.currentThread()) {
                 thread.interrupt();
                 log.info("已中断任务线程, session: {}", sessionId);
 

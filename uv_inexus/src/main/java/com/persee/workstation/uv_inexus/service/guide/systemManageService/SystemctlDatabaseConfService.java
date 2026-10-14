@@ -38,6 +38,6 @@ public interface SystemctlDatabaseConfService {
 
     Boolean resetDatabaseConf(String updateBy);
 
-    Boolean getDefaultClassicSwitch();
+
 
 }

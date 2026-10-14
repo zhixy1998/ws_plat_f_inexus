@@ -12,6 +12,8 @@ package com.persee.workstation.uv_inexus.vo.systemManageVo;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class SystemPanelConfVO {
 
@@ -35,6 +37,12 @@ public class SystemPanelConfVO {
 
     @ApiModelProperty("自动进入实验测试")
     private Boolean isAutoEnterExperiment;
+
+    @ApiModelProperty("默认进入经典模式")
+    private Boolean defaultEnterClassic;
+
+    @ApiModelProperty("默认进入实验测试页面")
+    private List<String> defaultEnterExperiment;
 
     @ApiModelProperty("是否精简提示，true-是，false-否")
     private Boolean isSimpleTip;

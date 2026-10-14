@@ -188,7 +188,14 @@ public class SystemManageController {
     @ApiOperation(value = "登录成功后--查询默认进入经典模式开关")
     @GetMapping("/queryDefaultMeasureSwitch")
     public Result<Boolean> queryDefaultMeasureSwitch() {
-        Boolean defaultClassicSwitch = systemctlDatabaseConfService.getDefaultClassicSwitch();
+        Boolean defaultClassicSwitch = systemPanelConfService.getDefaultClassicSwitch();
+        return Result.ok(defaultClassicSwitch);
+    }
+
+    @ApiOperation(value = "登录成功后--查询默认进入经典模式开关")
+    @GetMapping("/queryDefaultEnterExperiment")
+    public Result<List<String>> queryDefaultEnterExperiment() {
+        List<String> defaultClassicSwitch = systemPanelConfService.getDefaultEnterExperiment();
         return Result.ok(defaultClassicSwitch);
     }
 
