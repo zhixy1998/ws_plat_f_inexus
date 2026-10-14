@@ -32,4 +32,6 @@ public interface SystemPanelConfService {
     R<Boolean> changeLoginInfo(SystemLoginConfDTO dto);
 
     R<SystemLoginConfVO> queryLoginInfo();
+
+    Boolean getDefaultClassicSwitch();
 }

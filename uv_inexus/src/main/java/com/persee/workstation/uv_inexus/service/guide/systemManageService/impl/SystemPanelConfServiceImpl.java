@@ -15,7 +15,6 @@ import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemLoginConfDTO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemPanelConfDTO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemPanelOrderDTO;
 import com.persee.workstation.uv_inexus.enums.systemManageEnums.SystemManageEnum;
-import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemPanelConfPO;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemPanelConfService;
@@ -232,5 +231,16 @@ public class SystemPanelConfServiceImpl implements SystemPanelConfService {
            BeanUtils.copyProperties(po, vo, getNullPropertyNames(po));
         }
         return R.ok(vo);
+    }
+
+    @Override
+    public Boolean getDefaultClassicSwitch() {
+        SystemPanelConfPO po = dao.selectById(userId);
+        SystemPanelConfPO defaultPo = dao.selectById(defaultId);
+        if (po != null && po.getDefaultEnterClassic() != null) {
+            return po.getDefaultEnterClassic();
+        } else {
+            return defaultPo.getDefaultEnterClassic();
+        }
     }
 }

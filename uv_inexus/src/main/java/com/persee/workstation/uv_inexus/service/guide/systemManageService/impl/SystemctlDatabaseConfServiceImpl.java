@@ -139,15 +139,5 @@ public class SystemctlDatabaseConfServiceImpl implements SystemctlDatabaseConfSe
     }
 
 
-    @Override
-    public Boolean getDefaultClassicSwitch() {
-        SystemDatabaseConfPO po = dao.selectById(userId);
-        SystemDatabaseConfPO defaultPo = dao.selectById(defaultId);
-        if (po != null && po.getDefaultEnterClassic() != null) {
-            return po.getDefaultEnterClassic();
-        } else {
-            return defaultPo.getDefaultEnterClassic();
-        }
-    }
 
 }

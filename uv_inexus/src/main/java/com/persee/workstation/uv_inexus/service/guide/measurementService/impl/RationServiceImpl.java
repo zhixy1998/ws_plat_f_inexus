@@ -5016,6 +5016,8 @@ public class RationServiceImpl implements RationService {
         for (PreCountResultParam param : parameter.getResultParams()) {
             String[] split = param.getFormulaText().split("=");
             String text = split[split.length - 1];
+            // 剔除前端带入的零宽不可见字符(如 U+200B 零宽空格，调试器显示为 ZWSP)，避免混入标识导致计算失败
+            text = text.replaceAll("[\\u200B-\\u200D\\u2060\\uFEFF\\u00A0]", "");
             text = text.replace("Con", RationCurveParamEnums.fit_concentration.getIdentity());
 //            text = text.toUpperCase();
             // 将公式中的自由标识同步替换为占位字母
@@ -5065,8 +5067,9 @@ public class RationServiceImpl implements RationService {
 
     /**
      * 将公式表达式中的参数标识同步替换为占位字母。
-     * 标识按长度降序匹配(长标识优先)，并以字符边界断言保证只匹配完整标识，
-     * 避免短标识误匹配长标识子串、数字(如科学计数法 1E5 中的 E)或函数名中的字母。
+     * 标识按长度降序匹配(长标识优先)，并以字符边界断言保证只匹配完整标识。
+     * 负向后行断言仅排除字母/下划线：标识紧跟数字属隐式乘法(如 2c 中的 c)，需正常识别；
+     * 科学计数法(如 1E5 中的 E，后随数字)和函数名(如 cos 中的 c，后随字母)由负向先行断言排除。
      */
     private String replaceFormulaIdentities(String expression, Map<String, String> identityToLetter) {
         if (identityToLetter == null || identityToLetter.isEmpty() || !StringUtils.hasText(expression)) {
@@ -5076,7 +5079,7 @@ public class RationServiceImpl implements RationService {
         List<String> orderedIdentities = new ArrayList<>(identityToLetter.keySet());
         orderedIdentities.sort((a, b) -> b.length() - a.length());
 
-        StringBuilder regex = new StringBuilder("(?<![a-zA-Z0-9_])(?:");
+        StringBuilder regex = new StringBuilder("(?<![a-zA-Z_])(?:");
         for (int i = 0; i < orderedIdentities.size(); i++) {
             if (i > 0) {
                 regex.append("|");

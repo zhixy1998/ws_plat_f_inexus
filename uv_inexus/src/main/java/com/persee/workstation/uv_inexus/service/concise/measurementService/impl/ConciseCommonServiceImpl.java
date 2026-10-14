@@ -739,7 +739,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         List<String> orderedIdentities = new ArrayList<>(identityToLetter.keySet());
         orderedIdentities.sort((a, b) -> b.length() - a.length());
 
-        StringBuilder regex = new StringBuilder("(?<![a-zA-Z0-9_])(?:");
+        StringBuilder regex = new StringBuilder("(?<![a-zA-Z_])(?:");
         for (int i = 0; i < orderedIdentities.size(); i++) {
             if (i > 0) {
                 regex.append("|");

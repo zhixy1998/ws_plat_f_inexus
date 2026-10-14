@@ -136,14 +136,22 @@ public class ConnectUtil {
                 return null;
             }
 
+            String os = System.getProperty("os.name").toLowerCase();
+
             ethernetLocalIp = ethInfo.ip;
             ethernetPort = port;
 
             InetAddress addr = InetAddress.getByName(ethernetLocalIp);
 
+
+
             // 查找可用端口
             int actualPort = findAvailablePortForInterface(port, addr);
-            ethernetSocket = new DatagramSocket(actualPort, addr);
+            if (os.contains("linux") || os.contains("mac")){
+                ethernetSocket = new DatagramSocket(actualPort);
+            } else {
+                ethernetSocket = new DatagramSocket(actualPort, addr);
+            }
 
             // 配置Socket
             configureSocket(ethernetSocket);
@@ -176,10 +184,16 @@ public class ConnectUtil {
             wifiPort = port;
 
             InetAddress addr = InetAddress.getByName(wifiLocalIp);
+            String os = System.getProperty("os.name").toLowerCase();
 
             // 查找可用端口
             int actualPort = findAvailablePortForInterface(port, addr);
-            wifiSocket = new DatagramSocket(actualPort, addr);
+
+            if (os.contains("linux") || os.contains("mac")){
+                wifiSocket = new DatagramSocket(actualPort);
+            } else {
+                wifiSocket = new DatagramSocket(actualPort, addr);
+            }
 
             // 配置Socket
             configureSocket(wifiSocket);
@@ -654,6 +668,7 @@ public class ConnectUtil {
      * 获取以太网IP
      */
     private String getEthernetIPv4() {
+        String fallbackIp = null;
         try {
             String os = System.getProperty("os.name").toLowerCase();
 
@@ -707,18 +722,26 @@ public class ConnectUtil {
                         }
                     }
                 }
-                // Linux识别
+                // Linux识别（含信创系统；USB转以太网网卡名为 enx+MAC，用 en 前缀统一覆盖）
                 else if (os.contains("linux")) {
-                    if (!name.startsWith("wlan") && !name.contains("docker") &&
-                            !name.contains("veth") && !name.contains("virbr") &&
-                            (name.startsWith("eth") || name.startsWith("eno") ||
-                                    name.startsWith("ens") || name.startsWith("enp"))) {
+                    boolean isWireless = name.startsWith("wlan") || name.startsWith("wlp") || name.startsWith("ww");
+                    boolean isVirtual = name.contains("docker") || name.contains("veth") ||
+                            name.contains("virbr") || name.startsWith("br") ||
+                            name.startsWith("tun") || name.startsWith("tap") || ni.isVirtual();
 
+                    if (!isWireless && !isVirtual) {
                         Enumeration<InetAddress> addresses = ni.getInetAddresses();
                         while (addresses.hasMoreElements()) {
                             InetAddress addr = addresses.nextElement();
                             if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
-                                return addr.getHostAddress();
+                                // eth / en*（eno/ens/enp/enx）为有线网卡命名，直接返回
+                                if (name.startsWith("eth") || name.startsWith("en")) {
+                                    return addr.getHostAddress();
+                                }
+                                // 其他命名的物理网卡作为兜底，对齐旧信创版本的宽松策略
+                                if (fallbackIp == null) {
+                                    fallbackIp = addr.getHostAddress();
+                                }
                             }
                         }
                     }
@@ -727,7 +750,7 @@ public class ConnectUtil {
         } catch (SocketException e) {
             System.err.println("获取网络接口失败: " + e.getMessage());
         }
-        return null;
+        return fallbackIp;
     }
 
     //获取wifi连接的ip地址
