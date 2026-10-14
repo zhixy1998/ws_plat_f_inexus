@@ -243,4 +243,15 @@ public class SystemPanelConfServiceImpl implements SystemPanelConfService {
             return defaultPo.getDefaultEnterClassic();
         }
     }
+
+    @Override
+    public List<String> getDefaultEnterExperiment() {
+        SystemPanelConfPO po = dao.selectById(userId);
+        SystemPanelConfPO defaultPo = dao.selectById(defaultId);
+        if (po != null && po.getDefaultEnterExperiment() != null) {
+            return po.getDefaultEnterExperiment();
+        } else {
+            return defaultPo.getDefaultEnterExperiment();
+        }
+    }
 }

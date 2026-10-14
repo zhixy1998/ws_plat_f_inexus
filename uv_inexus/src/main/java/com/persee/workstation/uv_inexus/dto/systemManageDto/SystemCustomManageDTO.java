@@ -21,6 +21,8 @@ package com.persee.workstation.uv_inexus.dto.systemManageDto;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class SystemCustomManageDTO {
 
@@ -29,6 +31,9 @@ public class SystemCustomManageDTO {
 
     @ApiModelProperty("默认进入经典模式")
     private Boolean defaultEnterClassic;
+
+    @ApiModelProperty("默认进入实验测试页面")
+    private List<String> defaultEnterExperiment;
 
     @ApiModelProperty("主数据库ip")
     private String mainDatabaseIp;

@@ -34,4 +34,6 @@ public interface SystemPanelConfService {
     R<SystemLoginConfVO> queryLoginInfo();
 
     Boolean getDefaultClassicSwitch();
+
+    List<String> getDefaultEnterExperiment();
 }

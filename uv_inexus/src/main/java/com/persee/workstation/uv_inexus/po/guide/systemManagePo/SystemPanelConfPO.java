@@ -11,16 +11,19 @@ package com.persee.workstation.uv_inexus.po.guide.systemManagePo;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.persee.workstation.uv_inexus.model.BasePO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
+
 @EqualsAndHashCode(callSuper = true)
 @Data
 @ApiModel("系统面板数据类")
-@TableName(value = "t_system_panel_conf")
+@TableName(value = "t_system_panel_conf", autoResultMap = true)
 public class SystemPanelConfPO extends BasePO {
 
     @ApiModelProperty("方法列表面板开关")
@@ -58,6 +61,10 @@ public class SystemPanelConfPO extends BasePO {
     @ApiModelProperty("默认进入经典模式")
     @TableField(value = "default_enter_classic")
     private Boolean defaultEnterClassic;
+
+    @ApiModelProperty("默认进入实验测试页面")
+    @TableField(value = "default_enter_experiment",  typeHandler = JacksonTypeHandler.class)
+    private List<String> defaultEnterExperiment;
 
     @ApiModelProperty("是否精简提示")
     @TableField(value = "is_simple_tip")

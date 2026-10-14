@@ -192,6 +192,13 @@ public class SystemManageController {
         return Result.ok(defaultClassicSwitch);
     }
 
+    @ApiOperation(value = "登录成功后--查询默认进入经典模式开关")
+    @GetMapping("/queryDefaultEnterExperiment")
+    public Result<List<String>> queryDefaultEnterExperiment() {
+        List<String> defaultClassicSwitch = systemPanelConfService.getDefaultEnterExperiment();
+        return Result.ok(defaultClassicSwitch);
+    }
+
     @ApiOperation(value = "系统面板配置--保存系统面板配置")
     @PostMapping("/savePanelConf")
     public Result<Boolean> savePanelConf(@RequestBody SystemPanelConfDTO dto) {
