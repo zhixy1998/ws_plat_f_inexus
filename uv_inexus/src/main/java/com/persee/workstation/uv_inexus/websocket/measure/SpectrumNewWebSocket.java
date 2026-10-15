@@ -659,6 +659,12 @@ public class SpectrumNewWebSocket {
             }
         }
 
+        boolean repeatMode = "单池重复".equalsIgnoreCase(spectrumParameter.getRepetitionPattern());
+        // 重复模式: 样品只要已有测量数据(即使重复次数未测满), 本次批量测量不再续测, 直接跳过该样品
+        if (repeatMode) {
+            excludeMeasuredSpecimens(newSampleData, taskId);
+        }
+
         // 根据序列号查询对应的附件配置表信息
         QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
         wrapper.eq("device_serial_number", deviceSerialNumber);
@@ -701,8 +707,6 @@ public class SpectrumNewWebSocket {
                 }
             }
         }
-
-        boolean repeatMode = "单池重复".equalsIgnoreCase(spectrumParameter.getRepetitionPattern());
 
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         state.ip = ip;
@@ -862,7 +866,6 @@ public class SpectrumNewWebSocket {
                     }
                 }
 
-
                 if (configPO.getIsAutoChangePool()) {
                     SetParam setParam = new SetParam();
                     setParam.setCellPos(Integer.parseInt(Constants.PARAM_ONE));
@@ -934,6 +937,40 @@ public class SpectrumNewWebSocket {
 
         taskThreads.put(deviceSerialNumber, taskThread);
         taskThread.start();
+    }
+
+    /**
+     * 重复模式下, 排除已有测量数据的样品(重复次数未测满, 但已测过至少一次)
+     * <p>
+     * 这类样品本次批量测量不再续测剩余重复次数, 直接跳过; 剩余重复次数由用户通过单测补测。
+     *
+     * @param specimens 待测样品列表(原地过滤)
+     * @param taskId    任务id
+     */
+    private void excludeMeasuredSpecimens(List<TaskSpecimen> specimens, String taskId) {
+        if (specimens == null || specimens.isEmpty() || taskId == null || taskId.isEmpty()) {
+            return;
+        }
+        List<String> sampleIds = specimens.stream()
+                .map(TaskSpecimen::getSpecimenKey)
+                .filter(id -> id != null && !id.isEmpty())
+                .collect(Collectors.toList());
+        if (sampleIds.isEmpty()) {
+            return;
+        }
+        QueryWrapper<TMeasureAnalysisData> wrapper = new QueryWrapper<>();
+        wrapper.select("sample_key");
+        wrapper.eq("task_id", taskId);
+        wrapper.in("sample_key", sampleIds);
+        wrapper.eq("analysis_type", "5");
+        wrapper.eq("is_delete", "0");
+        wrapper.isNotNull("analysis_result");
+        Set<String> measuredSampleIds = tMeasureAnalysisDataService.list(wrapper).stream()
+                .map(TMeasureAnalysisData::getSampleKey)
+                .collect(Collectors.toSet());
+        if (!measuredSampleIds.isEmpty()) {
+            specimens.removeIf(specimen -> measuredSampleIds.contains(specimen.getSpecimenKey()));
+        }
     }
 
     /**

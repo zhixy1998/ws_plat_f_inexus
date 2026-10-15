@@ -1410,6 +1410,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         vo.setMaxLampWavelength(maxLampWaveLength);
         vo.setMinLampWavelength(minLampWaveLength);
 
+        // 5. 波长间隔（scanInterval）已由 DeviceInfoServiceImpl#queryDeviceTypeInfo 统一按数值升序处理
+
         return Result.ok(vo);
     }
 

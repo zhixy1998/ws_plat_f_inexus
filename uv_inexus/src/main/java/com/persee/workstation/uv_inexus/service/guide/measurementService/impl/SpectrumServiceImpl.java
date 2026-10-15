@@ -2830,7 +2830,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail("00000007");
         }
         if (paramDto.getCoefficient() == null || paramDto.getCoefficient().equals("")) {
-            //请输入系数
+            //请输入系数[图片][图片]
             return Result.fail("00000038");
         }
         if (paramDto.getPointNum() == null || paramDto.getPointNum().equals("")) {
