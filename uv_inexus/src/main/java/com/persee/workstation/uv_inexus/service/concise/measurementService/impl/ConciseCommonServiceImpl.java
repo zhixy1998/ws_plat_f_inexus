@@ -2701,8 +2701,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     /**
      * 处理光谱扫描/时间扫描的"是否添加样品"逻辑
      * <p>
-     * 存在待测样品(未删除且未测)时说明不需要自动添加样品, 只需要按实际测量范围将待测样品置为选中状态;
-     * 不存在待测样品时才需要自动添加样品, 新增样品默认选中。
+     * 只要样品已测过(存在测量数据, 不论重复次数是否测满)即视为已测; 仍存在"完全没测过"的样品时不需要自动添加样品,
+     * 只需要按实际测量范围将待测样品置为选中状态; 所有样品都已测过时才自动添加新样品, 新增样品默认选中。
      *
      * @param dto          请求参数
      * @param task         任务
@@ -2715,13 +2715,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     private Result handleSpectrumOrTimeScanSample(AddSampleDTO dto, FMeasureTask task, String measureType,
                                                   String description, SampleNumConfig numberConfig,
                                                   SampleNameConfig nameConfig) {
-        // 未删除且未测的样品
+        // 未删除且未测(一次都没测过)的样品; 样品的已测标志由 WebSocket 保存测量数据时写入
         List<FTaskSpecimen> untested = queryUnmeasuredSpecimens(task);
-        // 光谱扫描重复模式下, 已经测过(重复次数未测满)的样品本次不再续测
-        if (!untested.isEmpty() && isSpectrumRepeatMode(task, measureType)) {
-            untested = new ArrayList<>(untested);
-            excludeMeasuredSpecimens(untested, task.getId());
-        }
         if (CollectionUtils.isEmpty(untested)) {
             // 需要自动添加样品: 创建样品, 新增样品默认选中
             return handleFourMeasurementSample(dto, task, description, numberConfig, nameConfig);
@@ -2790,39 +2785,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return false;
         }
         FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
-        return parameter != null && "单池重复".equals(parameter.getRepetitionPattern());
-    }
-
-    /**
-     * 排除已有测量数据(已测过至少一次)的样品: 重复模式下不再续测剩余重复次数
-     *
-     * @param specimens 待测样品列表(原地过滤)
-     * @param taskId    任务id
-     */
-    private void excludeMeasuredSpecimens(List<FTaskSpecimen> specimens, String taskId) {
-        if (specimens == null || specimens.isEmpty() || !StringUtils.hasText(taskId)) {
-            return;
-        }
-        List<String> sampleIds = specimens.stream()
-                .map(FTaskSpecimen::getSpecimenKey)
-                .filter(StringUtils::hasText)
-                .collect(Collectors.toList());
-        if (sampleIds.isEmpty()) {
-            return;
-        }
-        QueryWrapper<FMeasureAnalysisData> wrapper = new QueryWrapper<>();
-        wrapper.select("sample_key");
-        wrapper.eq("task_id", taskId);
-        wrapper.in("sample_key", sampleIds);
-        wrapper.eq("analysis_type", "5");
-        wrapper.eq("is_delete", "0");
-        wrapper.isNotNull("analysis_result");
-        Set<String> measuredSampleIds = fMeasureAnalysisDataService.list(wrapper).stream()
-                .map(FMeasureAnalysisData::getSampleKey)
-                .collect(Collectors.toSet());
-        if (!measuredSampleIds.isEmpty()) {
-            specimens.removeIf(specimen -> measuredSampleIds.contains(specimen.getSpecimenKey()));
-        }
+        return parameter != null && StringUtils.hasText(parameter.getRepetitionPattern())
+                && !"不重复".equals(parameter.getRepetitionPattern());
     }
 
     /**

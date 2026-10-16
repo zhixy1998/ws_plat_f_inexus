@@ -2808,36 +2808,16 @@ public class ConciseSpectrumNewWebSocket {
                 }
             }
 
-            // 更新任务状态
-            List<FTaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-            if (!isRepeatMode) {
-                // 普通模式：直接标记该样品已测
-                for (FTaskSpecimen taskSample : specimen) {
-                    if (taskSample.getSpecimenKey().equals(sampleId)) {
-                        taskSample.setIsTested("1");
-                    }
-                }
-                task.setSampleKey(JSON.toJSONString(specimen));
-                task.setDeviceSerialNumber(deviceSerialNumber);
-                tMeasureTaskService.saveOrUpdate(task);
-            } else {
-                // 重复模式：检查该样品是否所有重复次数都已保存完成
-                Integer repetitionCount = Integer.valueOf(spectrumParameter.getRepetitionTime());
-                boolean allTested = true;
-                for (int i = 1; i <= repetitionCount; i++) {
-                    QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-                    queryWrapper.eq("task_id", taskId);
-                    queryWrapper.eq("sample_key", sampleId);
-                    queryWrapper.eq("analysis_number", i);
-                    queryWrapper.eq("analysis_type", "5");
-                    queryWrapper.eq("is_save", "1");  // 只有已保存完成的才算
-                    FMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(queryWrapper);
-                    if (one == null) {
-                        allTested = false;
-                        break;
-                    }
-                }
-                if (allTested) {
+            // 更新任务状态: 只要该样品已保存测量数据(不论重复次数是否测满)即标记为已测
+            QueryWrapper<FMeasureAnalysisData> testedWrapper = new QueryWrapper<>();
+            testedWrapper.eq("task_id", taskId);
+            testedWrapper.eq("sample_key", sampleId);
+            testedWrapper.eq("analysis_type", "5");
+            testedWrapper.eq("is_delete", "0");
+            testedWrapper.isNotNull("analysis_result");
+            if (tMeasureAnalysisDataService.count(testedWrapper) > 0) {
+                List<FTaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+                if (specimen != null) {
                     for (FTaskSpecimen taskSample : specimen) {
                         if (taskSample.getSpecimenKey().equals(sampleId)) {
                             taskSample.setIsTested("1");
