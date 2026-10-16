@@ -2698,40 +2698,16 @@ public class SpectrumNewWebSocket {
                 }
             }
 
-            /// 更新任务状态
-            List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            if (spectrumParameter.getRepetitionPattern().equals("不重复")) {
-                for (TaskSpecimen taskSample : specimen) {
-                    if (taskSample.getSpecimenKey().equals(sampleId)) {
-                        taskSample.setIsTested("1");
-                    }
-                }
-                task.setSampleKey(JSON.toJSONString(specimen));
-                task.setDeviceSerialNumber(deviceSerialNumber);
-                task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
-                boolean update = tMeasureTaskService.saveOrUpdate(task);
-                if (!update) {
-                    log.error("更新任务失败: " + taskId);
-                }
-            } else {
-                // 如果是重复模式的情况，需要判断是否全部测完
-                boolean success = false;
-                Integer repetitionCount = Integer.valueOf(spectrumParameter.getRepetitionTime());
-                task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
-                for (int i = 0; i < repetitionCount; i++) {
-                    QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-                    queryWrapper.eq("task_id", taskId);
-                    queryWrapper.eq("sample_key", sampleId);
-                    queryWrapper.eq("analysis_number", i + 1);
-                    queryWrapper.eq("analysis_type", "5");
-                    queryWrapper.last("limit 1");
-                    TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
-                    if (analysisData == null || analysisData.getAnalysisResult() == null) {
-                        success = true;
-                        break;
-                    }
-                }
-                if (!success) {
+            /// 更新任务状态: 只要该样品已保存测量数据(不论重复次数是否测满)即标记为已测
+            QueryWrapper<TMeasureAnalysisData> testedWrapper = new QueryWrapper<>();
+            testedWrapper.eq("task_id", taskId);
+            testedWrapper.eq("sample_key", sampleId);
+            testedWrapper.eq("analysis_type", "5");
+            testedWrapper.eq("is_delete", "0");
+            testedWrapper.isNotNull("analysis_result");
+            if (tMeasureAnalysisDataService.count(testedWrapper) > 0) {
+                List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+                if (specimen != null) {
                     for (TaskSpecimen taskSample : specimen) {
                         if (taskSample.getSpecimenKey().equals(sampleId)) {
                             taskSample.setIsTested("1");
@@ -2739,14 +2715,11 @@ public class SpectrumNewWebSocket {
                     }
                     task.setSampleKey(JSON.toJSONString(specimen));
                     task.setDeviceSerialNumber(deviceSerialNumber);
+                    task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
                     boolean update = tMeasureTaskService.saveOrUpdate(task);
                     if (!update) {
                         log.error("更新任务失败: " + taskId);
                     }
-                }
-                boolean update = tMeasureTaskService.saveOrUpdate(task);
-                if (!update) {
-                    log.error("更新任务失败: " + taskId);
                 }
             }
 

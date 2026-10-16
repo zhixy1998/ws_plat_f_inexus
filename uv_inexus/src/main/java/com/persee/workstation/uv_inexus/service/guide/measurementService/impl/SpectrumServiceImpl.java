@@ -1300,7 +1300,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                     queryWrapper.last("limit 1");
                     TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getOne(queryWrapper);
 
-                    if (measureData == null && taskSpeciman.getIsTested().equals("0")) {
+                    if (measureData == null) {
                         vo.setTitle(sample.getSampleName() + "-" + (i + 1));
                         vo.setAnalysisId(null);
                         vo.setSampleId(taskSpeciman.getSpecimenKey());

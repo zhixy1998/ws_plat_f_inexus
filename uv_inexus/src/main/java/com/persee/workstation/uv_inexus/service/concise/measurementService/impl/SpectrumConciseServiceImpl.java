@@ -1593,7 +1593,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 if (measureData == null || taskSpeciman.getIsTested().equals("0") && measureData.getAnalysisResult() == null) {
                     vo.setTitle(sample.getSampleName());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
-                    vo.setAnalysisId(null);
+                    vo.setAnalysisId(buildSpecimenRowKey(taskSpeciman.getSpecimenKey(), 1));
                     if (isAutoChangePool){
                         vo.setSampleLocation(sample.getSampleLocation());
                     }else{
@@ -1630,7 +1630,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     vo.setPeakInterval(peakParam.getPeakInterval());
                 }
                 // 选中状态优先取任务分析样品字段,兼容分析数据中的旧值,均无则默认已选中
-                vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey()));
+                vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey(), 1));
                 vo.setType("0");
                 vo.setDeleteType(taskSpeciman.getDeleteType());
                 listVos.add(vo);
@@ -1664,9 +1664,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     queryWrapper.last("limit 1");
                     FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
 
-                    if (measureData == null && taskSpeciman.getIsTested().equals("0")) {
+                    if (measureData == null) {
                         vo.setTitle(sample.getSampleName() + "-" + (i + 1));
-                        vo.setAnalysisId(null);
+                        vo.setAnalysisId(buildSpecimenRowKey(taskSpeciman.getSpecimenKey(), i + 1));
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
                         vo.setAnalysisNumber(i + 1);
                         if (isAutoChangePool){
@@ -1709,7 +1709,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         vo.setPeakInterval(peakParam.getPeakInterval());
                     }
                     // 选中状态优先取任务分析样品字段,兼容分析数据中的旧值,均无则默认已选中
-                    vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey()));
+                    vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey(), i + 1));
                     vo.setType("0");
 
                     listVos.add(vo);
@@ -1902,10 +1902,20 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("00000044");
             }
         }
-        // 单个分析数据选中状态
+        // 单个分析数据选中状态(同时支持未测行的行级键)
         if (StringUtils.hasText(analysisId)) {
             FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
             if (analysisData == null) {
+                // 未测行的行级键: 直接按行级保存选中状态, 不需要分析数据存在
+                if (parseSpecimenRowKey(analysisId) != null && StringUtils.hasText(taskId)) {
+                    FMeasureTask rowTask = fMeasureTaskService.getById(taskId);
+                    if (rowTask == null) {
+                        //没有找到该任务
+                        return Result.fail("00000004");
+                    }
+                    upsertTaskSampleSelected(rowTask, analysisId, isSelected);
+                    return fMeasureTaskService.updateById(rowTask) ? Result.ok() : Result.fail("00000044");
+                }
                 return Result.fail("0000003D");
             }
             // 选中状态改为保存在任务的分析样品字段中
@@ -1979,6 +1989,23 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      * @return 选中状态(0.未选中,1.已选中)
      */
     private String getTaskSampleSelected(FMeasureTask task, FMeasureAnalysisData measureData, String sampleId) {
+        return getTaskSampleSelected(task, measureData, sampleId, null);
+    }
+
+    /**
+     * 获取某一行对应的选中状态(支持未测行的行级选中)
+     * <p>
+     * 重复模式下同一样品有多行, 未测行没有分析数据id, 因此用"样品id#分析序号"作为行级键;
+     * 查找顺序: 分析数据id → 未测行行级键 → 样品级(整样品生效) → 分析数据旧值 → 默认已选中
+     *
+     * @param task           任务
+     * @param measureData    分析数据(未测样品为null)
+     * @param sampleId       样品id
+     * @param analysisNumber 分析序号(未测行使用, 可为null)
+     * @return 选中状态(0.未选中,1.已选中)
+     */
+    private String getTaskSampleSelected(FMeasureTask task, FMeasureAnalysisData measureData, String sampleId,
+                                         Integer analysisNumber) {
         String analysisId = measureData == null ? null : measureData.getId();
         List<FAnalysisSampleSelect> selectList = parseTaskSampleSelected(task);
         // 1. 优先按分析数据id匹配(命中但值为空时不返回null,继续向下兜底)
@@ -1990,7 +2017,16 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 }
             }
         }
-        // 2. 再按样品id匹配(未测样品行)
+        // 1.1 未测行按行级键匹配(重复模式下同一样品的每一行独立)
+        String rowKey = buildSpecimenRowKey(sampleId, analysisNumber);
+        if (StringUtils.hasText(rowKey)) {
+            for (FAnalysisSampleSelect item : selectList) {
+                if (rowKey.equals(item.getAnalysisId()) && StringUtils.hasText(item.getIsSelected())) {
+                    return item.getIsSelected();
+                }
+            }
+        }
+        // 2. 再按样品id匹配(样品级, 对整样品生效)
         if (StringUtils.hasText(sampleId)) {
             for (FAnalysisSampleSelect item : selectList) {
                 if (!StringUtils.hasText(item.getAnalysisId()) && sampleId.equals(item.getSampleId())
@@ -2008,6 +2044,46 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         // 4. 默认已选中
         return "1";
+    }
+
+    /**
+     * 未测行行级键分隔符: sampleId#分析序号
+     */
+    private static final String SPECIMEN_ROW_KEY_SEPARATOR = "#";
+
+    /**
+     * 组装未测行的行级键(sampleId#分析序号)
+     *
+     * @param sampleId       样品id
+     * @param analysisNumber 分析序号
+     * @return 行级键, 参数不完整时返回null
+     */
+    private String buildSpecimenRowKey(String sampleId, Integer analysisNumber) {
+        if (!StringUtils.hasText(sampleId) || analysisNumber == null) {
+            return null;
+        }
+        return sampleId + SPECIMEN_ROW_KEY_SEPARATOR + analysisNumber;
+    }
+
+    /**
+     * 解析未测行的行级键(sampleId#分析序号)
+     *
+     * @param rowKey 行级键
+     * @return [样品id, 分析序号], 非行级键返回null
+     */
+    private String[] parseSpecimenRowKey(String rowKey) {
+        if (!StringUtils.hasText(rowKey)) {
+            return null;
+        }
+        int index = rowKey.lastIndexOf(SPECIMEN_ROW_KEY_SEPARATOR);
+        if (index <= 0 || index == rowKey.length() - 1) {
+            return null;
+        }
+        String number = rowKey.substring(index + 1);
+        if (!number.chars().allMatch(Character::isDigit)) {
+            return null;
+        }
+        return new String[]{rowKey.substring(0, index), number};
     }
 
     /**
@@ -4795,7 +4871,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 if (measureData == null || taskSpeciman.getIsTested().equals("0") && measureData.getAnalysisResult() == null) {
                     vo.setTitle(sample.getSampleName());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
-                    vo.setAnalysisId(null);
+                    vo.setAnalysisId(buildSpecimenRowKey(taskSpeciman.getSpecimenKey(), 1));
                     if (isAutoChangePool){
                         vo.setSampleLocation(sample.getSampleLocation());
                     }else{
@@ -4832,7 +4908,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     vo.setPeakInterval(peakParam.getPeakInterval());
                 }
                 // 选中状态优先取任务分析样品字段,兼容分析数据中的旧值,均无则默认已选中
-                vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey()));
+                vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey(), 1));
                 vo.setType("0");
                 vo.setDeleteType(taskSpeciman.getDeleteType());
                 listVos.add(vo);
@@ -4866,7 +4942,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     queryWrapper.last("limit 1");
                     FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
 
-                    if (measureData == null && taskSpeciman.getIsTested().equals("0")) {
+                    if (measureData == null) {
                        continue;
                     } else if (measureData != null) {
                         if (measureData.getIsDelete().equals("1") && type == null) {
@@ -4900,7 +4976,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         vo.setPeakInterval(peakParam.getPeakInterval());
                     }
                     // 选中状态优先取任务分析样品字段,兼容分析数据中的旧值,均无则默认已选中
-                    vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey()));
+                    vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey(), i + 1));
                     vo.setType("0");
 
                     listVos.add(vo);
