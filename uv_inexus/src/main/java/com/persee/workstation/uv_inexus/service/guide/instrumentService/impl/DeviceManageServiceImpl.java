@@ -1579,9 +1579,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
 
             String devModelName = modelInfoPO.getDevModelName() + modelInfoPO.getDevName();
+            String modelName = modelInfoPO.getDevModelName();
 
-            vo.setDeviceModelName(devModelName);
-            info.setDeviceModelName(devModelName);
+            vo.setDeviceModelName(modelName);
+            info.setDeviceModelName(modelName);
 
             if (StringUtils.hasText(info.getDeviceName())) {
                 vo.setDeviceName(info.getDeviceName());
