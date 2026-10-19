@@ -31,11 +31,11 @@ import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -53,6 +53,7 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
 
     @Autowired
     SamplePoolConfigDAO dao;
+
 
     @Autowired
     DeviceInfoDAO deviceInfoDAO;
@@ -375,6 +376,10 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
             return status;
         }).collect(Collectors.toList());
         vo.setPoolStatusList(list);
+        DeviceAttachmentTypeVO vo1 = deviceInfoDAO.getAttachmentInfo(deviceSerialNumber);
+        if (!ObjectUtils.isEmpty(vo1)){
+            vo.setAttachmentType(vo1.getAttachmentKind());
+        }
         return R.ok(vo);
 
     }
