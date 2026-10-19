@@ -2938,7 +2938,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             for (FTaskSpecimen specimen : taskSpecimen) {
                 FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
 
-                if (specimen.getDeleteType().equals(deleteType) || !specimen.getSampleKind().equals(SampleTypeEnum.unKnown.getIdentity())) {
+                if (specimen.getDeleteType().equals(deleteType)) {
                     continue;
                 }
 
@@ -5676,7 +5676,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     /**
      * 修改单个样品的单个表头数据。仅system/sample/data定位允许修改；
-     * 标准浓度变化需重拟合曲线并重算未知样，未知样的样品表头变化需重算未知样；
+     * 标样的标准浓度/样品类型变化需重拟合曲线并重算未知样；未知样的样品类型/样品表头变化仅重算未知样；
      * 先保存样品，保存成功即返回成功，重算失败仅置空任务分析结果。
      */
     @Override
@@ -5810,7 +5810,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                     sample.setSampleNumber(no);
                     break;
                 case SAMPLE_TYPE:
-                    //表格中展示的是名称，样品表存储的是编码，这里做兼容转换
+                    //表格中展示的是名称，样品表存储的是编码，这里做兼容转换；类型实际变化时保存后触发重算
                     sample.setSampleType(convertSampleTypeValue(dto.getValue()));
                     break;
                 case SAMPLE_LOCATION:
@@ -5859,10 +5859,24 @@ public class RationServiceConciseImpl implements RationConciseService {
             return Result.fail("00000014");
         }
 
-        //重算策略：标准浓度变化→重拟合曲线并重算未知样；未知样的样品表头变化→重算未知样；保存成功即返回成功，重算失败仅置空任务分析结果
+        //样品类型实际发生变化时才触发重算（空白扣除/平行样等计算链路依赖样品类型）
         boolean isConcentration = SampleTableEnum.NORMAL_CONCENTRATION.getIdentity().equals(dto.getIdentity());
-        boolean refitCurve = isSystem && isStand && isConcentration;
-        if (refitCurve || (isSample && isUnknown)) {
+        boolean typeChanged = SampleTableEnum.SAMPLE_TYPE.getIdentity().equals(dto.getIdentity())
+                && !Objects.equals(oldSample.getSampleType(), sample.getSampleType());
+        if (typeChanged) {
+            //同步任务sampleKey中对应样品的类型：重算方法按specimen的sampleType识别空白/平行样，不同步会导致重算无效
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                if (dto.getSampleId().equals(specimen.getSpecimenKey())) {
+                    specimen.setSampleType(sample.getSampleType());
+                    break;
+                }
+            }
+            task.setSampleKey(JSON.toJSONString(taskSpecimen));
+            fMeasureTaskService.updateById(task);
+        }
+        //重算策略：标样-标准浓度/样品类型变化→重拟合曲线并重算未知样；未知样-样品类型/样品表头变化→仅重算未知样；保存成功即返回成功，重算失败仅置空任务分析结果
+        boolean refitCurve = isSystem && isStand && (isConcentration || typeChanged);
+        if (refitCurve || (isSample && isUnknown) || (isSystem && isUnknown && typeChanged)) {
             //小数位数取任务保存的显示配置，无则用默认值
             Integer digit = fMeasureTaskAttachmentService.queryLastDigit(task.getId());
             if (digit == null || digit < 0) {
@@ -5870,7 +5884,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
             boolean calcFailed = false;
             if (refitCurve) {
-                //标准浓度变化：先重算标准样并重新拟合曲线
+                //标样：标准浓度/样品类型变化，先重算标准样并重新拟合曲线
                 R<Boolean> standResult = changeStandSampleDataDigit(task.getId(), digit);
                 if (!standResult.getSuccess()) {
                     log.warn("重新拟合曲线失败，taskId:{}, code:{}", task.getId(), standResult.getMessageCode());
@@ -5878,7 +5892,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
             }
             if (!calcFailed) {
-                //重算未知样（标准浓度变化时使用新拟合的曲线）
+                //重算未知样（标样类型/浓度变化时使用新拟合的曲线）
                 R<Boolean> unknowResult = changeUnknowSampleDigit(task.getId(), digit);
                 if (!unknowResult.getSuccess()) {
                     log.warn("重算未知样失败，taskId:{}, code:{}", task.getId(), unknowResult.getMessageCode());
