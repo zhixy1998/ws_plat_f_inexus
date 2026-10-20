@@ -2719,11 +2719,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return Result.fail("0000001B");
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
-        List<Map<String, Object>> ans = new ArrayList<>();
-        if (!StringUtils.hasText(task.getSampleKey())) {
-            log.info("未找到样品");
-            return Result.ok(ans);
-        }
+
 
         Integer digit = queryDataDTO.getDigit();
         if (digit == null || digit < 0) {
@@ -2762,6 +2758,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         attachment.setDataParam(JSON.toJSONString(queryDataDTO));
         fMeasureTaskAttachmentService.saveOrUpdate(attachment);
 
+        List<Map<String, Object>> ans = new ArrayList<>();
+        if (!StringUtils.hasText(task.getSampleKey())) {
+            log.info("未找到样品");
+            return Result.ok(ans);
+        }
 
         boolean repeat = false;
         FPhotometricParameter parameter = null;

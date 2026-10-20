@@ -2099,10 +2099,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         List<Map<String, Object>> ans = new ArrayList<>();
-        if (!StringUtils.hasText(task.getSampleKey())) {
-            log.info("未找到样品");
-            return Result.ok(ans);
-        }
+
 
         if (digit == null || digit < 0) {
             digit = Constants.DEFAULT_DECIMAL_NUM;
@@ -2142,6 +2139,11 @@ public class PhotometricServiceImpl implements PhotometricService {
         attachment.setTaskId(taskId);
         attachment.setDataParam(JSON.toJSONString(queryDataDTO));
         tMeasureTaskAttachmentService.saveOrUpdate(attachment);
+
+        if (!StringUtils.hasText(task.getSampleKey())) {
+            log.info("未找到样品");
+            return Result.ok(ans);
+        }
 
         boolean repeat = false;
         PhotometricParameter parameter = null;
