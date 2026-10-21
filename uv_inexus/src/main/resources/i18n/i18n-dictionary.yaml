@@ -3284,6 +3284,11 @@ messages:
     en-US: 'Failed to get grouped data: {0}'
     ru-RU: 'Не удалось получить сгруппированные данные: {0}'
 
+  '0061303F':
+    zh-CN: '放入物质确认超时，测量已终止，请重新测量'
+    en-US: 'Material placement confirmation timed out, measurement aborted, please measure again'
+    ru-RU: 'Время ожидания подтверждения размещения образца истекло, измерение прервано, повторите измерение'
+
   # ========== 出厂检测-任务管理补充 (00614) ==========
   '00614001':
     zh-CN: '查询任务管理列表失败'
