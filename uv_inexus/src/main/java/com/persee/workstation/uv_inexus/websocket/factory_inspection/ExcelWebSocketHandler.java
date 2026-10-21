@@ -14,6 +14,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.component.*;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.controller.guide.instrumentController.DeviceController;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
@@ -215,7 +216,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, Set<WebSocketSession>> sessionTaskMap = new ConcurrentHashMap<>();
 
     //给个标志，能停止还是不能停止，用taskId做key
-    HashMap<String, Boolean> taskStopFlag = new HashMap<>();
+    //注意：该标志会被http线程(CLOSE指令)和测量线程同时读写，必须使用并发安全的Map
+    Map<String, Boolean> taskStopFlag = new ConcurrentHashMap<>();
     // 心跳调度器
     private final ScheduledExecutorService heartbeatScheduler =
             Executors.newScheduledThreadPool(5, r -> {
@@ -237,6 +239,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     private static final long HEARTBEAT_INTERVAL = 30000; // 30秒心跳间隔
     private static final long HEARTBEAT_TIMEOUT = 60000;   // 60秒超时
+    // 时间扫描停止时等待"可停止窗口"(暗电流矫正期间不允许停止)的最大超时时间
+    private static final long TIME_SCAN_STOP_WAIT_TIMEOUT = 120000; // 2分钟
+    // 光谱扫描空闲超时：超过该时间未收到任何数据点或结束标记，视为设备异常，主动结束测量。
+    // 正常扫描的数据点间隔远小于该值，不会误杀；报文处理线程自身也有超时会投异常结束标记，这里只是双保险
+    private static final long SPECTRUM_SCAN_IDLE_TIMEOUT = 300000; // 5分钟
+    // 暂停等待用户"放入物质"确认的超时时间，超时后该项测量报错终止，避免线程与设备永久卡死
+    private static final long PAUSE_CONFIRM_TIMEOUT_MINUTES = 30;
     //判断是否终止
 //    private volatile  halt = false;
     private final Map<String, Boolean> halt = new ConcurrentHashMap<>();
@@ -277,6 +286,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     private final Map<String, BlockingQueue<QueuedMessage>> messageQueues = new ConcurrentHashMap<>();
     private final Map<String, AtomicBoolean> queueProcessingFlags = new ConcurrentHashMap<>();
+
+    // 单项测量失败时间戳：测量失败后短时间内拒绝再次触发测量。
+    // 失败时设备状态会被复位为空闲，若前端重复/自动重发测量指令，后端会立刻开始新的扫描，
+    // 表现为"前端已弹出失败提示、后端还在跑"；用短窗口拦截自动重发，窗口外人工重测不受影响
+    private final Map<String, Long> lastMeasureFailedTimeMap = new ConcurrentHashMap<>();
+    // 失败后的测量防抖窗口（毫秒）：日志实测自动重发间隔约200ms，人工再次点击通常大于数秒，取5秒
+    private static final long MEASURE_RETRY_GUARD_MS = 5000;
 
     // 消息队列项
     @Data
@@ -1062,18 +1078,27 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         if (YES.getDescription().equals(res)) {
                             log.info("光谱扫描>>>>>>>停止");
                             TaskManagement management = taskService.getById(taskId);
-
-                            DevOperationInputParam param = new DevOperationInputParam();
-                            param.setDeviceSerialNumber(management.getOperationInstrument());
-                            param.setOperationType(OperationTypeEnums.Stop.getType());
-                            if (taskStopFlag.get(taskId) != null && taskStopFlag.get(taskId)) {
+                            if (management == null || StringUtils.isBlank(management.getOperationInstrument())) {
+                                // 任务或仪器信息为空时不能下发设备停止指令，但必须置位halt，
+                                // 否则测量循环永远不会退出，前端"停止中"蒙版不消失
+                                log.warn("光谱扫描停止时任务或仪器信息为空，仅做任务级停止, taskId={}", taskId);
+                            } else if (taskStopFlag.get(taskId) != null && taskStopFlag.get(taskId)) {
+                                DevOperationInputParam param = new DevOperationInputParam();
+                                param.setDeviceSerialNumber(management.getOperationInstrument());
+                                param.setOperationType(OperationTypeEnums.Stop.getType());
+                                // 注意：设备层的停止指令是异步下发的，operation 返回 ok 仅代表"已提交"，
+                                // 并不代表设备已停止（其真实结果在设备层被丢弃）；
+                                // 任务级的可靠停止由下面的 stopTask 置位 halt 保证，测量循环检测到后即退出
                                 R<OperationResultEntity> stop = devOperationUtilService.operation(param);
                                 if (stop.getSuccess()) {
-                                    log.info("停止成功");
+                                    log.info("已提交设备停止指令, taskId={}", taskId);
                                     deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
+                                } else {
+                                    log.error("提交设备停止指令失败: taskId={}, 错误: {}", taskId, stop.getMessage());
                                 }
                             }
                             // 只停止任务，不关闭连接
+                            // halt置位后，各测量循环退出，由外层统一通过setTaskMeasuring发送isMeasuring:false
                             stopTask(taskId);
 //
 //                            // 发送停止确认消息，而不是关闭连接
@@ -1082,30 +1107,50 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                            sendToActiveSession(session, taskId, confirmMsg);
                         } else if (scanCount != null) {
                             log.info("时间扫描>>>>>停止");
-                            while (true) {
-                                if (timeScanStopControl.get(taskId)) {
-                                    TaskManagement management = taskService.getById(taskId);
-                                    ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
-                                    DeviceInfoPO info = infoService.getInfo(management.getOperationInstrument());
-                                    timeMeasureIsStop.put(info.getDeviceId(), true);
-                                    stopTask(taskId);
-                                    // 清理设备消息队列，防止残留数据影响下次扫描
-                                    queue.clearCommand(management.getOperationInstrument(), T600ComIdEnums.Measure.getComId());
-                                    deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
-                                    // 不再直接发送isMeasuring:false，由timeScan方法退出后外层统一通过setTaskMeasuring处理
-                                    break;
-                                }
+                            // 暗电流矫正期间(timeScanStopControl=false)不允许停止，
+                            // 需要等待其进入可停止窗口；key不存在说明时间扫描未在运行，直接继续；
+                            // 带超时兜底，防止设备异常时http线程被永久阻塞
+                            long stopWaitStart = System.currentTimeMillis();
+                            while (Boolean.FALSE.equals(timeScanStopControl.get(taskId))
+                                    && System.currentTimeMillis() - stopWaitStart < TIME_SCAN_STOP_WAIT_TIMEOUT) {
                                 try {
                                     Thread.sleep(50);
-                                } catch (InterruptedException ignored) {
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                    break;
                                 }
                             }
-//                            }
+                            TaskManagement management = taskService.getById(taskId);
+                            if (management == null || StringUtils.isBlank(management.getOperationInstrument())) {
+                                // 任务或仪器信息为空时不能下发设备停止指令，但必须置位halt，
+                                // 否则测量循环永远不会退出，前端"停止中"蒙版不消失
+                                log.warn("时间扫描停止时任务或仪器信息为空，仅做任务级停止, taskId={}", taskId);
+                                stopTask(taskId);
+                            } else {
+                                ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
+                                DeviceInfoPO info = infoService.getInfo(management.getOperationInstrument());
+                                if (info != null && StringUtils.isNotBlank(info.getDeviceId())) {
+                                    timeMeasureIsStop.put(info.getDeviceId(), true);
+                                }
+                                stopTask(taskId);
+                                // 清理设备消息队列，防止残留数据影响下次扫描
+                                queue.clearCommand(management.getOperationInstrument(), T600ComIdEnums.Measure.getComId());
+                                deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
+                                // 不再直接发送isMeasuring:false，由timeScan方法退出后外层统一通过setTaskMeasuring处理
+                            }
                         } else {
                             log.info("光度扫描>>>>>>>>停止");
                             JSONObject jsonObject = new JSONObject();
                             jsonObject.put("warn", "光度测量任务执行时间较短，无需中途停止！！！");
                             sendToActiveSession(session, taskId, jsonObject);
+
+                            resumeTask(taskId);
+//                            JSONObject response = new JSONObject();
+//                            response.put("resumed", true);
+////            session.sendMessage(new TextMessage(response.toJSONString()));
+//                            sendToActiveSession(null, taskId, response);
+                            return;
+
                         }
                     }
                 }
@@ -1165,6 +1210,34 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         if (SINGLE_ITEM.getCode().equals(type)) {
             log.info("收到单项测试指令");
+            // 防重入：上一次测量尚未结束时，不允许再启动一次测量。
+            // 典型场景：点击停止后旧测量线程仍阻塞在算法调用/设备通信（停止处理已把设备复位为空闲，
+            // 设备忙碌检查放行），此时再点测量会冒出第二个测量线程并发操作同一台设备，
+            // 旧线程的错误还会延迟弹出，看起来像"第二次测量还没到调用算法就报错"
+            Future<?> runningFuture = taskFutures.get(taskId);
+            if (runningFuture != null && !runningFuture.isDone()) {
+                log.warn("任务 {} 上一次测量尚未结束，拒绝新的测量指令", taskId);
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("error", "上一次测量尚未结束，请稍候再试");
+                sendToActiveSession(session, taskId, jsonObject);
+                return;
+            }
+            // 防自动重发：上次测量失败后短时间内再次收到测量指令时拦截。
+            // 失败会把设备状态复位为空闲，前端重复/自动重发的指令会立刻启动新扫描，
+            // 表现为"前端已报失败、后端还在跑"；窗口仅拦截自动重发，稍后人工重测不受影响
+            Long lastFailedTime = lastMeasureFailedTimeMap.get(taskId);
+            if (lastFailedTime != null) {
+                long sinceFailed = System.currentTimeMillis() - lastFailedTime;
+                if (sinceFailed < MEASURE_RETRY_GUARD_MS) {
+                    // 刷新窗口：前端持续自动重发期间保持拦截，停止重发后窗口自然过期
+                    lastMeasureFailedTimeMap.put(taskId, System.currentTimeMillis());
+                    log.warn("任务 {} 上次测量失败后 {}ms 内再次收到测量指令，已拦截（疑似前端重复/自动重发）", taskId, sinceFailed);
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("liveEcho", "上次测量失败，请稍后再试");
+                    sendToActiveSession(session, taskId, jsonObject);
+                    return;
+                }
+            }
             taskStopFlag.put(taskId, false);
             TaskManagement management1 = taskService.getById(taskId);
             if (StringUtils.isNotBlank(management1.getOperationInstrument())) {
@@ -1196,14 +1269,31 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //            management.set
             taskService.updateById(management);
             InspectionRequestDto request = mapper.readValue(payload, InspectionRequestDto.class);
+//            TaskManagement management2 = taskService.getById(taskId);
+//            //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
+//            if (management2 != null && StringUtils.isBlank(management2.getOperationInstrument())) {
+//                //只有检定校准在用，出厂检验任务创建时已经存在设备号
+//                R<String> device = deviceManageService.getConnectDevice(updateBy);
+//
+////                            String deviceSerialNumber = "30-U1602-01-0022";
+//                String deviceSerialNumber = device.getData();
+//
+//                LambdaUpdateWrapper<TaskManagement> updateWrapper = new LambdaUpdateWrapper<>();
+//                updateWrapper.eq(TaskManagement::getId, taskId)  // 根据taskId匹配
+//                        .set(TaskManagement::getOperationInstrument, deviceSerialNumber); // 设置新序列号
+//
+//                // 执行更新
+//                taskService.update(updateWrapper);
+//            }
             TaskManagement management2 = taskService.getById(taskId);
-            //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
+            //如果任务没有绑定设备号的时候，绑定第一台已连接设备（只查不断开）
             if (management2 != null && StringUtils.isBlank(management2.getOperationInstrument())) {
                 //只有检定校准在用，出厂检验任务创建时已经存在设备号
-                R<String> device = deviceManageService.getConnectDevice(updateBy);
-
-//                            String deviceSerialNumber = "30-U1602-01-0022";
-                String deviceSerialNumber = device.getData();
+                R<List<DeviceInfoPO>> devices = deviceManageService.getConnectedDeviceList(updateBy);
+                if (devices.getData() == null || devices.getData().isEmpty()) {
+                    throw BusinessException.withCode("00613002");
+                }
+                String deviceSerialNumber = devices.getData().get(0).getDeviceSerialNumber();
 
                 LambdaUpdateWrapper<TaskManagement> updateWrapper = new LambdaUpdateWrapper<>();
                 updateWrapper.eq(TaskManagement::getId, taskId)  // 根据taskId匹配
@@ -1212,6 +1302,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 // 执行更新
                 taskService.update(updateWrapper);
             }
+
             management1 = taskService.getById(taskId);
             if (StringUtils.isNotBlank(management1.getOperationInstrument())) {
                 //得到当前任务的仪器类型，方便对之后的操作做界定
@@ -1230,11 +1321,30 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
             TaskManagement management1 = taskService.getById(taskId);
 
-            //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
+//            //如果任务没有绑定设备号的时候，绑定第一次遇到的那个设备
+//            if (management1 != null && StringUtils.isBlank(management1.getOperationInstrument())) {
+//                R<String> device = deviceManageService.getConnectDevice(updateBy);
+////                            String deviceSerialNumber = "30-U1602-01-0022";
+//                String deviceSerialNumber = device.getData();
+//
+//                LambdaUpdateWrapper<TaskManagement> updateWrapper = new LambdaUpdateWrapper<>();
+//                updateWrapper.eq(TaskManagement::getId, taskId)  // 根据taskId匹配
+//                        .set(TaskManagement::getOperationInstrument, deviceSerialNumber); // 设置新序列号
+//
+//                // 执行更新
+//                taskService.update(updateWrapper);
+//                // 记录任务 - 设备绑定关系
+//                taskDeviceBindingMap.put(taskId, deviceSerialNumber);
+//                // 重新查询获取最新的任务信息
+//                management1 = taskService.getById(taskId);
+//            }
+            //如果任务没有绑定设备号的时候，绑定第一台已连接设备（只查不断开）
             if (management1 != null && StringUtils.isBlank(management1.getOperationInstrument())) {
-                R<String> device = deviceManageService.getConnectDevice(updateBy);
-//                            String deviceSerialNumber = "30-U1602-01-0022";
-                String deviceSerialNumber = device.getData();
+                R<List<DeviceInfoPO>> devices = deviceManageService.getConnectedDeviceList(updateBy);
+                if (devices.getData() == null || devices.getData().isEmpty()) {
+                    throw BusinessException.withCode("00613002");
+                }
+                String deviceSerialNumber = devices.getData().get(0).getDeviceSerialNumber();
 
                 LambdaUpdateWrapper<TaskManagement> updateWrapper = new LambdaUpdateWrapper<>();
                 updateWrapper.eq(TaskManagement::getId, taskId)  // 根据taskId匹配
@@ -1427,6 +1537,22 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         }
         // 处理用户操作确认
         if (RESUME.getCode().equals(type)) { // 您定义的恢复命令类型
+            // 多设备并发：恢复前校验任务绑定的仪器是否仍连接，防止弹窗期间切换仪器导致操作已断开设备
+            String boundDevice = getTaskDevice(taskId);
+            if (StringUtils.isBlank(boundDevice)) {
+                JSONObject errorMsg = new JSONObject();
+                errorMsg.put("error", "任务未绑定设备，无法继续测量");
+                sendToActiveSession(session, taskId, errorMsg);
+                return;
+            }
+            R<Boolean> connected = deviceManageService.isDeviceConnected(boundDevice, updateBy);
+            if (!Boolean.TRUE.equals(connected.getData())) {
+                JSONObject errorMsg = new JSONObject();
+                errorMsg.put("error", "任务绑定的仪器 [" + boundDevice + "] 已断开连接，请重新连接后再继续");
+                sendToActiveSession(session, taskId, errorMsg);
+                return;
+            }
+
             resumeTask(taskId);
             JSONObject response = new JSONObject();
             response.put("resumed", true);
@@ -1519,18 +1645,18 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         TaskManagement taskManagement = taskService.getById(taskId);
         //获取序列号
         String string = taskManagement.getOperationInstrument();
-        DeviceInfoPO info = deviceInfoService.getInfo(string);
-        R<String> device = deviceManageService.getConnectDevice(updateBy);
 
-        if (!string.equals(device.getData())) {
-            throw BusinessException.withCode("00613001");
-        }
-        if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
-//            JSONObject jsonObject = new JSONObject();
-//            jsonObject.put("error", "请检查当前仪器是否连接");
-//            sendToActiveSession(null, taskId, jsonObject);
+        // 多设备兼容：直接校验任务绑定的这台仪器是否已连接，不再通过 getConnectDevice 反推
+        R<Boolean> connected = deviceManageService.isDeviceConnected(string, updateBy);
+        if (!Boolean.TRUE.equals(connected.getData())) {
             throw BusinessException.withCode("00613002");
         }
+
+        DeviceInfoPO info = deviceInfoService.getInfo(string);
+        if (info == null) {
+            throw BusinessException.withCode("00613002");
+        }
+
 //        if (!StringUtils.equals(device.getData(), string)) {
 ////            JSONObject jsonObject = new JSONObject();
 ////            jsonObject.put("error", "设备已切换,请检查当前仪器与任务是否匹配！！！");
@@ -1546,6 +1672,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         if (info.getIsInited() == 3) {
             throw BusinessException.withCode("00613005");
         }
+
 
         halt.put(taskId, false);
 
@@ -1609,40 +1736,44 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         //同一个任务，同一时间只有一个检测项在跑
                         Future<Boolean> future = taskFutures.get(taskId);
                         if (future == null) {
-                            log.error("检测项: {},检测失败，进行下一个检测项测量>>>>>>>>>", asset.getId());
+                            // 任务未正常启动，直接终止整个自动检测，不再继续后续检测项
+                            abortAutoInspection(session, taskId, "检测项 [" + asset.getId() + "] 启动失败");
+                            break;
                         }
-//                    Future<?> future = taskFutures.get(taskId);
-                        if (future != null) {
-                            try {
-                                // 设置合理的超时时间，避免无限等待
-                                Boolean b = future.get();
-                                JSONObject object = new JSONObject();
-                                object.put("isCompleted", b);
-                                sendToActiveSession(null, taskId, object);
-                                if (b) {
-                                    log.info("检测项: {},检测成功，进行下一个检测项测量>>>>>>>>>", asset.getId());
-                                } else {
-                                    log.error("检测项: {},检测失败，进行下一个检测项测量>>>>>>>>>", asset.getId());
-                                }
-                                if (halt.get(taskId)) {
-                                    setTaskMeasuring(taskId, false);
-                                    log.info("任务 {} 已被暂停，停止自动检测流程", taskId);
-                                    return;
-                                }
-                            } catch (Exception e) {
-                                log.error("任务执行异常: taskId={}", taskId, e.getCause());
-                                log.error("错误信息为{}", String.valueOf(e));
-                                continue;
+                        try {
+                            // 设置合理的超时时间，避免无限等待
+                            Boolean b = future.get();
+                            JSONObject object = new JSONObject();
+                            object.put("isCompleted", b);
+                            sendToActiveSession(null, taskId, object);
+                            if (b) {
+                                log.info("检测项: {},检测成功，进行下一个检测项测量>>>>>>>>>", asset.getId());
+                            } else {
+                                // 检测项失败：前端已收到失败提示，后端必须终止整个任务，
+                                // 避免任务已失败但仍继续扫描后续检测项
+                                abortAutoInspection(session, taskId, "检测项 [" + asset.getId() + "] 测量失败");
+                                break;
                             }
-                        } else {
-                            log.error("任务执行失败,future为空: taskId={}", taskId);
+                            if (halt.get(taskId)) {
+                                setTaskMeasuring(taskId, false);
+                                log.info("任务 {} 已被暂停，停止自动检测流程", taskId);
+                                return;
+                            }
+                        } catch (Exception e) {
+                            log.error("任务执行异常: taskId={}", taskId, e.getCause());
+                            log.error("错误信息为{}", String.valueOf(e));
+                            abortAutoInspection(session, taskId, "检测项 [" + asset.getId() + "] 执行异常");
+                            break;
                         }
 
                     } catch (Exception e) {
-                        log.error("检测项: {},检测失败，进行下一个检测项测量>>>>>>>>>", asset.getId(), e);
+                        log.error("检测项: {},检测失败，终止自动检测流程>>>>>>>>>", asset.getId(), e);
                         JSONObject jsonObject = new JSONObject();
                         jsonObject.put("error", i18nMessageUtil.getMessage(e.getMessage()));
                         sendToActiveSession(null, taskId, jsonObject);
+                        // 前端已收到失败提示，终止整个自动检测，不再继续后续检测项
+                        abortAutoInspection(session, taskId, "检测项 [" + asset.getId() + "] 启动异常");
+                        break;
                     }
                 }
                 JSONObject jsonObject1 = new JSONObject();
@@ -1660,6 +1791,46 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         }
         setTaskMeasuring(taskId, false);
+    }
+
+    /**
+     * 终止整个自动检测任务
+     * 某一检测项失败时调用：设置停止标志、复位任务与设备状态，并通知前端，
+     * 避免前端已弹出失败提示而后端仍继续扫描后续检测项
+     *
+     * @param session WebSocket会话
+     * @param taskId  任务ID
+     * @param reason  终止原因（用于日志与前端提示）
+     */
+    private void abortAutoInspection(WebSocketSession session, String taskId, String reason) {
+        log.error("终止自动检测任务: taskId={}, 原因={}", taskId, reason);
+        // 设置停止标志，阻止后续检测项启动，并唤醒可能处于暂停等待的流程，清理消息队列
+        try {
+            stopTask(taskId);
+        } catch (Exception e) {
+            log.error("停止任务异常: taskId={}", taskId, e);
+            halt.put(taskId, true);
+        }
+        try {
+            setTaskMeasuring(taskId, false);
+        } catch (Exception e) {
+            log.error("更新任务测量状态失败: taskId={}", taskId, e);
+        }
+        try {
+            TaskManagement management = taskService.getById(taskId);
+            if (management != null && StringUtils.isNotBlank(management.getOperationInstrument())) {
+                deviceInfoService.updateDeviceCurrentStatus(management.getOperationInstrument(), DEVICE_STATUS_IDLE);
+            }
+        } catch (Exception e) {
+            log.error("复位设备状态失败: taskId={}", taskId, e);
+        }
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("error", "任务已终止：" + reason);
+        jsonObject.put("isCompleted", false);
+        sendToActiveSession(session, taskId, jsonObject);
+        JSONObject echo = new JSONObject();
+        echo.put("liveEcho", "自动检测已终止");
+        sendToActiveSession(session, taskId, echo);
     }
 
     // 添加辅助方法
@@ -1697,13 +1868,22 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         TaskPauseControl control = pauseControls.get(taskId);
         if (control != null) {
             control.setPaused(true);
+            // 先记录"已进入暂停等待"，再阻塞等待；
+            // 原来把日志放在 tryAcquire 之后，导致暂停实际结束（用户点击继续）时才打印"已标记为暂停"，
+            // 与 resumeTask 的"已恢复"同一毫秒输出，日志看起来自相矛盾
+            log.info("任务 {} 已标记为暂停，等待用户确认", taskId);
             try {
-                control.semaphore.acquire();
+                // 带超时等待用户确认（放入物质后点击继续），防止用户离开或前端无响应时
+                // 测量线程与设备永久卡死；超时后抛出业务异常，由上层统一报错并释放设备
+                if (!control.semaphore.tryAcquire(PAUSE_CONFIRM_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
+                    throw BusinessException.withCode("0061303F");
+                }
+                log.info("任务 {} 暂停等待结束，继续执行", taskId);
+            } catch (BusinessException e) {
+                throw e;
             } catch (Exception e) {
                 throw BusinessException.withCode("00613006");
             }
-
-            log.info("任务 {} 已标记为暂停", taskId);
         }
     }
 
@@ -1712,7 +1892,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      */
     public void resumeTask(String taskId) {
         TaskPauseControl control = pauseControls.get(taskId);
-        if (control != null) {
+        // 仅在实际暂停时才释放信号量：避免重复RESUME累积无人消费的许可，
+        // 导致后续"请放物质"确认被跳过、直接测量
+        if (control != null && control.isPaused()) {
             control.setPaused(false);
             // 释放一个信号量，让任务继续执行
             control.semaphore.release();
@@ -1743,6 +1925,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         try {
             setTaskMeasuring(taskId, true);
             halt.put(taskId, false);
+            // 新测量真正开始，清除历史的失败时间戳，避免旧的失败记录影响本次及后续测量
+            lastMeasureFailedTimeMap.remove(taskId);
 
             // 【新增】记录任务 - 设备绑定关系
             TaskManagement management = taskService.getById(taskId);
@@ -1816,23 +2000,54 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                                // 执行更新
 //                                taskService.update(updateWrapper);
 //                            }
+//                            TaskManagement taskManagement = taskService.getById(taskId);
+//                            //获取序列号
+//                            String string = taskManagement.getOperationInstrument();
+//                            if (StringUtils.isBlank(string)) {
+//                                throw BusinessException.withCode("00613007");
+//                            }
+//                            R<String> device = deviceManageService.getConnectDevice(updateBy);
+//
+//                            if (!string.equals(device.getData())) {
+//                                throw BusinessException.withCode("00613001");
+//                            }
+//                            DeviceInfoPO info = deviceInfoService.getInfo(string);
+//
+//                            if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
+//                                throw BusinessException.withCode("00613002");
+//                            }
+
+//                            TaskManagement taskManagement = taskService.getById(taskId);
+//                            //获取序列号
+//                            String string = taskManagement.getOperationInstrument();
+//                            if (StringUtils.isBlank(string)) {
+//                                throw BusinessException.withCode("00613007");
+//                            }
+//
+//                            // 多设备兼容：直接校验任务绑定的这台仪器是否已连接，
+//                            // 不再通过 getConnectDevice 反推"最近更新的连接设备"，避免多设备下串号
+//                            DeviceInfoPO info = deviceInfoService.getInfo(string);
+//                            if (info == null || !CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
+//                                throw BusinessException.withCode("00613002");
+//                            }
                             TaskManagement taskManagement = taskService.getById(taskId);
                             //获取序列号
                             String string = taskManagement.getOperationInstrument();
                             if (StringUtils.isBlank(string)) {
                                 throw BusinessException.withCode("00613007");
                             }
-                            R<String> device = deviceManageService.getConnectDevice(updateBy);
 
-                            if (!string.equals(device.getData())) {
-                                throw BusinessException.withCode("00613001");
-                            }
-                            DeviceInfoPO info = deviceInfoService.getInfo(string);
-
-                            if (!CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
+                            // 多设备兼容：直接校验任务绑定的这台仪器是否已连接，
+                            // 不再通过 getConnectDevice 反推"最近更新的连接设备"，避免多设备下串号
+                            R<Boolean> connected = deviceManageService.isDeviceConnected(string, updateBy);
+                            if (!Boolean.TRUE.equals(connected.getData())) {
                                 throw BusinessException.withCode("00613002");
                             }
 
+                            DeviceInfoPO info = deviceInfoService.getInfo(string);
+                            if (info == null) {
+                                throw BusinessException.withCode("00613002");
+                            }
 
 //                            if (!StringUtils.equals(device.getData(), string)) {
 //                                throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
@@ -1846,6 +2061,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             if (info.getIsInited() == 3) {
                                 throw BusinessException.withCode("00613005");
                             }
+
                             //获取具体的样品池信息
                             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(string);
                             Integer samplePoolNum = vo.getSamplePoolNum();
@@ -1863,7 +2079,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             if (samplePoolNum == 1) {
                                 log.info("开始进行样品池的检测");
                                 JSONObject jsonObject = new JSONObject();
-                                jsonObject.put("notice", "单样品池，后续请根据提示放入相应物质!!!");
+                                jsonObject.put("notice", "单样品池，后续请根据提示放入相应物质!!! [设备: " + string + "]");
                                 sendToActiveSession(null, taskId, jsonObject);
                                 // 设置等待状态
                                 pauseTask(taskId);
@@ -1917,10 +2133,20 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                     }
                                 } catch (Exception e) {
                                     setTaskMeasuring(taskId, false);
+                                    if (!isAutoInspection) {
+                                        // 记录失败时间，短窗口内拦截前端重复/自动重发的测量指令
+                                        lastMeasureFailedTimeMap.put(taskId, System.currentTimeMillis());
+                                    }
                                     return false;
                                 }
                                 if (map == null || !map.getSuccess() || map.getData() == null) {
                                     setTaskMeasuring(taskId, false);
+                                    // 用户主动停止（halt置位）不算失败；其余均为测量失败，记录失败时间，
+                                    // 并清理设备侧残留报文，避免影响下次测量
+                                    if (!isAutoInspection && !Boolean.TRUE.equals(halt.get(taskId))) {
+                                        lastMeasureFailedTimeMap.put(taskId, System.currentTimeMillis());
+                                        queue.clearCommand(operationInstrument, Scan.getCmdId());
+                                    }
                                     break;
                                 }
                                 Map<String, List<JSONObject>> data = map.getData();
@@ -2131,6 +2357,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             jsonObject.put("error", errorMsg);
                             sendToActiveSession(null, taskId, jsonObject);
                             setTaskMeasuring(taskId, false);
+                            // 记录失败时间，短窗口内拦截前端重复/自动重发的测量指令
+                            lastMeasureFailedTimeMap.put(taskId, System.currentTimeMillis());
                         }
                         if (isAutoInspection) {
                             log.error("测量任务执行异常", e);
@@ -2459,7 +2687,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    public List<JSONObject> analysisProcess(List<Double> xList, List<BigDecimal> yList, List<BigDecimal> featurePoints, String methodType) throws BusinessException {
+    public List<JSONObject> analysisProcess(List<Double> xList, List<BigDecimal> yList, List<BigDecimal> featurePoints, String methodType, String taskId) throws BusinessException {
         ArrayList<JSONObject> res = new ArrayList<>();
         AalysisMethodEnum anEnum = AalysisMethodEnum.getByMsg(methodType);
         if (anEnum != null) {
@@ -2479,7 +2707,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     try {
                         resultMap = callPythonService(
                                 pythonPathConstant.getPeakSearching(),
-                                body1
+                                body1,
+                                taskId
                         );
                         log.info("寻峰结果：{}", resultMap);
                         JSONObject jsonObject = new JSONObject();
@@ -2498,9 +2727,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             }
                         }
 
+                    } catch (BusinessException e) {
+                        // 保留原始的异常码与异常链，避免真实原因被吞掉
+                        throw e;
                     } catch (Exception e) {
                         log.error("Python服务调用异常：", e);
-                        throw BusinessException.withCode("0061300B");
+                        BusinessException be = BusinessException.withCode("0061300B");
+                        be.initCause(e);
+                        throw be;
                     }
                     break;
                 case FIND_HALF_PEAK_WIDTH:
@@ -2517,7 +2751,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     try {
                         resultMap1 = callPythonService(
                                 pythonPathConstant.getPeakSearching(),
-                                body2
+                                body2,
+                                taskId
                         );
                         log.info("寻峰结果：{}", resultMap1);
                         JSONObject jsonObject = new JSONObject();
@@ -2575,9 +2810,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 res.add(jsonObject2);
                             }
                         }
+                    } catch (BusinessException e) {
+                        // 保留原始的异常码与异常链，避免真实原因被吞掉
+                        throw e;
                     } catch (Exception e) {
                         log.error("Python服务调用异常：", e);
-                        throw BusinessException.withCode("0061300B");
+                        BusinessException be = BusinessException.withCode("0061300B");
+                        be.initCause(e);
+                        throw be;
                     }
                     break;
                 case FIND_MAX_OFFSET:
@@ -3154,17 +3394,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //            R<OperationResultEntity> action = deviceManageService.Action(param);
                     while (true) {
                         taskStopFlag.put(taskId, true);
-//                        if (this.halt.get(taskId)) {
-//
-//                            setTaskMeasuring(taskId, false);
-////                            JSONObject jsonObject = new JSONObject();
-////                            jsonObject.put("error", "停止");
-////                            sendToActiveSession(null, taskId, jsonObject);
-//                            realTimeEcho(taskId, "停止-光谱");
-//                            map.put("line", list);
-////                            throw new BusinessException("任务被中断-光谱");
-//                            return map;
-//                        }
+                        // 停止兜底：点停止后即使设备没回结束报文也要能退出，避免测量线程死循环、
+                        // 测量状态无法复位导致前端"停止中"蒙版不消失
+                        if (halt.get(taskId)) {
+                            log.info("光谱基线-检测到停止指令，退出基线循环, taskId={}", taskId);
+                            this.realTimeEcho(taskId, "光谱-基线停止");
+                            map.put("line", list);
+                            return R.fail(map);
+                        }
                         try {
                             Object o = queue.pollMessage(deviceSerialNumber, BaseLine.getCmdId());
                             if (o instanceof SpectrumPoint || o == null) {
@@ -3172,6 +3409,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 if (point != null) {
                                     log.info("基线结果：{}", point);
                                     this.realTimeEcho(taskId, "光谱-基线: " + point.getWavelength());
+                                } else {
+                                    // 队列为空时短暂休眠，避免CPU 100%空转
+                                    Thread.sleep(10);
                                 }
                             } else if (o instanceof EndMarker) {
                                 EndMarker marker = (EndMarker) o;
@@ -3328,18 +3568,37 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 }
                 JSONObject countJsonObject = getJsonObject(startWavelength, endWavelength, scanInterval);
                 sendToActiveSession(null, taskId, countJsonObject);
+                // 记录最后一次收到数据/结束标记的时间，用于空闲超时兜底
+                long lastDataTime = System.currentTimeMillis();
+                // 关键：先清空上一次扫描（停止/失败/超时）残留在队列里的光谱点和结束标记。
+                // 设备层在收到新 Scan 指令时才异步清队列，而本循环立即开始 poll；
+                // 若不先清空，会读到上一次扫描的旧点/旧结束标记，误判为本次结果提前退出——
+                // 既拿垃圾数据去调算法（报500），又让真正的扫描成为无人消费的孤儿（表现为"后台还在跑"）
+                queue.clearCommand(deviceSerialNumber, Scan.getCmdId());
                 while (true) {
                     try {
                         taskStopFlag.put(taskId, true);
-//                        if (halt.get(taskId)) {
-//                            log.info("任务被暂停5");
-//
-//                            log.info("线程中断");
-//                            setTaskMeasuring(taskId, false);
-////                            throw new InterruptedException("任务被中断");
-//                            map.put("line", list);
-//                            return map;
-//                        }
+                        // 停止兜底：点击停止后，即使设备没有及时回结束报文，这里也必须能退出循环，
+                        // 否则测量线程会死循环空转，永远无法发送 isMeasuring:false，前端"停止中"蒙版一直显示
+                        if (halt.get(taskId)) {
+                            log.info("光谱扫描-检测到停止指令，退出扫描循环, taskId={}", taskId);
+                            this.realTimeEcho(taskId, "光谱-扫描停止");
+                            // 停止时立即清空残留报文，避免污染下一次扫描
+                            queue.clearCommand(deviceSerialNumber, Scan.getCmdId());
+                            map.put("line", list);
+                            return R.fail(map);
+                        }
+                        // 空闲超时兜底：长时间收不到任何数据点或结束标记时主动结束，防止设备异常时
+                        // 测量线程无限空转；正常扫描的数据点间隔远小于该值，不会误杀
+                        if (System.currentTimeMillis() - lastDataTime > SPECTRUM_SCAN_IDLE_TIMEOUT) {
+                            log.warn("光谱扫描空闲超时，主动结束, taskId={}", taskId);
+                            setTaskMeasuring(taskId, false);
+                            JSONObject idleTimeoutMsg = new JSONObject();
+                            idleTimeoutMsg.put("error", "任务超时-光谱");
+                            sendToActiveSession(null, taskId, idleTimeoutMsg);
+                            map.put("line", list);
+                            return R.fail(map);
+                        }
                         Object o = queue.pollMessage(deviceSerialNumber, Scan.getCmdId());
 //                        JSONObject jsonObject = new JSONObject();
 //                        jsonObject.put("xCount", );
@@ -3352,6 +3611,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             SpectrumPoint p = (SpectrumPoint) o;
                             if (p != null) {
                                 i++;
+                                lastDataTime = System.currentTimeMillis();
                                 // 获取或创建波形图数据缓存
                                 List<JSONObject> cachedDataPoints = waveformCache.computeIfAbsent(taskId, k -> new ArrayList<>());
 
@@ -3359,6 +3619,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 getPointsByLuminosityMode(luminosityMode, p, xList, yList, taskId, i, cachedDataPoints, list, dataMap);
 
                                 log.info("扫描结果：{}", p);
+                            } else {
+                                // 队列为空时短暂休眠，避免CPU 100%空转
+                                Thread.sleep(10);
                             }
                         } else if (o instanceof EndMarker) {
                             EndMarker endMarker = (EndMarker) o;
@@ -3374,17 +3637,25 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             if (endMarker.getReason().equals(EndMarker.Reason.NORMAL)) {
                                 break;
                             }
+                            // 点击停止后设备回的正常停止标识，之前未处理该标识，
+                            // 导致扫描线程拿到结束标记后不退出、死循环空转，
+                            // 测量状态永远无法复位为false，前端"停止中"蒙版不消失
+                            // 注意：自然扫描结束时设备回的也是该标识，此时 halt 为 false，
+                            // 走后续正常分析流程，只有用户点击停止时才回显停止
+                            if (endMarker.getReason().equals(EndMarker.Reason.NORMAL_STOP)
+                                    || endMarker.getReason().equals(EndMarker.Reason.TIME_STOP)) {
+                                log.info("光谱扫描-收到停止标识, taskId={}, reason={}", taskId, endMarker.getReason());
+                                if (halt.get(taskId)) {
+                                    this.realTimeEcho(taskId, "光谱-扫描停止");
+                                }
+                                break;
+                            }
                             if (endMarker.getReason().equals(EndMarker.Reason.TIMEOUT)) {
                                 setTaskMeasuring(taskId, false);
                                 JSONObject jsonObject = new JSONObject();
                                 jsonObject.put("error", "任务超时-光谱");
                                 sendToActiveSession(null, taskId, jsonObject);
 //                                throw new BusinessException("任务超时-光谱");
-                                map.put("line", list);
-                                return R.fail(map);
-                            }
-                            if (endMarker.getReason() == EndMarker.Reason.NORMAL_STOP) {
-                                this.realTimeEcho(taskId, "光谱-扫描停止");
                                 map.put("line", list);
                                 return R.fail(map);
                             }
@@ -3447,12 +3718,31 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 map.put("line", list);
                 return R.fail(map);
             }
-            res = analysisProcess(xList, yList, bigDecimalList, methodType);
+            res = analysisProcess(xList, yList, bigDecimalList, methodType, taskId);
         } catch (Exception e) {
             log.error("任务执行失败：", e);
+            // 用户主动停止时（典型场景：停止前线程正等待算法响应被中断）不向前端弹错误框，
+            // 只回显停止，与扫描循环的停止分支保持一致，避免停止后仍弹错误干扰用户
+            if (Boolean.TRUE.equals(halt.get(taskId))) {
+                this.realTimeEcho(taskId, "光谱-已停止");
+                map.put("line", list);
+                return R.fail(map);
+            }
             JSONObject jsonObject = new JSONObject();
-            jsonObject.put("error", i18nMessageUtil.getMessage(e.getMessage()));
-            sendToActiveSession(null, taskId, jsonObject);
+            String rawMsg = e.getMessage();
+            String displayMsg;
+            if (e instanceof BusinessException && ((BusinessException) e).getErrorCode() != null) {
+                BusinessException be = (BusinessException) e;
+                displayMsg = i18nMessageUtil.getMessage(be.getErrorCode(), be.getArgs());
+            } else {
+                displayMsg = (rawMsg != null) ? i18nMessageUtil.getMessage(rawMsg) : e.getClass().getSimpleName();
+            }
+            jsonObject.put("error", displayMsg);
+            try {
+                sendToActiveSession(null, taskId, jsonObject);
+            } catch (Exception sendEx) {
+                log.error("推送任务失败消息异常: ", sendEx);
+            }
             map.put("line", list);
             return R.fail(map);
         }
@@ -3686,11 +3976,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      */
     private void promptUserToPlaceMaterial(String taskId, String stdMaterialName) throws BusinessException {
         // 发送提示信息
+        String boundDevice = getTaskDevice(taskId);
+        String prefix = StringUtils.isNotBlank(boundDevice) ? "[设备: " + boundDevice + "] " : "";
         JSONObject noticeMsg = new JSONObject();
         if (AIR.getDescription().equals(stdMaterialName)) {
-            noticeMsg.put("notice", "请保持样品池为空！");
+            noticeMsg.put("notice", prefix + "请保持样品池为空！");
         } else {
-            noticeMsg.put("notice", "请放入 " + stdMaterialName);
+            noticeMsg.put("notice", prefix + "请放入 " + stdMaterialName);
         }
         sendToActiveSession(null, taskId, noticeMsg);
         // 设置等待状态
@@ -4015,28 +4307,56 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      *
      * @param url
      * @param requestBody
+     * @param taskId 任务ID，用于在等待算法响应期间响应用户的停止指令
      * @return
      */
-    private Map<String, Object> callPythonService(String url, Map<String, Object> requestBody) throws BusinessException {
+    private Map<String, Object> callPythonService(String url, Map<String, Object> requestBody, String taskId) throws BusinessException {
+        // 停止优先：用户已点击停止时不再发起算法调用
+        if (Boolean.TRUE.equals(halt.get(taskId))) {
+            throw new BusinessException("任务已停止");
+        }
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
             // 使用 Future 实现可中断的异步调用
-            java.util.concurrent.Future<ResponseEntity<Map>> future = taskExecutor.submit(() ->
+            Future<ResponseEntity<Map>> future = taskExecutor.submit(() ->
                     restTemplate.postForEntity(url, request, Map.class)
             );
 
             // 设置超时时间（例如 30 秒）
             ResponseEntity<Map> response;
+            long deadline = System.currentTimeMillis() + 30_000;
             try {
-                response = future.get(30, java.util.concurrent.TimeUnit.SECONDS);
-            } catch (java.util.concurrent.TimeoutException e) {
-                future.cancel(true);
-                throw BusinessException.withCode("0061300D");
-            } catch (java.util.concurrent.ExecutionException e) {
-                throw BusinessException.withCode("0061300E", e.getCause().getMessage());
+                // 轮询等待：不能一次阻塞30秒，否则用户点击停止后测量线程仍卡在此处，
+                // 表现为"没有真正停止"，其算法错误还会延迟弹出、干扰下一次测量
+                while (true) {
+                    try {
+                        response = future.get(500, TimeUnit.MILLISECONDS);
+                        break;
+                    } catch (TimeoutException e) {
+                        if (System.currentTimeMillis() >= deadline) {
+                            future.cancel(true);
+                            throw BusinessException.withCode("0061300D");
+                        }
+                        if (Boolean.TRUE.equals(halt.get(taskId))) {
+                            future.cancel(true);
+                            throw new BusinessException("任务已停止");
+                        }
+                    }
+                }
+            } catch (ExecutionException e) {
+                // 底层异常（连接失败/超时/服务异常等）必须记录完整堆栈，否则无法定位Python服务不可用等原因
+                Throwable cause = e.getCause() != null ? e.getCause() : e;
+                String causeMsg = cause.getMessage();
+                log.error("算法服务调用失败, url={}, 异常类型={}, 异常信息={}", url, cause.getClass().getName(), causeMsg, cause);
+                // 保留异常码与参数供前端国际化展示，同时用 initCause 挂上底层异常链便于排查
+                // （不改造共用的 BusinessException，避免影响其他调用方）
+                BusinessException be = BusinessException.withCode("0061300E",
+                        causeMsg != null ? causeMsg : cause.getClass().getSimpleName());
+                be.initCause(cause);
+                throw be;
             } catch (InterruptedException e) {
                 future.cancel(true);
                 Thread.currentThread().interrupt();
@@ -4107,15 +4427,23 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 map = intensityScan(taskId, dataMap, deviceSerialNumber, b, itemId, d);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            log.info("fsdgfasdgfsdgdsgdegtrg");
-            String translatedError = i18nMessageUtil.getMessage(e.getMessage());
+            log.error("发送批量数据点异常", e);
+            String translatedError;
+            if (e instanceof BusinessException && ((BusinessException) e).getErrorCode() != null) {
+                BusinessException be = (BusinessException) e;
+                translatedError = i18nMessageUtil.getMessage(be.getErrorCode(), be.getArgs());
+            } else {
+                translatedError = e.getMessage() != null ? i18nMessageUtil.getMessage(e.getMessage()) : e.getClass().getSimpleName();
+            }
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("error", translatedError);
             this.sendToActiveSession(null, taskId, jsonObject);
             this.realTimeEcho(taskId, translatedError);
             setTaskMeasuring(taskId, false);
-            throw new BusinessException(e.getMessage());
+            if (e instanceof BusinessException) {
+                throw (BusinessException) e;
+            }
+            throw new BusinessException(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
         }
         /*每一次的测量结果我都要按照任务-检测项id-测量日期这样的给存储起来，因为用户要看，如果用户*/
 //        WebSocketSession session = sessionTaskMap.get(taskId);
@@ -5873,14 +6201,41 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
             String update = getUpdateByFromUrl(session);
             log.info("WebSocket 连接关闭，会话 ID: {}, 任务 ID: {}, 状态：{}", sessionId, taskId, status);
 
-            // 清理会话相关资源
-            registeredSessionIds.remove(taskId);
+            // 清理会话相关资源：只移除当前关闭的会话，避免影响同一任务的其他连接
+            Set<String> registeredIds = registeredSessionIds.get(taskId);
+            if (registeredIds != null) {
+                registeredIds.remove(sessionId);
+                if (registeredIds.isEmpty()) {
+                    registeredSessionIds.remove(taskId);
+                }
+            }
 
             // 【修改】只移除当前关闭的 session，而不是整个任务的所有 session
+            // 注意：连接建立时存入集合的是 ConcurrentWebSocketSessionDecorator 装饰器对象，
+            // 而框架回调传入的是原始 session，装饰器未重写 equals/hashCode，
+            // 直接 remove(原始session) 会失败，导致后面的"最后一个连接"清理逻辑全部跳过，
+            // 因此必须按 sessionId 匹配后再移除
             Set<WebSocketSession> sessions = sessionTaskMap.get(taskId);
             if (sessions != null) {
-                sessions.remove(session);
-                log.info("从任务{}的 session 集合中移除会话{}", taskId, sessionId);
+                WebSocketSession storedSession = null;
+                for (WebSocketSession s : sessions) {
+                    if (sessionId.equals(s.getId())) {
+                        storedSession = s;
+                        break;
+                    }
+                }
+                if (storedSession != null) {
+                    sessions.remove(storedSession);
+                    // 同步清理该会话的前端地址，避免同前端重连时被"重复连接"拦截
+                    String closedFrontendAddress = getFrontendAddress(storedSession);
+                    Set<String> frontendAddresses = taskToFrontendAddresses.get(taskId);
+                    if (frontendAddresses != null) {
+                        frontendAddresses.remove(closedFrontendAddress);
+                    }
+                    log.info("从任务{}的 session 集合中移除会话{}", taskId, sessionId);
+                } else {
+                    log.warn("任务{}的 session 集合中未找到会话{}，可能已被清理", taskId, sessionId);
+                }
 
                 // 如果是最后一个连接，清理任务相关资源
                 if (sessions.isEmpty()) {
@@ -5904,7 +6259,10 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
                     taskFutures.remove(taskId);
                     currentMeasureItemMap.remove(taskId);
                     measurementStatusMap.remove(taskId);
-                    halt.remove(taskId);
+                    // 注意：这里不能移除 halt。halt 是任务级生命周期状态而非连接级状态，
+                    // 测量线程脱离连接后仍在后台运行（自动检测依赖无人值守跑完），
+                    // 其循环内有50余处 halt.get(taskId) 直接拆箱读取，key 被删会直接 NPE；
+                    // 且 stale 值无害——每次测量开始都会 halt.put(taskId, false) 重置
 
                     // 释放编辑锁
                     workbookCacheManager.releaseEditLock(taskId, update);
@@ -5936,8 +6294,9 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
             //是否停止设置为true
             this.halt.put(taskId, true);
             //如果是单样品池-单项测量  会唤醒暂停的任务，唤醒后检测到停止为true后跳出
+            // 仅在实际暂停时释放，避免重复停止累积许可导致后续暂停校验被跳过
             TaskPauseControl control = pauseControls.get(taskId);
-            if (control != null) {
+            if (control != null && control.isPaused()) {
                 control.setPaused(false);
                 control.semaphore.release();
             }
@@ -6029,5 +6388,25 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
             }
         }
         return null;
+    }
+    //设置灯位置
+    private R<String> setLampPosition(String deviceSerialNumber, EnergyLampEnums enums) {
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+
+        SetParam closeParam = new SetParam();
+
+        closeParam.setLampPos(Integer.valueOf(enums.getIdentity()));
+
+        inputParam.setParam(closeParam);
+        R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            log.info("设置灯位置为汞灯失败：{}", operation.getMessage());
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+
+            return R.fail(operation.getMessage());
+        }
+        return R.ok();
     }
 }

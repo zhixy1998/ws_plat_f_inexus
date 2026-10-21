@@ -2057,6 +2057,42 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok(null);
     }
 
+    /**
+     * 查询该用户下所有已连接设备（只查询，不断开任何设备）
+     *
+     * @param updateBy 用户
+     * @return 已连接设备列表，无已连接设备时返回空列表
+     */
+    @Override
+    public R<List<DeviceInfoPO>> getConnectedDeviceList(String updateBy) {
+        LambdaQueryWrapper<DeviceInfoPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DeviceInfoPO::getConnectStatus, Constants.CONNECT_DEVICE_SUCCESS)
+                .eq(DeviceInfoPO::getUpdateBy, updateBy)
+                .orderByDesc(DeviceInfoPO::getUpdated);
+        List<DeviceInfoPO> list = deviceInfoDAO.selectList(queryWrapper);
+        return R.ok(list == null ? new ArrayList<>() : list);
+    }
+
+    /**
+     * 校验指定序列号的设备是否已连接（多设备安全，不会断开其他设备）
+     *
+     * @param deviceSerialNumber 仪器序列号
+     * @param updateBy           用户
+     * @return 是否已连接
+     */
+    @Override
+    public R<Boolean> isDeviceConnected(String deviceSerialNumber, String updateBy) {
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            return R.ok(false);
+        }
+        LambdaQueryWrapper<DeviceInfoPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DeviceInfoPO::getDeviceSerialNumber, deviceSerialNumber)
+                .eq(DeviceInfoPO::getUpdateBy, updateBy)
+                .eq(DeviceInfoPO::getConnectStatus, Constants.CONNECT_DEVICE_SUCCESS);
+        Long count = deviceInfoDAO.selectCount(queryWrapper);
+        return R.ok(count != null && count > 0);
+    }
+
     @Override
     public R<Boolean> stop(
             String deviceSerialNumber
@@ -3621,14 +3657,17 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             ArrayList<DeviceTaskDto> list = new ArrayList<>();
             for (R<FindDeviceVO> vo : vos) {
                 if (vo.getSuccess()) {
-                    log.info("批量连接成功：device={}", vo.getData().getDeviceSerialNumber());
-                    DeviceTaskDto dto = new DeviceTaskDto();
-                    dto.setDeviceSerialNumber(vo.getData().getDeviceSerialNumber());
-                    dto.setStatus(OutFactoryCheckEnum.CONNECTED.getDesc());
+                    String deviceSerialNumber = vo.getData().getDeviceSerialNumber();
+                    log.info("批量连接成功：device={}", deviceSerialNumber);
+                    // 一连多：连接成功即创建出厂检验任务（每台设备一个任务），任务ID随连接结果入缓存
+                    DeviceTaskDto dto = buildDeviceTaskAfterConnect(deviceSerialNumber, templateCode, updateBy);
                     list.add(dto);
                 }
             }
-            addToCache(list);
+            // 用更新式写入，避免重复连接时缓存中的旧条目（无任务ID）被跳过
+            for (DeviceTaskDto dto : list) {
+                updateInCache(dto.getDeviceSerialNumber(), dto);
+            }
             log.info("批量连接完成：总数={}, 成功={}, 失败={}",
                     params.size(), successCount, failCount);
             return R.ok(vos);
@@ -4061,6 +4100,117 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         });
     }
 
+    /**
+     * 根据仪器型号解析出厂检验模板编码：优先匹配该型号专用模板，其次通用模板
+     *
+     * @param deviceSerialNumber 仪器序列号
+     * @param templateCode       默认模板编码（解析成功后会被覆盖）
+     * @return 出厂检验模板编码
+     * @throws BusinessException 未找到仪器型号（0061301F）或模板（0061301E）时抛出
+     */
+    private String resolveOutFactoryTemplateCode(String deviceSerialNumber, String templateCode) throws BusinessException {
+        //先根据仪器序列号找出这个仪器的型号
+        List<String> list1 = deviceTypeInfoDAO.queryDeviceTypeBySerialNumber(deviceSerialNumber);
+        if (CollectionUtils.isEmpty(list1)) {
+            log.info("未找到该序列号对应的仪器型号!");
+            throw BusinessException.withCode("0061301F");
+        }
+        //找到了仪器型号
+        String deviceType = list1.get(0);
+
+        //找出该型号的出厂检验模板
+        LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ExcelTemplate::getStatus, TemplateTypeEnum.OUT_FACTORY_CHECK.getCode())
+                .like(ExcelTemplate::getModel, deviceType);
+        List<ExcelTemplate> list2 = templateService.list(queryWrapper);
+
+        // 如果精确匹配失败，尝试查找通用模板（model为空或包含"通用"的模板）
+        if (CollectionUtils.isEmpty(list2)) {
+            log.warn("未找到仪器型号 [{}] 的专用出厂模板，尝试查找通用模板", deviceType);
+            LambdaQueryWrapper<ExcelTemplate> genericWrapper = new LambdaQueryWrapper<>();
+            genericWrapper.eq(ExcelTemplate::getStatus, TemplateTypeEnum.OUT_FACTORY_CHECK.getCode());
+            List<ExcelTemplate> genericTemplates = templateService.list(genericWrapper);
+
+            // 查找通用模板（model为空、null或标记为"通用"）
+            if (!CollectionUtils.isEmpty(genericTemplates)) {
+                for (ExcelTemplate template : genericTemplates) {
+                    if (template.getModel() == null || template.getModel().trim().isEmpty() ||
+                        "通用".equals(template.getModel()) || "ALL".equalsIgnoreCase(template.getModel())) {
+                        list2 = new ArrayList<>();
+                        list2.add(template);
+                        log.info("找到通用出厂模板，templateCode={}", template.getTemplateCode());
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (CollectionUtils.isEmpty(list2)) {
+            log.info("未找到模板!");
+            throw BusinessException.withCode("0061301E");
+        }
+        templateCode = list2.get(0).getTemplateCode();
+        log.info("成功找到出厂模板，deviceType={}, templateCode={}", deviceType, templateCode);
+        return templateCode;
+    }
+
+    /**
+     * 连接成功后为设备准备出厂检验任务信息：该设备已有任务则复用，不存在则按出厂检验模板创建
+     *
+     * @param deviceSerialNumber 仪器序列号
+     * @param templateCode       模板编码
+     * @param updateBy           用户
+     * @return 带任务ID的缓存DTO（创建失败时任务ID为空，不影响连接结果）
+     */
+    private DeviceTaskDto buildDeviceTaskAfterConnect(String deviceSerialNumber, String templateCode, String updateBy) {
+        DeviceTaskDto dto = new DeviceTaskDto();
+        dto.setDeviceSerialNumber(deviceSerialNumber);
+        dto.setStatus(OutFactoryCheckEnum.CONNECTED.getDesc());
+        try {
+            // 该设备已有出厂检验任务则复用，避免重复连接时重复创建
+            LambdaQueryWrapper<TaskManagement> existWrapper = new LambdaQueryWrapper<>();
+            existWrapper.eq(TaskManagement::getOperationInstrument, deviceSerialNumber)
+                    .eq(TaskManagement::getTaskType, FACTORY_INSPECTION_TASK.getCode())
+                    .orderByDesc(TaskManagement::getUpdated)
+                    .last("LIMIT 1");
+            TaskManagement existTask = taskManagementService.getOne(existWrapper, false);
+            if (existTask != null) {
+                dto.setTaskId(existTask.getId());
+                ExcelTemplate existTemplate = templateService.getById(existTask.getUseTemplate());
+                if (!ObjectUtils.isEmpty(existTemplate)) {
+                    dto.setTemplateCode(existTemplate.getTemplateCode());
+                }
+                log.info("设备已有出厂检验任务，连接后直接复用：deviceSerialNumber={}, taskId={}",
+                        deviceSerialNumber, existTask.getId());
+                return dto;
+            }
+
+            // 按仪器型号解析出厂检验模板并创建任务
+            String resolvedTemplateCode = resolveOutFactoryTemplateCode(deviceSerialNumber, templateCode);
+            TaskAddDto taskAddDto = new TaskAddDto();
+            taskAddDto.setDetectName(deviceSerialNumber + "_" + generateRandomSuffix());
+            taskAddDto.setUseTemplate(resolvedTemplateCode);
+            taskAddDto.setCreateBy(updateBy);
+            taskAddDto.setCreated(LocalDateTime.now());
+            taskAddDto.setSerialNumber(deviceSerialNumber);
+            taskAddDto.setTaskType(FACTORY_INSPECTION_TASK.getCode());
+            Result<HashMap<String, String>> task = taskManagementService.newTask(taskAddDto);
+            if (task != null && task.getData() != null) {
+                dto.setTaskId(MapUtils.getString(task.getData(), "taskId"));
+                dto.setTemplateCode(MapUtils.getString(task.getData(), "templateCode"));
+                log.info("连接后创建出厂检验任务成功：deviceSerialNumber={}, taskId={}",
+                        deviceSerialNumber, dto.getTaskId());
+            } else {
+                log.warn("连接后创建出厂检验任务失败：deviceSerialNumber={}", deviceSerialNumber);
+            }
+        } catch (Exception e) {
+            // 任务创建失败不影响连接结果，缓存中任务ID为空，后续可通过初始化流程兜底创建
+            log.error("连接后创建出厂检验任务异常：deviceSerialNumber={}, error={}",
+                    deviceSerialNumber, e.getMessage(), e);
+        }
+        return dto;
+    }
+
 /**
  * 监控设备初始化状态并创建任务
  */
@@ -4084,52 +4234,8 @@ private void monitorDeviceInitAndCreateTask(String deviceSerialNumber, String te
             }
 
 
-            //先根据仪器序列号找出这个仪器的型号
-            List<String> list1 = deviceTypeInfoDAO.queryDeviceTypeBySerialNumber(deviceSerialNumber);
-            LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
-
-            if (!CollectionUtils.isEmpty(list1)){
-                //找到了仪器型号
-                String deviceType = list1.get(0);
-
-
-                //找出该型号的出厂检验模板
-                queryWrapper.eq(ExcelTemplate::getStatus, TemplateTypeEnum.OUT_FACTORY_CHECK.getCode())
-                        .like(ExcelTemplate::getModel, deviceType);
-                List<ExcelTemplate> list2 = templateService.list(queryWrapper);
-
-                // 如果精确匹配失败，尝试查找通用模板（model为空或包含"通用"的模板）
-                if (CollectionUtils.isEmpty(list2)) {
-                    log.warn("未找到仪器型号 [{}] 的专用出厂模板，尝试查找通用模板", deviceType);
-                    LambdaQueryWrapper<ExcelTemplate> genericWrapper = new LambdaQueryWrapper<>();
-                    genericWrapper.eq(ExcelTemplate::getStatus, TemplateTypeEnum.OUT_FACTORY_CHECK.getCode());
-                    List<ExcelTemplate> genericTemplates = templateService.list(genericWrapper);
-
-                    // 查找通用模板（model为空、null或标记为"通用"）
-                    if (!CollectionUtils.isEmpty(genericTemplates)) {
-                        for (ExcelTemplate template : genericTemplates) {
-                            if (template.getModel() == null || template.getModel().trim().isEmpty() ||
-                                "通用".equals(template.getModel()) || "ALL".equalsIgnoreCase(template.getModel())) {
-                                list2 = new ArrayList<>();
-                                list2.add(template);
-                                log.info("找到通用出厂模板，templateCode={}", template.getTemplateCode());
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (!CollectionUtils.isEmpty(list2)){
-                    templateCode=list2.get(0).getTemplateCode();
-                    log.info("成功找到出厂模板，deviceType={}, templateCode={}", deviceType, templateCode);
-                }else{
-                    log.info("未找到模板!");
-                    throw BusinessException.withCode("0061301E");
-                }
-            }else {
-                log.info("未找到该序列号对应的仪器型号!");
-                throw BusinessException.withCode("0061301F");
-            }
+            //先根据仪器序列号找出这个仪器的型号，解析出厂检验模板
+            templateCode = resolveOutFactoryTemplateCode(deviceSerialNumber, templateCode);
 
             LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(TaskManagement::getOperationInstrument, deviceSerialNumber)
