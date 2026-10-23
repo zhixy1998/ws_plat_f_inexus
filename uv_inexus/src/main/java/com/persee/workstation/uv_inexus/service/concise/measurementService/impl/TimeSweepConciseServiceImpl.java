@@ -425,35 +425,54 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
         TimeSweepNearestMethodVo vo = new TimeSweepNearestMethodVo();
 
-        QueryWrapper<FMeasureMethod> wrapper = new QueryWrapper<>();
-        wrapper.eq("method_creator", updateBy);
-        wrapper.eq("measurement_type", measureType);
-        wrapper.orderByDesc("method_use_time");
-        wrapper.last("LIMIT 1");
-
-        FMeasureMethod method = fMeasureMethodService.getOne(wrapper);
         String id = sysUserPO.getId();
-        if (method == null) {
-            // 查询对应类型的默认方法
-            QueryWrapper<FMeasureMethod> queryWrapper = new QueryWrapper<>();
-            queryWrapper.eq("measurement_type", measureType);
-            queryWrapper.eq("method_name", "默认方法");
-            queryWrapper.last("LIMIT 1");
-            method = fMeasureMethodService.getOne(queryWrapper);
-            if (method == null) {
-                //没有默认方法
-                return Result.fail("00100007");
-            }
+
+        // 1. 优先以该用户当前测量类型下最近创建的任务为准: 任务用的是哪个方法就返回哪个方法,
+        //    避免"最近使用的方法"与任务实际使用的方法不一致时(例如基于较早创建的方法新建了任务)返回错误的方法
+        QueryWrapper<FMeasureTask> nearestTaskWrapper = new QueryWrapper<>();
+        nearestTaskWrapper.eq("user_id", id);
+        nearestTaskWrapper.eq("measure_type", measureType);
+        nearestTaskWrapper.eq("is_delete", "0");
+        nearestTaskWrapper.orderByDesc("create_time");
+        nearestTaskWrapper.last("LIMIT 1");
+        FMeasureTask task = fMeasureTaskService.getOne(nearestTaskWrapper);
+
+        // 2. 取任务实际使用的方法
+        FMeasureMethod method = null;
+        if (task != null && StringUtils.hasText(task.getMethodKey())) {
+            method = fMeasureMethodService.getById(task.getMethodKey());
         }
 
-        // 根据方法id查询出最近创建的任务
-        QueryWrapper<FMeasureTask> taskWrapper = new QueryWrapper<>();
-        taskWrapper.eq("method_key", method.getId());
-        taskWrapper.orderByDesc("create_time");
-        taskWrapper.eq("is_delete", "0");
-        taskWrapper.eq("user_id",id);
-        taskWrapper.last("LIMIT 1");
-        FMeasureTask task = fMeasureTaskService.getOne(taskWrapper);
+        // 3. 没有任务或任务的方法已被删除时, 回退到该用户最近使用的方法, 并重新查该方法最近创建的任务
+        if (method == null) {
+            QueryWrapper<FMeasureMethod> wrapper = new QueryWrapper<>();
+            wrapper.eq("method_creator", updateBy);
+            wrapper.eq("measurement_type", measureType);
+            wrapper.orderByDesc("method_use_time");
+            wrapper.last("LIMIT 1");
+            method = fMeasureMethodService.getOne(wrapper);
+            if (method == null) {
+                // 查询对应类型的默认方法
+                QueryWrapper<FMeasureMethod> queryWrapper = new QueryWrapper<>();
+                queryWrapper.eq("measurement_type", measureType);
+                queryWrapper.eq("method_name", "默认方法");
+                queryWrapper.last("LIMIT 1");
+                method = fMeasureMethodService.getOne(queryWrapper);
+                if (method == null) {
+                    //没有默认方法
+                    return Result.fail("00100007");
+                }
+            }
+
+            // 根据方法id查询出最近创建的任务
+            QueryWrapper<FMeasureTask> taskWrapper = new QueryWrapper<>();
+            taskWrapper.eq("method_key", method.getId());
+            taskWrapper.orderByDesc("create_time");
+            taskWrapper.eq("is_delete", "0");
+            taskWrapper.eq("user_id", id);
+            taskWrapper.last("LIMIT 1");
+            task = fMeasureTaskService.getOne(taskWrapper);
+        }
 
         BeanUtils.copyProperties(method, vo);
         FTimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
