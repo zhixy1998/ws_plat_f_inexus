@@ -1353,8 +1353,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             //没有找到该任务
             return Result.fail("00000004");
         }
-        // 查询样品信息时一并保存显示设置(显示位数/波峰/波谷/标记点)
-        saveDisplayParam(taskId, digit, showPeak, showValley, showMarkPoint);
+        // 未勾选"显示已删除数据"时前端会传空串/0,统一按未传入处理,否则已删除数据无法隐藏
+        if (!StringUtils.hasText(type) || "0".equals(type.trim()) || "false".equalsIgnoreCase(type.trim())) {
+            type = null;
+        }
+        // 查询样品信息时一并保存显示设置(显示位数/波峰/波谷/标记点/已删除数据)
+        saveDisplayParam(taskId, digit, showPeak, showValley, showMarkPoint, type != null);
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         List<FSampleListVo> listVos = new ArrayList<>();
         // 根据序列号查询对应的附件配置表信息
@@ -1392,7 +1396,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 if (measureData == null ||taskSpeciman.getIsTested().equals("0")&& measureData.getAnalysisResult() == null) {
                     vo.setTitle(sample.getSampleName());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
-                    vo.setAnalysisId(null);
+                    vo.setAnalysisId(buildSpecimenRowKey(taskSpeciman.getSpecimenKey(), 1));
                     vo.setAnalysisNumber(1);
                     if (isAutoChangePool){
                         vo.setSampleLocation(sample.getSampleLocation());
@@ -1401,7 +1405,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     }
                     vo.setColor(null);
                     vo.setData(null);
-                    vo.setDeleteType("0");
+                    // 未测行没有分析数据,删除状态取样品的删除标记,查看已删除数据时才显示为已删除
+                    vo.setDeleteType(deleteType.equals(taskSpeciman.getDeleteType()) ? deleteType : createType);
                 } else {
                     vo.setTitle(sample.getSampleName());
                     vo.setAnalysisId(measureData.getId());
@@ -1429,7 +1434,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     vo.setPeakInterval(peakParam.getPeakInterval());
                 }
                 // 选中状态优先取任务分析样品字段,兼容分析数据中的旧值,均无则默认已选中
-                vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey()));
+                vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey(), 1));
                 vo.setType("0");
                 listVos.add(vo);
             }
@@ -1454,6 +1459,10 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             return Result.fail("00000004");
         }
         List<FTaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        // 未测行的虚拟id(样品id#序号): 该行还没有分析数据, 直接把对应的未测量样品删除
+        if (parseSpecimenRowKey(analysisId) != null) {
+            return deleteUnmeasuredSpecimen(task, taskSpecimenList, sampleId, analysisId);
+        }
         for (FTaskSpecimen taskSpecimen : taskSpecimenList) {
             if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
                 taskSpecimen.setDeleteType("1");
@@ -1486,6 +1495,39 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             //删除失败
             return Result.fail("00100008");
         }
+    }
+
+    /**
+     * 删除未测量的样品
+     * <p>
+     * 未测行还没有分析数据, 列表返回的是虚拟id(样品id#序号), 删除时只需把任务中该样品标记为已删除
+     *
+     * @param task             任务
+     * @param taskSpecimenList 任务中的样品列表
+     * @param sampleId         样品id
+     * @param analysisId       未测行虚拟id
+     * @return 删除结果
+     */
+    private Result deleteUnmeasuredSpecimen(FMeasureTask task, List<FTaskSpecimen> taskSpecimenList,
+                                            String sampleId, String analysisId) {
+        if (taskSpecimenList != null) {
+            for (FTaskSpecimen taskSpecimen : taskSpecimenList) {
+                if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
+                    taskSpecimen.setDeleteType("1");
+                    break;
+                }
+            }
+        }
+        // 同步移除任务分析样品字段中的选中记录
+        removeAnalysisSampleFromTask(task, analysisId, sampleId);
+        task.setSampleKey(JSON.toJSONString(taskSpecimenList));
+        boolean update = fMeasureTaskService.updateById(task);
+        if (update) {
+            //删除成功
+            return Result.ok("00100022");
+        }
+        //删除失败
+        return Result.fail("00100008");
     }
 
     /**
@@ -1537,10 +1579,20 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return Result.fail("00000044");
             }
         }
-        // 单个分析数据选中状态
+        // 单个分析数据选中状态(同时支持未测行的行级键)
         if (StringUtils.hasText(analysisId)) {
             FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
             if (analysisData == null) {
+                // 未测行的行级键: 直接按行级保存选中状态, 不需要分析数据存在
+                if (parseSpecimenRowKey(analysisId) != null && StringUtils.hasText(taskId)) {
+                    FMeasureTask rowTask = fMeasureTaskService.getById(taskId);
+                    if (rowTask == null) {
+                        //没有找到该任务
+                        return Result.fail("00000004");
+                    }
+                    upsertTaskSampleSelected(rowTask, analysisId, isSelected);
+                    return fMeasureTaskService.updateById(rowTask) ? Result.ok() : Result.fail("00000044");
+                }
                 return Result.fail("0000003D");
             }
             // 选中状态改为保存在任务的分析样品字段中
@@ -1614,6 +1666,23 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @return 选中状态(0.未选中,1.已选中)
      */
     private String getTaskSampleSelected(FMeasureTask task, FMeasureAnalysisData measureData, String sampleId) {
+        return getTaskSampleSelected(task, measureData, sampleId, null);
+    }
+
+    /**
+     * 获取某一行对应的选中状态(支持未测行的行级选中)
+     * <p>
+     * 未测行没有分析数据id, 因此用"样品id#分析序号"作为行级键(与光谱扫描保持一致);
+     * 查找顺序: 分析数据id → 未测行行级键 → 样品级(整样品生效) → 分析数据旧值 → 默认已选中
+     *
+     * @param task           任务
+     * @param measureData    分析数据(未测样品为null)
+     * @param sampleId       样品id
+     * @param analysisNumber 分析序号(未测行使用, 可为null)
+     * @return 选中状态(0.未选中,1.已选中)
+     */
+    private String getTaskSampleSelected(FMeasureTask task, FMeasureAnalysisData measureData, String sampleId,
+                                         Integer analysisNumber) {
         String analysisId = measureData == null ? null : measureData.getId();
         List<FAnalysisSampleSelect> selectList = parseTaskSampleSelected(task);
         // 1. 优先按分析数据id匹配(命中但值为空时不返回null,继续向下兜底)
@@ -1625,7 +1694,16 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 }
             }
         }
-        // 2. 再按样品id匹配(未测样品行)
+        // 1.1 未测行按行级键匹配
+        String rowKey = buildSpecimenRowKey(sampleId, analysisNumber);
+        if (StringUtils.hasText(rowKey)) {
+            for (FAnalysisSampleSelect item : selectList) {
+                if (rowKey.equals(item.getAnalysisId()) && StringUtils.hasText(item.getIsSelected())) {
+                    return item.getIsSelected();
+                }
+            }
+        }
+        // 2. 再按样品id匹配(样品级, 对整样品生效)
         if (StringUtils.hasText(sampleId)) {
             for (FAnalysisSampleSelect item : selectList) {
                 if (!StringUtils.hasText(item.getAnalysisId()) && sampleId.equals(item.getSampleId())
@@ -1643,6 +1721,46 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         // 4. 默认已选中
         return "1";
+    }
+
+    /**
+     * 未测行行级键分隔符: sampleId#分析序号
+     */
+    private static final String SPECIMEN_ROW_KEY_SEPARATOR = "#";
+
+    /**
+     * 组装未测行的行级键(sampleId#分析序号)
+     *
+     * @param sampleId       样品id
+     * @param analysisNumber 分析序号
+     * @return 行级键, 参数不完整时返回null
+     */
+    private String buildSpecimenRowKey(String sampleId, Integer analysisNumber) {
+        if (!StringUtils.hasText(sampleId) || analysisNumber == null) {
+            return null;
+        }
+        return sampleId + SPECIMEN_ROW_KEY_SEPARATOR + analysisNumber;
+    }
+
+    /**
+     * 解析未测行的行级键(sampleId#分析序号)
+     *
+     * @param rowKey 行级键
+     * @return [样品id, 分析序号], 非行级键返回null
+     */
+    private String[] parseSpecimenRowKey(String rowKey) {
+        if (!StringUtils.hasText(rowKey)) {
+            return null;
+        }
+        int index = rowKey.lastIndexOf(SPECIMEN_ROW_KEY_SEPARATOR);
+        if (index <= 0 || index == rowKey.length() - 1) {
+            return null;
+        }
+        String number = rowKey.substring(index + 1);
+        if (!number.chars().allMatch(Character::isDigit)) {
+            return null;
+        }
+        return new String[]{rowKey.substring(0, index), number};
     }
 
     /**
@@ -1680,7 +1798,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     }
 
     /**
-     * 保存光谱/时间扫描的显示设置(显示位数/波峰/波谷/标记点)
+     * 保存光谱/时间扫描的显示设置(显示位数/波峰/波谷/标记点/已删除数据)
      * <p>
      * 与 queryTaskDataParam 成对使用,不新增表字段,合并写回任务附属表的 data_param,
      * 只覆盖本次传入的字段,未传的字段保持原值;都没传时不做任何写操作
@@ -1690,10 +1808,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @param showPeak      波峰
      * @param showValley    波谷
      * @param showMarkPoint 标记点
+     * @param showDeleted   是否显示已删除数据
      */
     private void saveDisplayParam(String taskId, Integer digit, Boolean showPeak, Boolean showValley,
-                                  Boolean showMarkPoint) {
-        if (digit == null && showPeak == null && showValley == null && showMarkPoint == null) {
+                                  Boolean showMarkPoint, Boolean showDeleted) {
+        if (digit == null && showPeak == null && showValley == null && showMarkPoint == null && showDeleted == null) {
             return;
         }
         LambdaQueryWrapper<FMeasureTaskAttachment> queryWrapper = new LambdaQueryWrapper<>();
@@ -1718,6 +1837,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         if (showMarkPoint != null) {
             dataDTO.setShowMarkPoint(showMarkPoint);
+        }
+        if (showDeleted != null) {
+            dataDTO.setAllDisplay(showDeleted);
         }
         if (attachment == null) {
             attachment = new FMeasureTaskAttachment();
@@ -1969,6 +2091,10 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             }
             task.setSampleKey(JSON.toJSONString(sampleList));
             boolean update1 = fMeasureTaskService.updateById(task);
+            // 未测行(样品id#序号)没有分析数据, 任务中的样品状态恢复成功即视为恢复成功
+            if (parseSpecimenRowKey(analysisId) != null) {
+                return update1 ? Result.ok(true) : Result.fail(false);
+            }
             // 根据分析id查询分析数据
             FMeasureAnalysisData byId = fMeasureAnalysisDataService.getById(analysisId);
             if (byId == null) {
@@ -4664,7 +4790,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 if (measureData == null ||taskSpeciman.getIsTested().equals("0")&& measureData.getAnalysisResult() == null) {
                     vo.setTitle(sample.getSampleName());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
-                    vo.setAnalysisId(null);
+                    vo.setAnalysisId(buildSpecimenRowKey(taskSpeciman.getSpecimenKey(), 1));
                     vo.setAnalysisNumber(1);
                     if (isAutoChangePool){
                         vo.setSampleLocation(sample.getSampleLocation());
@@ -4673,7 +4799,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     }
                     vo.setColor(null);
                     vo.setData(null);
-                    vo.setDeleteType("0");
+                    // 未测行没有分析数据,删除状态取样品的删除标记,查看已删除数据时才显示为已删除
+                    vo.setDeleteType(deleteType.equals(taskSpeciman.getDeleteType()) ? deleteType : createType);
                 } else {
                     vo.setTitle(sample.getSampleName());
                     vo.setAnalysisId(measureData.getId());
@@ -4701,7 +4828,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     vo.setPeakInterval(peakParam.getPeakInterval());
                 }
                 // 选中状态优先取任务分析样品字段,兼容分析数据中的旧值,均无则默认已选中
-                vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey()));
+                vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey(), 1));
                 vo.setType("0");
                 listVos.add(vo);
             }

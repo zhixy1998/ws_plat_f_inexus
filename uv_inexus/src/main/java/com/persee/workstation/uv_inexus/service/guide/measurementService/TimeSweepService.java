@@ -44,7 +44,7 @@ public interface TimeSweepService {
                           Boolean showPeak, Boolean showValley, Boolean showMarkPoint);
 
     // 删除样品列表接口
-    Result deleteSampleListPort(String sampleId, String taskId);
+    Result deleteSampleListPort(String sampleId, String taskId, String analysisId);
 
     // 更新样品选中状态(已测:传analysisId;未测:传taskId+sampleId;全选/全取消:传taskId+allSelectType,1-所有样品 2-所有分析样品)
     Result updateSampleSelected(String analysisId, String isSelected, String taskId, String allSelectType, String sampleId);
