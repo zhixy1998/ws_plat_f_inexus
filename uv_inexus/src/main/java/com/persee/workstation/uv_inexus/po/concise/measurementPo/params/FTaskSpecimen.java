@@ -9,12 +9,10 @@
 
 package com.persee.workstation.uv_inexus.po.concise.measurementPo.params;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 public class FTaskSpecimen {
     // 样本id
@@ -27,4 +25,14 @@ public class FTaskSpecimen {
     private String sampleType;
     //样品类型
     private String sampleKind;
+    // 重复模式下被单独删除的重复序号(逗号分隔,从1开始), 为空表示没有单独删除的重复行
+    private String deletedNumbers;
+
+    public FTaskSpecimen(String specimenKey, String deleteType, String isTested, String sampleType, String sampleKind) {
+        this.specimenKey = specimenKey;
+        this.deleteType = deleteType;
+        this.isTested = isTested;
+        this.sampleType = sampleType;
+        this.sampleKind = sampleKind;
+    }
 }

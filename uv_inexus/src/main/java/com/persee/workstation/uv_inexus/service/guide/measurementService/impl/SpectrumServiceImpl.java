@@ -1182,8 +1182,12 @@ public class SpectrumServiceImpl implements SpectrumService {
             //没有找到该方法
             return Result.fail("00000009");
         }
-        // 查询样品信息时一并保存显示设置(显示位数/波峰/波谷/标记点)
-        saveDisplayParam(taskId, digit, showPeak, showValley, showMarkPoint);
+        // 未勾选"显示已删除数据"时前端会传空串/0,统一按未传入处理,否则已删除数据无法隐藏
+        if (!StringUtils.hasText(type) || "0".equals(type.trim()) || "false".equalsIgnoreCase(type.trim())) {
+            type = null;
+        }
+        // 查询样品信息时一并保存显示设置(显示位数/波峰/波谷/标记点/已删除数据)
+        saveDisplayParam(taskId, digit, showPeak, showValley, showMarkPoint, type != null);
         // 根据序列号查询对应的附件配置表信息
         QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
         wrapper.eq("device_serial_number", deviceSerialNumber);
@@ -1229,7 +1233,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 if (measureData == null || taskSpeciman.getIsTested().equals("0") && measureData.getAnalysisResult() == null) {
                     vo.setTitle(sample.getSampleName());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
-                    vo.setAnalysisId(null);
+                    vo.setAnalysisId(buildSpecimenRowKey(taskSpeciman.getSpecimenKey(), 1));
                     if (isAutoChangePool){
                         vo.setSampleLocation(sample.getSampleLocation());
                     }else{
@@ -1266,7 +1270,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                     vo.setPeakInterval(peakParam.getPeakInterval());
                 }
                 // 选中状态优先取任务分析样品字段,兼容分析数据中的旧值,均无则默认已选中
-                vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey()));
+                vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey(), 1));
                 vo.setType("0");
                 vo.setDeleteType(taskSpeciman.getDeleteType());
                 listVos.add(vo);
@@ -1291,6 +1295,10 @@ public class SpectrumServiceImpl implements SpectrumService {
                 int key = 0;
                 // 根据方法中的方法参数的重复次数进行循环
                 for (int i = 0; i < count; i++) {
+                    // 该次重复已被单独删除时不再展示(查看已删除数据时仍展示)
+                    if (type == null && isNumberDeleted(taskSpeciman, i + 1)) {
+                        continue;
+                    }
                     SampleListVo vo = new SampleListVo();
                     QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
                     queryWrapper.eq("task_id", task.getId());
@@ -1302,7 +1310,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
                     if (measureData == null) {
                         vo.setTitle(sample.getSampleName() + "-" + (i + 1));
-                        vo.setAnalysisId(null);
+                        vo.setAnalysisId(buildSpecimenRowKey(taskSpeciman.getSpecimenKey(), i + 1));
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
                         vo.setAnalysisNumber(i + 1);
                         if (isAutoChangePool){
@@ -1312,7 +1320,8 @@ public class SpectrumServiceImpl implements SpectrumService {
                         }
                         vo.setColor(null);
                         vo.setData(null);
-                        vo.setDeleteType("0");
+                        // 未测行没有分析数据,删除状态取样品/该次重复的删除标记,查看已删除数据时才显示为已删除
+                        vo.setDeleteType(isRowDeleted(taskSpeciman, i + 1) ? deleteType : createType);
                     } else if (measureData != null) {
                         if (measureData.getIsDelete().equals("1") && type == null) {
                             continue;
@@ -1345,8 +1354,12 @@ public class SpectrumServiceImpl implements SpectrumService {
                         vo.setPeakInterval(peakParam.getPeakInterval());
                     }
                     // 选中状态优先取任务分析样品字段,兼容分析数据中的旧值,均无则默认已选中
-                    vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey()));
+                    vo.setIsSelected(getTaskSampleSelected(task, measureData, taskSpeciman.getSpecimenKey(), i + 1));
                     vo.setType("0");
+                    // 重复模式: 样品整行删除或该次重复被单独删除时, 该行都按已删除返回
+                    if (isRowDeleted(taskSpeciman, i + 1)) {
+                        vo.setDeleteType(deleteType);
+                    }
 
                     listVos.add(vo);
                 }
@@ -1379,6 +1392,10 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 根据任务id查询方法表数据并取出方法参数
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
+        // 未测行的虚拟id(样品id#序号): 该行还没有分析数据, 按重复序号删除(不删除整个样品)
+        if (parseSpecimenRowKey(analysisId) != null) {
+            return deleteUnmeasuredSpecimen(task, taskSpecimenList, sampleId, analysisId, spectrumParameter);
+        }
         // 判断是否是重复模式
         if (spectrumParameter.getRepetitionPattern().equals("不重复")) {
             // 根据分析id查询分析数据
@@ -1415,16 +1432,18 @@ public class SpectrumServiceImpl implements SpectrumService {
             }
             byId.setIsDelete("1");
             boolean update = tMeasureAnalysisDataService.updateById(byId);
-            // 查询跟这个样品和任务id关联的分析数据
-            List<TMeasureAnalysisData> list = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("is_delete", "0"));
-            if (list.size() == 0) {
-                // 循环遍历样品列表找到该样品
-                for (TaskSpecimen taskSpecimen : taskSpecimenList) {
-                    if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
-                        taskSpecimen.setDeleteType("1");
-                        break;
-                    }
+            // 重复模式按行删除: 该行的分析数据已置为删除, 只有所有重复行都删除后才把样品本身标记删除
+            int repetitionCount = getRepetitionCount(spectrumParameter);
+            TaskSpecimen repeatSpecimen = null;
+            for (TaskSpecimen taskSpecimen : taskSpecimenList) {
+                if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
+                    repeatSpecimen = taskSpecimen;
+                    break;
                 }
+            }
+            // 未测且未删除的重复行不算删除, 避免删一次重复就把整个样品(含未测行)一起删掉
+            if (repeatSpecimen != null && isAllRepeatRowsDeleted(taskId, sampleId, repeatSpecimen, repetitionCount)) {
+                repeatSpecimen.setDeleteType("1");
                 // 同步移除任务分析样品字段中的选中记录
                 removeAnalysisSampleFromTask(task, analysisId, sampleId);
                 task.setSampleKey(JSON.toJSONString(taskSpecimenList));
@@ -1449,6 +1468,62 @@ public class SpectrumServiceImpl implements SpectrumService {
                 return Result.fail("00000044");
             }
         }
+    }
+
+    /**
+     * 删除未测量的样品行
+     * <p>
+     * 未测行还没有分析数据, 列表返回的是虚拟id(样品id#序号)。
+     * 重复模式只删除该次重复序号, 不删除整个样品; 非重复模式或所有重复序号都删除完时才删除样品本身。
+     *
+     * @param task              任务
+     * @param taskSpecimenList  任务中的样品列表
+     * @param sampleId          样品id
+     * @param analysisId        未测行虚拟id
+     * @param spectrumParameter 方法参数(用于判断重复模式与重复次数)
+     * @return 删除结果
+     */
+    private Result deleteUnmeasuredSpecimen(TMeasureTask task, List<TaskSpecimen> taskSpecimenList,
+                                            String sampleId, String analysisId, SpectrumParameter spectrumParameter) {
+        String[] rowKey = parseSpecimenRowKey(analysisId);
+        int analysisNumber = rowKey == null ? 0 : Integer.parseInt(rowKey[1]);
+        TaskSpecimen target = null;
+        if (taskSpecimenList != null) {
+            for (TaskSpecimen taskSpecimen : taskSpecimenList) {
+                if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
+                    target = taskSpecimen;
+                    break;
+                }
+            }
+        }
+        if (target == null) {
+            //没有找到该样品
+            return Result.fail("00000004");
+        }
+        boolean repeatMode = spectrumParameter != null && StringUtils.hasText(spectrumParameter.getRepetitionPattern())
+                && !"不重复".equals(spectrumParameter.getRepetitionPattern());
+        if (repeatMode && analysisNumber > 0) {
+            // 重复模式: 只记录该次重复被删除, 不删除整个样品
+            target.setDeletedNumbers(addDeletedNumber(target.getDeletedNumbers(), analysisNumber));
+            int repetitionCount = getRepetitionCount(spectrumParameter);
+            if (repetitionCount > 0 && isAllRepeatRowsDeleted(task.getId(), sampleId, target, repetitionCount)) {
+                // 该样品的所有重复行都删除后, 样品本身也标记删除
+                target.setDeleteType("1");
+            }
+        } else {
+            // 非重复模式: 直接删除样品
+            target.setDeleteType("1");
+        }
+        // 同步移除任务分析样品字段中的选中记录
+        removeAnalysisSampleFromTask(task, analysisId, sampleId);
+        task.setSampleKey(JSON.toJSONString(taskSpecimenList));
+        boolean update = tMeasureTaskService.updateById(task);
+        if (update) {
+            //成功删除数据
+            return Result.ok("00000043");
+        }
+        //删除数据失败
+        return Result.fail("00000044");
     }
 
     /**
@@ -1500,10 +1575,20 @@ public class SpectrumServiceImpl implements SpectrumService {
                 return Result.fail("00000044");
             }
         }
-        // 单个分析数据选中状态
+        // 单个分析数据选中状态(同时支持未测行的行级键)
         if (StringUtils.hasText(analysisId)) {
             TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getById(analysisId);
             if (analysisData == null) {
+                // 未测行的行级键: 直接按行级保存选中状态, 不需要分析数据存在
+                if (parseSpecimenRowKey(analysisId) != null && StringUtils.hasText(taskId)) {
+                    TMeasureTask rowTask = tMeasureTaskService.getById(taskId);
+                    if (rowTask == null) {
+                        //没有找到该任务
+                        return Result.fail("00000004");
+                    }
+                    upsertTaskSampleSelected(rowTask, analysisId, isSelected);
+                    return tMeasureTaskService.updateById(rowTask) ? Result.ok() : Result.fail("00000044");
+                }
                 return Result.fail("0000003D");
             }
             // 选中状态改为保存在任务的分析样品字段中
@@ -1577,6 +1662,23 @@ public class SpectrumServiceImpl implements SpectrumService {
      * @return 选中状态(0.未选中,1.已选中)
      */
     private String getTaskSampleSelected(TMeasureTask task, TMeasureAnalysisData measureData, String sampleId) {
+        return getTaskSampleSelected(task, measureData, sampleId, null);
+    }
+
+    /**
+     * 获取某一行对应的选中状态(支持未测行的行级选中)
+     * <p>
+     * 重复模式下同一样品有多行, 未测行没有分析数据id, 因此用"样品id#分析序号"作为行级键;
+     * 查找顺序: 分析数据id → 未测行行级键 → 样品级(整样品生效) → 分析数据旧值 → 默认已选中
+     *
+     * @param task           任务
+     * @param measureData    分析数据(未测样品为null)
+     * @param sampleId       样品id
+     * @param analysisNumber 分析序号(未测行使用, 可为null)
+     * @return 选中状态(0.未选中,1.已选中)
+     */
+    private String getTaskSampleSelected(TMeasureTask task, TMeasureAnalysisData measureData, String sampleId,
+                                         Integer analysisNumber) {
         String analysisId = measureData == null ? null : measureData.getId();
         List<AnalysisSampleSelect> selectList = parseTaskSampleSelected(task);
         // 1. 优先按分析数据id匹配(命中但值为空时不返回null,继续向下兜底)
@@ -1588,7 +1690,16 @@ public class SpectrumServiceImpl implements SpectrumService {
                 }
             }
         }
-        // 2. 再按样品id匹配(未测样品行)
+        // 1.1 未测行按行级键匹配(重复模式下同一样品的每一行独立)
+        String rowKey = buildSpecimenRowKey(sampleId, analysisNumber);
+        if (StringUtils.hasText(rowKey)) {
+            for (AnalysisSampleSelect item : selectList) {
+                if (rowKey.equals(item.getAnalysisId()) && StringUtils.hasText(item.getIsSelected())) {
+                    return item.getIsSelected();
+                }
+            }
+        }
+        // 2. 再按样品id匹配(样品级, 对整样品生效)
         if (StringUtils.hasText(sampleId)) {
             for (AnalysisSampleSelect item : selectList) {
                 if (!StringUtils.hasText(item.getAnalysisId()) && sampleId.equals(item.getSampleId())
@@ -1606,6 +1717,199 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         // 4. 默认已选中
         return "1";
+    }
+
+    /**
+     * 未测行行级键分隔符: sampleId#分析序号
+     */
+    private static final String SPECIMEN_ROW_KEY_SEPARATOR = "#";
+
+    /**
+     * 组装未测行的行级键(sampleId#分析序号)
+     *
+     * @param sampleId       样品id
+     * @param analysisNumber 分析序号
+     * @return 行级键, 参数不完整时返回null
+     */
+    private String buildSpecimenRowKey(String sampleId, Integer analysisNumber) {
+        if (!StringUtils.hasText(sampleId) || analysisNumber == null) {
+            return null;
+        }
+        return sampleId + SPECIMEN_ROW_KEY_SEPARATOR + analysisNumber;
+    }
+
+    /**
+     * 解析未测行的行级键(sampleId#分析序号)
+     *
+     * @param rowKey 行级键
+     * @return [样品id, 分析序号], 非行级键返回null
+     */
+    private String[] parseSpecimenRowKey(String rowKey) {
+        if (!StringUtils.hasText(rowKey)) {
+            return null;
+        }
+        int index = rowKey.lastIndexOf(SPECIMEN_ROW_KEY_SEPARATOR);
+        if (index <= 0 || index == rowKey.length() - 1) {
+            return null;
+        }
+        String number = rowKey.substring(index + 1);
+        if (!number.chars().allMatch(Character::isDigit)) {
+            return null;
+        }
+        return new String[]{rowKey.substring(0, index), number};
+    }
+
+    /**
+     * 解析样品被单独删除的重复序号
+     *
+     * @param deletedNumbers 逗号分隔的重复序号
+     * @return 重复序号列表
+     */
+    private List<Integer> parseDeletedNumbers(String deletedNumbers) {
+        List<Integer> numbers = new ArrayList<>();
+        if (!StringUtils.hasText(deletedNumbers)) {
+            return numbers;
+        }
+        for (String item : deletedNumbers.split(",")) {
+            if (!StringUtils.hasText(item)) {
+                continue;
+            }
+            try {
+                numbers.add(Integer.parseInt(item.trim()));
+            } catch (NumberFormatException ignored) {
+                // 非法序号忽略
+            }
+        }
+        return numbers;
+    }
+
+    /**
+     * 追加一个被删除的重复序号
+     *
+     * @param deletedNumbers 已有的逗号分隔序号
+     * @param analysisNumber 本次删除的序号
+     * @return 新的逗号分隔序号
+     */
+    private String addDeletedNumber(String deletedNumbers, int analysisNumber) {
+        List<Integer> numbers = parseDeletedNumbers(deletedNumbers);
+        if (!numbers.contains(analysisNumber)) {
+            numbers.add(analysisNumber);
+        }
+        List<String> parts = new ArrayList<>();
+        for (Integer number : numbers) {
+            parts.add(String.valueOf(number));
+        }
+        return String.join(",", parts);
+    }
+
+    /**
+     * 去掉一个已恢复的重复序号
+     *
+     * @param deletedNumbers 已有的逗号分隔序号
+     * @param analysisNumber 本次恢复的序号
+     * @return 新的逗号分隔序号, 无剩余序号时返回null
+     */
+    private String removeDeletedNumber(String deletedNumbers, int analysisNumber) {
+        List<Integer> numbers = parseDeletedNumbers(deletedNumbers);
+        numbers.remove(Integer.valueOf(analysisNumber));
+        if (numbers.isEmpty()) {
+            return null;
+        }
+        List<String> parts = new ArrayList<>();
+        for (Integer number : numbers) {
+            parts.add(String.valueOf(number));
+        }
+        return String.join(",", parts);
+    }
+
+    /**
+     * 判断某次重复行是否已被单独删除
+     *
+     * @param specimen       任务样品
+     * @param analysisNumber 重复序号(从1开始)
+     * @return true-已删除
+     */
+    private boolean isNumberDeleted(TaskSpecimen specimen, int analysisNumber) {
+        return specimen != null && parseDeletedNumbers(specimen.getDeletedNumbers()).contains(analysisNumber);
+    }
+
+    /**
+     * 判断某一行是否已被删除(样品整体删除或该次重复序号被单独删除)
+     *
+     * @param specimen       任务样品
+     * @param analysisNumber 重复序号(从1开始)
+     * @return true-已删除
+     */
+    private boolean isRowDeleted(TaskSpecimen specimen, int analysisNumber) {
+        return specimen != null
+                && (deleteType.equals(specimen.getDeleteType()) || isNumberDeleted(specimen, analysisNumber));
+    }
+
+    /**
+     * 判断样品的所有重复序号是否都已被删除
+     *
+     * @param deletedNumbers  逗号分隔序号
+     * @param repetitionCount 重复次数
+     * @return true-全部删除
+     */
+    private boolean isAllNumbersDeleted(String deletedNumbers, int repetitionCount) {
+        List<Integer> numbers = parseDeletedNumbers(deletedNumbers);
+        for (int i = 1; i <= repetitionCount; i++) {
+            if (!numbers.contains(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 判断重复模式下该样品的所有重复行是否都已删除
+     * <p>
+     * 该次重复已被单独删除(deletedNumbers)或该次重复的分析数据已删除, 都算该行已删除;
+     * 既没有分析数据也没有删除标记的未测行不算删除。
+     *
+     * @param taskId          任务id
+     * @param sampleId        样品id
+     * @param specimen        任务样品
+     * @param repetitionCount 重复次数
+     * @return true-所有重复行都已删除
+     */
+    private boolean isAllRepeatRowsDeleted(String taskId, String sampleId, TaskSpecimen specimen, int repetitionCount) {
+        if (specimen == null || repetitionCount <= 0) {
+            return false;
+        }
+        for (int number = 1; number <= repetitionCount; number++) {
+            if (isNumberDeleted(specimen, number)) {
+                continue;
+            }
+            QueryWrapper<TMeasureAnalysisData> wrapper = new QueryWrapper<>();
+            wrapper.eq("task_id", taskId);
+            wrapper.eq("sample_key", sampleId);
+            wrapper.eq("analysis_number", number);
+            wrapper.last("limit 1");
+            TMeasureAnalysisData rowData = tMeasureAnalysisDataService.getOne(wrapper);
+            if (rowData == null || !deleteType.equals(rowData.getIsDelete())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 获取方法配置的重复次数
+     *
+     * @param parameter 方法参数
+     * @return 重复次数, 非重复模式或取不到时返回0
+     */
+    private int getRepetitionCount(SpectrumParameter parameter) {
+        if (parameter == null || !StringUtils.hasText(parameter.getRepetitionTime())) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(parameter.getRepetitionTime());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     /**
@@ -1653,10 +1957,11 @@ public class SpectrumServiceImpl implements SpectrumService {
      * @param showPeak      波峰
      * @param showValley    波谷
      * @param showMarkPoint 标记点
+     * @param showDeleted   是否显示已删除数据
      */
     private void saveDisplayParam(String taskId, Integer digit, Boolean showPeak, Boolean showValley,
-                                  Boolean showMarkPoint) {
-        if (digit == null && showPeak == null && showValley == null && showMarkPoint == null) {
+                                  Boolean showMarkPoint, Boolean showDeleted) {
+        if (digit == null && showPeak == null && showValley == null && showMarkPoint == null && showDeleted == null) {
             return;
         }
         LambdaQueryWrapper<TMeasureTaskAttachment> queryWrapper = new LambdaQueryWrapper<>();
@@ -1681,6 +1986,9 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         if (showMarkPoint != null) {
             dataDTO.setShowMarkPoint(showMarkPoint);
+        }
+        if (showDeleted != null) {
+            dataDTO.setAllDisplay(showDeleted);
         }
         if (attachment == null) {
             attachment = new TMeasureTaskAttachment();
@@ -1922,14 +2230,36 @@ public class SpectrumServiceImpl implements SpectrumService {
                 return Result.fail("00000004");
             }
             List<TaskSpecimen> sampleList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            // 未测行的虚拟id(样品id#序号)没有分析数据, 恢复时只需清掉该次重复的删除标记
+            String[] restoreRowKey = parseSpecimenRowKey(analysisId);
+            int restoreNumber = restoreRowKey == null ? 0 : Integer.parseInt(restoreRowKey[1]);
             for (TaskSpecimen taskSpecimen : sampleList) {
                 if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
+                    if (restoreNumber > 0) {
+                        taskSpecimen.setDeletedNumbers(removeDeletedNumber(taskSpecimen.getDeletedNumbers(), restoreNumber));
+                    }
+                    // 只要有一行恢复, 样品本身就不再是整行删除
                     taskSpecimen.setDeleteType("0");
                     break;
                 }
             }
             task.setSampleKey(JSON.toJSONString(sampleList));
             boolean update1 = tMeasureTaskService.updateById(task);
+            if (restoreNumber > 0) {
+                // 未测行没有分析数据; 若该重复序号已生成分析数据则同步恢复, 避免样品与分析数据状态不一致
+                QueryWrapper<TMeasureAnalysisData> rowWrapper = new QueryWrapper<>();
+                rowWrapper.eq("task_id", taskId);
+                rowWrapper.eq("sample_key", sampleId);
+                rowWrapper.eq("analysis_number", restoreNumber);
+                rowWrapper.last("limit 1");
+                TMeasureAnalysisData rowData = tMeasureAnalysisDataService.getOne(rowWrapper);
+                if (rowData != null) {
+                    rowData.setIsDelete("0");
+                    tMeasureAnalysisDataService.updateById(rowData);
+                }
+                // 任务中的样品状态恢复成功即视为恢复成功
+                return update1 ? Result.ok(true) : Result.fail(false);
+            }
             // 根据分析id查询分析数据
             TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(analysisId);
             if (byId == null) {
