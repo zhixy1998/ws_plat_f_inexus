@@ -1159,7 +1159,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 // 发送错误响应而不是让异常传播
                 try {
                     JSONObject errorMsg = new JSONObject();
-                    errorMsg.put("error", i18nMessageUtil.getMessage(e.getMessage()));
+                    errorMsg.put("error", i18nMessageUtil.getMessage(e));
                     sendToActiveSession(session, taskId, errorMsg);
                 } catch (Exception sendError) {
                     log.error("发送错误消息也失败", sendError);
@@ -1203,7 +1203,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             } catch (Exception e) {
                 log.error("设置测量质量线失败", e);
                 JSONObject errorMsg = new JSONObject();
-                errorMsg.put("error", i18nMessageUtil.getMessage(e.getMessage()));
+                errorMsg.put("error", i18nMessageUtil.getMessage(e));
                 sendToActiveSession(session, taskId, errorMsg);
             }
         }
@@ -1416,7 +1416,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 handleAutoInspection(session, taskId, updateBy);
             } catch (Exception e) {
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", i18nMessageUtil.getMessage(e.getMessage()));
+                jsonObject.put("error", i18nMessageUtil.getMessage(e));
                 sendToActiveSession(null, taskId, jsonObject);
                 setTaskMeasuring(taskId, false);
             }
@@ -1689,14 +1689,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         if (CollectionUtils.isNotEmpty(list)) {
             CompletableFuture.runAsync(() -> {
                 for (ExcelDataAsset asset : list) {
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         try {
                             setTaskMeasuring(taskId, false);
                             break;
                         } catch (BusinessException e) {
                             log.error("设置任务测量状态失败，任务ID: {}", taskId, e);
                             JSONObject errorMsg = new JSONObject();
-                            errorMsg.put("error", i18nMessageUtil.getMessage(e.getMessage()));
+                            errorMsg.put("error", i18nMessageUtil.getMessage(e));
                             sendToActiveSession(session, taskId, errorMsg);
                         }
                         log.info("任务 {} 已被暂停，停止自动检测流程", taskId);
@@ -1724,7 +1724,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 //                        addSessionToTask(taskId, session);
 //                        sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             log.info("任务已暂停，请检查任务是否暂停");
                             setTaskMeasuring(taskId, false);
                             return;
@@ -1754,7 +1754,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 abortAutoInspection(session, taskId, "检测项 [" + asset.getId() + "] 测量失败");
                                 break;
                             }
-                            if (halt.get(taskId)) {
+                            if (isHalted(taskId)) {
                                 setTaskMeasuring(taskId, false);
                                 log.info("任务 {} 已被暂停，停止自动检测流程", taskId);
                                 return;
@@ -1769,7 +1769,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     } catch (Exception e) {
                         log.error("检测项: {},检测失败，终止自动检测流程>>>>>>>>>", asset.getId(), e);
                         JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("error", i18nMessageUtil.getMessage(e.getMessage()));
+                        jsonObject.put("error", i18nMessageUtil.getMessage(e));
                         sendToActiveSession(null, taskId, jsonObject);
                         // 前端已收到失败提示，终止整个自动检测，不再继续后续检测项
                         abortAutoInspection(session, taskId, "检测项 [" + asset.getId() + "] 启动异常");
@@ -1944,7 +1944,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 public Boolean call() throws BusinessException {
 
                     try {
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             return false;
                         }
                         TaskPauseControl control = pauseControls.computeIfAbsent(taskId, k -> new TaskPauseControl());
@@ -2118,7 +2118,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 }
 
                                 try {
-                                    if (!halt.get(taskId)) {
+                                    if (!isHalted(taskId)) {
                                         if (d == 0) {
                                             JSONObject json1 = new JSONObject();
                                             json1.put("itemName", category + "--" + projectName);
@@ -2143,7 +2143,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                     setTaskMeasuring(taskId, false);
                                     // 用户主动停止（halt置位）不算失败；其余均为测量失败，记录失败时间，
                                     // 并清理设备侧残留报文，避免影响下次测量
-                                    if (!isAutoInspection && !Boolean.TRUE.equals(halt.get(taskId))) {
+                                    if (!isAutoInspection && !isHalted(taskId)) {
                                         lastMeasureFailedTimeMap.put(taskId, System.currentTimeMillis());
                                         queue.clearCommand(operationInstrument, Scan.getCmdId());
                                     }
@@ -2168,7 +2168,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                         if (data.get("line") != null) {
                                             //修改工作簿，需要把第一个测量值的列填满，然后第二个，第三个
                                             for (int k = 0; k < list.size(); k++) {
-                                                if (halt.get(taskId)) {
+                                                if (isHalted(taskId)) {
                                                     return false;
 
                                                 }
@@ -2203,7 +2203,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                             List<JSONObject> jsonObjects = data.get("res");
                                             //修改工作簿，需要把第一个测量值的列填满，然后第二个，第三个
                                             for (int k = 0; k < jsonObjects.size(); k++) {
-                                                if (halt.get(taskId)) {
+                                                if (isHalted(taskId)) {
                                                     return false;
 
                                                 }
@@ -2294,7 +2294,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                         realTimeEcho(taskId, "测量完成");
                                     }
                                 }
-                                if (halt.get(taskId)) {
+                                if (isHalted(taskId)) {
                                     break;
                                 }
                             }
@@ -2346,7 +2346,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             if (be.getErrorCode() != null) {
                                 errorMsg = i18nMessageUtil.getMessage(be.getErrorCode(), be.getArgs());
                             } else {
-                                errorMsg = i18nMessageUtil.getMessage(be.getMessage());
+                                errorMsg = i18nMessageUtil.getMessage(be);
                             }
                         } else {
                             errorMsg = e.getMessage();
@@ -3135,7 +3135,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 //切换样品池到黑挡块
                 //看看是否为多样品池
                 if (isMultiProductPool) {
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         log.info("任务被暂停1");
                         map.put("line", list);
                         return R.fail(map);
@@ -3164,7 +3164,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     if (!operationDark1.getSuccess()) {
                         setTaskMeasuring(taskId, false);
                         JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("error", i18nMessageUtil.getMessage(operationDark1.getMessage()));
+                        jsonObject.put("error", i18nMessageUtil.getMessage(operationDark1));
                         sendToActiveSession(null, taskId, jsonObject);
                         return R.fail(map);
                     }
@@ -3172,18 +3172,18 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                JSONObject jsonObject = new JSONObject();
 //                jsonObject.put("notice","请放入黑挡块");
 //                sendToActiveSession(null,taskId,jsonObject);
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         map.put("line", list);
                         return R.fail(map);
                     }
                     promptUserToPlaceMaterial(taskId, "黑挡块");
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         map.put("line", list);
                         return R.fail(map);
                     }
                 }
                 this.realTimeEcho(taskId, "光谱-开始暗电流矫正");
-                if (halt.get(taskId)) {
+                if (isHalted(taskId)) {
                     map.put("line", list);
                     return R.fail(map);
                 }
@@ -3204,7 +3204,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 } else {
                     setTaskMeasuring(taskId, false);
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", i18nMessageUtil.getMessage(operationDark.getMessage()));
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operationDark));
                     sendToActiveSession(null, taskId, jsonObject);
                     return R.fail(map);
                 }
@@ -3278,7 +3278,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 inputParam.setParam(setParam);
                 inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
                 log.info("入参：》》》》》》》" + inputParam);
-                if (halt.get(taskId)) {
+                if (isHalted(taskId)) {
                     log.info("任务被暂停3");
                     map.put("line", list);
                     return R.fail(map);
@@ -3322,7 +3322,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         //设置样品池位置
                         sampleParamDark.setCellPos(positionDark);
                         operationBaseline.setParam(sampleParamDark);
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             map.put("line", list);
                             return R.fail(map);
                         }
@@ -3332,7 +3332,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             log.warn("设备测量失败-基线-切换样品池: {}, 错误: {}", deviceSerialNumber, operationDark1.getMessage());
                             setTaskMeasuring(taskId, false);
                             JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("error", i18nMessageUtil.getMessage(operationDark1.getMessage()));
+                            jsonObject.put("error", i18nMessageUtil.getMessage(operationDark1));
                             sendToActiveSession(null, taskId, jsonObject);
                             return R.fail(map);
                         }
@@ -3345,7 +3345,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                         inputParam1.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
                         this.realTimeEcho(taskId, "光谱-开始基线");
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             map.put("line", list);
                             return R.fail(map);
                         }
@@ -3354,13 +3354,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         b = operation.getSuccess();
                         msg = operation.getMessage();
                     } else {
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             map.put("line", list);
                             return R.fail(map);
                         }
 
                         promptUserToPlaceMaterial(taskId, "空气");
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             map.put("line", list);
                             return R.fail(map);
                         }
@@ -3371,7 +3371,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                         inputParam1.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
                         this.realTimeEcho(taskId, "光谱-开始基线");
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             map.put("line", list);
                             return R.fail(map);
                         }
@@ -3396,7 +3396,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         taskStopFlag.put(taskId, true);
                         // 停止兜底：点停止后即使设备没回结束报文也要能退出，避免测量线程死循环、
                         // 测量状态无法复位导致前端"停止中"蒙版不消失
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             log.info("光谱基线-检测到停止指令，退出基线循环, taskId={}", taskId);
                             this.realTimeEcho(taskId, "光谱-基线停止");
                             map.put("line", list);
@@ -3452,7 +3452,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     return R.fail(map);
                 }
             }
-            if (halt.get(taskId)) {
+            if (isHalted(taskId)) {
                 log.info("线程中断");
                 setTaskMeasuring(taskId, false);
                 realTimeEcho(taskId, "停止-光谱");
@@ -3481,7 +3481,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     //设置样品池位置
                     sampleParam.setCellPos(position);
                     operationInputParam.setParam(sampleParam);
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         return R.fail(map);
                     }
                     R<OperationResultEntity> operation1 = devOperationUtilService.operation(operationInputParam);
@@ -3524,12 +3524,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             }
                         }
                     }
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         map.put("line", list);
                         return R.fail(map);
                     }
                     promptUserToPlaceMaterial(taskId, standardName);
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         map.put("line", list);
                         return R.fail(map);
                     }
@@ -3547,7 +3547,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //        param1.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
 
                 param1.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
-                if (halt.get(taskId)) {
+                if (isHalted(taskId)) {
                     return R.fail(map);
                 }
                 R<OperationResultEntity> operation =
@@ -3557,7 +3557,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     log.warn("光谱扫描失败: {}, 错误: {}", deviceSerialNumber, operation.getMessage());
                     setTaskMeasuring(taskId, false);
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", i18nMessageUtil.getMessage(operation.getMessage()));
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operation));
                     sendToActiveSession(null, taskId, jsonObject);
                     return R.fail(map);
                 }
@@ -3580,7 +3580,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         taskStopFlag.put(taskId, true);
                         // 停止兜底：点击停止后，即使设备没有及时回结束报文，这里也必须能退出循环，
                         // 否则测量线程会死循环空转，永远无法发送 isMeasuring:false，前端"停止中"蒙版一直显示
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             log.info("光谱扫描-检测到停止指令，退出扫描循环, taskId={}", taskId);
                             this.realTimeEcho(taskId, "光谱-扫描停止");
                             // 停止时立即清空残留报文，避免污染下一次扫描
@@ -3645,7 +3645,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             if (endMarker.getReason().equals(EndMarker.Reason.NORMAL_STOP)
                                     || endMarker.getReason().equals(EndMarker.Reason.TIME_STOP)) {
                                 log.info("光谱扫描-收到停止标识, taskId={}, reason={}", taskId, endMarker.getReason());
-                                if (halt.get(taskId)) {
+                                if (isHalted(taskId)) {
                                     this.realTimeEcho(taskId, "光谱-扫描停止");
                                 }
                                 break;
@@ -3714,7 +3714,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
         }
         try {
-            if (halt.get(taskId)) {
+            if (isHalted(taskId)) {
                 map.put("line", list);
                 return R.fail(map);
             }
@@ -3723,7 +3723,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             log.error("任务执行失败：", e);
             // 用户主动停止时（典型场景：停止前线程正等待算法响应被中断）不向前端弹错误框，
             // 只回显停止，与扫描循环的停止分支保持一致，避免停止后仍弹错误干扰用户
-            if (Boolean.TRUE.equals(halt.get(taskId))) {
+            if (isHalted(taskId)) {
                 this.realTimeEcho(taskId, "光谱-已停止");
                 map.put("line", list);
                 return R.fail(map);
@@ -3735,7 +3735,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 BusinessException be = (BusinessException) e;
                 displayMsg = i18nMessageUtil.getMessage(be.getErrorCode(), be.getArgs());
             } else {
-                displayMsg = (rawMsg != null) ? i18nMessageUtil.getMessage(rawMsg) : e.getClass().getSimpleName();
+                displayMsg = i18nMessageUtil.getMessage(e);
             }
             jsonObject.put("error", displayMsg);
             try {
@@ -3746,7 +3746,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             map.put("line", list);
             return R.fail(map);
         }
-        if (halt.get(taskId)) {
+        if (isHalted(taskId)) {
             log.info("任务停止");
             if (CollectionUtils.isNotEmpty(res)) {
                 for (JSONObject re : res) {
@@ -4312,7 +4312,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      */
     private Map<String, Object> callPythonService(String url, Map<String, Object> requestBody, String taskId) throws BusinessException {
         // 停止优先：用户已点击停止时不再发起算法调用
-        if (Boolean.TRUE.equals(halt.get(taskId))) {
+        if (isHalted(taskId)) {
             throw new BusinessException("任务已停止");
         }
         try {
@@ -4340,7 +4340,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             future.cancel(true);
                             throw BusinessException.withCode("0061300D");
                         }
-                        if (Boolean.TRUE.equals(halt.get(taskId))) {
+                        if (isHalted(taskId)) {
                             future.cancel(true);
                             throw new BusinessException("任务已停止");
                         }
@@ -4433,7 +4433,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 BusinessException be = (BusinessException) e;
                 translatedError = i18nMessageUtil.getMessage(be.getErrorCode(), be.getArgs());
             } else {
-                translatedError = e.getMessage() != null ? i18nMessageUtil.getMessage(e.getMessage()) : e.getClass().getSimpleName();
+                translatedError = i18nMessageUtil.getMessage(e);
             }
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("error", translatedError);
@@ -4689,7 +4689,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         //设置样品池位置
                         sampleParamDark.setCellPos(positionDark);
                         operationInputParamDark.setParam(sampleParamDark);
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             log.info("时间扫描-任务被暂停");
                             return R.fail(map);
                         }
@@ -4701,13 +4701,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         }
                     } else {
                         operationDark3.setSuccess(true);
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             map.put("line", line);
                             realTimeEcho(taskId, "已停止");
                             return R.fail(map);
                         }
                         promptUserToPlaceMaterial(taskId, "黑挡块");
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             map.put("line", line);
                             realTimeEcho(taskId, "已停止");
                             return R.fail(map);
@@ -4720,7 +4720,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     } else {
                         log.warn("时间扫描-切换样品池到黑挡块失败！");
                         JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("error", i18nMessageUtil.getMessage(operationDark3.getMessage()));
+                        jsonObject.put("error", i18nMessageUtil.getMessage(operationDark3));
                         sendToActiveSession(null, taskId, jsonObject);
                         setTaskMeasuring(taskId, false);
 //                    stopTask(taskId);
@@ -4781,7 +4781,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     darkParam.setCalibrationType(DeviceCalibrationInfoEnum.Dark.getType());
                     darkParam.setOperationType(OperationTypeEnums.Calibration.getType());
 //        darkParam.setUpdateBy();
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         realTimeEcho(taskId, "已停止");
                         return R.fail(map);
                     }
@@ -4798,7 +4798,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         log.warn("时间扫描-暗电流矫正出错！");
                         setTaskMeasuring(taskId, false);
                         JSONObject jsonObject = new JSONObject();
-                        String translatedMsg = i18nMessageUtil.getMessage(operationDark.getMessage());
+                        String translatedMsg = i18nMessageUtil.getMessage(operationDark);
                         jsonObject.put("error", translatedMsg);
                         errorMsg = translatedMsg;
                         boolean b = sendToActiveSession(null, taskId, jsonObject);
@@ -4808,7 +4808,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     isOk = true;
                 }
 
-//            if (halt.get(taskId)) {
+//            if (isHalted(taskId)) {
 //                return R.fail(map);
 //            }
                 realTimeEcho(taskId, "时间扫描-开始设置参数");
@@ -4817,7 +4817,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 if (!operation.getSuccess()) {
                     log.warn("时间扫描-参数设置出错！");
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", i18nMessageUtil.getMessage(operation.getMessage()));
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operation));
                     sendToActiveSession(null, taskId, jsonObject);
                     setTaskMeasuring(taskId, false);
                     return R.fail(map);
@@ -4837,7 +4837,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                 if (photoMode != null) {
                     if (photoMode == 1 || photoMode == 2) {
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             log.warn("任务被取消！");
                             setTaskMeasuring(taskId, false);
                             realTimeEcho(taskId, "已停止");
@@ -4861,7 +4861,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     //设置样品池位置
                     sampleParam.setCellPos(position);
                     operationInputParam.setParam(sampleParam);
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         return R.fail(map);
 
                     }
@@ -4890,13 +4890,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 }
                             }
                         }
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             map.put("line", line);
                             realTimeEcho(taskId, "已停止");
                             return R.fail(map);
                         }
                         promptUserToPlaceMaterial(taskId, standardName);
-                        if (halt.get(taskId)) {
+                        if (isHalted(taskId)) {
                             map.put("line", line);
                             realTimeEcho(taskId, "已停止");
                             return R.fail(map);
@@ -4912,7 +4912,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 } else {
                     log.warn("时间扫描-切换样品池到校零物质失败！");
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", i18nMessageUtil.getMessage(operation4.getMessage()));
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operation4));
                     sendToActiveSession(null, taskId, jsonObject);
                     setTaskMeasuring(taskId, false);
 //            stopTask(taskId);
@@ -4922,7 +4922,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 realTimeEcho(taskId, "时间扫描-执行校零操作");
 
                 inputParam.setOperationType(OperationTypeEnums.Zero.getType());
-                if (halt.get(taskId)) {
+                if (isHalted(taskId)) {
                     realTimeEcho(taskId, "已停止");
                     return R.fail(map);
                 }
@@ -4930,7 +4930,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 if (!zero.getSuccess()) {
                     log.warn("时间扫描-校零失败！");
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", i18nMessageUtil.getMessage(zero.getMessage()));
+                    jsonObject.put("error", i18nMessageUtil.getMessage(zero));
                     sendToActiveSession(null, taskId, jsonObject);
                     setTaskMeasuring(taskId, false);
 //            stopTask(taskId);
@@ -4974,7 +4974,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     //设置样品池位置
                     sampleParam1.setCellPos(position1);
                     operationInputParam1.setParam(sampleParam1);
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         realTimeEcho(taskId, "已停止");
                         return R.fail(map);
                     }
@@ -5004,13 +5004,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             }
                         }
                     }
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         realTimeEcho(taskId, "已停止");
                         map.put("line", line);
                         return R.fail(map);
                     }
                     promptUserToPlaceMaterial(taskId, standardName);
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         realTimeEcho(taskId, "已停止");
                         map.put("line", line);
                         return R.fail(map);
@@ -5044,7 +5044,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             strings.add(characteristic);
             param1.setIntervalSeconds(timeInterval);
             param1.setTotalTime(totalTime);
-            if (halt.get(taskId)) {
+            if (isHalted(taskId)) {
                 realTimeEcho(taskId, "已停止");
                 return R.fail(map);
             }
@@ -5071,7 +5071,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             while (true) {
                 try {
                     taskStopFlag.put(taskId, true);
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         realTimeEcho(taskId, "已停止");
                         map.put("line", line);
                         return R.fail(map);
@@ -5094,7 +5094,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
                             getPointsByLuminosityMode(luminosityMode, p, xList, yList, taskId, i, cachedDataPoints, line, dataMap);
-                            if (halt.get(taskId)) {
+                            if (isHalted(taskId)) {
                                 realTimeEcho(taskId, "已停止");
                                 return R.fail(map);
                             }
@@ -5142,7 +5142,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     return R.fail(map);
                 }
             }
-            if (halt.get(taskId)) {
+            if (isHalted(taskId)) {
                 realTimeEcho(taskId, "已停止");
                 map.put("line", line);
                 return R.fail(map);
@@ -5398,11 +5398,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     }
                 } else {
                     operation3.setSuccess(true);
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         return R.fail(map);
                     }
                     promptUserToPlaceMaterial(taskId, "黑挡块");
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         return R.fail(map);
                     }
                 }
@@ -5411,7 +5411,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 } else {
                     log.warn("切换样品池到黑挡块失败！");
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", i18nMessageUtil.getMessage(operation3.getMessage()));
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operation3));
                     sendToActiveSession(null, taskId, jsonObject);
                     setTaskMeasuring(taskId, false);
 //            stopTask(taskId);
@@ -5476,10 +5476,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 log.info("暗电流矫正结果：{}", operationDark);
                 if (!operationDark.getSuccess()) {
                     log.warn("暗电流矫正出错！");
-                    realTimeEcho(taskId, "暗电流矫正出错：" + i18nMessageUtil.getMessage(operationDark.getMessage()));
+                    realTimeEcho(taskId, "暗电流矫正出错：" + i18nMessageUtil.getMessage(operationDark));
                     setTaskMeasuring(taskId, false);
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", i18nMessageUtil.getMessage(operationDark.getMessage()));
+                    jsonObject.put("error", i18nMessageUtil.getMessage(operationDark));
                     boolean b = sendToActiveSession(null, taskId, jsonObject);
                     return R.fail(map);
                 }
@@ -5508,7 +5508,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             if (!operation.getSuccess()) {
                 log.warn("参数设置出错！");
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put("error", i18nMessageUtil.getMessage(operation.getMessage()));
+                jsonObject.put("error", i18nMessageUtil.getMessage(operation));
                 sendToActiveSession(null, taskId, jsonObject);
                 setTaskMeasuring(taskId, false);
                 return R.fail(map);
@@ -5554,11 +5554,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             }
                         }
                     }
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         return R.fail(map);
                     }
                     promptUserToPlaceMaterial(taskId, standardName);
-                    if (halt.get(taskId)) {
+                    if (isHalted(taskId)) {
                         return R.fail(map);
                     }
                 } else {
@@ -5636,11 +5636,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         }
                     }
                 }
-                if (halt.get(taskId)) {
+                if (isHalted(taskId)) {
                     return R.fail(map);
                 }
                 promptUserToPlaceMaterial(taskId, standardName);
-                if (halt.get(taskId)) {
+                if (isHalted(taskId)) {
                     return R.fail(map);
                 }
             } else {
@@ -5675,7 +5675,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         if (!measure.getSuccess()) {
             log.warn("测量出错！");
             JSONObject jsonObject = new JSONObject();
-            jsonObject.put("error", i18nMessageUtil.getMessage(measure.getMessage()));
+            jsonObject.put("error", i18nMessageUtil.getMessage(measure));
             sendToActiveSession(null, taskId, jsonObject);
             setTaskMeasuring(taskId, false);
             return R.fail(map);
@@ -6257,12 +6257,11 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
                     // 清理暂停控制
                     pauseControls.remove(taskId);
                     taskFutures.remove(taskId);
-                    currentMeasureItemMap.remove(taskId);
-                    measurementStatusMap.remove(taskId);
-                    // 注意：这里不能移除 halt。halt 是任务级生命周期状态而非连接级状态，
-                    // 测量线程脱离连接后仍在后台运行（自动检测依赖无人值守跑完），
-                    // 其循环内有50余处 halt.get(taskId) 直接拆箱读取，key 被删会直接 NPE；
-                    // 且 stale 值无害——每次测量开始都会 halt.put(taskId, false) 重置
+                    // 注意：这里不能移除 halt / currentMeasureItemMap / measurementStatusMap。
+                    // 三者都是任务级生命周期状态而非连接级状态：测量线程脱离连接后仍在后台运行
+                    // （自动检测依赖无人值守跑完）。若在此处清掉，用户切页断开再重连时，
+                    // isMeasuring 会被误判为 false、currentItem 丢失，前端无法恢复测量现场。
+                    // stale 值无害——每次测量开始都会 reset。
 
                     // 释放编辑锁
                     workbookCacheManager.releaseEditLock(taskId, update);
@@ -6284,6 +6283,14 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
         }
     }
 
+
+    /**
+     * null 安全的 halt 判断。halt 是 ConcurrentHashMap，key 不存在时 get 返回 null，
+     * 直接放进 if 条件会拆箱抛 NPE（与线上"停止任务异常"同一类隐患），故统一走此方法。
+     */
+    private boolean isHalted(String taskId) {
+        return Boolean.TRUE.equals(halt.get(taskId));
+    }
 
     // 在停止任务时也清理队列
     public void stopTask(String taskId) throws BusinessException {

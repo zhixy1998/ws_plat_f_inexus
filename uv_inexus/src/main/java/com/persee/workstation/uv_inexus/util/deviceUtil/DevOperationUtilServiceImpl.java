@@ -162,8 +162,20 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             String deviceSerialNumber = po.getDeviceSerialNumber();
             String type = deviceModelInfoDAO.getDevTypeByDevModel(po.getDeviceModel());
             Map<String, Transition> xmlInfo = xmlManage.getXmlInfo(type);
+            if (xmlInfo == null) {
+                // 个别设备的型号/类型没有对应协议配置时跳过，避免一台异常设备导致整个应用启动失败
+                log.warn("恢复连接跳过：设备 {}（型号 {}）无对应协议配置, type={}",
+                        deviceSerialNumber, po.getDeviceModel(), type);
+                unConnectedDevice.add(deviceSerialNumber);
+                continue;
+            }
 
             Transition transition = xmlInfo.get(cmdId);
+            if (transition == null) {
+                log.warn("恢复连接跳过：设备 {} 缺少指令 {} 的协议配置", deviceSerialNumber, cmdId);
+                unConnectedDevice.add(deviceSerialNumber);
+                continue;
+            }
             int timeout = transition.getTimeout();
             int replyNumber = transition.getReplyNumber();
             List<String> headReceiveBytes = transition.getHeadReceiveBytes();
@@ -212,7 +224,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
 
             //共有数据库的情况下，不修改非自己ip的设备信息
-            if (!po.getMachineIp().equals(localIp)) {
+            if (po.getMachineIp() == null || !po.getMachineIp().equals(localIp)) {
                 continue;
             }
 
@@ -249,28 +261,33 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 cmdId = T600ComIdEnums.GetInitStatus.getComId();
 
                 transition = xmlInfo.get(cmdId);
-                timeout = transition.getTimeout();
-                replyNumber = transition.getReplyNumber();
-                headReceiveBytes = transition.getHeadReceiveBytes();
-
-                param = new Object[]{};
-
-                bytes = protocolItemUtil.calcSendBytes(param, transition);
-                r = udpSendUtil.knowTotalReceiveSend(s, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
-                if (r.getSuccess()) {
-
-                    result = (OperationResultEntity) r.getData();
-                    Integer isInited = result.getIsInited();
-                    if (isInited.equals(Constants.INIT_STATUS_SUCCESS)) {
-                        log.info("已初始化！");
-                        newPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
-                        udpSendUtil.startHeartbeat(s);
-                    } else {
-                        log.info("未初始化！");
-                        newPO.setIsInited(Constants.INIT_STATUS_NO);
-                    }
-                } else {
+                if (transition == null) {
+                    log.warn("恢复连接跳过：设备 {} 缺少初始化状态指令 {} 的协议配置", deviceSerialNumber, cmdId);
                     newPO.setIsInited(Constants.INIT_STATUS_FALSE);
+                } else {
+                    timeout = transition.getTimeout();
+                    replyNumber = transition.getReplyNumber();
+                    headReceiveBytes = transition.getHeadReceiveBytes();
+
+                    param = new Object[]{};
+
+                    bytes = protocolItemUtil.calcSendBytes(param, transition);
+                    r = udpSendUtil.knowTotalReceiveSend(s, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+                    if (r.getSuccess()) {
+
+                        result = (OperationResultEntity) r.getData();
+                        Integer isInited = result.getIsInited();
+                        if (isInited.equals(Constants.INIT_STATUS_SUCCESS)) {
+                            log.info("已初始化！");
+                            newPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
+                            udpSendUtil.startHeartbeat(s);
+                        } else {
+                            log.info("未初始化！");
+                            newPO.setIsInited(Constants.INIT_STATUS_NO);
+                        }
+                    } else {
+                        newPO.setIsInited(Constants.INIT_STATUS_FALSE);
+                    }
                 }
 
                 xmlManage.setDevice(po.getIp(), type);
