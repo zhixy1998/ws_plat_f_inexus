@@ -55,6 +55,9 @@ public class DevOperationInputParam {
     @ApiModelProperty("校正方式")
     private Integer calibrationType;
 
+    @ApiModelProperty("是否按实时方式接收（暗电流等流式指令，边收边解析并回调数据点）")
+    private Boolean onTime;
+
     @ApiModelProperty("校准参数")
     private List<DataNameValue> calibrationData;
 

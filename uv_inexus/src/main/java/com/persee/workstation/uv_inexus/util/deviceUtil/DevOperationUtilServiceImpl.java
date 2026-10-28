@@ -2275,7 +2275,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 }
 
 //                isDealOnTime = xmlKey.equals(DevXmlEnums.T800.getDevType());
-                isDealOnTime = inputParam.getCalibrationType().equals(DeviceCalibrationInfoEnum.T800Dark.getType());
+                // 暗电流等流式指令需要边收边解析：T800Dark 一直是实时方式；
+                // 测量流程下发的普通 Dark 通过 onTime 显式开启，便于把每个数据点回调给业务层做实时回显。
+                isDealOnTime = Boolean.TRUE.equals(inputParam.getOnTime())
+                        || inputParam.getCalibrationType().equals(DeviceCalibrationInfoEnum.T800Dark.getType());
 
                 calibration = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout, isDealOnTime, deviceSerialNumber, endBytes, headReceiveBytes);
 

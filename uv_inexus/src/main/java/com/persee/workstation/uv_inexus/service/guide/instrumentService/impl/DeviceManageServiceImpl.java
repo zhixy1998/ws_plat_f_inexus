@@ -2394,6 +2394,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                         log.info("线程异常");
                     }
                 }
+                // 设备级 T800Dark 校准不消费实时队列：把本次暗电流残留的点/结束标记清掉，
+                // 避免它们留在 Dark 队列里被后续测量流程的 pollDarkPoints 读到。
+                UnknowCountMessageQueue.getInstance()
+                        .clearCommand(deviceSerialNumber,
+                                DeviceCalibrationInfoEnum.getComId(DeviceCalibrationInfoEnum.T800Dark.getType()));
                 infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             }).start();
         } else {

@@ -304,7 +304,7 @@ public class MessageOnTimeDeal {
 
         boolean isBaseline = cmdId.equals("BaseLine") || cmdId.equals("BaseLineFast");
 
-        if (isScan || isBaseline) {
+        if (isScan || isBaseline || isDark) {
             unknowCountMessageQueue.clearIp(deviceSerialNumber);
         }
 
@@ -471,7 +471,7 @@ public class MessageOnTimeDeal {
                                     }
                                     ;
                                     // ----------------- 放入未知队列 -----------------
-                                    if (isScan || isBaseline) {
+                                    if (isScan || isBaseline || isDark) {
                                         if (isFirstFlag[0]) {
                                             log.info("[光谱首条,不存] device={}, cmd={}, wl={}",
                                                     deviceSerialNumber, cmdId, sp.getWavelength());
@@ -543,7 +543,7 @@ public class MessageOnTimeDeal {
                                 }
                                 spectrumDataProcessor.dataPointIndex();
 
-                                if (isScan || isBaseline) {
+                                if (isScan || isBaseline || isDark) {
                                     if (isFirstFlag[0]) {
                                         log.info("[光谱首条,不存] device={}, cmd={}, wl={}",
                                                 deviceSerialNumber, cmdId, sp.getWavelength());

@@ -39,6 +39,7 @@ import com.persee.workstation.uv_inexus.service.factory_inspection.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.*;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -48,6 +49,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
@@ -187,6 +189,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     private SystemAlgorithmConfService systemAlgorithmConfService;
     @Autowired
+    private SystemBusinessParamService systemBusinessParamService;
+    @Autowired
     private RestTemplate restTemplate;
     @Autowired
     private StandardMaterialManager materialManager;
@@ -244,6 +248,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     // 光谱扫描空闲超时：超过该时间未收到任何数据点或结束标记，视为设备异常，主动结束测量。
     // 正常扫描的数据点间隔远小于该值，不会误杀；报文处理线程自身也有超时会投异常结束标记，这里只是双保险
     private static final long SPECTRUM_SCAN_IDLE_TIMEOUT = 300000; // 5分钟
+    // 暗电流按实时方式下发后，等待设备回传数据点/结束标记的最大超时时间
+    // 暗电流本身不能设超时，这里只是防止设备异常不回 EndMarker 时测量线程永久挂死的兜底，故给足 10 分钟。
+    private static final long DARK_CURRENT_TIMEOUT = 1200000; // 10分钟
     // 暂停等待用户"放入物质"确认的超时时间，超时后该项测量报错终止，避免线程与设备永久卡死
     private static final long PAUSE_CONFIRM_TIMEOUT_MINUTES = 30;
     //判断是否终止
@@ -487,6 +494,81 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         // 发送到队列
         sendToActiveSession(null, taskId, jsonObject1);
+    }
+
+    /**
+     * 校准类阶段（暗电流/基线）实时推送仪器数值到前端页头。
+     * 校准点没有 Abs 结果，这里推送波长(x)与可用的校准值(y)；
+     * yType 传 null 时只更新波长、不覆盖页头的吸光度（暗电流阶段即如此）。
+     */
+    private void pushCalibrationPoint(String taskId, Double x, String yValue, String xType, String yType) {
+        if (!isTaskMeasuring(taskId) || !sessionTaskMap.containsKey(taskId)) {
+            return;
+        }
+        try {
+            JSONObject point = new JSONObject();
+            point.put("x", x);
+            point.put("xType", xType);
+            if (yType != null) {
+                point.put("y", parseDoubleOrZero(yValue));
+                point.put("yType", yType);
+            }
+            JSONObject payload = new JSONObject();
+            JSONArray points = new JSONArray();
+            points.add(point);
+            payload.put("data", points);
+            payload.put("sampleId", "");
+            payload.put("taskId", taskId);
+            sendToActiveSession(null, taskId, payload);
+        } catch (Exception e) {
+            log.debug("推送校准实时点失败, taskId={}", taskId, e);
+        }
+    }
+
+    private double parseDoubleOrZero(String s) {
+        if (s == null || s.trim().isEmpty()) {
+            return 0.0;
+        }
+        try {
+            return Double.parseDouble(s);
+        } catch (NumberFormatException e) {
+            return 0.0;
+        }
+    }
+
+    /**
+     * 暗电流按实时方式下发后，消费 Dark 指令队列里的每个数据点并推送到前端页头，
+     * 直到设备回结束标记或超时。暗电流只更新页头波长(x)，不覆盖吸光度。
+     * 注意：这里不能因为 halt 置位就提前退出。暗电流是设备侧不可中断的流程，设备解析线程
+     * 仍在跑；若提前返回，测量线程会走到 finally 发送 isMeasuring:false 并把设备置为空闲，
+     * 而设备实际还在跑暗电流，导致前端已停、后续测量提示"仪器正在使用中"。必须等 EndMarker
+     * （其 finally 会 release 设备）确认暗电流真正结束。
+     * 若设备不支持实时下发（阻塞式返回了数据），直接返回，避免空等超时。
+     */
+    private void pollDarkPoints(String taskId, String deviceSerialNumber, R<?> operationDark) {
+        if (operationDark != null && operationDark.getData() != null) {
+            return;
+        }
+        String darkCmdId = DeviceCalibrationInfoEnum.getComId(DeviceCalibrationInfoEnum.Dark.getType());
+        long deadline = System.currentTimeMillis() + DARK_CURRENT_TIMEOUT;
+        while (System.currentTimeMillis() < deadline) {
+            try {
+                Object o = queue.pollMessage(deviceSerialNumber, darkCmdId, 200);
+                if (o instanceof SpectrumPoint) {
+                    SpectrumPoint point = (SpectrumPoint) o;
+                    pushCalibrationPoint(taskId, point.getWavelength(), null, "nm", null);
+                } else if (o instanceof EndMarker) {
+                    break;
+                }
+                // 队列为空时 pollMessage 阻塞至超时，无需额外休眠
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            } catch (Exception e) {
+                log.debug("消费暗电流数据点失败, taskId={}", taskId, e);
+                return;
+            }
+        }
     }
 
     // 启动队列处理器
@@ -1865,25 +1947,27 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * 暂停任务
      */
     public void pauseTask(String taskId) throws BusinessException {
-        TaskPauseControl control = pauseControls.get(taskId);
-        if (control != null) {
-            control.setPaused(true);
-            // 先记录"已进入暂停等待"，再阻塞等待；
-            // 原来把日志放在 tryAcquire 之后，导致暂停实际结束（用户点击继续）时才打印"已标记为暂停"，
-            // 与 resumeTask 的"已恢复"同一毫秒输出，日志看起来自相矛盾
-            log.info("任务 {} 已标记为暂停，等待用户确认", taskId);
-            try {
-                // 带超时等待用户确认（放入物质后点击继续），防止用户离开或前端无响应时
-                // 测量线程与设备永久卡死；超时后抛出业务异常，由上层统一报错并释放设备
-                if (!control.semaphore.tryAcquire(PAUSE_CONFIRM_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
-                    throw BusinessException.withCode("0061303F");
-                }
-                log.info("任务 {} 暂停等待结束，继续执行", taskId);
-            } catch (BusinessException e) {
-                throw e;
-            } catch (Exception e) {
-                throw BusinessException.withCode("00613006");
+        // 即使连接已断开（用户切页/刷新，afterConnectionClosed 已清掉连接级资源），
+        // 也必须保证暂停生效：原来用 get 且 control==null 时直接返回，会导致测量线程在
+        // "请保持样品池为空/放入样品"提示处跳过等待，未经用户确认就开始测量。
+        // computeIfAbsent 保证 control 一定存在，再阻塞等待确认。
+        TaskPauseControl control = pauseControls.computeIfAbsent(taskId, k -> new TaskPauseControl());
+        control.setPaused(true);
+        // 先记录"已进入暂停等待"，再阻塞等待；
+        // 原来把日志放在 tryAcquire 之后，导致暂停实际结束（用户点击继续）时才打印"已标记为暂停"，
+        // 与 resumeTask 的"已恢复"同一毫秒输出，日志看起来自相矛盾
+        log.info("任务 {} 已标记为暂停，等待用户确认", taskId);
+        try {
+            // 带超时等待用户确认（放入物质后点击继续），防止用户离开或前端无响应时
+            // 测量线程与设备永久卡死；超时后抛出业务异常，由上层统一报错并释放设备
+            if (!control.semaphore.tryAcquire(PAUSE_CONFIRM_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
+                throw BusinessException.withCode("0061303F");
             }
+            log.info("任务 {} 暂停等待结束，继续执行", taskId);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw BusinessException.withCode("00613006");
         }
     }
 
@@ -2370,6 +2454,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         }
                         return false;
                     } finally {
+                        // 统一兜底：无论测量正常结束、用户点击停止（halt）还是中途异常/提前返回，
+                        // 都必须把设备状态复位为空闲；否则数据库 deviceCurrentStatus 会残留 MEASURE，
+                        // 下次测量会被判定为"设备正在使用中"。这里统一处理，避免遗漏各条 return 路径。
+                        try {
+                            if (isTaskMeasuring(taskId)) {
+                                setTaskMeasuring(taskId, false);
+                            }
+                        } catch (Exception e) {
+                            log.error("复位设备测量状态失败, taskId={}", taskId, e);
+                        }
                         // 确保清理任务相关资源
                         taskFutures.remove(taskId);
                         pauseControls.remove(taskId);
@@ -3193,12 +3287,15 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 darkParam.setDeviceSerialNumber(deviceSerialNumber);
 //        darkParam.setParam(setParam1);
                 darkParam.setCalibrationType(DeviceCalibrationInfoEnum.Dark.getType());
+                // 暗电流按实时方式下发，边收边把波长/暗电流值回显到页头
+                darkParam.setOnTime(true);
                 darkParam.setOperationType(OperationTypeEnums.Calibration.getType());
 //        darkParam.setUpdateBy();
                 R<OperationResultEntity> operationDark =
                         devOperationUtilService.operation(darkParam);
                 b = operationDark.getSuccess();
                 if (b) {
+                    pollDarkPoints(taskId, deviceSerialNumber, operationDark);
                     log.info("暗电流矫正结果-光谱：{}", operationDark);
                     this.realTimeEcho(taskId, "光谱-暗电流矫正结束");
                 } else {
@@ -3409,6 +3506,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 if (point != null) {
                                     log.info("基线结果：{}", point);
                                     this.realTimeEcho(taskId, "光谱-基线: " + point.getWavelength());
+                                    // 基线阶段也把当前波长/数值实时推给前端页头，避免页头停留在旧值
+//                                    pushCalibrationPoint(taskId, point.getWavelength(), point.getBaselineRsdR(), "nm", "R%");
                                 } else {
                                     // 队列为空时短暂休眠，避免CPU 100%空转
                                     Thread.sleep(10);
@@ -4006,6 +4105,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             throw BusinessException.withCode("0061B001", luminosityMode);
         }
         log.info("光度模式：{}", anEnum.getName());
+        Integer measureDigits = getMeasureDigits(taskId);
         Double startWavelength = MapUtils.getDouble(dataMap, START_WAVELENGTH.getDescription());
         Double endWavelength = MapUtils.getDouble(dataMap, END_WAVELENGTH.getDescription());
         Double scanInterval = MapUtils.getDouble(dataMap, SCAN_INTERVAL.getDescription());
@@ -4042,22 +4142,22 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     point.put("xType", "秒(s)");
                     double wavelength = p.getAbsResult().getWavelength();
                     xList.add(relativeTimeInSeconds);
-                    BigDecimal bigDecimal = roundToDecimalPlaces(new BigDecimal(p.getAbsResult().getAbs()), 4);
+                    BigDecimal bigDecimal = roundToDecimalPlaces(new BigDecimal(p.getAbsResult().getAbs()), measureDigits);
                     point.put("x", relativeTimeInSeconds);
                     yList.add(new BigDecimal(p.getAbsResult().getAbs()));
-                    point.put("y", p.getAbsResult().getAbs());
+                    point.put("y", roundToDecimalPlaces(new BigDecimal(p.getAbsResult().getAbs()), measureDigits).doubleValue());
 
                     this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength + "nm " + bigDecimal + " Abs");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
-                    point.put("xType", "波长(nm)");
-                    point.put("yType", "abs");
+                    point.put("xType", ""/*"波长(nm)"*/);
+                    point.put("yType", "Abs");
                     double wavelength = p.getAbsResult().getWavelength();
                     point.put("x", wavelength);
                     xList.add(wavelength);
-                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getAbsResult().getAbs()), 4);
-                    point.put("y", p.getAbsResult().getAbs());
+                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getAbsResult().getAbs()), measureDigits);
+                    point.put("y", roundToDecimalPlaces(new BigDecimal(p.getAbsResult().getAbs()), measureDigits).doubleValue());
                     yList.add(new BigDecimal(p.getAbsResult().getAbs()));
                     this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength + "nm " + aDouble + " Abs");
 
@@ -4101,10 +4201,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     point.put("xType", "秒(s)");
                     double wavelength = p.getTResult().getWavelength();
                     xList.add(relativeTimeInSeconds);
-                    BigDecimal bigDecimal = roundToDecimalPlaces(new BigDecimal(p.getTResult().getTPercent()), 4);
+                    BigDecimal bigDecimal = roundToDecimalPlaces(new BigDecimal(p.getTResult().getTPercent()), measureDigits);
                     point.put("x", relativeTimeInSeconds);
                     yList.add(new BigDecimal(p.getTResult().getTPercent()));
-                    point.put("y", p.getTResult().getTPercent());
+                    point.put("y", roundToDecimalPlaces(new BigDecimal(p.getTResult().getTPercent()), measureDigits).doubleValue());
 
 //
 //
@@ -4122,13 +4222,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
-                    point.put("xType", "波长(nm)");
+                    point.put("xType", ""/*"波长(nm)"*/);
                     point.put("yType", "T%");
                     double wavelength = p.getTResult().getWavelength();
                     point.put("x", wavelength);
                     xList.add(wavelength);
-                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getTResult().getTPercent()), 4);
-                    point.put("y", p.getTResult().getTPercent());
+                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getTResult().getTPercent()), measureDigits);
+                    point.put("y", roundToDecimalPlaces(new BigDecimal(p.getTResult().getTPercent()), measureDigits).doubleValue());
                     yList.add(new BigDecimal(p.getTResult().getTPercent()));
                     this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength + "nm " + aDouble + " T%");
 
@@ -4167,10 +4267,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     point.put("xType", "秒(s)");
 //                    double wavelength = p.getTResult().getWavelength();
                     xList.add(relativeTimeInSeconds);
-                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getEsResult().getEs()), 4);
+                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getEsResult().getEs()), measureDigits);
                     point.put("x", relativeTimeInSeconds);
                     yList.add(new BigDecimal(p.getEsResult().getEs()));
-                    point.put("y", p.getEsResult().getEs());
+                    point.put("y", roundToDecimalPlaces(new BigDecimal(p.getEsResult().getEs()), measureDigits).doubleValue());
                     double wavelength = p.getEsResult().getWavelength();
 //
 //                    payload.put("timestamp", p.getTimestamp());
@@ -4187,13 +4287,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
-                    point.put("xType", "波长(nm)");
-                    point.put("yType", "ES");
+                    point.put("xType", ""/*"波长(nm)"*/);
+                    point.put("yType", "Es");
                     double wavelength = p.getEsResult().getWavelength();
                     point.put("x", wavelength);
                     xList.add(wavelength);
-                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getEsResult().getEs()), 4);
-                    point.put("y", p.getEsResult().getEs());
+                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getEsResult().getEs()), measureDigits);
+                    point.put("y", roundToDecimalPlaces(new BigDecimal(p.getEsResult().getEs()), measureDigits).doubleValue());
                     yList.add(new BigDecimal(p.getEsResult().getEs()));
                     this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength + "nm " + aDouble + " Es");
 
@@ -4232,10 +4332,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     point.put("xType", "秒(s)");
 //                    double wavelength = p.getTResult().getWavelength();
                     xList.add(relativeTimeInSeconds);
-                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getErResult().getEr()), 4);
+                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getErResult().getEr()), measureDigits);
                     point.put("x", relativeTimeInSeconds);
                     yList.add(new BigDecimal(p.getErResult().getEr()));
-                    point.put("y", p.getErResult().getEr());
+                    point.put("y", roundToDecimalPlaces(new BigDecimal(p.getErResult().getEr()), measureDigits).doubleValue());
                     double wavelength = p.getErResult().getWavelength();
 //
 //                    payload.put("timestamp", p.getTimestamp());
@@ -4252,13 +4352,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
-                    point.put("xType", "波长(nm)");
-                    point.put("yType", "ER");
+                    point.put("xType", ""/*"波长(nm)"*/);
+                    point.put("yType", "Er");
                     double wavelength = p.getErResult().getWavelength();
                     point.put("x", wavelength);
                     xList.add(wavelength);
-                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getErResult().getEr()), 4);
-                    point.put("y", p.getErResult().getEr());
+                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getErResult().getEr()), measureDigits);
+                    point.put("y", roundToDecimalPlaces(new BigDecimal(p.getErResult().getEr()), measureDigits).doubleValue());
                     yList.add(new BigDecimal(p.getErResult().getEr()));
                     this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength + "nm " + aDouble + " Er");
 
@@ -4280,6 +4380,21 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         }
         List<JSONObject> put = waveformCache.put(taskId, cachedDataPoints);
+    }
+
+    /**
+     * 获取测量值小数位数（measureDigits），每次实时读取系统业务参数，
+     * 保证运行中修改 t_system_business_param 能即时生效；取不到时回退到系统默认位数。
+     */
+    private Integer getMeasureDigits(String taskId) {
+        try {
+            SystemBusinessParamVO vo = systemBusinessParamService.queryBusinessParam();
+            Integer digits = vo == null ? null : vo.getMeasureDigits();
+            return digits == null ? Constants.DEFAULT_DECIMAL_NUM : digits;
+        } catch (Exception e) {
+            log.warn("获取测量值小数位数失败，使用默认位数, taskId={}", taskId, e);
+            return Constants.DEFAULT_DECIMAL_NUM;
+        }
     }
 
     /**
@@ -4779,6 +4894,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     darkParam.setDeviceSerialNumber(deviceSerialNumber);
 //        darkParam.setParam(setParam1);
                     darkParam.setCalibrationType(DeviceCalibrationInfoEnum.Dark.getType());
+                    // 暗电流按实时方式下发，边收边把波长/暗电流值回显到页头
+                    darkParam.setOnTime(true);
                     darkParam.setOperationType(OperationTypeEnums.Calibration.getType());
 //        darkParam.setUpdateBy();
                     if (isHalted(taskId)) {
@@ -4788,6 +4905,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     R<OperationResultEntity> operationDark =
                             devOperationUtilService.operation(darkParam);
                     timeScanStopControl.put(taskId, true);
+                    pollDarkPoints(taskId, deviceSerialNumber, operationDark);
                     log.info("时间扫描-暗电流矫正结果：{}", operationDark);
 //            operationDark.setSuccess(false);
                     if (operationDark.getSuccess()) {
@@ -5469,6 +5587,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 darkParam.setDeviceSerialNumber(deviceSerialNumber);
 //        darkParam.setParam(setParam1);
                 darkParam.setCalibrationType(DeviceCalibrationInfoEnum.Dark.getType());
+                // 暗电流按实时方式下发，边收边把波长/暗电流值回显到页头
+                darkParam.setOnTime(true);
                 darkParam.setOperationType(OperationTypeEnums.Calibration.getType());
 //        darkParam.setUpdateBy();
                 R<OperationResultEntity> operationDark =
@@ -5483,6 +5603,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     boolean b = sendToActiveSession(null, taskId, jsonObject);
                     return R.fail(map);
                 }
+                pollDarkPoints(taskId, deviceSerialNumber, operationDark);
                 realTimeEcho(taskId, "暗电流矫正成功");
             }
             log.info("开始设置参数>>>>>>>>>>>>>>>>>>>>");
@@ -6254,14 +6375,13 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
                     if (heartbeatTask != null && !heartbeatTask.isDone()) {
                         heartbeatTask.cancel(false);
                     }
-                    // 清理暂停控制
-                    pauseControls.remove(taskId);
-                    taskFutures.remove(taskId);
-                    // 注意：这里不能移除 halt / currentMeasureItemMap / measurementStatusMap。
-                    // 三者都是任务级生命周期状态而非连接级状态：测量线程脱离连接后仍在后台运行
-                    // （自动检测依赖无人值守跑完）。若在此处清掉，用户切页断开再重连时，
-                    // isMeasuring 会被误判为 false、currentItem 丢失，前端无法恢复测量现场。
-                    // stale 值无害——每次测量开始都会 reset。
+                    // 注意：这里不能移除 halt / currentMeasureItemMap / measurementStatusMap /
+                    // pauseControls / taskFutures。它们都是任务级生命周期状态而非连接级状态：
+                    // 测量线程脱离连接后仍在后台运行（自动检测依赖无人值守跑完）。若在此处清掉，
+                    // 用户切页断开再重连时，isMeasuring 会被误判为 false、currentItem 丢失，
+                    // 且 pauseTask 会因 pauseControls 为空而跳过"请放物质/保持样品池为空"确认，
+                    // 未经用户确认就开始测量；taskFutures 清空后重连还能再次并发测量同一台仪器。
+                    // 两者都在测量线程 finally / stopTask 中正常清理。stale 值无害——每次测量开始都会 reset。
 
                     // 释放编辑锁
                     workbookCacheManager.releaseEditLock(taskId, update);
