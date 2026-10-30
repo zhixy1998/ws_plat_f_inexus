@@ -1567,7 +1567,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
             DeviceAttachmentTypeVO vo = deviceInfoService.getAttachmentInfo(management1.getOperationInstrument());
 
-            if (vo.getSamplePoolNum() < 1) {
+            // 只有多联样品池（samplePoolNum > 1）才允许自动测量，单样品池及未识别的样品池一律拒绝
+            if (vo.getSamplePoolNum() == null || vo.getSamplePoolNum() <= 1) {
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("error", "自动测量仅支持多联样品池！！！");
                 sendToActiveSession(null, taskId, jsonObject);
