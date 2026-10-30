@@ -4257,15 +4257,14 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     payload.put("timestamp", p.getTimestamp());
                     payload.put("totalPoints", scanCount);
                     point.put("yType", "Abs");
-                    point.put("xType", "秒(s)");
-                    double wavelength = p.getAbsResult().getWavelength();
+                    point.put("xType", "s");
                     xList.add(relativeTimeInSeconds);
                     BigDecimal bigDecimal = roundToDecimalPlaces(new BigDecimal(p.getAbsResult().getAbs()), measureDigits);
                     point.put("x", relativeTimeInSeconds);
                     yList.add(new BigDecimal(p.getAbsResult().getAbs()));
                     point.put("y", new BigDecimal(p.getAbsResult().getAbs()).doubleValue());
 
-                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength + "nm " + bigDecimal + " Abs");
+                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + relativeTimeInSeconds + "s " + bigDecimal + " Abs");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
@@ -4316,8 +4315,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     payload.put("timestamp", p.getTimestamp());
                     payload.put("totalPoints", scanCount);
                     point.put("yType", "T%");
-                    point.put("xType", "秒(s)");
-                    double wavelength = p.getTResult().getWavelength();
+                    point.put("xType", "s");
                     xList.add(relativeTimeInSeconds);
                     BigDecimal bigDecimal = roundToDecimalPlaces(new BigDecimal(p.getTResult().getTPercent()), measureDigits);
                     point.put("x", relativeTimeInSeconds);
@@ -4336,7 +4334,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                    Double aDouble = new Double(p.getTResult().getTPercent());
 //                    point.put("x", aDouble);
 //                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength + "nm " + bigDecimal + " T%");
+                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + relativeTimeInSeconds + "s " + bigDecimal + " T%");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
@@ -4382,14 +4380,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     payload.put("timestamp", p.getTimestamp());
                     payload.put("totalPoints", scanCount);
                     point.put("yType", "Es");
-                    point.put("xType", "秒(s)");
+                    point.put("xType", "s");
 //                    double wavelength = p.getTResult().getWavelength();
                     xList.add(relativeTimeInSeconds);
                     BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getEsResult().getEs()), measureDigits);
                     point.put("x", relativeTimeInSeconds);
                     yList.add(new BigDecimal(p.getEsResult().getEs()));
                     point.put("y", new BigDecimal(p.getEsResult().getEs()).doubleValue());
-                    double wavelength = p.getEsResult().getWavelength();
 //
 //                    payload.put("timestamp", p.getTimestamp());
 //                    payload.put("totalPoints", scanCount);
@@ -4401,7 +4398,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                    Double aDouble = new Double(p.getEsResult().getEs());
 //                    point.put("x", aDouble);
 //                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength + "nm " + aDouble + " Es");
+                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + relativeTimeInSeconds + "s " + aDouble + " Es");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
@@ -4447,14 +4444,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     payload.put("timestamp", p.getTimestamp());
                     payload.put("totalPoints", scanCount);
                     point.put("yType", "Er");
-                    point.put("xType", "秒(s)");
+                    point.put("xType", "s");
 //                    double wavelength = p.getTResult().getWavelength();
                     xList.add(relativeTimeInSeconds);
                     BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getErResult().getEr()), measureDigits);
                     point.put("x", relativeTimeInSeconds);
                     yList.add(new BigDecimal(p.getErResult().getEr()));
                     point.put("y", new BigDecimal(p.getErResult().getEr()).doubleValue());
-                    double wavelength = p.getErResult().getWavelength();
 //
 //                    payload.put("timestamp", p.getTimestamp());
 //                    payload.put("totalPoints", scanCount);
@@ -4466,7 +4462,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                    Double aDouble = new Double(p.getErResult().getEr());
 //                    point.put("x", aDouble);
 //                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength + "nm " + aDouble + " Er");
+                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + relativeTimeInSeconds + "s " + aDouble + " Er");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
