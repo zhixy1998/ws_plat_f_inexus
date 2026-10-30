@@ -400,8 +400,22 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     result = getValue(inputParam);
                     break;
                 case Calibration:
-                    result = calibration(inputParam);
-                    release = false;
+                    // 测量流程的暗电流校准（onTime=true）需要实时回显波长数据：
+                    // 异步执行使 operation 立即返回，由调用方 pollDarkPoints 在校准进行中轮询队列；
+                    // REST 校准（未设 onTime）保持同步阻塞，等待校准完成返回结果
+                    if (Boolean.TRUE.equals(inputParam.getOnTime())) {
+                        actionExecutor.submit(() -> {
+                            try {
+                                calibration(inputParam);
+                            } catch (Exception e) {
+                                log.info("设备操作异常，设备序列号: {}, 操作类型: Calibration(onTime)", deviceSerialNumber, e);
+                            }
+                        });
+                        release = false;
+                    } else {
+                        result = calibration(inputParam);
+                        release = false;
+                    }
                     break;
                 case Zero:
                     result = zero(inputParam);

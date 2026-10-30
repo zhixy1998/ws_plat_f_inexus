@@ -304,7 +304,7 @@ public class MessageOnTimeDeal {
 
         boolean isBaseline = cmdId.equals("BaseLine") || cmdId.equals("BaseLineFast");
 
-        if (isScan || isBaseline || isDark) {
+        if (isScan || isBaseline/* || isDark*/) {
             unknowCountMessageQueue.clearIp(deviceSerialNumber);
         }
 

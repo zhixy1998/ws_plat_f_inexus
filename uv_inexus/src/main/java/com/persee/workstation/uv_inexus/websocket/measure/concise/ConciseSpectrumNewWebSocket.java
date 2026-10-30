@@ -1464,6 +1464,11 @@ public class ConciseSpectrumNewWebSocket {
             );
         } else {
             boolean whileStatus = true;
+            // 关键：先清空上一次扫描（停止/失败/超时）残留在队列里的光谱点和结束标记。
+            // 设备层在收到新 Scan 命令时不会清队列（只有 Stop 命令才清），
+            // 若不先清空，会读到上一次扫描的旧结束标记（如 NORMAL_OVERPOWER），
+            // 导致本次扫描立即退出、数据为空，且设备实际还在扫描、锁无法释放
+            unknowCountMessageQueue.clearCommand(deviceSerialNumber, T600ComIdEnums.Scan.getComId());
             // 普通扫描模式：使用批次处理机制
             try {
                 while (whileStatus) {
