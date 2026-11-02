@@ -1973,7 +1973,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
             log.info("初始化启动失败: {}", operation.getMessage());
-            info.setIsInited(Constants.INIT_STATUS_FALSE);
+
+            DeviceInfoPO info1 = infoService.getInfo(deviceSerialNumber);
+            if (!info1.getIsInited().equals(Constants.INIT_STATUS_RUNNING)) {
+                info.setIsInited(Constants.INIT_STATUS_FALSE);
+            }
             infoService.saveOrUpdateInfo(info);
             return R.fail(operation.getMessage());
         } else {

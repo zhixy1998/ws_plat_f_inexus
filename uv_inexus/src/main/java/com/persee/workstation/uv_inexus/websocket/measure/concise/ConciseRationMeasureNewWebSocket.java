@@ -1059,9 +1059,32 @@ public class ConciseRationMeasureNewWebSocket {
 
             //公式计算---待定
             //TODO 公式计算
+            FMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+            FMeasureTask task = tMeasureTaskService.getById(taskId);
+            FRationDataVO data = new FRationDataVO();
+            data.setCountData(newData);
+            //公式计算需要测量数据(各波长吸光度)，通过测量数据id从测量数据表中取
+            if (StringUtils.hasText(saveData.getMeasureDataId())) {
+                FMeasureData measureData = tMeasureDataService.getById(saveData.getMeasureDataId());
+                if (measureData != null && StringUtils.hasText(measureData.getOriginalCalculationData())) {
+                    data.setWavelengthData(JSON.parseArray(measureData.getOriginalCalculationData(), FRationWavelengthDataInfo.class));
+                }
+            }
+            if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty() && data.getWavelengthData() != null) {
+                Double emptyValue = null;
+                if (empty) {
+                    emptyValue = minuend;
+                }
+                R<FRationDataVO> formulaCount = formulaCont(deviceSerialNumber, data, measureSample, task, parameter, emptyValue);
+                if (formulaCount.getSuccess()) {
 
+                    data = formulaCount.getData();
+
+                    newData.addAll(data.getCountData());
+                }
+            }
             saveData.setAnalysisResult(JSON.toJSONString(newData));
-            tMeasureAnalysisDataService.update(saveData, analysisDataQueryWrapper);
+            tMeasureAnalysisDataService.updateById(saveData);
         }
     }
 

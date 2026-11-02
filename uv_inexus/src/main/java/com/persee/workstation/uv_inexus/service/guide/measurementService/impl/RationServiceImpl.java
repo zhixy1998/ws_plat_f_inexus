@@ -58,6 +58,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.measure.param.ParallelData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
@@ -6105,6 +6106,7 @@ public class RationServiceImpl implements RationService {
         }
         List<String> waveLength = parameter.getWaveLength();
         waveLength.sort(Comparator.reverseOrder());
+        deviceInfoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.ZeroCalibration.getOperation(), taskId, Constants.DEVICE_STATUS_ZERO);
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
@@ -6140,6 +6142,7 @@ public class RationServiceImpl implements RationService {
 
         R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
+            deviceInfoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return Result.fail(operation.getMessage());
         }
 
@@ -6147,6 +6150,7 @@ public class RationServiceImpl implements RationService {
         inputParam.setWavelength(waveLength);
         R<OperationResultEntity> zero = devOperationUtilService.operation(inputParam);
         if (!zero.getSuccess()) {
+            deviceInfoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return Result.fail(zero.getMessage());
         }
         OperationResultEntity data = zero.getData();
@@ -6155,6 +6159,7 @@ public class RationServiceImpl implements RationService {
         task.setZeroParam(JSON.toJSONString(zeroResult));
 
         boolean update = tMeasureTaskService.updateById(task);
+        deviceInfoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         return update ? Result.ok() : Result.fail();
     }
 

@@ -53,6 +53,7 @@ import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
@@ -3099,6 +3100,7 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         String wave = "--";
 
+        deviceInfoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.ZeroCalibration.getOperation(), taskId, Constants.DEVICE_STATUS_ZERO);
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
@@ -3135,6 +3137,7 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
+            deviceInfoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return Result.fail(operation.getMessage());
         }
 
@@ -3142,6 +3145,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         inputParam.setWavelength(waveLength);
         R<OperationResultEntity> zero = devOperationUtilService.operation(inputParam);
         if (!zero.getSuccess()) {
+            deviceInfoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return Result.fail(zero.getMessage());
         }
         OperationResultEntity data = zero.getData();
@@ -3151,6 +3155,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         tMeasureTaskService.updateById(task);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("waveLength", wave + "nm");
+        deviceInfoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         return Result.ok(jsonObject);
 //        String ip = deviceInfoService.getIp(deviceSerialNumber);
 //        List<ChangeParam> list = new ArrayList<>();
