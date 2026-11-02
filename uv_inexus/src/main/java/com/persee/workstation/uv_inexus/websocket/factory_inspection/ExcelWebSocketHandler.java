@@ -1871,7 +1871,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             setTaskMeasuring(taskId, false);
                             break;
                         } catch (BusinessException e) {
-                            log.error("设置任务测量状态失败，任务ID: {}", taskId, e);
+                            log.error("设置任务测量状态失败，任务ID: {}, 错误：{}", taskId, resolveExceptionMessage(e), e);
                             JSONObject errorMsg = new JSONObject();
                             errorMsg.put("error", i18nMessageUtil.getMessage(e));
                             sendToActiveSession(session, taskId, errorMsg);
@@ -1937,14 +1937,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 return;
                             }
                         } catch (Exception e) {
-                            log.error("任务执行异常: taskId={}", taskId, e.getCause());
-                            log.error("错误信息为{}", String.valueOf(e));
+                            log.error("任务执行异常: taskId={}, 错误：{}", taskId, resolveExceptionMessage(e), e);
                             abortAutoInspection(session, taskId, "检测项 [" + asset.getId() + "] 执行异常");
                             break;
                         }
 
                     } catch (Exception e) {
-                        log.error("检测项: {},检测失败，终止自动检测流程>>>>>>>>>", asset.getId(), e);
+                        log.error("检测项: {},检测失败，终止自动检测流程>>>>>>>>>, 错误：{}", asset.getId(), resolveExceptionMessage(e), e);
                         JSONObject jsonObject = new JSONObject();
                         jsonObject.put("error", i18nMessageUtil.getMessage(e));
                         sendToActiveSession(null, taskId, jsonObject);
@@ -2541,7 +2540,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             errorMsg = e.getMessage();
                         }
                         if (!isAutoInspection) {
-                            log.error("测量任务执行异常", e);
+                            log.error("测量任务执行异常：{}", errorMsg, e);
                             JSONObject jsonObject = new JSONObject();
                             jsonObject.put("error", errorMsg);
                             sendToActiveSession(null, taskId, jsonObject);
@@ -2550,7 +2549,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             lastMeasureFailedTimeMap.put(taskId, System.currentTimeMillis());
                         }
                         if (isAutoInspection) {
-                            log.error("测量任务执行异常", e);
+                            log.error("测量任务执行异常：{}", errorMsg, e);
                             JSONObject jsonObject = new JSONObject();
                             jsonObject.put("warn", "检测项：[" + projectName + "] 出现问题:" + errorMsg + "跳过");
                             sendToActiveSession(null, taskId, jsonObject);
@@ -2567,7 +2566,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 setTaskMeasuring(taskId, false);
                             }
                         } catch (Exception e) {
-                            log.error("复位设备测量状态失败, taskId={}", taskId, e);
+                            log.error("复位设备测量状态失败, taskId={}, 错误：{}", taskId, resolveExceptionMessage(e), e);
                         }
                         // 确保清理任务相关资源
                         taskFutures.remove(taskId);
@@ -2579,10 +2578,27 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             taskFutures.put(taskId, submit);
 
         } catch (Exception e) {
-            log.error("单项测量处理异常", e);
+            log.error("单项测量处理异常：{}", resolveExceptionMessage(e), e);
 
             setTaskMeasuring(taskId, false);
         }
+    }
+
+    /**
+     * 解析异常文案：BusinessException 按错误码翻译为可读消息，
+     * 避免日志打印出 "BusinessException: null"（withCode 创建的异常未设置 message）。
+     */
+    private String resolveExceptionMessage(Exception e) {
+        if (e == null) {
+            return null;
+        }
+        if (e instanceof BusinessException) {
+            BusinessException be = (BusinessException) e;
+            if (be.getErrorCode() != null) {
+                return i18nMessageUtil.getMessage(be.getErrorCode(), be.getArgs());
+            }
+        }
+        return e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
     }
 
     //保存并发送判定结果
@@ -3494,7 +3510,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     this.realTimeEcho(taskId, "光谱-设置入参成功");
                 }
             } catch (Exception e) {
-                log.error("设置参数失败-光谱：{}", e.getMessage());
+                log.error("设置参数失败-光谱：{}", resolveExceptionMessage(e));
 //                throw new BusinessException("设置参数失败-光谱" + e.getMessage());
                 return R.fail(map);
             }
@@ -3892,7 +3908,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             return R.fail(map);
                         }
                     } catch (Exception e) {
-                        log.error("光谱扫描任务执行失败了：", e);
+                        log.error("光谱扫描任务执行失败了：{}", resolveExceptionMessage(e), e);
                         setTaskMeasuring(taskId, false);
 //                        throw new BusinessException("任务执行失败：" + e.getMessage());
                         map.put("line", list);
@@ -3937,7 +3953,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
             res = analysisProcess(xList, yList, bigDecimalList, methodType, taskId);
         } catch (Exception e) {
-            log.error("任务执行失败：", e);
+            log.error("任务执行失败：{}", resolveExceptionMessage(e), e);
             // 用户主动停止时（典型场景：停止前线程正等待算法响应被中断）不向前端弹错误框，
             // 只回显停止，与扫描循环的停止分支保持一致，避免停止后仍弹错误干扰用户
             if (isHalted(taskId)) {

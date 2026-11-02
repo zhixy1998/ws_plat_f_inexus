@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.util;
 
+import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.i18n.LocaleProvider;
 import com.persee.workstation.uv_inexus.model.R;
@@ -33,12 +34,21 @@ public class I18nMessageUtil {
     }
 
     /**
-     * 将异常转换为面向用户的提示文本：优先按异常携带的国际化消息码翻译；
-     * 异常消息为空（如 NPE）时退化为异常类名，避免把 null 当作消息码传入导致 NPE。
+     * 将异常转换为面向用户的提示文本：
+     * BusinessException 优先按 errorCode + args 翻译（withCode 创建的异常 message 为 null）；
+     * 其余异常按 message 作为消息码翻译；消息为空（如 NPE）时退化为异常类名，
+     * 避免把 null 当作消息码传入导致 NPE。
      */
     public String getMessage(Throwable throwable) {
         if (throwable == null) {
             return null;
+        }
+        if (throwable instanceof BusinessException) {
+            BusinessException be = (BusinessException) throwable;
+            String errorCode = be.getErrorCode();
+            if (errorCode != null && !errorCode.isEmpty()) {
+                return translate(errorCode, be.getArgs());
+            }
         }
         String message = throwable.getMessage();
         return message != null ? i18nMessageSource.getMessage(message) : throwable.getClass().getSimpleName();
