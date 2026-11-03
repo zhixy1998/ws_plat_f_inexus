@@ -840,6 +840,11 @@ public class ConciseSpectrumNewWebSocket {
 
                         for (int r = startIndex; r < repetitionTime; r++) {
 
+                            // 该次重复已被按重复序号单独删除(未测行删除): 不再补测该序号, 否则会重新测已删除的 1-1 这类行
+                            if (isRepeatNumberDeleted(newSampleData.get(i), r + 1)) {
+                                log.info("样品 {} 第 {} 次重复已删除, 跳过测量", newSampleData.get(i).getSpecimenKey(), r + 1);
+                                continue;
+                            }
 
                             // 根据样品id,任务id和遍历的r+1查询分析数据
                             QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
@@ -852,7 +857,7 @@ public class ConciseSpectrumNewWebSocket {
                             if (measureData != null && measureData.getAnalysisResult() != null) {
                                 continue;
                             }
-                            if (measureData != null && measureData.getIsDelete().equals("1")) {
+                            if (measureData != null && "1".equals(measureData.getIsDelete())) {
                                 continue;
                             }
 
@@ -962,6 +967,35 @@ public class ConciseSpectrumNewWebSocket {
 
         taskThreads.put(deviceSerialNumber, taskThread);
         taskThread.start();
+    }
+
+    /**
+     * 判断该样品的某次重复行是否已被单独删除
+     * <p>
+     * 重复模式下删除未测行时, 只把该次重复序号记录在样品的 deletedNumbers 字段(逗号分隔, 从1开始),
+     * 样品本身不删除; 批量测量时必须跳过这些序号, 否则会重新测量已删除的行(如删除 1-1 后仍从 1-1 开始测)。
+     *
+     * @param specimen       任务样品
+     * @param analysisNumber 重复序号(从1开始)
+     * @return true-该次重复已被删除
+     */
+    private boolean isRepeatNumberDeleted(FTaskSpecimen specimen, int analysisNumber) {
+        if (specimen == null || specimen.getDeletedNumbers() == null || specimen.getDeletedNumbers().trim().isEmpty()) {
+            return false;
+        }
+        for (String item : specimen.getDeletedNumbers().split(",")) {
+            if (item == null || item.trim().isEmpty()) {
+                continue;
+            }
+            try {
+                if (Integer.parseInt(item.trim()) == analysisNumber) {
+                    return true;
+                }
+            } catch (NumberFormatException ignored) {
+                // 非法序号忽略
+            }
+        }
+        return false;
     }
 
     /**
