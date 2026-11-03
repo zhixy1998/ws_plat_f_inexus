@@ -67,6 +67,12 @@ public class ConciseCommonController {
         return conciseCommonService.querySaveState(taskId);
     }
 
+    @GetMapping("queryTaskDataParam")
+    @ApiOperation("根据任务id查询数据参数配置(小数位数、显示选项等)")
+    public Result<FQueryDataDTO> queryTaskDataParam(@RequestParam String taskId) {
+        return conciseCommonService.queryTaskDataParam(taskId);
+    }
+
     @GetMapping("queryDeviceStatus")
     @ApiOperation("查询设备状态")
     public Result queryDeviceStatus(@RequestParam String deviceSerialNumber) {
@@ -216,8 +222,22 @@ public class ConciseCommonController {
     public Result reportTableDataQuery(@RequestParam String taskId,
                                        @RequestParam(required = false) String analysisId,
                                        @RequestParam(required = false) Boolean allDisplay,
-                                       @RequestParam(required = false) Integer digit){
-        return conciseCommonService.newReportTableDataQuery(taskId, analysisId,allDisplay,digit);
+                                       @RequestParam(required = false) Integer digit,
+                                       @RequestParam(required = false) String showType,
+                                       @RequestParam(required = false) Boolean isOneSample){
+        return conciseCommonService.newReportTableDataQuery(taskId, analysisId,allDisplay,digit,showType,isOneSample);
+    }
+
+    @GetMapping("reAnalyze")
+    @ApiOperation("重新分析")
+    public Result reAnalyse(@RequestParam String taskId,
+                            @RequestParam String updateBy) {
+        R<Boolean> r = conciseCommonService.reAnalyze(taskId, updateBy);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
     }
 
 

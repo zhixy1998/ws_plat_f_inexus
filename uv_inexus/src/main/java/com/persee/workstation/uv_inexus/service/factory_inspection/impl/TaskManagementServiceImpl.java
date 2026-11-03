@@ -185,7 +185,11 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Override
     public Result<HashMap<String, String>> newTask(TaskAddDto task) {
         try {
-            R<String> device = deviceManageService.getConnectDevice(task.getCreateBy());
+            // 多设备安全：仅在未指定设备序列号时才回退获取当前连接设备，
+            // 避免出厂检验一连多场景下创建任务时误断开其他已连接设备
+            R<String> device = StringUtils.isBlank(task.getSerialNumber())
+                    ? deviceManageService.getConnectDevice(task.getCreateBy())
+                    : null;
             log.info("新建任务");
             //看一下新的名字有没有重名
             if (this.checkTaskName(task.getDetectName())) {
@@ -203,7 +207,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             management.setResultTemplate(task.getUseTemplate());
             management.setContentCategory(TEMPLATE_USER_DEFINED_TASK.getCode());
             management.setCreateBy(task.getCreateBy());
-            if (device.getData() != null) {
+            if (device != null && device.getData() != null) {
                 management.setOperationInstrument(device.getData());
             }
             if (task.getSerialNumber()!=null) {

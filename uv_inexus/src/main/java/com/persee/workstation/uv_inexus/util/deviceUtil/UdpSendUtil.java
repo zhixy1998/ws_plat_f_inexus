@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.net.BindException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -113,7 +114,7 @@ public class UdpSendUtil {
             DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
                     InetAddress.getByName(sendIp), sendPort);
 
-            socket.send(packet);
+            socket = sendWithNicRecover(socket, packet, connectType);
 
             sendMessageLog(sendIp, cmdId, sendBytes);
 
@@ -222,7 +223,7 @@ public class UdpSendUtil {
 
             String newDeviceId = deviceManager.getOrCreateDeviceId(newIp, receivePort, connectType);
 
-            socket.send(packet);
+            socket = sendWithNicRecover(socket, packet, connectType);
             sendMessageLog("255.255.255.255", cmdId, sendBytes);
 
             int i = 0;
@@ -312,6 +313,134 @@ public class UdpSendUtil {
     }
 
     /**
+     * 判断异常是否为物理连接层面的故障（网卡变动、socket失效、链路断开）。
+     * 实时回显等调用方据此返回unCountResponse，走统一的"网线断开/下位机异常"判断逻辑。
+     */
+    private boolean isNicInvalidError(Exception e) {
+        if (isSocketInvalidError(e)) {
+            return true;
+        }
+        String msg = e.getMessage();
+        return msg != null && (msg.contains("Datagram send failed")
+                || msg.contains("sendto failed")
+                || msg.contains("Network is unreachable")
+                || msg.contains("No route to host")
+                || msg.contains("Host is unreachable"));
+    }
+
+    /**
+     * 判断异常是否为socket本身失效（可通过重建/复用socket恢复发送）：
+     * 1. 网卡变动导致绑定地址失效（BindException / Cannot assign requested address），
+     *    如USB转网口拔出重插后Windows生成新网络接口，旧socket绑定的本地地址不再属于任何网卡；
+     * 2. socket被其他线程关闭（Socket is closed）——心跳线程等并发触发socket重建时，
+     *    正在发送的业务线程仍持有旧socket引用，send时报此错。
+     * 注意：拔掉网线（网卡还在）只报Network is unreachable，不属于socket失效，
+     * 重建socket无济于事，还会误伤正在使用共享socket的业务线程。
+     */
+    private boolean isSocketInvalidError(Exception e) {
+        if (e instanceof BindException) {
+            return true;
+        }
+        String msg = e.getMessage();
+        return msg != null && (msg.contains("Cannot assign requested address")
+                || msg.contains("Socket is closed"));
+    }
+
+    /**
+     * 重建socket：停止旧socket上的接收线程，关闭失效socket，
+     * 重新枚举网卡创建新socket（USB网口重插后的新网卡会被重新找到并绑定），并重启接收线程
+     * @return 新socket，重建失败返回null
+     */
+    private DatagramSocket rebuildSocket(Integer connectType) {
+        try {
+            if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(connectType)) {
+                udpReceiveThread.stopWifiReceive();
+                connectUtil.closeWifiSocket();
+            } else {
+                udpReceiveThread.stopEthernetReceive();
+                connectUtil.closeEthernetSocket();
+            }
+
+            DatagramSocket socket = connectUtil.getSocket(connectType, ethernetReceivePort);
+            if (socket == null) {
+                return null;
+            }
+
+            Integer receivePort = connectUtil.getSocketPort(connectType);
+            if (!udpReceiveThread.isRunning(connectType)) {
+                udpReceiveThread.networkReceptionStart(receivePort, connectType);
+            }
+            return socket;
+        } catch (Exception e) {
+            log.error("重建socket失败：{}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 带socket失效恢复的发送：
+     * - socket被其他线程关闭（并发重建）时，直接复用ConnectUtil当前socket重试，无需重建；
+     * - 网卡变动导致绑定地址失效时，等待网卡就绪后重建socket再重试。
+     * 链路断开（Network is unreachable等）不属于socket失效，直接抛出由调用方按无响应处理。
+     * @return 实际发送使用的socket（可能为复用/重建后的新socket），重试仍失败抛出原异常
+     */
+    private DatagramSocket sendWithNicRecover(DatagramSocket socket, DatagramPacket packet, Integer connectType) throws Exception {
+        int retry = 0;
+        while (true) {
+            try {
+                socket.send(packet);
+                return socket;
+            } catch (Exception e) {
+                if (!isSocketInvalidError(e) || retry >= 2) {
+                    throw e;
+                }
+                retry++;
+                boolean closedByOther = socket.isClosed();
+                log.warn("UDP发送失败（{}），{}，第{}次", e.getMessage(),
+                        closedByOther ? "socket被并发重建关闭，复用当前socket重发" : "疑似网卡变动，重建socket后重发", retry);
+                if (!closedByOther) {
+                    // 网卡变动：给系统时间完成网卡注册
+                    try {
+                        Thread.sleep(500L * retry);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw e;
+                    }
+                }
+                socket = recoverSocket(connectType, closedByOther);
+                if (socket == null) {
+                    throw e;
+                }
+            }
+        }
+    }
+
+    /**
+     * 恢复socket
+     * @param closedByOther true=旧socket已被其他线程（如心跳）关闭并重建完毕，直接取当前socket复用；
+     *                      false=绑定地址失效（网卡变动），需停接收线程、关旧socket、重新枚举网卡重建
+     * @return 可用的socket，恢复失败返回null
+     */
+    private DatagramSocket recoverSocket(Integer connectType, boolean closedByOther) {
+        try {
+            if (closedByOther) {
+                DatagramSocket current = connectUtil.getSocket(connectType, ethernetReceivePort);
+                if (current == null) {
+                    return null;
+                }
+                if (!udpReceiveThread.isRunning(connectType)) {
+                    udpReceiveThread.networkReceptionStart(connectUtil.getSocketPort(connectType), connectType);
+                }
+                return current;
+            }
+            return rebuildSocket(connectType);
+        } catch (Exception e) {
+            log.error("恢复socket失败：{}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * 知道接收总数且全部接收后处理
      * @param deviceId  发送的机器ip
      * @param cmdId  发送和解析的指令
@@ -357,7 +486,7 @@ public class UdpSendUtil {
                     InetAddress.getByName(sendIp), anEnum.getPort());
             store.clearDeviceMessages(deviceId);
 
-            socket.send(packet);
+            socket = sendWithNicRecover(socket, packet, connectType);
 
             sendMessageLog(sendIp, cmdId, sendBytes);
             R<List<byte[]>> r = new R<>();
@@ -372,7 +501,7 @@ public class UdpSendUtil {
                     } else {
                         log.info("报文接收不足！重试第{}次", i+1);
                         store.clearDeviceMessages(deviceId);
-                        socket.send(packet);
+                        socket = sendWithNicRecover(socket, packet, connectType);
 
                         sendMessageLog(sendIp, cmdId, sendBytes);
                     }
@@ -401,6 +530,11 @@ public class UdpSendUtil {
         } catch (Exception e) {
 
             log.info("仪器信息出错：{}", e.getMessage());
+            if (isNicInvalidError(e)) {
+                // 网卡变动（如USB网口重插）、socket被并发重建关闭且恢复失败、或链路断开（拔网线），
+                // 均等同于设备无响应，返回unCountResponse走统一的断线判断逻辑
+                return R.fail(DeviceConstants.unCountResponse);
+            }
             return R.fail("0020A028");
         }
     }
@@ -556,7 +690,7 @@ public class UdpSendUtil {
                     InetAddress.getByName(sendIp), anEnum.getPort());
             store.clearDeviceMessages(sendIp);
 
-            socket.send(packet);
+            socket = sendWithNicRecover(socket, packet, connectType);
 
             sendMessageLog(sendIp, cmdId, sendBytes);
 
@@ -574,7 +708,7 @@ public class UdpSendUtil {
                 } else {
                     log.info("报文接收不足！重试第{}次", i+1);
                     store.clearDeviceMessages(sendIp);
-                    socket.send(packet);
+                    socket = sendWithNicRecover(socket, packet, connectType);
                     sendMessageLog(sendIp, cmdId, sendBytes);
                 }
             }
@@ -595,6 +729,10 @@ public class UdpSendUtil {
 
         } catch (Exception e) {
             log.error("连接仪器出错：{}", e.getMessage());
+            if (isNicInvalidError(e)) {
+                // 网卡变动、socket失效或链路断开，等同于设备无响应，走统一的断线判断逻辑
+                return R.fail(DeviceConstants.unCountResponse);
+            }
         }
         return R.ok();
 
@@ -1159,7 +1297,7 @@ public class UdpSendUtil {
                             log.warn("心跳发送失败，socket不可用，deviceId={}", id);
                             return;
                         }
-                        socket.send(packet);
+                        socket = sendWithNicRecover(socket, packet, device.getConnectType());
                     } catch (Exception e) {
                         //单次发送失败不能让定时任务终止（scheduleAtFixedRate 遇异常会停止），只记录日志
                         log.warn("心跳发送异常，deviceId={}，原因：{}", id, e.getMessage());

@@ -68,10 +68,14 @@ public interface SpectrumService {
     Result deleteSamplePort(String sampleId, String taskId);
 
     // 获取样本列表接口
-    Result sampleListPort(String taskId,String type,Integer digit,String deviceSerialNumber);
+    Result sampleListPort(String taskId,String type,Integer digit,String deviceSerialNumber,
+                          Boolean showPeak, Boolean showValley, Boolean showMarkPoint);
 
     // 删除样品列表接口
     Result deleteSampleListPort(String taskId, String sampleId,String analysisId);
+
+    // 更新样品选中状态(已测:传analysisId;未测:传taskId+sampleId;全选/全取消:传taskId+allSelectType,1-所有样品 2-所有分析样品)
+    Result updateSampleSelected(String analysisId, String isSelected, String taskId, String allSelectType, String sampleId);
 
     // 获取变换列表接口
     Result changeTheListPort(String taskId,String type,Integer digit);
@@ -152,10 +156,10 @@ public interface SpectrumService {
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter);
 
     // (实验测试)查询表格头
-    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIds);
+    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIds, Boolean isOneSample);
 
     // (实验测试)查询表格数据
-    List<Map<String, Object>> queryTableData(String taskId,List<String> analysisIds, Integer digit);
+    List<Map<String, Object>> queryTableData(String taskId,List<String> analysisIds, Integer digit, Boolean isOneSample);
 
     // 仪器设置参数
     boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam);

@@ -10,7 +10,6 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
 import com.alibaba.fastjson2.JSON;
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -185,8 +184,12 @@ public class SpectrumController {
     public Result sampleListPort(@RequestParam String taskId,
                                  @RequestParam(required = false) String type,
                                  @RequestParam(required = false) Integer digit,
-                                 @RequestParam String deviceSerialNumber) {
-        return spectrumService.sampleListPort(taskId, type, digit,deviceSerialNumber);
+                                 @RequestParam String deviceSerialNumber,
+                                 @RequestParam(required = false) Boolean showPeak,
+                                 @RequestParam(required = false) Boolean showValley,
+                                 @RequestParam(required = false) Boolean showMarkPoint) {
+        return spectrumService.sampleListPort(taskId, type, digit,deviceSerialNumber,
+                showPeak, showValley, showMarkPoint);
     }
 
 
@@ -194,6 +197,16 @@ public class SpectrumController {
     @ApiOperation("删除样品列表接口")
     public Result deleteSampleListPort(@RequestParam String taskId, @RequestParam String sampleId, @RequestParam String analysisId) {
         return spectrumService.deleteSampleListPort(taskId, sampleId, analysisId);
+    }
+
+    @GetMapping("updateSampleSelected")
+    @ApiOperation("更新样品选中状态(单个/未测样品/全选全取消)")
+    public Result updateSampleSelected(@RequestParam(required = false) String analysisId,
+                                       @RequestParam String isSelected,
+                                       @RequestParam(required = false) String taskId,
+                                       @RequestParam(required = false) String allSelectType,
+                                       @RequestParam(required = false) String sampleId) {
+        return spectrumService.updateSampleSelected(analysisId, isSelected, taskId, allSelectType, sampleId);
     }
 
 

@@ -249,8 +249,10 @@ public class ExperimentTestController {
     public Result reportTableDataQuery(@RequestParam String taskId,
                                        @RequestParam(required = false) String analysisId,
                                        @RequestParam(required = false) Boolean allDisplay,
-                                       @RequestParam(required = false) Integer digit){
-        return experimentTestService.newReportTableDataQuery(taskId, analysisId,allDisplay,digit);
+                                       @RequestParam(required = false) Integer digit,
+                                       @RequestParam(required = false) String showType,
+                                       @RequestParam(required = false) Boolean isOneSample){
+        return experimentTestService.newReportTableDataQuery(taskId, analysisId,allDisplay,digit,showType,isOneSample);
     }
 
 //    @GetMapping("obtainReportParameters")
@@ -377,6 +379,13 @@ public class ExperimentTestController {
     public Result querySaveState(@RequestParam String taskId) {
         return experimentTestService.querySaveState(taskId);
     }
+
+    @GetMapping("queryTaskDataParam")
+    @ApiOperation("根据任务id查询数据参数配置(小数位数、显示选项等)")
+    public Result<QueryDataDTO> queryTaskDataParam(@RequestParam String taskId) {
+        return experimentTestService.queryTaskDataParam(taskId);
+    }
+
     @ApiOperation("删除样品模板")
     @GetMapping("deleteSampleTemplate")
     public Result<Boolean> deleteSampleTemplate(@RequestParam String templateId, @RequestParam String updateBy) {

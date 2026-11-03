@@ -817,9 +817,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 7. 根据测量类型选择不同的处理逻辑
         if (isQuantitative) {
             return handleQuantitativeSample(dto, task, numberConfig, nameConfig);
-        } else {
-            return handleFourMeasurementSample(dto, task, description, numberConfig, nameConfig);
         }
+        // 8. 光谱扫描/时间扫描: 存在待测样品时不需要自动添加样品, 只需要将待测样品置为选中状态
+        if (isSpectrumOrTimeScan(measureType)) {
+            return handleSpectrumOrTimeScanSample(dto, task, measureType, description, numberConfig, nameConfig);
+        }
+        return handleFourMeasurementSample(dto, task, description, numberConfig, nameConfig);
     }
 
     /**
@@ -1139,6 +1142,205 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
 
         return Result.ok(true);
+    }
+
+    /**
+     * 判断是否为光谱扫描/时间扫描
+     */
+    private boolean isSpectrumOrTimeScan(String measureType) {
+        return MeasureTypeEnum.SPECTRAL_SCAN.getDescription().equals(measureType)
+                || MeasureTypeEnum.TIME_SCAN.getDescription().equals(measureType);
+    }
+
+    /**
+     * 处理光谱扫描/时间扫描的"是否添加样品"逻辑
+     * <p>
+     * 只要样品已测过(存在测量数据, 不论重复次数是否测满)即视为已测; 仍存在"完全没测过"的样品时不需要自动添加样品,
+     * 只需要按实际测量范围将待测样品置为选中状态; 所有样品都已测过时才自动添加新样品, 新增样品默认选中。
+     *
+     * @param dto          请求参数
+     * @param task         任务
+     * @param measureType  测量类型
+     * @param description  测量类型描述
+     * @param numberConfig 样品编号配置
+     * @param nameConfig   样品名称配置
+     * @return 处理结果
+     */
+    private Result handleSpectrumOrTimeScanSample(AddSampleDTO dto, TMeasureTask task, String measureType,
+                                                  String description, SampleNumConfig numberConfig,
+                                                  SampleNameConfig nameConfig) {
+        // 未删除且未测(一次都没测过)的样品; 样品的已测标志由 WebSocket 保存测量数据时写入
+        List<TaskSpecimen> untested = queryUnmeasuredSpecimens(task);
+        if (CollectionUtils.isEmpty(untested)) {
+            // 需要自动添加样品: 创建样品, 新增样品默认选中
+            return handleFourMeasurementSample(dto, task, description, numberConfig, nameConfig);
+        }
+        // 不需要自动添加样品: 只将待测样品置为选中, 不改动其他样品已有的选中状态
+        return selectUntestedSpecimens(dto, task, measureType, untested);
+    }
+
+    /**
+     * 查询任务中未删除且未测的样品
+     *
+     * @param task 任务
+     * @return 未删除且未测的样品列表
+     */
+    private List<TaskSpecimen> queryUnmeasuredSpecimens(TMeasureTask task) {
+        List<TaskSpecimen> untested = new ArrayList<>();
+        if (task == null || !StringUtils.hasText(task.getSampleKey())) {
+            return untested;
+        }
+        List<TaskSpecimen> specimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        if (specimenList == null) {
+            return untested;
+        }
+        for (TaskSpecimen specimen : specimenList) {
+            if (specimen == null) {
+                continue;
+            }
+            // 未删除且未测
+            if ("0".equals(specimen.getDeleteType()) && "0".equals(specimen.getIsTested())) {
+                untested.add(specimen);
+            }
+        }
+        return untested;
+    }
+
+    /**
+     * 更新未测样品的选中状态
+     *
+     * @param taskId      任务id
+     * @param measureType 测量类型
+     * @param specimenKey 样品唯一标识
+     * @param isSelected  是否选中("1"-选中, "0"-未选中)
+     * @return 处理结果
+     */
+    private Result updateSpecimenSelected(String taskId, String measureType, String specimenKey, String isSelected) {
+        if (MeasureTypeEnum.TIME_SCAN.getDescription().equals(measureType)) {
+            return timeSweepService.updateSampleSelected(null, isSelected, taskId, null, specimenKey);
+        }
+        return spectrumService.updateSampleSelected(null, isSelected, taskId, null, specimenKey);
+    }
+
+    /**
+     * 是否为光谱扫描的重复模式(单池重复)
+     *
+     * @param task        任务
+     * @param measureType 测量类型
+     * @return true-光谱扫描的重复模式
+     */
+    private boolean isSpectrumRepeatMode(TMeasureTask task, String measureType) {
+        if (!MeasureTypeEnum.SPECTRAL_SCAN.getDescription().equals(measureType)
+                || task == null || !StringUtils.hasText(task.getMethodKey())) {
+            return false;
+        }
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        if (method == null || !StringUtils.hasText(method.getMeasurementParamInfo())) {
+            return false;
+        }
+        SpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
+        return parameter != null && StringUtils.hasText(parameter.getRepetitionPattern())
+                && !"不重复".equals(parameter.getRepetitionPattern());
+    }
+
+    /**
+     * 将待测样品设置为选中状态
+     * <p>
+     * 未启用自动切换样品池时, 测量只会测量第一个待测样品, 因此只选中第一个;
+     * 启用自动切换样品池时, 从第一个待测样品开始顺序取到最大池号为止。
+     *
+     * @param dto         请求参数
+     * @param task        任务
+     * @param measureType 测量类型
+     * @param untested    待测样品列表
+     * @return 处理结果
+     */
+    private Result selectUntestedSpecimens(AddSampleDTO dto, TMeasureTask task, String measureType,
+                                           List<TaskSpecimen> untested) {
+        // 获取自动切换样品池配置
+        boolean isAutoChangePool = getAutoChangePoolConfig(dto, dto.getDeviceSerialNumber());
+        List<TaskSpecimen> toSelect;
+        if (isAutoChangePool) {
+            // 启用自动切换样品池: 从第一个待测样品开始顺序取到最大池号为止
+            toSelect = filterByPoolRange(dto.getDeviceSerialNumber(), untested);
+        } else {
+            // 未启用自动切换样品池: 测量只会测量第一个待测样品, 只选中第一个
+            toSelect = untested.subList(0, 1);
+        }
+        for (TaskSpecimen specimen : toSelect) {
+            Result result = updateSpecimenSelected(task.getId(), measureType, specimen.getSpecimenKey(), "1");
+            if (result.getCode() == null || !result.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
+                return result;
+            }
+        }
+        return Result.ok(true);
+    }
+
+    /**
+     * 按样品池范围过滤待测样品
+     * <p>
+     * 启用自动切换样品池时, 从第一个待测样品开始顺序取到最大池号为止:
+     * 第一个待测样品就在最大池号时只取这一个; 否则取从它到最大池号之间的样品(含两端)。
+     *
+     * @param deviceSerialNumber 设备序列号
+     * @param untested           待测样品列表
+     * @return 需要选中的待测样品
+     */
+    private List<TaskSpecimen> filterByPoolRange(String deviceSerialNumber, List<TaskSpecimen> untested) {
+        if (!StringUtils.hasText(deviceSerialNumber) || untested.isEmpty()) {
+            return untested;
+        }
+        List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+        if (usefulLocation.isEmpty()) {
+            return untested;
+        }
+        int maxPoolNum = Collections.max(usefulLocation);
+
+        // 批量查询样品位置: 样品id -> 池号
+        Map<String, String> sampleLocationMap = new HashMap<>();
+        List<String> specimenKeys = untested.stream()
+                .map(TaskSpecimen::getSpecimenKey)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toList());
+        if (!specimenKeys.isEmpty()) {
+            for (TMeasureSample sample : tMeasureSampleService.listByIds(specimenKeys)) {
+                if (sample != null && sample.getId() != null) {
+                    sampleLocationMap.put(sample.getId(), sample.getSampleLocation());
+                }
+            }
+        }
+
+        List<TaskSpecimen> toSelect = new ArrayList<>();
+        for (TaskSpecimen specimen : untested) {
+            Integer poolNum = parsePoolNum(sampleLocationMap.get(specimen.getSpecimenKey()));
+            if (poolNum == null || poolNum > maxPoolNum) {
+                continue;
+            }
+            toSelect.add(specimen);
+            // 取到最大池号为止(含): 第一个待测样品就在最大池号时只取这一个
+            if (poolNum == maxPoolNum) {
+                break;
+            }
+        }
+        return toSelect.isEmpty() ? untested : toSelect;
+    }
+
+    /**
+     * 解析样品位置中的池号
+     *
+     * @param location 样品位置
+     * @return 池号, 解析失败返回null
+     */
+    private Integer parsePoolNum(String location) {
+        if (!StringUtils.hasText(location)) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(location.trim());
+        } catch (NumberFormatException e) {
+            log.warn("样品池号格式错误: {}", location);
+            return null;
+        }
     }
 
     /**
@@ -2030,7 +2232,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
      * @return
      */
     @Override
-    public Result newReportTableDataQuery(String taskId, String analysisId, Boolean allDisplay, Integer decimalDigits) {
+    public Result newReportTableDataQuery(String taskId, String analysisId, Boolean allDisplay, Integer decimalDigits, String showType, Boolean isOneSample) {
 
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
@@ -2185,14 +2387,18 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
                 // 获取数据
                 SpectrumReportDataVO vo = new SpectrumReportDataVO();
-                Result<List<HeadVO>> result = spectrumService.tableHead(taskId, task.getMethodKey(), analysisIdList);
+                Result<List<HeadVO>> result = spectrumService.tableHead(taskId, task.getMethodKey(), analysisIdList, isOneSample);
                 if (result.getCode() == 200) {
                     List<HeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
 
                 // 获取数据
-                List<Map<String, Object>> dataList = spectrumService.queryTableData(taskId, analysisIdList, decimalDigits);
+                List<Map<String, Object>> dataList = spectrumService.queryTableData(taskId, analysisIdList, decimalDigits, isOneSample);
+                // 单样品时根据showType过滤峰/谷/标记点数据
+                if (Boolean.TRUE.equals(isOneSample)) {
+                    dataList = filterReportDataByShowType(dataList, showType);
+                }
                 if (dataList != null) {
                     vo.setDataList(dataList);
                 } else {
@@ -2241,14 +2447,18 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         .collect(Collectors.toList());
 
                 // 获取表头
-                Result<List<HeadVO>> result = timeSweepService.tableHead(taskId, task.getMethodKey(), analysisIdList);
+                Result<List<HeadVO>> result = timeSweepService.tableHead(taskId, task.getMethodKey(), analysisIdList, isOneSample);
                 if (result.getCode() == 200) {
                     List<HeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
 
                 // 获取数据
-                List<Map<String, Object>> dataList = timeSweepService.queryTableData(taskId, analysisIdList, decimalDigits);
+                List<Map<String, Object>> dataList = timeSweepService.queryTableData(taskId, analysisIdList, decimalDigits, isOneSample);
+                // 单样品时根据showType过滤峰/谷/标记点数据
+                if (Boolean.TRUE.equals(isOneSample)) {
+                    dataList = filterReportDataByShowType(dataList, showType);
+                }
                 if (dataList != null) {
                     vo.setDataList(dataList);
                 } else {
@@ -2289,6 +2499,47 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 //类型错误,请重新选择
                 return Result.fail("00000005");
         }
+    }
+
+    /**
+     * 根据showType过滤单样品的峰/谷/标记点数据
+     * showType为逗号分隔的数字:1-允许返回峰,2-允许返回谷,3-允许返回标记点;为空则返回空数据
+     *
+     * @param dataList 报表数据
+     * @param showType 允许返回的数据类型
+     * @return 过滤后的数据
+     */
+    private List<Map<String, Object>> filterReportDataByShowType(List<Map<String, Object>> dataList, String showType) {
+        // showType为空时不返回数据
+        if (showType == null || !StringUtils.hasText(showType.trim())) {
+            return new ArrayList<>();
+        }
+        if (dataList == null || dataList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        // 解析允许返回的类型数字集合
+        Set<String> allowedTypes = Arrays.stream(showType.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toSet());
+        return dataList.stream()
+                .filter(map -> {
+                    Object type = map.get(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity());
+                    if (type == null) {
+                        // 非峰/谷/标记点数据默认保留
+                        return true;
+                    }
+                    String value = type.toString();
+                    if ("峰".equals(value)) {
+                        return allowedTypes.contains("1");
+                    } else if ("谷".equals(value)) {
+                        return allowedTypes.contains("2");
+                    } else if ("标记点".equals(value)) {
+                        return allowedTypes.contains("3");
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
     }
 
     /**
@@ -4250,6 +4501,51 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
         vo.setSaveState(true);
         return Result.ok(vo);
+    }
+
+    /**
+     * 根据任务id查询数据参数配置(小数位数、显示选项等)
+     *
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result<QueryDataDTO> queryTaskDataParam(String taskId) {
+        if (taskId == null) {
+            //任务id不能为空
+            return Result.fail("00000003");
+        }
+        // 根据任务id查询附属表数据参数
+        LambdaQueryWrapper<TMeasureTaskAttachment> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureTaskAttachment::getTaskId, taskId);
+        TMeasureTaskAttachment attachment = tMeasureTaskAttachmentService.getOne(queryWrapper);
+        if (attachment != null && StringUtils.hasText(attachment.getDataParam())) {
+            QueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
+            if (dataDTO == null) {
+                dataDTO = new QueryDataDTO();
+            }
+            dataDTO.setTaskId(taskId);
+            if (dataDTO.getOption() == null) {
+                dataDTO.setOption(new ArrayList<>());
+            }
+            if (dataDTO.getAllDisplay() == null) {
+                dataDTO.setAllDisplay(false);
+            }
+            return Result.ok(dataDTO);
+        }
+        // 附件或数据参数不存在时，根据系统业务参数的测量值小数位数返回默认配置
+        QueryDataDTO dataDTO = new QueryDataDTO();
+        dataDTO.setTaskId(taskId);
+        dataDTO.setAllDisplay(false);
+        dataDTO.setOption(new ArrayList<>());
+        SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
+        Integer measureDigits = businessParamVO == null ? null : businessParamVO.getMeasureDigits();
+        if (measureDigits == null) {
+            measureDigits = Constants.DEFAULT_DECIMAL_NUM;
+        }
+        dataDTO.setDigit(measureDigits);
+        dataDTO.setOtherDigit(measureDigits);
+        return Result.ok(dataDTO);
     }
 
     /**

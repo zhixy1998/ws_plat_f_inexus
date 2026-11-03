@@ -689,6 +689,7 @@ public class RationMeasureNewWebSocket{
                  * 删除的过滤
                  * 测过的，要处理
                  */
+                String emptyFitCon = null;
                 for (TaskSpecimen specimen : taskSpecimen) {
 
                     if (!isAutoChangePool && measureCount == 1) {
@@ -775,6 +776,7 @@ public class RationMeasureNewWebSocket{
                                     if (ans != null && fittingInfo.getRoundCoefficient() != null) {
 
                                         String s = rationService.fitDataRounding(ans, parameter);
+                                        emptyFitCon = s;
 
                                         //平行样处理
                                         handleParallelGroup(sample, parallelData, taskId, data.getId(), Double.parseDouble(ans), digit, false);
@@ -839,8 +841,6 @@ public class RationMeasureNewWebSocket{
                             break;
                         }
                     }
-
-                    String emptyFitCon = null;
 
                     if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
 
@@ -962,10 +962,14 @@ public class RationMeasureNewWebSocket{
 
                             }
                         }
+                        saveDataInfo.setCountData(measureAbsDataList);
+                        rationService.saveAnalyzeData(saveDataInfo);
+
                         if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
                             Double emptyValue = null;
                             if (empty) {
                                 emptyValue = minuend;
+                                emptyFitCon = rationService.valueCalculate(fittingInfo, minuend, parameter.getEquationType());
                             }
                             R<RationDataVO> formulaCount = formulaCont(deviceSerialNumber, data, sample, task, parameter, emptyValue, emptyFitCon);
                             if (formulaCount.getSuccess()) {
@@ -1238,9 +1242,35 @@ public class RationMeasureNewWebSocket{
             }
             //公式计算---待定
             //TODO 公式计算
+            TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+            TMeasureTask task = tMeasureTaskService.getById(taskId);
+            RationDataVO data = new RationDataVO();
+            data.setCountData(newData);
+            //公式计算需要测量数据(各波长吸光度)，通过测量数据id从测量数据表中取
+            if (StringUtils.hasText(saveData.getMeasureDataId())) {
+                TMeasureData measureData = tMeasureDataService.getById(saveData.getMeasureDataId());
+                if (measureData != null && StringUtils.hasText(measureData.getOriginalCalculationData())) {
+                    data.setWavelengthData(JSON.parseArray(measureData.getOriginalCalculationData(), RationWavelengthDataInfo.class));
+                }
+            }
+            if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty() && data.getWavelengthData() != null) {
+                Double emptyValue = null;
+                String emptyFitCon = null;
+                if (empty) {
+                    emptyValue = minuend;
+                    //空白样的拟合浓度，与实时测量流程保持一致
+                    emptyFitCon = rationService.valueCalculate(curveData, minuend, parameter.getEquationType());
+                }
+                R<RationDataVO> formulaCount = formulaCont(deviceSerialNumber, data, measureSample, task, parameter, emptyValue, emptyFitCon);
+                if (formulaCount.getSuccess()) {
 
+                    data = formulaCount.getData();
+
+                    newData.addAll(data.getCountData());
+                }
+            }
             saveData.setAnalysisResult(JSON.toJSONString(newData));
-            tMeasureAnalysisDataService.update(saveData, analysisDataQueryWrapper);
+            tMeasureAnalysisDataService.updateById(saveData);
         }
     }
 
@@ -1417,7 +1447,9 @@ public class RationMeasureNewWebSocket{
         List<RationCountDataInfo> countData = new ArrayList<>();
         RationDataVO dataInfo = new RationDataVO();
 
-        List<String> waveLengths = parameter.getWaveLength();
+        //测量按波长降序执行，但波长与波长系数(waveLengthParams)在parameter中按索引一一对应，
+        //不能原地排序parameter的波长列表（会导致countAbsValue按索引取系数时错乱），这里只排序副本
+        List<String> waveLengths = new ArrayList<>(parameter.getWaveLength());
         waveLengths.sort(Comparator.reverseOrder());
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
@@ -1554,7 +1586,9 @@ public class RationMeasureNewWebSocket{
             List<RationCountDataInfo> countData = new ArrayList<>();
             RationDataVO ans = new RationDataVO();
 
-            List<String> waveLengths = parameter.getWaveLength();
+            //测量按波长降序执行，但波长与波长系数(waveLengthParams)在parameter中按索引一一对应，
+            //不能原地排序parameter的波长列表（会导致countAbsValue按索引取系数时错乱），这里只排序副本
+            List<String> waveLengths = new ArrayList<>(parameter.getWaveLength());
             waveLengths.sort(Comparator.reverseOrder());
 
             DevOperationInputParam inputParam = new DevOperationInputParam();

@@ -57,6 +57,7 @@ public class TMeasureTaskServiceImpl extends ServiceImpl<TMeasureTaskMapper, TMe
             queryDataDTO.setTaskId(entity.getId());
             queryDataDTO.setAllDisplay(false);
             queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
+            queryDataDTO.setOtherDigit(Constants.DEFAULT_DECIMAL_NUM);
             queryDataDTO.setOption(new ArrayList<>());
             taskAttachment.setDataParam(JSON.toJSONString(queryDataDTO));
 

@@ -66,4 +66,7 @@ public class SystemBusinessParamVO {
 
     @ApiModelProperty("浓度负值是否显示未检出")
     private Boolean isNegativeShow;
+
+    @ApiModelProperty("测量值小数位数")
+    private Integer measureDigits;
 }

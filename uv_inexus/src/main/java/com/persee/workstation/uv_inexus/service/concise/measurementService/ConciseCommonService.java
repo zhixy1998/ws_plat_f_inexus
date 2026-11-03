@@ -12,6 +12,7 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddSampleDTO;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
@@ -30,6 +31,9 @@ public interface ConciseCommonService {
     Result<FMethodListWithPageVO> searchMethodButton(FQueryMethodWithPageDto dto);
     // 查询保存状态
     Result querySaveState(String taskId);
+
+    // 根据任务id查询数据参数配置(小数位数、显示选项等)
+    Result<FQueryDataDTO> queryTaskDataParam(String taskId);
 
     // 保存草稿按钮
     Result saveDraftButton(String taskId);
@@ -63,7 +67,7 @@ public interface ConciseCommonService {
     Result queryReportAllParameters(String taskId, String sampleId, String serialNumber);
 
     // 新的报表数据查询
-    Result newReportTableDataQuery(String taskId,String analysisId, Boolean allDisplay,Integer digit);
+    Result newReportTableDataQuery(String taskId,String analysisId, Boolean allDisplay,Integer digit,String showType,Boolean isOneSample);
 
     // 是否添加样品
     Result isAddSample(AddSampleDTO addSampleDTO);
@@ -91,4 +95,10 @@ public interface ConciseCommonService {
 
     // 查询多任务样品接口
     Result queryMultipleTaskSample(MultipTaskSample multipTaskSample);
+
+    /**
+     * 重新分析数据
+     */
+    R<Boolean> reAnalyze(String taskId, String updateBy);
+
 }

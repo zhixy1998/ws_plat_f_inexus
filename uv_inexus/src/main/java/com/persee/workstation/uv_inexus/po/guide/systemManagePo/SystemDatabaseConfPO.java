@@ -25,10 +25,6 @@ public class SystemDatabaseConfPO extends BasePO {
     @TableField(value = "global_port")
     private String globalPort;
 
-    @ApiModelProperty("默认进入经典模式")
-    @TableField(value = "default_enter_classic")
-    private Boolean defaultEnterClassic;
-
     @ApiModelProperty("主数据库ip")
     @TableField(value = "main_database_ip")
     private String mainDatabaseIp;

@@ -39,6 +39,7 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 
@@ -490,6 +491,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             list.add(new DeviceConfParam(ScanSpeedEnum.SUPER_FAST.getName(), ScanSpeedEnum.SUPER_FAST.getCode()));
             ans.setScanSpeed(list);
             ans.setFilterWavelength(Arrays.asList(762, 555, 359));
+            sortScanInterval(ans);
             return R.ok(ans);
         }
 
@@ -535,7 +537,33 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             ans.setScanSpeed(null);
         }
 
+        sortScanInterval(ans);
+
         return R.ok(ans);
+    }
+
+    /**
+     * 波长间隔按数值从小到大排序后回填（非数值项排在最后）
+     *
+     * @param vo 设备测量参数
+     */
+    private void sortScanInterval(DeviceMeasureVO vo) {
+        if (vo == null) {
+            return;
+        }
+        List<String> scanInterval = vo.getScanInterval();
+        if (scanInterval == null || scanInterval.size() < 2) {
+            return;
+        }
+        List<String> sorted = new ArrayList<>(scanInterval);
+        sorted.sort(Comparator.comparingDouble(item -> {
+            try {
+                return Double.parseDouble(item);
+            } catch (NumberFormatException ignored) {
+                return Double.MAX_VALUE;
+            }
+        }));
+        vo.setScanInterval(sorted);
     }
 
     @Override

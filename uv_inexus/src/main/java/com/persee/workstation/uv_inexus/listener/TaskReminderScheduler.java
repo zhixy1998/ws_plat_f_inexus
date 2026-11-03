@@ -125,7 +125,7 @@ public class TaskReminderScheduler {
      */
     @Scheduled(cron = "0 0 */3 * * ?")
     public void checkTaskReminders() {
-        log.info("开始执行定时任务提醒检查...");
+        log.debug("开始执行定时任务提醒检查...");
         if (!reminderSwitchConfigService.isReminderTypeEnabled(ReminderTypeEnum.PERIODIC_INSPECTION.getCode())) {
             log.debug("期间核查提醒已关闭！！！");
         }
@@ -195,15 +195,18 @@ public class TaskReminderScheduler {
     private Set<String> getOnlineUsersFromCache() {
         Set<String> onlineUsers = new HashSet<>();
         try {
-            org.ehcache.Cache<String, String> cache = cacheManager.getCache("defaultCache", String.class, String.class);
+            org.ehcache.Cache<String, Object> cache = cacheManager.getCache("defaultCache", String.class, Object.class);
             if (cache != null) {
-                String subscribers = cache.get("message_subscribers");
-                if (subscribers != null && !subscribers.isEmpty()) {
-                    // 订阅用户以逗号分隔
-                    String[] users = subscribers.split(",");
-                    for (String user : users) {
-                        if (user != null && !user.trim().isEmpty()) {
-                            onlineUsers.add(user.trim());
+                Object value = cache.get("message_subscribers");
+                if (value != null) {
+                    String subscribers = value.toString();
+                    if (!subscribers.isEmpty()) {
+                        // 订阅用户以逗号分隔
+                        String[] users = subscribers.split(",");
+                        for (String user : users) {
+                            if (user != null && !user.trim().isEmpty()) {
+                                onlineUsers.add(user.trim());
+                            }
                         }
                     }
                 }
@@ -353,6 +356,7 @@ public class TaskReminderScheduler {
         messageInfoPO.setMessageSummary("期间核查提醒");
         messageInfoPO.setMessageSource(Constants.MESSAGE_SOURCE_SYSTEM);
         messageInfoPO.setMessageContent(notification.toString());
+        messageInfoPO.setUpdateBy(updateUser);
         Boolean b = messageInfoService.saveMessageInfo(messageInfoPO);
     }
 

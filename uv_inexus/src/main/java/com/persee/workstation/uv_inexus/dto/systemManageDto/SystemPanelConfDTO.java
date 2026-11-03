@@ -12,6 +12,8 @@ package com.persee.workstation.uv_inexus.dto.systemManageDto;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class SystemPanelConfDTO {
     @ApiModelProperty("方法列表面板开关")
@@ -38,6 +40,18 @@ public class SystemPanelConfDTO {
     @ApiModelProperty("自动进入实验测试")
     private Boolean isAutoEnterExperiment;
 
+    @ApiModelProperty("默认进入经典模式")
+    private Boolean defaultEnterClassic;
+
+    @ApiModelProperty("默认进入实验测试页面")
+    private List<String> defaultEnterExperiment;
+
     @ApiModelProperty("是否精简提示，true-是，false-否")
     private Boolean isSimpleTip;
+
+    @ApiModelProperty("是否全屏，true-是，false-否")
+    private Boolean isFullScreen;
+
+    @ApiModelProperty("是否展开导航栏，true-展开，false-收起")
+    private Boolean isExpandNavBar;
 }

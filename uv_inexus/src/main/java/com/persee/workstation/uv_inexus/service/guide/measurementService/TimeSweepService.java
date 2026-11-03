@@ -40,10 +40,14 @@ public interface TimeSweepService {
     Result updateMethodParameter(TimeSweepMethodParameterDto params);
 
     // 获取样本列表接口
-    Result sampleListPort(String taskId, String type,Integer  digit,String deviceSerialNumber);
+    Result sampleListPort(String taskId, String type,Integer  digit,String deviceSerialNumber,
+                          Boolean showPeak, Boolean showValley, Boolean showMarkPoint);
 
     // 删除样品列表接口
-    Result deleteSampleListPort(String sampleId, String taskId);
+    Result deleteSampleListPort(String sampleId, String taskId, String analysisId);
+
+    // 更新样品选中状态(已测:传analysisId;未测:传taskId+sampleId;全选/全取消:传taskId+allSelectType,1-所有样品 2-所有分析样品)
+    Result updateSampleSelected(String analysisId, String isSelected, String taskId, String allSelectType, String sampleId);
 
     // 获取变换列表接口
     Result changeTheListPort(String taskId, String type,Integer  digit);
@@ -133,10 +137,10 @@ public interface TimeSweepService {
     List<PeakValleyMarking>queryReportFormData(String taskId, String sampleId);
 
     // (实验测试)表格头接口
-    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIdList);
+    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIdList, Boolean isOneSample);
 
     // (实验测试)查询表格数据接口
-    List<Map<String, Object>> queryTableData(String taskId, List<String> analysisIdList,Integer decimalDigits);
+    List<Map<String, Object>> queryTableData(String taskId, List<String> analysisIdList,Integer decimalDigits, Boolean isOneSample);
 
     // 停止测量接口
     Result stopMeasure(String deviceSerialNumber);

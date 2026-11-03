@@ -31,12 +31,14 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.Sampl
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceUsageLogService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.ConnectEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.DefaultStatusCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.*;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionCmdEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.DetectionManyDevicesLampStatus;
 import lombok.Data;
@@ -103,6 +105,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     @Autowired
     SpectrumResultCalculator spectrumResultCalculator;
 
+
+    @Autowired
+    SystemBusinessParamService businessParamService;
     private final static ConnectUtil connectUtil = ConnectUtil.getInstance();
 
     private final static String defaultIp = "255.255.255.255";
@@ -157,8 +162,20 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             String deviceSerialNumber = po.getDeviceSerialNumber();
             String type = deviceModelInfoDAO.getDevTypeByDevModel(po.getDeviceModel());
             Map<String, Transition> xmlInfo = xmlManage.getXmlInfo(type);
+            if (xmlInfo == null) {
+                // 个别设备的型号/类型没有对应协议配置时跳过，避免一台异常设备导致整个应用启动失败
+                log.warn("恢复连接跳过：设备 {}（型号 {}）无对应协议配置, type={}",
+                        deviceSerialNumber, po.getDeviceModel(), type);
+                unConnectedDevice.add(deviceSerialNumber);
+                continue;
+            }
 
             Transition transition = xmlInfo.get(cmdId);
+            if (transition == null) {
+                log.warn("恢复连接跳过：设备 {} 缺少指令 {} 的协议配置", deviceSerialNumber, cmdId);
+                unConnectedDevice.add(deviceSerialNumber);
+                continue;
+            }
             int timeout = transition.getTimeout();
             int replyNumber = transition.getReplyNumber();
             List<String> headReceiveBytes = transition.getHeadReceiveBytes();
@@ -207,7 +224,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
 
             //共有数据库的情况下，不修改非自己ip的设备信息
-            if (!po.getMachineIp().equals(localIp)) {
+            if (po.getMachineIp() == null || !po.getMachineIp().equals(localIp)) {
                 continue;
             }
 
@@ -244,28 +261,33 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 cmdId = T600ComIdEnums.GetInitStatus.getComId();
 
                 transition = xmlInfo.get(cmdId);
-                timeout = transition.getTimeout();
-                replyNumber = transition.getReplyNumber();
-                headReceiveBytes = transition.getHeadReceiveBytes();
-
-                param = new Object[]{};
-
-                bytes = protocolItemUtil.calcSendBytes(param, transition);
-                r = udpSendUtil.knowTotalReceiveSend(s, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
-                if (r.getSuccess()) {
-
-                    result = (OperationResultEntity) r.getData();
-                    Integer isInited = result.getIsInited();
-                    if (isInited.equals(Constants.INIT_STATUS_SUCCESS)) {
-                        log.info("已初始化！");
-                        newPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
-                        udpSendUtil.startHeartbeat(s);
-                    } else {
-                        log.info("未初始化！");
-                        newPO.setIsInited(Constants.INIT_STATUS_NO);
-                    }
-                } else {
+                if (transition == null) {
+                    log.warn("恢复连接跳过：设备 {} 缺少初始化状态指令 {} 的协议配置", deviceSerialNumber, cmdId);
                     newPO.setIsInited(Constants.INIT_STATUS_FALSE);
+                } else {
+                    timeout = transition.getTimeout();
+                    replyNumber = transition.getReplyNumber();
+                    headReceiveBytes = transition.getHeadReceiveBytes();
+
+                    param = new Object[]{};
+
+                    bytes = protocolItemUtil.calcSendBytes(param, transition);
+                    r = udpSendUtil.knowTotalReceiveSend(s, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+                    if (r.getSuccess()) {
+
+                        result = (OperationResultEntity) r.getData();
+                        Integer isInited = result.getIsInited();
+                        if (isInited.equals(Constants.INIT_STATUS_SUCCESS)) {
+                            log.info("已初始化！");
+                            newPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
+                            udpSendUtil.startHeartbeat(s);
+                        } else {
+                            log.info("未初始化！");
+                            newPO.setIsInited(Constants.INIT_STATUS_NO);
+                        }
+                    } else {
+                        newPO.setIsInited(Constants.INIT_STATUS_FALSE);
+                    }
                 }
 
                 xmlManage.setDevice(po.getIp(), type);
@@ -378,8 +400,22 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     result = getValue(inputParam);
                     break;
                 case Calibration:
-                    result = calibration(inputParam);
-                    release = false;
+                    // 测量流程的暗电流校准（onTime=true）需要实时回显波长数据：
+                    // 异步执行使 operation 立即返回，由调用方 pollDarkPoints 在校准进行中轮询队列；
+                    // REST 校准（未设 onTime）保持同步阻塞，等待校准完成返回结果
+                    if (Boolean.TRUE.equals(inputParam.getOnTime())) {
+                        actionExecutor.submit(() -> {
+                            try {
+                                calibration(inputParam);
+                            } catch (Exception e) {
+                                log.info("设备操作异常，设备序列号: {}, 操作类型: Calibration(onTime)", deviceSerialNumber, e);
+                            }
+                        });
+                        release = false;
+                    } else {
+                        result = calibration(inputParam);
+                        release = false;
+                    }
                     break;
                 case Zero:
                     result = zero(inputParam);
@@ -1912,6 +1948,17 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         String deviceId = info.getDeviceId();
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        if (device == null) {
+            // 设备连接信息已被移除但数据库状态未同步（异常断线路径漏更新状态），
+            // 按断线处理：同步数据库状态为断开，避免实时回显持续拿到失败结果又被当作设备忙死循环
+            log.warn("设备连接信息不存在，按断线处理，deviceId={}", deviceId);
+            if (Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
+                info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+                infoService.saveOrUpdateInfo(info);
+            }
+            udpSendUtil.stopHeartbeat(deviceId);
+            return R.fail(DeviceConstants.unCountResponse);
+        }
         String xmlKey = device.getXmlKey();
         Integer connectType = device.getConnectType();
 
@@ -2048,6 +2095,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
         }
 
+        SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
+        Integer measureDigits = businessParamVO == null ? null : businessParamVO.getMeasureDigits();
+        if (measureDigits == null) {
+            measureDigits = Constants.DEFAULT_DECIMAL_NUM;
+        }
+
         device = deviceManager.getDevice(deviceId);
 
         Map<String,  Map<String, String>> darkInfo = info.getDarkInfo();
@@ -2108,7 +2161,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     abs = samplePoolConfigService.applyPoolCorrection(abs, poolValue, luminosity);
                 }
 
-                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, abs));
+                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(measureDigits, abs));
             } else if (luminosity.equals(WaveLengthEnum.es.getCode()) || luminosity.equals(WaveLengthEnum.er.getCode())) {
                 String s = DataCountUtil.countErOrEs(measureParam, luminosity, rsMode);
 
@@ -2116,7 +2169,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     s = DataCountUtil.count1960ErOrEs(measureParam, luminosity, rsMode);
                 }
 
-                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
+                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(measureDigits, s));
             } else if (luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
                 ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
                 String s;
@@ -2137,7 +2190,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (poolValue != null) {
                     s = samplePoolConfigService.applyPoolCorrection(s, poolValue, luminosity);
                 }
-                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
+                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(measureDigits, s));
             } else if (luminosity.equals(WaveLengthEnum.rPercent.getCode())) {
                 ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
                 String s;
@@ -2158,7 +2211,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (poolValue != null) {
                     s = samplePoolConfigService.applyPoolCorrection(s, poolValue, luminosity);
                 }
-                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
+                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(measureDigits, s));
             }
         }
         deviceManager.setMeasureValue(deviceId, resultEntity.getY());
@@ -2236,7 +2289,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 }
 
 //                isDealOnTime = xmlKey.equals(DevXmlEnums.T800.getDevType());
-                isDealOnTime = inputParam.getCalibrationType().equals(DeviceCalibrationInfoEnum.T800Dark.getType());
+                // 暗电流等流式指令需要边收边解析：T800Dark 一直是实时方式；
+                // 测量流程下发的普通 Dark 通过 onTime 显式开启，便于把每个数据点回调给业务层做实时回显。
+                isDealOnTime = Boolean.TRUE.equals(inputParam.getOnTime())
+                        || inputParam.getCalibrationType().equals(DeviceCalibrationInfoEnum.T800Dark.getType());
 
                 calibration = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout, isDealOnTime, deviceSerialNumber, endBytes, headReceiveBytes);
 
@@ -2955,6 +3011,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
         String deviceId = info.getDeviceId();
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+
+        if (device == null) {
+            log.info("设备{}未连接", deviceId);
+            return R.ok();
+        }
         Integer connectType = device.getConnectType();
         String xmlKey = device.getXmlKey();
 

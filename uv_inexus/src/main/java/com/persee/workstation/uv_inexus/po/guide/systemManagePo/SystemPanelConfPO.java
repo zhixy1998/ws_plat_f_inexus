@@ -11,16 +11,19 @@ package com.persee.workstation.uv_inexus.po.guide.systemManagePo;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.persee.workstation.uv_inexus.model.BasePO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
+
 @EqualsAndHashCode(callSuper = true)
 @Data
 @ApiModel("系统面板数据类")
-@TableName(value = "t_system_panel_conf")
+@TableName(value = "t_system_panel_conf", autoResultMap = true)
 public class SystemPanelConfPO extends BasePO {
 
     @ApiModelProperty("方法列表面板开关")
@@ -55,8 +58,24 @@ public class SystemPanelConfPO extends BasePO {
     @TableField(value = "is_auto_enter_experiment")
     private Boolean isAutoEnterExperiment;
 
+    @ApiModelProperty("默认进入经典模式")
+    @TableField(value = "default_enter_classic")
+    private Boolean defaultEnterClassic;
+
+    @ApiModelProperty("默认进入实验测试页面")
+    @TableField(value = "default_enter_experiment",  typeHandler = JacksonTypeHandler.class)
+    private List<String> defaultEnterExperiment;
+
     @ApiModelProperty("是否精简提示")
     @TableField(value = "is_simple_tip")
     private Boolean isSimpleTip;
+
+    @ApiModelProperty("是否全屏，true-是，false-否")
+    @TableField(value = "is_full_screen")
+    private Boolean isFullScreen;
+
+    @ApiModelProperty("是否展开导航栏，true-展开，false-收起")
+    @TableField(value = "is_expand_nav_bar")
+    private Boolean isExpandNavBar;
 
 }

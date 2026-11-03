@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
 import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.ModifySampleDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskHeadSnapshotDTO;
@@ -35,6 +36,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.net.URLEncoder;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/quantitativeMeasurement/")
@@ -172,6 +174,13 @@ public class RationController {
     @ApiOperation("查询样品数据接口")
     public Result<RationSampleDataVO> querySampleData(@RequestBody QueryDataDTO queryDataDTO) {
         return rationService.querySampleData(queryDataDTO);
+    }
+
+    @OperateLog(module = "实验测试-向导模式-定量测定-修改样品数据", description = "执行实验测试-向导模式-定量测定-修改样品数据操作", recordParams = true, ignore = true)
+    @PostMapping("modifySampleData")
+    @ApiOperation("修改样品数据接口（单个样品单个表头，如样品名称、标准浓度等）")
+    public Result<Boolean> modifySampleData(@RequestBody ModifySampleDataDTO dto) {
+        return rationService.modifySampleData(dto);
     }
 
 

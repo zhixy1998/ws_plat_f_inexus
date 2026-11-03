@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
-import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
@@ -137,14 +136,28 @@ public class TimeSweepConciseController {
     public Result queryNearestSampleData(@RequestParam String taskId,
                                          @RequestParam(required = false) String type,
                                          @RequestParam(required = false) Integer digit,
-                                         @RequestParam String deviceSerialNumber) {
-        return timeSweepConciseService.querySampleDataList(taskId,type,digit,deviceSerialNumber);
+                                         @RequestParam String deviceSerialNumber,
+                                         @RequestParam(required = false) Boolean showPeak,
+                                         @RequestParam(required = false) Boolean showValley,
+                                         @RequestParam(required = false) Boolean showMarkPoint) {
+        return timeSweepConciseService.querySampleDataList(taskId,type,digit,deviceSerialNumber,
+                showPeak, showValley, showMarkPoint);
     }
 
     @GetMapping("deleteSampleListPort")
     @ApiOperation("删除样品列表接口")
     public Result deleteSampleListPort(@RequestParam String taskId,@RequestParam String sampleId,@RequestParam String analysisId) {
         return timeSweepConciseService.deleteSampleListPort(taskId,sampleId,analysisId);
+    }
+
+    @GetMapping("updateSampleSelected")
+    @ApiOperation("更新样品选中状态(单个/未测样品/全选全取消)")
+    public Result updateSampleSelected(@RequestParam(required = false) String analysisId,
+                                       @RequestParam String isSelected,
+                                       @RequestParam(required = false) String taskId,
+                                       @RequestParam(required = false) String allSelectType,
+                                       @RequestParam(required = false) String sampleId) {
+        return timeSweepConciseService.updateSampleSelected(analysisId, isSelected, taskId, allSelectType, sampleId);
     }
 
     @GetMapping("changeTheListPort")

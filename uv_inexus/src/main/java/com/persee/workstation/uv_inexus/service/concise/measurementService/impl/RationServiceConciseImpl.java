@@ -26,6 +26,7 @@ import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskM
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.CreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FModifySampleDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDeleteSampleDTO;
@@ -73,6 +74,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCurvePointsValue;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
@@ -92,6 +94,8 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -1718,6 +1722,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             } catch (Exception e) {
                 log.error("解析任务里的校零参数异常: {}", e.getMessage());
             }
+            generateTableInfo(task.getId(), method.getId(), false);
 
             return Result.ok(vo);
         }
@@ -1761,6 +1766,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         boolean save = fMeasureTaskService.save(fMeasureTask);
         vo.setTaskId(fMeasureTask.getId());
         vo.setTaskName(fMeasureTask.getTaskName());
+        generateTableInfo(fMeasureTask.getId(), vo.getMethodId(), false);
         return Result.ok(vo);
     }
 
@@ -2672,7 +2678,12 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         Map<String, FHeadVO> analyzeMap = new HashMap<>();
 
+        Boolean locationHidden = false;
+
         for (FHeadVO head : heads) {
+            if (head.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                locationHidden = head.getIsHidden();
+            }
             if (SampleTableEnum.REMARK.getIdentity().equals(head.getIdentity())) {
                 head.setLocate(TableHeadILocateEnums.remark.getIdentity());
             }
@@ -2746,9 +2757,9 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
 
         List<FHeadVO> middleHeads = new ArrayList<>();
-
         for (FHeadVO an : ans) {
             if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                locationHidden = an.getIsHidden();
                 ans.remove(an);
                 continue;
             }
@@ -2782,7 +2793,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                     String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
                     String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
                     FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
-                    sampleLocation.setIsHidden(false);
+                    sampleLocation.setIsHidden(locationHidden);
                     sampleLocation.setIsSupportHidden(true);
                     ans.add(sampleLocation);
                 }
@@ -2926,6 +2937,10 @@ public class RationServiceConciseImpl implements RationConciseService {
             List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
             for (FTaskSpecimen specimen : taskSpecimen) {
                 FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
 
                 if(sample == null || !SampleTypeEnum.kind_unknown.getIdentity().equals(sample.getSampleKind())) {
                     log.info("跳过该样品");
@@ -3881,6 +3896,10 @@ public class RationServiceConciseImpl implements RationConciseService {
         FMeasureTaskAttachment attachment;
         boolean recount = false;
 
+        SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
+        Integer kDigits = businessParamVO.getKDigits();
+        queryDataDTO.setKDigit(kDigits);
+
         R<FMeasureTaskAttachment> r = fMeasureTaskAttachmentService.queryByTaskId(taskId);
         if (!r.getSuccess()) {
             log.info("未查询到任务附件信息");
@@ -3904,6 +3923,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                     recount = true;
                 } else if (dataDTO.getOtherDigit() == null || !dataDTO.getOtherDigit().equals(otherDigit)) {
                     recount = true;
+                } else if (dataDTO.getKDigit() == null || !dataDTO.getKDigit().equals(kDigits)) {
+                    recount = true;
                 }
             }
         }
@@ -3914,6 +3935,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         if (recount) {
             changeStandSampleDataDigit(taskId, digit);
+            queryCurveInfo(taskId, task.getMethodKey());
             changeUnknowSampleDigit(taskId, digit);
         }
 
@@ -4720,6 +4742,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
         int rSquareDigits = businessParamVO.getRSquareDigits();
         Integer kDigits = businessParamVO.getKDigits();
+        Integer lastKDigits = businessParamVO.getKDigits();
 
         R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(taskId);
         if (attachmentR.getSuccess()) {
@@ -4728,6 +4751,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FQueryDataDTO dataDTO = JSON.parseObject(data.getDataParam(), FQueryDataDTO.class);
                 if (dataDTO!=null && dataDTO.getDigit() != null) {
                     digit = dataDTO.getDigit();
+                    lastKDigits = dataDTO.getKDigit();
                 }
             }
         }
@@ -4767,7 +4791,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                     List<Double> coefficients = fittingParam.getCoefficients();
                     List<Double> roundCoefficient = new ArrayList<>();
-                    if (kDigits != null) {
+                    if (kDigits != null && kDigits != lastKDigits) {
                         for (Double coefficient : coefficients) {
                             Double v = DataCountUtil.formatValue(kDigits, coefficient);
                             String s = DataCountUtil.addZero(v, kDigits);
@@ -5446,6 +5470,12 @@ public class RationServiceConciseImpl implements RationConciseService {
         JSONObject allData = JSON.parseObject(jsonString);
         StringBuilder values = new StringBuilder();
         StringBuilder identity = new StringBuilder();
+        // 参数标识较自由(可能含 '-' 等特殊字符，例如 Abs-Blank、C-fit、N925)，计算服务难以将其与运算符区分。
+        // 这里为每个进入计算的标识分配唯一占位字母(A, B, ..., Z, A1, B1, ...)，
+        // 并将公式中引用的标识同步替换为该占位字母，保证“标识串”与“数值串”按位置一一对应、计算结果准确。
+        // 标识来源较多(曲线系数/截距/拟合浓度/输入参数)，重复标识采用“后者覆盖前者”，与计算服务按名称建字典的后值生效语义一致。
+        Map<String, String> identityToLetter = new LinkedHashMap<>();
+        int letterIndex = 0;
         if (StringUtils.hasText(sample.getNewColData())) {
             JSONObject object = JSONObject.parseObject(sample.getNewColData());
             allData.putAll(object);
@@ -5488,15 +5518,21 @@ public class RationServiceConciseImpl implements RationConciseService {
                         Double value = coefficients.get(i);
                         if (value != null) {
                             allData.put(coeffEnums[i].getIdentity(), value);
-                            identity.append(coeffEnums[i].getIdentity()).append(",");
+                            String coeffLetter = generateFormulaLetter(letterIndex++);
+                            identity.append(coeffLetter).append(",");
                             values.append(value).append(",");
+                            identityToLetter.put(coeffEnums[i].getIdentity(), coeffLetter);
                         }
                     }
 
                     Double interceptValue = coefficients.get(0);
                     if (interceptValue != null) {
-                        identity.append(RationCurveParamEnums.intercept.getIdentity()).append(",");
+                        // 截距也需放入allData：输入参数绑定曲线标识b时，下方mapRelation循环按headIdentity取值
+                        allData.put(RationCurveParamEnums.intercept.getIdentity(), interceptValue);
+                        String interceptLetter = generateFormulaLetter(letterIndex++);
+                        identity.append(interceptLetter).append(",");
                         values.append(interceptValue).append(",");
+                        identityToLetter.put(RationCurveParamEnums.intercept.getIdentity(), interceptLetter);
                     }
                 }
             }
@@ -5522,8 +5558,10 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         Object data = allData.get(RationCurveParamEnums.fit_concentration.getIdentity());
         if (data != null) {
-            identity.append(RationCurveParamEnums.fit_concentration.getIdentity()).append(",");
+            String fitLetter = generateFormulaLetter(letterIndex++);
+            identity.append(fitLetter).append(",");
             values.append(data).append(",");
+            identityToLetter.put(RationCurveParamEnums.fit_concentration.getIdentity(), fitLetter);
         }
 
         List<FInputParamMapTableHead> mapRelation = snapshot.getMapRelation();
@@ -5534,12 +5572,19 @@ public class RationServiceConciseImpl implements RationConciseService {
                 //缺少数据！
                 return R.fail("00300006");
             }
-            identity.append(relation.getParamIdentity()).append(",");
+            String relLetter = generateFormulaLetter(letterIndex++);
+            identity.append(relLetter).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
+            String paramIdentity = relation.getParamIdentity();
+            if (StringUtils.hasText(paramIdentity)) {
+                identityToLetter.put(paramIdentity, relLetter);
+            }
         }
-        identity.deleteCharAt(identity.length() - 1);
-        values.deleteCharAt(values.length() - 1);
+        if (identity.length() > 0) {
+            identity.deleteCharAt(identity.length() - 1);
+            values.deleteCharAt(values.length() - 1);
+        }
 
         List<FRationCountDataInfo> countList = new ArrayList<>();
         for (FPreCountResultParam param : parameter.getResultParams()) {
@@ -5548,6 +5593,8 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             text = text.replace("Con", RationCurveParamEnums.fit_concentration.getIdentity());
             text = text.replace("k0", RationCurveParamEnums.intercept.getIdentity());
+            // 将公式中的自由标识同步替换为占位字母
+            text = replaceFormulaIdentities(text, identityToLetter);
 
             String result = restUtil.sum(text, identity.toString(), values.toString());
             FRationCountDataInfo countDataInfo = new FRationCountDataInfo();
@@ -5569,6 +5616,328 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
 
         return R.ok(countList);
+    }
+
+    /**
+     * 根据序号生成公式占位字母：A, B, ..., Z, A1, B1, ..., Z1, A11, B11, ..., Z11, A12, ..., Z99, ...
+     * 用于替换公式中自由命名的参数标识，避免特殊字符(如 '-')导致计算服务无法识别变量。
+     * 注意：参数标识本身可能就是 A/B/C 等单字母(如波长绑定)，replaceFormulaIdentities 会一次性
+     * 同步替换(长标识优先 + 字符边界断言)，匹配器只扫描原始表达式、不重扫已替换结果，
+     * 故单字母标识的取值与参数匹配同样准确；超过 26 个时依次使用 A1/B1、A11/B11 等占位字母。
+     */
+    private String generateFormulaLetter(int index) {
+        int tier = index / 26;
+        char letter = (char) ('A' + (index % 26));
+        if (tier == 0) {
+            return String.valueOf(letter);
+        }
+        if (tier == 1) {
+            return String.valueOf(letter) + "1";
+        }
+        // tier >= 2: 后缀从 11 开始递增(tier=2 -> 11, tier=3 -> 12, ..., tier=90 -> 99)
+        return String.valueOf(letter) + (tier + 9);
+    }
+
+    /**
+     * 将公式表达式中的参数标识同步替换为占位字母。
+     * 标识按长度降序匹配(长标识优先)，并以字符边界断言保证只匹配完整标识。
+     * 负向后行断言仅排除字母/下划线：标识紧跟数字属隐式乘法(如 2c 中的 c)，需正常识别；
+     * 科学计数法(如 1E5 中的 E，后随数字)和函数名(如 cos 中的 c，后随字母)由负向先行断言排除。
+     */
+    private String replaceFormulaIdentities(String expression, Map<String, String> identityToLetter) {
+        if (identityToLetter == null || identityToLetter.isEmpty() || !StringUtils.hasText(expression)) {
+            return expression;
+        }
+        // 按长度降序，长标识优先匹配，避免短标识误匹配长标识的子串
+        List<String> orderedIdentities = new ArrayList<>(identityToLetter.keySet());
+        orderedIdentities.sort((a, b) -> b.length() - a.length());
+
+        StringBuilder regex = new StringBuilder("(?<![a-zA-Z_])(?:");
+        for (int i = 0; i < orderedIdentities.size(); i++) {
+            if (i > 0) {
+                regex.append("|");
+            }
+            regex.append(Pattern.quote(orderedIdentities.get(i)));
+        }
+        regex.append(")(?![a-zA-Z0-9_])");
+
+        Pattern pattern = Pattern.compile(regex.toString());
+        Matcher matcher = pattern.matcher(expression);
+        StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            String letter = identityToLetter.get(matcher.group());
+            if (letter != null) {
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(letter));
+            }
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+
+    /**
+     * 修改单个样品的单个表头数据。仅system/sample/data定位允许修改；
+     * 标样的标准浓度/样品类型变化需重拟合曲线并重算未知样；未知样的样品类型/样品表头变化仅重算未知样；
+     * 先保存样品，保存成功即返回成功，重算失败仅置空任务分析结果。
+     */
+    @Override
+    public Result<Boolean> modifySampleData(FModifySampleDataDTO dto) {
+        if (dto == null || !StringUtils.hasText(dto.getTaskId())) {
+            //任务id不能为空
+            return Result.fail("00000003");
+        }
+        if (!StringUtils.hasText(dto.getSampleId())) {
+            //缺少样品id
+            return Result.fail("0000001C");
+        }
+        if (!StringUtils.hasText(dto.getIdentity())) {
+            //缺少参数
+            return Result.fail("00000007");
+        }
+
+        FMeasureTask task = fMeasureTaskService.getById(dto.getTaskId());
+        if (task == null) {
+            //没有找到该任务
+            return Result.fail("00000004");
+        }
+        FMeasureSample sample = fMeasureSampleService.getById(dto.getSampleId());
+        if (sample == null) {
+            //样品不存在
+            return Result.fail("0000000B");
+        }
+        //样品必须属于该任务
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        boolean inTask = taskSpecimen != null && taskSpecimen.stream()
+                .anyMatch(s -> dto.getSampleId().equals(s.getSpecimenKey()));
+        if (!inTask) {
+            //样品不存在
+            return Result.fail("0000000B");
+        }
+
+        //区分样品种类：标准样需要重新拟合曲线，未知样只需重算
+        boolean isStand = SampleTypeEnum.kind_stand.getIdentity().equals(sample.getSampleKind());
+        boolean isUnknown = SampleTypeEnum.kind_unknown.getIdentity().equals(sample.getSampleKind());
+        if (!isStand && !isUnknown) {
+            //样品种类出错
+            return Result.fail("00000024");
+        }
+
+        //从任务快照中查找目标表头（定量快照按标准样/未知样分开存储），确定locate
+        FHeadVO targetHead = null;
+        if (StringUtils.hasText(task.getTableInfo())) {
+            FRationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), FRationTaskHeadSnapShot.class);
+            if (shot != null) {
+                FTaskHeadSnapshot headSnapshot = isStand ? shot.getStandHead() : shot.getUnknownHead();
+                if (headSnapshot != null) {
+                    if (headSnapshot.getTaskHeads() != null) {
+                        targetHead = headSnapshot.getTaskHeads().stream()
+                                .filter(h -> dto.getIdentity().equals(h.getIdentity()))
+                                .findFirst().orElse(null);
+                    }
+                    if (targetHead == null && headSnapshot.getSampleHeads() != null) {
+                        targetHead = headSnapshot.getSampleHeads().stream()
+                                .filter(h -> dto.getIdentity().equals(h.getIdentity()))
+                                .findFirst().orElse(null);
+                    }
+                }
+            }
+        }
+        //任务未生成快照时，回退到按样品种类查系统预置表头（与getStandSampleTableHead的回退逻辑一致）
+        if (targetHead == null && StringUtils.hasText(task.getMeasureType())) {
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(task.getMeasureType(), sample.getSampleKind());
+            if (preHead != null) {
+                targetHead = preHead.stream()
+                        .filter(h -> dto.getIdentity().equals(h.getIdentity()))
+                        .findFirst().orElse(null);
+            }
+        }
+        if (targetHead == null) {
+            //表头不存在（可能是波长测量列、分析结果列等动态表头）
+            return Result.fail("00300025");
+        }
+        String locate = targetHead.getLocate();
+        boolean isSystem = TableHeadILocateEnums.system.getIdentity().equals(locate);
+        boolean isSample = TableHeadILocateEnums.sample.getIdentity().equals(locate);
+        boolean isData = TableHeadILocateEnums.data.getIdentity().equals(locate);
+        if (!isSystem && !isSample && !isData) {
+            //measure/analyze/curve/other/remark/location等定位不允许修改
+            return Result.fail("00300025");
+        }
+
+        //保留修改前样品用于日志对比
+        FMeasureSample oldSample = JSON.parseObject(JSON.toJSONString(sample), FMeasureSample.class);
+
+        if (isSystem) {
+            //系统预置表头：先按identity反查SampleTableEnum，再switch枚举定位样品字段
+            SampleTableEnum tableEnum = null;
+            for (SampleTableEnum e : SampleTableEnum.values()) {
+                if (e.getIdentity().equals(dto.getIdentity())) {
+                    tableEnum = e;
+                    break;
+                }
+            }
+            if (tableEnum == null) {
+                return Result.fail("00300025");
+            }
+            switch (tableEnum) {
+                case SAMPLE_NAME:
+                    if (dto.getValue() != null && dto.getValue().length() > 256) {
+                        return Result.fail("00B08010");
+                    }
+                    sample.setSampleName(dto.getValue());
+                    break;
+                case SAMPLE_NUMBER:
+                    if (dto.getValue() != null && dto.getValue().length() > 256) {
+                        return Result.fail("00B0800F");
+                    }
+                    //样品编号不能与同任务其他样品重复（标准样/未知样错误码不同）
+                    String no = dto.getValue();
+                    if (StringUtils.hasText(no)) {
+                        for (FTaskSpecimen specimen : taskSpecimen) {
+                            if (specimen.getSpecimenKey().equals(dto.getSampleId())) {
+                                continue;
+                            }
+                            FMeasureSample other = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                            if (other != null && no.equals(other.getSampleNumber())) {
+                                if (isStand) {
+                                    //标准样品编号重复
+                                    return Result.fail("00102001");
+                                }
+                                //未知样品编号重复
+                                return Result.fail("00102002");
+                            }
+                        }
+                    }
+                    sample.setSampleNumber(no);
+                    break;
+                case SAMPLE_TYPE:
+                    //表格中展示的是名称，样品表存储的是编码，这里做兼容转换；类型实际变化时保存后触发重算
+                    sample.setSampleType(convertSampleTypeValue(dto.getValue()));
+                    break;
+                case SAMPLE_LOCATION:
+                    sample.setSampleLocation(dto.getValue());
+                    break;
+                case NORMAL_CONCENTRATION:
+                    //标准浓度是曲线拟合的输入，校验规则与创建样品一致（必填、非负数字），修改后走重拟合链路
+                    if (!StringUtils.hasText(dto.getValue())) {
+                        //请输入标准浓度
+                        return Result.fail("00102024");
+                    }
+                    try {
+                        if (Double.parseDouble(dto.getValue()) < 0) {
+                            //标准浓度必须是非负数
+                            return Result.fail("0010202D");
+                        }
+                    } catch (NumberFormatException e) {
+                        //请输入正确的标准浓度
+                        return Result.fail("0010202D");
+                    }
+                    sample.setNormalConcentration(dto.getValue());
+                    break;
+                default:
+                    return Result.fail("00300025");
+            }
+        } else {
+            //样品表头/测量页用户新增表头：保存到样品newColData
+            Map<String, String> newColData;
+            if (StringUtils.hasText(sample.getNewColData())) {
+                newColData = JSON.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
+            } else {
+                newColData = new HashMap<>();
+            }
+            if (dto.getValue() == null) {
+                newColData.remove(dto.getIdentity());
+            } else {
+                newColData.put(dto.getIdentity(), dto.getValue());
+            }
+            sample.setNewColData(JSON.toJSONString(newColData));
+        }
+
+        //先保存样品
+        boolean updated = fMeasureSampleService.updateById(sample);
+        if (!updated) {
+            //系统出错
+            return Result.fail("00000014");
+        }
+
+        //样品类型实际发生变化时才触发重算（空白扣除/平行样等计算链路依赖样品类型）
+        boolean isConcentration = SampleTableEnum.NORMAL_CONCENTRATION.getIdentity().equals(dto.getIdentity());
+        boolean typeChanged = SampleTableEnum.SAMPLE_TYPE.getIdentity().equals(dto.getIdentity())
+                && !Objects.equals(oldSample.getSampleType(), sample.getSampleType());
+        if (typeChanged) {
+            //同步任务sampleKey中对应样品的类型：重算方法按specimen的sampleType识别空白/平行样，不同步会导致重算无效
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                if (dto.getSampleId().equals(specimen.getSpecimenKey())) {
+                    specimen.setSampleType(sample.getSampleType());
+                    break;
+                }
+            }
+            task.setSampleKey(JSON.toJSONString(taskSpecimen));
+            fMeasureTaskService.updateById(task);
+        }
+        //重算策略：标样-标准浓度/样品类型变化→重拟合曲线并重算未知样；未知样-样品类型/样品表头变化→仅重算未知样；保存成功即返回成功，重算失败仅置空任务分析结果
+        boolean refitCurve = isSystem && isStand && (isConcentration || typeChanged);
+        if (refitCurve || (isSample && isUnknown) || (isSystem && isUnknown && typeChanged)) {
+            //小数位数取任务保存的显示配置，无则用默认值
+            Integer digit = fMeasureTaskAttachmentService.queryLastDigit(task.getId());
+            if (digit == null || digit < 0) {
+                digit = Constants.DEFAULT_DECIMAL_NUM;
+            }
+            boolean calcFailed = false;
+            if (refitCurve) {
+                //标样：标准浓度/样品类型变化，先重算标准样并重新拟合曲线
+                R<Boolean> standResult = changeStandSampleDataDigit(task.getId(), digit);
+                if (!standResult.getSuccess()) {
+                    log.warn("重新拟合曲线失败，taskId:{}, code:{}", task.getId(), standResult.getMessageCode());
+                    calcFailed = true;
+                }
+            }
+            if (!calcFailed) {
+                //重算未知样（标样类型/浓度变化时使用新拟合的曲线）
+                R<Boolean> unknowResult = changeUnknowSampleDigit(task.getId(), digit);
+                if (!unknowResult.getSuccess()) {
+                    log.warn("重算未知样失败，taskId:{}, code:{}", task.getId(), unknowResult.getMessageCode());
+                    calcFailed = true;
+                }
+            }
+            if (calcFailed) {
+                //保存已成功，分析失败不拦截保存结果：清空数据库中的分析结果，避免残留与新数据不一致的旧计算值
+                clearAnalysisResult(task.getId());
+            }
+        }
+
+        LogManualUtil.saveUpdateLog("实验测试-经典模式-定量测量-修改样品数据", oldSample, sample, dto.getUpdateBy(), dto);
+
+        //定量重算不返回逐项计算结果，前端需重新调用querySampleData刷新全部数据（曲线也可能变化）
+        return Result.ok(true);
+    }
+
+    /**
+     * 样品类型值转换：表格展示的是名称，样品表存储的是编码，两者兼容
+     */
+    private String convertSampleTypeValue(String value) {
+        if (!StringUtils.hasText(value)) {
+            return value;
+        }
+        for (SampleTypeEnum e : SampleTypeEnum.values()) {
+            if (e.getIdentity().equals(value)) {
+                return value;
+            }
+        }
+        for (SampleTypeEnum e : SampleTypeEnum.values()) {
+            if (e.getName().equals(value)) {
+                return e.getIdentity();
+            }
+        }
+        return value;
+    }
+
+    /**
+     * 重算失败时置空任务的分析结果（updateById默认忽略null字段，需用UpdateWrapper）
+     */
+    private void clearAnalysisResult(String taskId) {
+        fMeasureAnalysisDataService.update(Wrappers.lambdaUpdate(FMeasureAnalysisData.class)
+                .set(FMeasureAnalysisData::getAnalysisResult, null)
+                .eq(FMeasureAnalysisData::getTaskId, taskId));
     }
 
     @Override
@@ -6169,6 +6538,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
         List<String> waveLength = parameter.getWaveLength();
         waveLength.sort(Comparator.reverseOrder());
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, WebSocketOperationEnum.ConciseZeroCalibration.getOperation(), taskId, Constants.DEVICE_STATUS_ZERO);
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
@@ -6205,6 +6575,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return Result.fail(operation.getMessage());
         }
 
@@ -6212,6 +6583,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         inputParam.setWavelength(waveLength);
         R<OperationResultEntity> zero = operationUtilService.operation(inputParam);
         if (!zero.getSuccess()) {
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             return Result.fail(zero.getMessage());
         }
         OperationResultEntity data = zero.getData();
@@ -6220,6 +6592,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         task.setZeroParam(JSON.toJSONString(zeroResult));
 
         boolean update = fMeasureTaskService.updateById(task);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         return update ? Result.ok() : Result.fail();
     }
 

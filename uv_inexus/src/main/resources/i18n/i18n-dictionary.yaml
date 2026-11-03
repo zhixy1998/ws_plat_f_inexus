@@ -1,4 +1,4 @@
-﻿# =====================================================
+# =====================================================
 # 国际化消息字典 - 中英俄三语
 #
 # 本文件: i18n-dictionary.yaml — API 消息码字典
@@ -1639,6 +1639,11 @@ messages:
     en-US: 'Parameter validation failed: {0}'
     ru-RU: 'Ошибка проверки параметров: {0}'
 
+  '00300025':
+    zh-CN: '该表头数据不允许修改'
+    en-US: 'This column cannot be modified'
+    ru-RU: 'Данные этого столбца нельзя изменять'
+
   '0030000D':
     zh-CN: '波长超出限制，请重新初始化仪器！'
     en-US: 'Wavelength exceeds limit, please reinitialize instrument!'
@@ -1683,7 +1688,7 @@ messages:
 
   '0030100A':
     zh-CN: '请选择时间扫描'
-    en-US: 'Please select time scan'
+    en-US: 'Please select kinetics'
     ru-RU: 'Пожалуйста, выберите временное сканирование'
 
   '0030100B':
@@ -2669,9 +2674,9 @@ messages:
     ru-RU: 'Пожалуйста, проверьте подключение прибора'
 
   '00613008':
-    zh-CN: '样品池中未找到：{0}'
-    en-US: 'Not found in sample pool: {0}'
-    ru-RU: 'Не найдено в пуле образцов: {0}'
+    zh-CN: '请放入{0}'
+    en-US: 'Please put {0} in the sample pool'
+    ru-RU: 'Пожалуйста, поместите {0} в пул образцов'
 
   '00613009':
     zh-CN: '样品池中，未找到基线所需的空气'
@@ -3278,6 +3283,11 @@ messages:
     zh-CN: '获取分组数据失败: {0}'
     en-US: 'Failed to get grouped data: {0}'
     ru-RU: 'Не удалось получить сгруппированные данные: {0}'
+
+  '0061303F':
+    zh-CN: '放入物质确认超时，测量已终止，请重新测量'
+    en-US: 'Material placement confirmation timed out, measurement aborted, please measure again'
+    ru-RU: 'Время ожидания подтверждения размещения образца истекло, измерение прервано, повторите измерение'
 
   # ========== 出厂检测-任务管理补充 (00614) ==========
   '00614001':

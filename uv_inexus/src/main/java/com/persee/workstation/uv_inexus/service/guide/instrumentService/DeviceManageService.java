@@ -15,6 +15,7 @@ import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.WorkTimeInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
@@ -144,6 +145,16 @@ public interface DeviceManageService {
     R<Boolean> continueInitDevice(String deviceSerialNumber, String updateBy);
 
     R<String> getConnectDevice(String updateBy);
+
+    /**
+     * 查询该用户下所有已连接设备（只查询，不断开任何设备）
+     */
+    R<List<DeviceInfoPO>> getConnectedDeviceList(String updateBy);
+
+    /**
+     * 校验指定序列号的设备是否已连接（多设备安全，不会断开其他设备）
+     */
+    R<Boolean> isDeviceConnected(String deviceSerialNumber, String updateBy);
 
     R<Boolean> newStopInit(String deviceSerialNumber, String updateBy);
 

@@ -15,6 +15,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakSearchParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
@@ -658,6 +659,12 @@ public class SpectrumNewWebSocket {
             }
         }
 
+        boolean repeatMode = "单池重复".equalsIgnoreCase(spectrumParameter.getRepetitionPattern());
+        // 重复模式: 样品只要已有测量数据(即使重复次数未测满), 本次批量测量不再续测, 直接跳过该样品
+        if (repeatMode) {
+            excludeMeasuredSpecimens(newSampleData, taskId);
+        }
+
         // 根据序列号查询对应的附件配置表信息
         QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
         wrapper.eq("device_serial_number", deviceSerialNumber);
@@ -700,8 +707,6 @@ public class SpectrumNewWebSocket {
                 }
             }
         }
-
-        boolean repeatMode = "单池重复".equalsIgnoreCase(spectrumParameter.getRepetitionPattern());
 
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         state.ip = ip;
@@ -809,6 +814,11 @@ public class SpectrumNewWebSocket {
 
                         for (int r = startIndex; r < repetitionTime; r++) {
 
+                            // 该次重复已被按重复序号单独删除(未测行删除): 不再补测该序号, 否则会重新测已删除的 1-1 这类行
+                            if (isRepeatNumberDeleted(newSampleData.get(i), r + 1)) {
+                                log.info("样品 {} 第 {} 次重复已删除, 跳过测量", newSampleData.get(i).getSpecimenKey(), r + 1);
+                                continue;
+                            }
 
                             // 根据样品id,任务id和遍历的r+1查询分析数据
                             QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
@@ -820,7 +830,7 @@ public class SpectrumNewWebSocket {
                             if (measureData != null && measureData.getAnalysisResult() != null) {
                                 continue;
                             }
-                            if (measureData != null && measureData.getIsDelete().equals("1")) {
+                            if (measureData != null && "1".equals(measureData.getIsDelete())) {
                                 continue;
                             }
 
@@ -860,7 +870,6 @@ public class SpectrumNewWebSocket {
                         }
                     }
                 }
-
 
                 if (configPO.getIsAutoChangePool()) {
                     SetParam setParam = new SetParam();
@@ -933,6 +942,69 @@ public class SpectrumNewWebSocket {
 
         taskThreads.put(deviceSerialNumber, taskThread);
         taskThread.start();
+    }
+
+    /**
+     * 判断该样品的某次重复行是否已被单独删除
+     * <p>
+     * 重复模式下删除未测行时, 只把该次重复序号记录在样品的 deletedNumbers 字段(逗号分隔, 从1开始),
+     * 样品本身不删除; 批量测量时必须跳过这些序号, 否则会重新测量已删除的行(如删除 1-1 后仍从 1-1 开始测)。
+     *
+     * @param specimen       任务样品
+     * @param analysisNumber 重复序号(从1开始)
+     * @return true-该次重复已被删除
+     */
+    private boolean isRepeatNumberDeleted(TaskSpecimen specimen, int analysisNumber) {
+        if (specimen == null || specimen.getDeletedNumbers() == null || specimen.getDeletedNumbers().trim().isEmpty()) {
+            return false;
+        }
+        for (String item : specimen.getDeletedNumbers().split(",")) {
+            if (item == null || item.trim().isEmpty()) {
+                continue;
+            }
+            try {
+                if (Integer.parseInt(item.trim()) == analysisNumber) {
+                    return true;
+                }
+            } catch (NumberFormatException ignored) {
+                // 非法序号忽略
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 重复模式下, 排除已有测量数据的样品(重复次数未测满, 但已测过至少一次)
+     * <p>
+     * 这类样品本次批量测量不再续测剩余重复次数, 直接跳过; 剩余重复次数由用户通过单测补测。
+     *
+     * @param specimens 待测样品列表(原地过滤)
+     * @param taskId    任务id
+     */
+    private void excludeMeasuredSpecimens(List<TaskSpecimen> specimens, String taskId) {
+        if (specimens == null || specimens.isEmpty() || taskId == null || taskId.isEmpty()) {
+            return;
+        }
+        List<String> sampleIds = specimens.stream()
+                .map(TaskSpecimen::getSpecimenKey)
+                .filter(id -> id != null && !id.isEmpty())
+                .collect(Collectors.toList());
+        if (sampleIds.isEmpty()) {
+            return;
+        }
+        QueryWrapper<TMeasureAnalysisData> wrapper = new QueryWrapper<>();
+        wrapper.select("sample_key");
+        wrapper.eq("task_id", taskId);
+        wrapper.in("sample_key", sampleIds);
+        wrapper.eq("analysis_type", "5");
+        wrapper.eq("is_delete", "0");
+        wrapper.isNotNull("analysis_result");
+        Set<String> measuredSampleIds = tMeasureAnalysisDataService.list(wrapper).stream()
+                .map(TMeasureAnalysisData::getSampleKey)
+                .collect(Collectors.toSet());
+        if (!measuredSampleIds.isEmpty()) {
+            specimens.removeIf(specimen -> measuredSampleIds.contains(specimen.getSpecimenKey()));
+        }
     }
 
     /**
@@ -1017,8 +1089,10 @@ public class SpectrumNewWebSocket {
             state.sessionClosing.set(true);
 
             // 等待任务线程完全结束（包括数据保存）
+            // 若清理由任务线程自身触发（sendClose/sendError），跳过 interrupt+join：
+            // 自中断会留下中断标志，导致清理后继续发送的指令在 sleep 中立即抛 InterruptedException
             Thread thread = taskThreads.get(sessionId);
-            if (thread != null && thread.isAlive()) {
+            if (thread != null && thread.isAlive() && thread != Thread.currentThread()) {
                 thread.interrupt();
                 log.info("已中断任务线程, session: {}", sessionId);
 
@@ -2540,6 +2614,18 @@ public class SpectrumNewWebSocket {
                 if (markings != null) {
                     analysisData.setGrain(JSON.toJSONString(markings));
                 }
+                // 保存本次寻峰使用的参数
+                PeakSearchParam peakSearchParam;
+                String existingPeakParam = analysisData.getPeakSearchParam();
+                if (existingPeakParam != null) {
+                    peakSearchParam = JSON.parseObject(existingPeakParam, PeakSearchParam.class);
+                } else {
+                    peakSearchParam = new PeakSearchParam();
+                }
+                peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+                peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+                peakSearchParam.setIsSelected("1");
+                analysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
                 analysisData.setColor(ColorUtil.getRandomColor());
                 analysisData.setIsDelete("0");
                 analysisData.setIsSave("1");
@@ -2581,6 +2667,18 @@ public class SpectrumNewWebSocket {
                     if (markings != null) {
                         analysisData.setGrain(JSON.toJSONString(markings));
                     }
+                    // 保存本次寻峰使用的参数
+                    PeakSearchParam peakSearchParam2;
+                    String existingPeakParam2 = analysisData.getPeakSearchParam();
+                    if (existingPeakParam2 != null) {
+                        peakSearchParam2 = JSON.parseObject(existingPeakParam2, PeakSearchParam.class);
+                    } else {
+                        peakSearchParam2 = new PeakSearchParam();
+                    }
+                    peakSearchParam2.setPeakValleyDiff(confVO.getPeakValleyDiff());
+                    peakSearchParam2.setPeakInterval(confVO.getPeakInterval());
+                    peakSearchParam2.setIsSelected("1");
+                    analysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam2));
                     analysisData.setColor(ColorUtil.getRandomColor());
                     analysisData.setIsSave("1");
                     tMeasureAnalysisDataService.saveOrUpdate(analysisData);
@@ -2612,6 +2710,18 @@ public class SpectrumNewWebSocket {
                     if (markings != null) {
                         analysis.setGrain(JSON.toJSONString(markings));
                     }
+                    // 保存本次寻峰使用的参数
+                    PeakSearchParam peakSearchParam3;
+                    String existingPeakParam3 = analysis.getPeakSearchParam();
+                    if (existingPeakParam3 != null) {
+                        peakSearchParam3 = JSON.parseObject(existingPeakParam3, PeakSearchParam.class);
+                    } else {
+                        peakSearchParam3 = new PeakSearchParam();
+                    }
+                    peakSearchParam3.setPeakValleyDiff(confVO.getPeakValleyDiff());
+                    peakSearchParam3.setPeakInterval(confVO.getPeakInterval());
+                    peakSearchParam3.setIsSelected("1");
+                    analysis.setPeakSearchParam(JSON.toJSONString(peakSearchParam3));
                     analysis.setColor(ColorUtil.getRandomColor());
                     analysis.setIsDelete("0");
                     analysis.setIsSave("1");
@@ -2622,40 +2732,16 @@ public class SpectrumNewWebSocket {
                 }
             }
 
-            /// 更新任务状态
-            List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            if (spectrumParameter.getRepetitionPattern().equals("不重复")) {
-                for (TaskSpecimen taskSample : specimen) {
-                    if (taskSample.getSpecimenKey().equals(sampleId)) {
-                        taskSample.setIsTested("1");
-                    }
-                }
-                task.setSampleKey(JSON.toJSONString(specimen));
-                task.setDeviceSerialNumber(deviceSerialNumber);
-                task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
-                boolean update = tMeasureTaskService.saveOrUpdate(task);
-                if (!update) {
-                    log.error("更新任务失败: " + taskId);
-                }
-            } else {
-                // 如果是重复模式的情况，需要判断是否全部测完
-                boolean success = false;
-                Integer repetitionCount = Integer.valueOf(spectrumParameter.getRepetitionTime());
-                task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
-                for (int i = 0; i < repetitionCount; i++) {
-                    QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-                    queryWrapper.eq("task_id", taskId);
-                    queryWrapper.eq("sample_key", sampleId);
-                    queryWrapper.eq("analysis_number", i + 1);
-                    queryWrapper.eq("analysis_type", "5");
-                    queryWrapper.last("limit 1");
-                    TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
-                    if (analysisData == null || analysisData.getAnalysisResult() == null) {
-                        success = true;
-                        break;
-                    }
-                }
-                if (!success) {
+            /// 更新任务状态: 只要该样品已保存测量数据(不论重复次数是否测满)即标记为已测
+            QueryWrapper<TMeasureAnalysisData> testedWrapper = new QueryWrapper<>();
+            testedWrapper.eq("task_id", taskId);
+            testedWrapper.eq("sample_key", sampleId);
+            testedWrapper.eq("analysis_type", "5");
+            testedWrapper.eq("is_delete", "0");
+            testedWrapper.isNotNull("analysis_result");
+            if (tMeasureAnalysisDataService.count(testedWrapper) > 0) {
+                List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+                if (specimen != null) {
                     for (TaskSpecimen taskSample : specimen) {
                         if (taskSample.getSpecimenKey().equals(sampleId)) {
                             taskSample.setIsTested("1");
@@ -2663,14 +2749,11 @@ public class SpectrumNewWebSocket {
                     }
                     task.setSampleKey(JSON.toJSONString(specimen));
                     task.setDeviceSerialNumber(deviceSerialNumber);
+                    task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
                     boolean update = tMeasureTaskService.saveOrUpdate(task);
                     if (!update) {
                         log.error("更新任务失败: " + taskId);
                     }
-                }
-                boolean update = tMeasureTaskService.saveOrUpdate(task);
-                if (!update) {
-                    log.error("更新任务失败: " + taskId);
                 }
             }
 

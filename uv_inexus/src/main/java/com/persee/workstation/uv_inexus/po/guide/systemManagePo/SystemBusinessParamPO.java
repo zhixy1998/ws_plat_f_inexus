@@ -87,6 +87,9 @@ public class SystemBusinessParamPO extends BasePO {
     @TableField("is_negative_show")
     private Boolean isNegativeShow;
 
+    @ApiModelProperty("测量值小数位数")
+    @TableField("measure_digits")
+    private Integer measureDigits;
 
 
 

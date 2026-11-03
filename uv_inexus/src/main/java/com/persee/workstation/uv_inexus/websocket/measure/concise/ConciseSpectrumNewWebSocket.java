@@ -18,6 +18,7 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakSearchParam;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
@@ -700,6 +701,12 @@ public class ConciseSpectrumNewWebSocket {
             }
         }
 
+        boolean repeatMode = "单池重复".equalsIgnoreCase(spectrumParameter.getRepetitionPattern());
+        // 重复模式: 样品只要已有测量数据(即使重复次数未测满), 本次批量测量不再续测, 直接跳过该样品
+        if (repeatMode) {
+            excludeMeasuredSpecimens(newSampleData, taskId);
+        }
+
         // 根据序列号查询对应的附件配置表信息
         QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
         wrapper.eq("device_serial_number", deviceSerialNumber);
@@ -735,8 +742,6 @@ public class ConciseSpectrumNewWebSocket {
                 }
             }
         }
-
-        boolean repeatMode = "单池重复".equalsIgnoreCase(spectrumParameter.getRepetitionPattern());
 
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         state.ip = ip;
@@ -835,6 +840,11 @@ public class ConciseSpectrumNewWebSocket {
 
                         for (int r = startIndex; r < repetitionTime; r++) {
 
+                            // 该次重复已被按重复序号单独删除(未测行删除): 不再补测该序号, 否则会重新测已删除的 1-1 这类行
+                            if (isRepeatNumberDeleted(newSampleData.get(i), r + 1)) {
+                                log.info("样品 {} 第 {} 次重复已删除, 跳过测量", newSampleData.get(i).getSpecimenKey(), r + 1);
+                                continue;
+                            }
 
                             // 根据样品id,任务id和遍历的r+1查询分析数据
                             QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
@@ -847,7 +857,7 @@ public class ConciseSpectrumNewWebSocket {
                             if (measureData != null && measureData.getAnalysisResult() != null) {
                                 continue;
                             }
-                            if (measureData != null && measureData.getIsDelete().equals("1")) {
+                            if (measureData != null && "1".equals(measureData.getIsDelete())) {
                                 continue;
                             }
 
@@ -960,6 +970,69 @@ public class ConciseSpectrumNewWebSocket {
     }
 
     /**
+     * 判断该样品的某次重复行是否已被单独删除
+     * <p>
+     * 重复模式下删除未测行时, 只把该次重复序号记录在样品的 deletedNumbers 字段(逗号分隔, 从1开始),
+     * 样品本身不删除; 批量测量时必须跳过这些序号, 否则会重新测量已删除的行(如删除 1-1 后仍从 1-1 开始测)。
+     *
+     * @param specimen       任务样品
+     * @param analysisNumber 重复序号(从1开始)
+     * @return true-该次重复已被删除
+     */
+    private boolean isRepeatNumberDeleted(FTaskSpecimen specimen, int analysisNumber) {
+        if (specimen == null || specimen.getDeletedNumbers() == null || specimen.getDeletedNumbers().trim().isEmpty()) {
+            return false;
+        }
+        for (String item : specimen.getDeletedNumbers().split(",")) {
+            if (item == null || item.trim().isEmpty()) {
+                continue;
+            }
+            try {
+                if (Integer.parseInt(item.trim()) == analysisNumber) {
+                    return true;
+                }
+            } catch (NumberFormatException ignored) {
+                // 非法序号忽略
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 重复模式下, 排除已有测量数据的样品(重复次数未测满, 但已测过至少一次)
+     * <p>
+     * 这类样品本次批量测量不再续测剩余重复次数, 直接跳过; 剩余重复次数由用户通过单测补测。
+     *
+     * @param specimens 待测样品列表(原地过滤)
+     * @param taskId    任务id
+     */
+    private void excludeMeasuredSpecimens(List<FTaskSpecimen> specimens, String taskId) {
+        if (specimens == null || specimens.isEmpty() || taskId == null || taskId.isEmpty()) {
+            return;
+        }
+        List<String> sampleIds = specimens.stream()
+                .map(FTaskSpecimen::getSpecimenKey)
+                .filter(id -> id != null && !id.isEmpty())
+                .collect(Collectors.toList());
+        if (sampleIds.isEmpty()) {
+            return;
+        }
+        QueryWrapper<FMeasureAnalysisData> wrapper = new QueryWrapper<>();
+        wrapper.select("sample_key");
+        wrapper.eq("task_id", taskId);
+        wrapper.in("sample_key", sampleIds);
+        wrapper.eq("analysis_type", "5");
+        wrapper.eq("is_delete", "0");
+        wrapper.isNotNull("analysis_result");
+        Set<String> measuredSampleIds = tMeasureAnalysisDataService.list(wrapper).stream()
+                .map(FMeasureAnalysisData::getSampleKey)
+                .collect(Collectors.toSet());
+        if (!measuredSampleIds.isEmpty()) {
+            specimens.removeIf(specimen -> measuredSampleIds.contains(specimen.getSpecimenKey()));
+        }
+    }
+
+    /**
      * 带停止检查的等待
      */
     private boolean waitWithStopCheck(String timeIntervalStr) throws InterruptedException {
@@ -1041,8 +1114,10 @@ public class ConciseSpectrumNewWebSocket {
             state.sessionClosing.set(true);
 
             // 等待任务线程完全结束（包括数据保存）
+            // 若清理由任务线程自身触发（sendClose/sendError），跳过 interrupt+join：
+            // 自中断会留下中断标志，导致清理后继续发送的指令在 sleep 中立即抛 InterruptedException
             Thread thread = taskThreads.get(sessionId);
-            if (thread != null && thread.isAlive()) {
+            if (thread != null && thread.isAlive() && thread != Thread.currentThread()) {
                 thread.interrupt();
                 log.info("已中断任务线程, session: {}", sessionId);
 
@@ -1423,6 +1498,11 @@ public class ConciseSpectrumNewWebSocket {
             );
         } else {
             boolean whileStatus = true;
+            // 关键：先清空上一次扫描（停止/失败/超时）残留在队列里的光谱点和结束标记。
+            // 设备层在收到新 Scan 命令时不会清队列（只有 Stop 命令才清），
+            // 若不先清空，会读到上一次扫描的旧结束标记（如 NORMAL_OVERPOWER），
+            // 导致本次扫描立即退出、数据为空，且设备实际还在扫描、锁无法释放
+            unknowCountMessageQueue.clearCommand(deviceSerialNumber, T600ComIdEnums.Scan.getComId());
             // 普通扫描模式：使用批次处理机制
             try {
                 while (whileStatus) {
@@ -2641,6 +2721,18 @@ public class ConciseSpectrumNewWebSocket {
                 analysisData.setAnalysisType("5");
                 if (peakValleys != null) analysisData.setPeak(JSON.toJSONString(peakValleys));
                 if (markings != null) analysisData.setGrain(JSON.toJSONString(markings));
+                // 保存本次寻峰使用的参数
+                FPeakSearchParam peakSearchParam;
+                String existingPeakParam = analysisData.getPeakSearchParam();
+                if (existingPeakParam != null) {
+                    peakSearchParam = JSON.parseObject(existingPeakParam, FPeakSearchParam.class);
+                } else {
+                    peakSearchParam = new FPeakSearchParam();
+                }
+                peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+                peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+                peakSearchParam.setIsSelected("1");
+                analysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
                 analysisData.setColor(ColorUtil.getRandomColor());
                 analysisData.setIsDelete("0");
                 analysisData.setIsSave("1");
@@ -2729,6 +2821,18 @@ public class ConciseSpectrumNewWebSocket {
                 analysisData.setAnalysisResult(JSON.toJSONString(result));
                 if (peakValleys != null) analysisData.setPeak(JSON.toJSONString(peakValleys));
                 if (markings != null) analysisData.setGrain(JSON.toJSONString(markings));
+                // 保存本次寻峰使用的参数
+                FPeakSearchParam peakSearchParam;
+                String existingPeakParam = analysisData.getPeakSearchParam();
+                if (existingPeakParam != null) {
+                    peakSearchParam = JSON.parseObject(existingPeakParam, FPeakSearchParam.class);
+                } else {
+                    peakSearchParam = new FPeakSearchParam();
+                }
+                peakSearchParam.setPeakValleyDiff(confVO.getPeakValleyDiff());
+                peakSearchParam.setPeakInterval(confVO.getPeakInterval());
+                peakSearchParam.setIsSelected("1");
+                analysisData.setPeakSearchParam(JSON.toJSONString(peakSearchParam));
                 analysisData.setColor(ColorUtil.getRandomColor());
                 analysisData.setIsSave("1");
                 tMeasureAnalysisDataService.saveOrUpdate(analysisData);
@@ -2743,36 +2847,16 @@ public class ConciseSpectrumNewWebSocket {
                 }
             }
 
-            // 更新任务状态
-            List<FTaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-            if (!isRepeatMode) {
-                // 普通模式：直接标记该样品已测
-                for (FTaskSpecimen taskSample : specimen) {
-                    if (taskSample.getSpecimenKey().equals(sampleId)) {
-                        taskSample.setIsTested("1");
-                    }
-                }
-                task.setSampleKey(JSON.toJSONString(specimen));
-                task.setDeviceSerialNumber(deviceSerialNumber);
-                tMeasureTaskService.saveOrUpdate(task);
-            } else {
-                // 重复模式：检查该样品是否所有重复次数都已保存完成
-                Integer repetitionCount = Integer.valueOf(spectrumParameter.getRepetitionTime());
-                boolean allTested = true;
-                for (int i = 1; i <= repetitionCount; i++) {
-                    QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-                    queryWrapper.eq("task_id", taskId);
-                    queryWrapper.eq("sample_key", sampleId);
-                    queryWrapper.eq("analysis_number", i);
-                    queryWrapper.eq("analysis_type", "5");
-                    queryWrapper.eq("is_save", "1");  // 只有已保存完成的才算
-                    FMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(queryWrapper);
-                    if (one == null) {
-                        allTested = false;
-                        break;
-                    }
-                }
-                if (allTested) {
+            // 更新任务状态: 只要该样品已保存测量数据(不论重复次数是否测满)即标记为已测
+            QueryWrapper<FMeasureAnalysisData> testedWrapper = new QueryWrapper<>();
+            testedWrapper.eq("task_id", taskId);
+            testedWrapper.eq("sample_key", sampleId);
+            testedWrapper.eq("analysis_type", "5");
+            testedWrapper.eq("is_delete", "0");
+            testedWrapper.isNotNull("analysis_result");
+            if (tMeasureAnalysisDataService.count(testedWrapper) > 0) {
+                List<FTaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+                if (specimen != null) {
                     for (FTaskSpecimen taskSample : specimen) {
                         if (taskSample.getSpecimenKey().equals(sampleId)) {
                             taskSample.setIsTested("1");

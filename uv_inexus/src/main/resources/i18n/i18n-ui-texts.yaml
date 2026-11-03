@@ -37,23 +37,23 @@ messages:
 
   '未检测':
     zh-CN: '未检测'
-    en-US: 'Not tested'
+    en-US: 'Not Tested'
     ru-RU: 'Не проверено'
 
   '检测成功':
     zh-CN: '检测成功'
-    en-US: 'Test passed'
+    en-US: 'Test Passed'
     ru-RU: 'Проверка пройдена'
 
   '检测失败':
     zh-CN: '检测失败'
-    en-US: 'Test failed'
+    en-US: 'Test Failed'
     ru-RU: 'Проверка не пройдена'
 
   # ========== 标准物质 ==========
   '黑挡块':
     zh-CN: '黑挡块'
-    en-US: 'Black block'
+    en-US: 'Black Block'
     ru-RU: 'Чёрный блок'
 
   '空气':
@@ -63,17 +63,17 @@ messages:
 
   '内置物':
     zh-CN: '内置物'
-    en-US: 'Built-in material'
+    en-US: 'Built-In Material'
     ru-RU: 'Встроенный материал'
 
   '初始固定不可删除物质':
     zh-CN: '初始固定不可删除物质'
-    en-US: 'Fixed material (non-deletable)'
+    en-US: 'Fixed Material (Non-Deletable)'
     ru-RU: 'Фиксированный материал'
 
   '外部参考物':
     zh-CN: '外部参考物'
-    en-US: 'External reference'
+    en-US: 'External Reference'
     ru-RU: 'Внешний эталон'
 
   # ========== 通用布尔 ==========
@@ -90,7 +90,7 @@ messages:
   # ========== 删除状态 ==========
   '未删除':
     zh-CN: '未删除'
-    en-US: 'Not deleted'
+    en-US: 'Not Deleted'
     ru-RU: 'Не удалено'
 
   '已删除':
@@ -101,28 +101,28 @@ messages:
   # ========== 检测模式 ==========
   '单项检测':
     zh-CN: '单项检测'
-    en-US: 'Single item test'
+    en-US: 'Single Item Test'
     ru-RU: 'Одиночная проверка'
 
   '自动检测':
     zh-CN: '自动检测'
-    en-US: 'Auto test'
+    en-US: 'Auto Test'
     ru-RU: 'Автоматическая проверка'
 
   '设置标准物':
     zh-CN: '设置标准物'
-    en-US: 'Set standard material'
+    en-US: 'Set Standard Material'
     ru-RU: 'Установить стандартный материал'
 
   # ========== 任务状态 ==========
   '未开始':
     zh-CN: '未开始'
-    en-US: 'Not started'
+    en-US: 'Not Started'
     ru-RU: 'Не начато'
 
   '未完成':
     zh-CN: '未完成'
-    en-US: 'In progress'
+    en-US: 'In Progress'
     ru-RU: 'В процессе'
 
   '已完成':
@@ -134,47 +134,52 @@ messages:
   # ========== 任务类型 ==========
   '默认任务':
     zh-CN: '默认任务'
-    en-US: 'Default task'
+    en-US: 'Default Task'
     ru-RU: 'Задача по умолчанию'
 
   '校准任务':
     zh-CN: '校准任务'
-    en-US: 'Calibration task'
+    en-US: 'Calibration Task'
     ru-RU: 'Задача калибровки'
 
   '期间核查':
     zh-CN: '期间核查'
-    en-US: 'Periodic inspection'
+    en-US: 'Periodic Inspection'
     ru-RU: 'Периодическая проверка'
 
   '开箱检验':
     zh-CN: '开箱检验'
-    en-US: 'Installation acceptance'
+    en-US: 'Installation Acceptance'
     ru-RU: 'Входной контроль'
+
+  '安装检验':
+    zh-CN: '安装检验'
+    en-US: 'Installation Inspection'
+    ru-RU: 'Установка контроля'
 
   '出厂检验':
     zh-CN: '出厂检验'
-    en-US: 'Factory inspection'
+    en-US: 'Factory Inspection'
     ru-RU: 'Заводской контроль'
 
   '检定任务':
     zh-CN: '检定任务'
-    en-US: 'Verification task'
+    en-US: 'Verification Task'
     ru-RU: 'Задача поверки'
 
   '出厂检验任务':
     zh-CN: '出厂检验任务'
-    en-US: 'Factory inspection task'
+    en-US: 'Factory Inspection Task'
     ru-RU: 'Задача заводского контроля'
 
-  '开箱检验任务':
-    zh-CN: '开箱检验任务'
-    en-US: 'Installation acceptance task'
+  '安装检验任务':
+    zh-CN: '安装检验任务'
+    en-US: 'Installation Acceptance Task'
     ru-RU: 'Задача входного контроля'
 
   '期间核查任务':
     zh-CN: '期间核查任务'
-    en-US: 'Periodic inspection task'
+    en-US: 'Periodic Inspection Task'
     ru-RU: 'Задача периодической проверки'
 
   '校准':
@@ -185,114 +190,114 @@ messages:
   # ========== 模板类型 ==========
   '内置模板':
     zh-CN: '内置模板'
-    en-US: 'Built-in template'
+    en-US: 'Built-In Template'
     ru-RU: 'Встроенный шаблон'
 
   '用户模板':
     zh-CN: '用户模板'
-    en-US: 'User template'
+    en-US: 'User Template'
     ru-RU: 'Пользовательский шаблон'
 
   '检定校准模板':
     zh-CN: '检定校准模板'
-    en-US: 'Verification & calibration template'
+    en-US: 'Verification & Calibration Template'
     ru-RU: 'Шаблон поверки и калибровки'
 
   '出厂检验模板':
     zh-CN: '出厂检验模板'
-    en-US: 'Factory inspection template'
+    en-US: 'Factory Inspection Template'
     ru-RU: 'Шаблон заводского контроля'
 
   '开箱验证模板':
     zh-CN: '开箱验证模板'
-    en-US: 'Installation acceptance template'
+    en-US: 'Installation Acceptance Template'
     ru-RU: 'Шаблон входного контроля'
 
-  '开箱检验模板':
-    zh-CN: '开箱检验模板'
-    en-US: 'Installation acceptance template'
+  '安装检验模板':
+    zh-CN: '安装检验模板'
+    en-US: 'Installation Acceptance Template'
     ru-RU: 'Шаблон входного контроля'
 
   '从源模板-新建模板':
     zh-CN: '从源模板-新建模板'
-    en-US: 'Create from source template'
+    en-US: 'Create from Source Template'
     ru-RU: 'Создать из исходного шаблона'
 
   '修改原模板':
     zh-CN: '修改原模板'
-    en-US: 'Modify original template'
+    en-US: 'Modify Original Template'
     ru-RU: 'Изменить исходный шаблон'
 
   '检定校准':
     zh-CN: '检定校准'
-    en-US: 'Verification & calibration'
+    en-US: 'Verification & Calibration'
     ru-RU: 'Поверка и калибровка'
 
   # ========== Excel 工作表名称 ==========
   '波长示值误差与重复性校验':
     zh-CN: '波长示值误差与重复性校验'
-    en-US: 'Wavelength accuracy & repeatability'
+    en-US: 'Wavelength Accuracy & Repeatability'
     ru-RU: 'Погрешность и повторяемость длины волны'
 
   '透射比示值误差与重复性校验':
     zh-CN: '透射比示值误差与重复性校验'
-    en-US: 'Transmittance accuracy & repeatability'
+    en-US: 'Transmittance Accuracy & Repeatability'
     ru-RU: 'Погрешность и повторяемость пропускания'
 
   '杂散光校验':
     zh-CN: '杂散光校验'
-    en-US: 'Stray light verification'
+    en-US: 'Stray Light Verification'
     ru-RU: 'Проверка рассеянного света'
 
   '基线平直度检验':
     zh-CN: '基线平直度检验'
-    en-US: 'Baseline flatness test'
+    en-US: 'Baseline Flatness Test'
     ru-RU: 'Проверка прямолинейности базовой линии'
 
   '基线暗噪声检验':
     zh-CN: '基线暗噪声检验'
-    en-US: 'Baseline dark noise test'
+    en-US: 'Baseline Dark Noise Test'
     ru-RU: 'Проверка тёмного шума базовой линии'
 
   '光谱带宽与仪器最小光谱带宽':
     zh-CN: '光谱带宽与仪器最小光谱带宽'
-    en-US: 'Spectral bandwidth & minimum bandwidth'
+    en-US: 'Spectral Bandwidth & Minimum Bandwidth'
     ru-RU: 'Спектральная полоса и минимальная полоса пропускания'
 
   '噪声检验':
     zh-CN: '噪声检验'
-    en-US: 'Noise test'
+    en-US: 'Noise Test'
     ru-RU: 'Проверка шума'
 
   '漂移检验':
     zh-CN: '漂移检验'
-    en-US: 'Drift test'
+    en-US: 'Drift Test'
     ru-RU: 'Проверка дрейфа'
 
   '波长边缘噪声':
     zh-CN: '波长边缘噪声'
-    en-US: 'Wavelength edge noise'
+    en-US: 'Wavelength Edge Noise'
     ru-RU: 'Шум на краях длины волны'
 
   # ========== Excel 指标名称 ==========
   '波长示值误差':
     zh-CN: '波长示值误差'
-    en-US: 'Wavelength error'
+    en-US: 'Wavelength Error'
     ru-RU: 'Погрешность длины волны'
 
   '波长重复性':
     zh-CN: '波长重复性'
-    en-US: 'Wavelength repeatability'
+    en-US: 'Wavelength Repeatability'
     ru-RU: 'Повторяемость длины волны'
 
   '透射比示值误差':
     zh-CN: '透射比示值误差'
-    en-US: 'Transmittance error'
+    en-US: 'Transmittance Error'
     ru-RU: 'Погрешность пропускания'
 
   '判定结果':
     zh-CN: '判定结果'
-    en-US: 'Judgment result'
+    en-US: 'Judgment Result'
     ru-RU: 'Результат оценки'
 
   # ========== 其他 ==========
@@ -308,12 +313,12 @@ messages:
 
   '期间核查提醒':
     zh-CN: '期间核查提醒'
-    en-US: 'Periodic inspection reminder'
+    en-US: 'Periodic Inspection Reminder'
     ru-RU: 'Напоминание о периодической проверке'
 
   '标准物到期提醒':
     zh-CN: '标准物到期提醒'
-    en-US: 'Standard material expiry reminder'
+    en-US: 'Standard Material Expiry Reminder'
     ru-RU: 'Напоминание об истечении срока материала'
 
   # ========== API 消息中文翻译 (自动生成) ==========
@@ -422,43 +427,43 @@ messages:
   # ========== 附件类型 ==========
   'T600A八联池':
     zh-CN: 'T600A八联池'
-    en-US: 'T600A 8-Cell changer'
+    en-US: 'T600A 8-Cell Changer'
     ru-RU: 'T600A 8-позиционный кюветодержатель'
 
   # ========== 自检项目 ==========
   '附件初始化':
     zh-CN: '附件初始化'
-    en-US: 'Accessory initialization'
+    en-US: 'Accessory Initialization'
     ru-RU: 'Инициализация аксессуаров'
   '初始化滤色片':
     zh-CN: '初始化滤色片'
-    en-US: 'Filter initialization'
+    en-US: 'Filter Initialization'
     ru-RU: 'Инициализация фильтра'
   '初始化光源电机':
     zh-CN: '初始化光源电机'
-    en-US: 'Light source motor initialization'
+    en-US: 'Light Source Motor Initialization'
     ru-RU: 'Инициализация двигателя источника света'
   '初始化波长':
     zh-CN: '初始化波长'
-    en-US: 'Wavelength initialization'
+    en-US: 'Wavelength Initialization'
     ru-RU: 'Инициализация длины волны'
   '检查钨灯能量':
     zh-CN: '检查钨灯能量'
-    en-US: 'Tungsten lamp energy check'
+    en-US: 'Tungsten Lamp Energy Check'
     ru-RU: 'Проверка энергии вольфрамовой лампы'
   '检查氘灯能量':
     zh-CN: '检查氘灯能量'
-    en-US: 'Deuterium lamp energy check'
+    en-US: 'Deuterium Lamp Energy Check'
     ru-RU: 'Проверка энергии дейтериевой лампы'
   '检查波长':
     zh-CN: '检查波长'
-    en-US: 'Wavelength check'
+    en-US: 'Wavelength Check'
     ru-RU: 'Проверка длины волны'
 
   # ========== 任务状态 ==========
   '未测':
     zh-CN: '未测'
-    en-US: 'Not tested'
+    en-US: 'Not Tested'
     ru-RU: 'Не измерено'
   '已测':
     zh-CN: '已测'
@@ -472,27 +477,27 @@ messages:
   # ========== 时间维度 ==========
   '最近一周':
     zh-CN: '最近一周'
-    en-US: 'Last week'
+    en-US: 'Last Week'
     ru-RU: 'Последняя неделя'
   '最近一个月':
     zh-CN: '最近一个月'
-    en-US: 'Last month'
+    en-US: 'Last Month'
     ru-RU: 'Последний месяц'
   '最近半年':
     zh-CN: '最近半年'
-    en-US: 'Last 6 months'
+    en-US: 'Last 6 Months'
     ru-RU: 'Последние 6 месяцев'
   '最近一年':
     zh-CN: '最近一年'
-    en-US: 'Last year'
+    en-US: 'Last Year'
     ru-RU: 'Последний год'
   '最近三年':
     zh-CN: '最近三年'
-    en-US: 'Last 3 years'
+    en-US: 'Last 3 Years'
     ru-RU: 'Последние 3 года'
   '所有时间':
     zh-CN: '所有时间'
-    en-US: 'All time'
+    en-US: 'All Time'
     ru-RU: 'Всё время'
 
   # ========== 全局响应消息 ==========
@@ -1992,44 +1997,59 @@ messages:
     zh-CN: '紫外可见光分光光度计'
     en-US: 'UV-Vis Spectrophotometer'
     ru-RU: 'УФ-видимый спектрофотометр'
-  'T600A紫外可见分光光度计':
-    zh-CN: 'T600A紫外可见分光光度计'
-    en-US: 'T600A UV-Vis Spectrophotometer'
-    ru-RU: 'УФ-видимый спектрофотометр T600A'
 
+  # ========== 仪器型号映射（中文保持原型号，国际版按语言改写）==========
+  # 型号与仪器名称分开翻译：输出时自动组合（如 T600A紫外可见分光光度计 → TU600A UV-Vis Spectrophotometer），
+  # 新增型号（如 F700、A500）只需照格式补充三行，无需再维护"型号+名称"的组合条目
+  'T600A':
+    zh-CN: 'T600A'
+    en-US: 'TU600A'
+    ru-RU: 'TU600A'
+  'T600B':
+    zh-CN: 'T600B'
+    en-US: 'TU600B'
+    ru-RU: 'TU600B'
+  'T600S':
+    zh-CN: 'T600S'
+    en-US: 'TU600S'
+    ru-RU: 'TU600S'
+  'T600AS':
+    zh-CN: 'T600AS'
+    en-US: 'TU600AS'
+    ru-RU: 'TU600AS'
+  'T700A':
+    zh-CN: 'T700A'
+    en-US: 'TU700A'
+    ru-RU: 'TU700A'
+  'T700S':
+    zh-CN: 'T700S'
+    en-US: 'TU700S'
+    ru-RU: 'TU700S'
+  'T700AS':
+    zh-CN: 'T700AS'
+    en-US: 'TU700AS'
+    ru-RU: 'TU700AS'
+  'T700B':
+    zh-CN: 'T700B'
+    en-US: 'TU700B'
+    ru-RU: 'TU700B'
+
+  # ========== 仪器基础名称（与上方型号自动组合）==========
+  '紫外可见分光光度计':
+    zh-CN: '紫外可见分光光度计'
+    en-US: 'UV-Vis Spectrophotometer'
+    ru-RU: 'УФ-видимый спектрофотометр'
+
+  # 特殊文案保留整体条目（精确匹配优先于自动组合）
   'T600B紫外可见分光光度计状态图':
     zh-CN: 'T600B紫外可见分光光度计状态图'
-    en-US: 'T600B status chart'
-    ru-RU: 'Диаграмма состояния T600B'
-  'T600B紫外可见分光光度计':
-    zh-CN: 'T600B紫外可见分光光度计'
-    en-US: 'T600B UV-Vis Spectrophotometer'
-    ru-RU: 'T600B УФ-видимый спектрофотометр'
-
-  'T600S紫外可见分光光度计':
-    zh-CN: 'T600S紫外可见分光光度计'
-    en-US: 'T600S UV-Vis Spectrophotometer'
-    ru-RU: 'УФ-видимый спектрофотометр T600S'
-
-  'T600AS紫外可见分光光度计':
-    zh-CN: 'T600AS紫外可见分光光度计'
-    en-US: 'T600AS UV-Vis Spectrophotometer'
-    ru-RU: 'УФ-видимый спектрофотометр T600AS'
-
-  'T700B紫外可见分光光度计':
-    zh-CN: 'T700B紫外可见分光光度计'
-    en-US: 'T700B UV-Vis Spectrophotometer'
-    ru-RU: 'УФ-видимый спектрофотометр T700B'
-
-  'T600八联池':
-    zh-CN: 'T600八联池'
-    en-US: 'T600 8-Position Cell Holder'
-    ru-RU: 'T600 8-позиционный держатель кювет'
+    en-US: 'TU600B Status Chart'
+    ru-RU: 'Диаграмма состояния TU600B'
 
   'T600五联100mm长样池':
     zh-CN: 'T600五联100mm长样池'
-    en-US: 'T600 5-Position 100mm Long Path Cell Holder'
-    ru-RU: 'T600 5-позиционный держатель длинных кювет 100мм'
+    en-US: 'TU600 5-Position 100mm Long Path Cell Holder'
+    ru-RU: 'TU600 5-позиционный держатель длинных кювет 100мм'
 
   '未识别':
     zh-CN: '未识别'
@@ -2104,12 +2124,12 @@ messages:
 
   '时间扫描-校零结果为空！':
     zh-CN: '时间扫描-校零结果为空！'
-    en-US: 'Time scan - Zero calibration result is empty!'
+    en-US: 'Kinetics - Zero calibration result is empty!'
     ru-RU: 'Сканирование по времени - Результат калибровки нуля пуст!'
 
   '时间扫描-切换样品池到测量物质失败！':
     zh-CN: '时间扫描-切换样品池到测量物质失败！'
-    en-US: 'Time scan - Failed to switch cuvette to measurement material!'
+    en-US: 'Kinetics - Failed to switch cuvette to measurement material!'
     ru-RU: 'Сканирование по времени - Не удалось переключить кювету на измеряемое вещество!'
 
   '时间测量分析出错！':
@@ -2342,12 +2362,12 @@ messages:
   # ========== 样品类型 ==========
   '标准样品':
     zh-CN: '标准样品'
-    en-US: 'Standard sample'
+    en-US: 'Standard Sample'
     ru-RU: 'Стандартный образец'
 
   '未知样品':
     zh-CN: '未知样品'
-    en-US: 'Unknown sample'
+    en-US: 'Unknown Sample'
     ru-RU: 'Неизвестный образец'
 
   # ========== 操作日志 ==========
@@ -2373,62 +2393,62 @@ messages:
 
   '光谱扫描-扫描':
     zh-CN: '光谱扫描-扫描'
-    en-US: 'Spectral scan - Scan'
+    en-US: 'Spectral Scan - Scan'
     ru-RU: 'Спектральное сканирование'
 
   '时间扫描-扫描':
     zh-CN: '时间扫描-扫描'
-    en-US: 'Time scan - Scan'
+    en-US: 'Kinetics - Scan'
     ru-RU: 'Сканирование по времени'
 
   '光谱扫描-基线':
     zh-CN: '光谱扫描-基线'
-    en-US: 'Spectral scan - Baseline'
+    en-US: 'Spectral Scan - Baseline'
     ru-RU: 'Спектральное сканирование - Базовая линия'
 
   '时间扫描-校零':
     zh-CN: '时间扫描-校零'
-    en-US: 'Time scan - Zero calibration'
+    en-US: 'Kinetics - Zero Calibration'
     ru-RU: 'Сканирование по времени - Калибровка нуля'
 
   '光度测量-预览报告':
     zh-CN: '光度测量-预览报告'
-    en-US: 'Photometric - Preview report'
+    en-US: 'Photometric - Preview Report'
     ru-RU: 'Фотометрия - Предпросмотр отчёта'
 
   '定量测定-预览报告':
     zh-CN: '定量测定-预览报告'
-    en-US: 'Quantitative - Preview report'
+    en-US: 'Quantitative - Preview Report'
     ru-RU: 'Количественный - Предпросмотр отчёта'
 
   '光谱扫描-预览报告':
     zh-CN: '光谱扫描-预览报告'
-    en-US: 'Spectral scan - Preview report'
+    en-US: 'Spectral Scan - Preview Report'
     ru-RU: 'Спектральное сканирование - Предпросмотр отчёта'
 
   '时间扫描-预览报告':
     zh-CN: '时间扫描-预览报告'
-    en-US: 'Time scan - Preview report'
+    en-US: 'Kinetics - Preview Report'
     ru-RU: 'Сканирование по времени - Предпросмотр отчёта'
 
   '光度测量-生成报告':
     zh-CN: '光度测量-生成报告'
-    en-US: 'Photometric - Generate report'
+    en-US: 'Photometric - Generate Report'
     ru-RU: 'Фотометрия - Генерация отчёта'
 
   '定量测定-生成报告':
     zh-CN: '定量测定-生成报告'
-    en-US: 'Quantitative - Generate report'
+    en-US: 'Quantitative - Generate Report'
     ru-RU: 'Количественный - Генерация отчёта'
 
   '光谱扫描-生成报告':
     zh-CN: '光谱扫描-生成报告'
-    en-US: 'Spectral scan - Generate report'
+    en-US: 'Spectral Scan - Generate Report'
     ru-RU: 'Спектральное сканирование - Генерация отчёта'
 
   '时间扫描-生成报告':
     zh-CN: '时间扫描-生成报告'
-    en-US: 'Time scan - Generate report'
+    en-US: 'Kinetics - Generate Report'
     ru-RU: 'Сканирование по времени - Генерация отчёта'
 
   '波长校正':
@@ -2473,12 +2493,12 @@ messages:
 
   '经典模式':
     zh-CN: '经典模式'
-    en-US: 'Classic mode'
+    en-US: 'Classic Mode'
     ru-RU: 'Классический режим'
 
   '向导模式':
     zh-CN: '向导模式'
-    en-US: 'Guide mode'
+    en-US: 'Guide Mode'
     ru-RU: 'Режим мастера'
 
   # ========== RuntimeException 异常消息（经全局异常处理器返回前端） ==========
@@ -2680,7 +2700,7 @@ messages:
 
   '时间扫描初始化失败':
     zh-CN: '时间扫描初始化失败'
-    en-US: 'Time scan initialization failed'
+    en-US: 'Kinetics initialization failed'
     ru-RU: 'Ошибка инициализации сканирования по времени'
 
   '参数错误':
@@ -2690,12 +2710,12 @@ messages:
 
   '未检出':
     zh-CN: '未检出'
-    en-US: 'Not detected'
+    en-US: 'Not Detected'
     ru-RU: 'Не обнаружено'
 
   '单池重复':
     zh-CN: '单池重复'
-    en-US: 'Single cuvette repeat'
+    en-US: 'Single Cuvette Repeat'
     ru-RU: 'Повтор одного пула'
 
   '导出失败: ':
@@ -2796,72 +2816,72 @@ messages:
 
   '时间扫描-开始设置参数':
     zh-CN: '时间扫描-开始设置参数'
-    en-US: 'Time scan - Setting parameters'
+    en-US: 'Kinetics - Setting parameters'
     ru-RU: 'Сканирование по времени - Настройка параметров'
 
   '时间扫描-参数设置成功':
     zh-CN: '时间扫描-参数设置成功'
-    en-US: 'Time scan - Parameters set'
+    en-US: 'Kinetics - Parameters set'
     ru-RU: 'Сканирование по времени - Параметры установлены'
 
   '时间扫描-切换样品池到校零物质':
     zh-CN: '时间扫描-切换样品池到校零物质'
-    en-US: 'Time scan - Switching to zero calibration material'
+    en-US: 'Kinetics - Switching to zero calibration material'
     ru-RU: 'Сканирование по времени - Переключение на калибровку нуля'
 
   '时间扫描-切换样品池到校零物质成功':
     zh-CN: '时间扫描-切换样品池到校零物质成功'
-    en-US: 'Time scan - Switched to zero calibration material'
+    en-US: 'Kinetics - Switched to zero calibration material'
     ru-RU: 'Сканирование по времени - Переключение успешно'
 
   '时间扫描-执行校零操作':
     zh-CN: '时间扫描-执行校零操作'
-    en-US: 'Time scan - Performing zero calibration'
+    en-US: 'Kinetics - Performing zero calibration'
     ru-RU: 'Сканирование по времени - Калибровка нуля'
 
   '时间扫描-校零操作成功':
     zh-CN: '时间扫描-校零操作成功'
-    en-US: 'Time scan - Zero calibration successful'
+    en-US: 'Kinetics - Zero calibration successful'
     ru-RU: 'Сканирование по времени - Калибровка нуля успешна'
 
   '时间扫描-切换样品池到测量物质':
     zh-CN: '时间扫描-切换样品池到测量物质'
-    en-US: 'Time scan - Switching to measurement material'
+    en-US: 'Kinetics - Switching to measurement material'
     ru-RU: 'Сканирование по времени - Переключение на измеряемое вещество'
 
   '时间扫描-切换样品池到测量物质成功':
     zh-CN: '时间扫描-切换样品池到测量物质成功'
-    en-US: 'Time scan - Switched to measurement material'
+    en-US: 'Kinetics - Switched to measurement material'
     ru-RU: 'Сканирование по времени - Переключение успешно'
 
   '时间扫描-开始扫描':
     zh-CN: '时间扫描-开始扫描'
-    en-US: 'Time scan - Starting scan'
+    en-US: 'Kinetics - Starting scan'
     ru-RU: 'Сканирование по времени - Начало сканирования'
 
   '停止-时间扫描':
     zh-CN: '停止-时间扫描'
-    en-US: 'Stop - Time scan'
+    en-US: 'Stop - Kinetics'
     ru-RU: 'Стоп - Сканирование по времени'
 
   '时间扫描-切换样品池到暗电流物质':
     zh-CN: '时间扫描-切换样品池到暗电流物质'
-    en-US: 'Time scan - Switching to dark current material'
+    en-US: 'Kinetics - Switching to dark current material'
     ru-RU: 'Сканирование по времени - Переключение на темновой ток'
 
   '时间扫描-切换样品池到暗电流物质成功':
     zh-CN: '时间扫描-切换样品池到暗电流物质成功'
-    en-US: 'Time scan - Switched to dark current material'
+    en-US: 'Kinetics - Switched to dark current material'
     ru-RU: 'Сканирование по времени - Переключение успешно'
 
   '时间扫描-开始暗电流矫正':
     zh-CN: '时间扫描-开始暗电流矫正'
-    en-US: 'Time scan - Starting dark current correction'
+    en-US: 'Kinetics - Starting dark current correction'
     ru-RU: 'Сканирование по времени - Коррекция темнового тока'
 
   '时间扫描-暗电流矫正成功':
     zh-CN: '时间扫描-暗电流矫正成功'
-    en-US: 'Time scan - Dark current correction successful'
+    en-US: 'Kinetics - Dark current correction successful'
     ru-RU: 'Сканирование по времени - Коррекция успешна'
 
   '切换样品池到黑挡块':
@@ -2952,12 +2972,12 @@ messages:
 
   '时间扫描':
     zh-CN: '时间扫描'
-    en-US: 'Time Scan'
+    en-US: 'Kinetics'
     ru-RU: 'Сканирование по времени'
 
   '默认方法':
     zh-CN: '默认方法'
-    en-US: 'Default item'
+    en-US: 'Default Item'
     ru-RU: 'Метод по умолчанию'
 
   # ========== 预设表头名称 (t_measure_preset_head) ==========
@@ -2983,7 +3003,7 @@ messages:
 
   '标准浓度':
     zh-CN: '标准浓度'
-    en-US: 'Standard Concentration'
+    en-US: 'Std Conc.'
     ru-RU: 'Стандартная концентрация'
 
   '光度测量预留':
@@ -3015,124 +3035,124 @@ messages:
 
   '期间核查任务提醒':
     zh-CN: '期间核查任务提醒'
-    en-US: 'Periodic inspection task reminder'
+    en-US: 'Periodic Inspection Task Reminder'
     ru-RU: 'Напоминание о задаче периодической проверки'
 
   '标准物质有效期到期提醒':
     zh-CN: '标准物质有效期到期提醒'
-    en-US: 'Standard material expiry reminder'
+    en-US: 'Standard Material Expiry Reminder'
     ru-RU: 'Напоминание об истечении срока стандартного материала'
 
   # ========== 样品池附件 (t_measure_pool / f_t_measure_pool) ==========
-  'T700固体样品池':
-    zh-CN: 'T700固体样品池'
-    en-US: 'T700 Solid Sample Cell'
-    ru-RU: 'T700 Твёрдая кювета'
-
-  'T700镜面反射附件':
-    zh-CN: 'T700镜面反射附件'
-    en-US: 'T700 Specular Reflectance Accessory'
-    ru-RU: 'T700 Зеркальный отражательный аксессуар'
-
-  'T700固定100mm长样池':
-    zh-CN: 'T700固定100mm长样池'
-    en-US: 'T700 Fixed 100mm Long Path Cell'
-    ru-RU: 'T700 Фиксированная кювета 100 мм'
-
-  'T700标准及微量样品池':
-    zh-CN: 'T700标准及微量样品池'
-    en-US: 'T700 Standard & Micro Sample Cell'
-    ru-RU: 'T700 Стандартная и микрокювета'
-
-  'T700五联恒温池':
-    zh-CN: 'T700五联恒温池'
-    en-US: 'T700 5-Position Thermostatic Cell'
-    ru-RU: 'T700 5-позиционная термокювета'
-
-  'T700五联100mm长样池':
-    zh-CN: 'T700五联100mm长样池'
-    en-US: 'T700 5-Position 100mm Long Path Cell'
-    ru-RU: 'T700 5-позиционная кювета 100 мм'
-
-  'T700可变角度样品架':
-    zh-CN: 'T700可变角度样品架'
-    en-US: 'T700 Variable Angle Sample Holder'
-    ru-RU: 'T700 Держатель образца с переменным углом'
-
-  'T700超微量样品池':
-    zh-CN: 'T700超微量样品池'
-    en-US: 'T700 Ultra-Micro Sample Cell'
-    ru-RU: 'T700 Ультрамикрокювета'
-
-  'T700八联池':
-    zh-CN: 'T700八联池'
-    en-US: 'T700 8-Position Cell'
-    ru-RU: 'T700 8-позиционная кювета'
-
-  'T700试管架':
-    zh-CN: 'T700试管架'
-    en-US: 'T700 Test Tube Rack'
-    ru-RU: 'T700 Штатив для пробирок'
-
-  'T700固定恒温池':
-    zh-CN: 'T700固定恒温池'
-    en-US: 'T700 Fixed Thermostatic Cell'
-    ru-RU: 'T700 Фиксированная термокювета'
-
-  'T700积分椭球':
-    zh-CN: 'T700积分椭球'
-    en-US: 'T700 Integrating Sphere'
-    ru-RU: 'T700 Интегрирующая сфера'
-
-  'T600标准及微量样品池':
-    zh-CN: 'T600标准及微量样品池'
-    en-US: 'T600 Standard & Micro Sample Cell'
-    ru-RU: 'T600 Стандартная и микрокювета'
-
-  'T600固定100mm长样池':
-    zh-CN: 'T600固定100mm长样池'
-    en-US: 'T600 Fixed 100mm Long Path Cell'
-    ru-RU: 'T600 Фиксированная кювета 100 мм'
-
-  'T600固定恒温池':
-    zh-CN: 'T600固定恒温池'
-    en-US: 'T600 Fixed Thermostatic Cell'
-    ru-RU: 'T600 Фиксированная термокювета'
-
-  'T600五联恒温池':
-    zh-CN: 'T600五联恒温池'
-    en-US: 'T600 5-Position Thermostatic Cell'
-    ru-RU: 'T600 5-позиционная термокювета'
-
-  'T600固体样品池':
-    zh-CN: 'T600固体样品池'
-    en-US: 'T600 Solid Sample Cell'
-    ru-RU: 'T600 Твёрдая кювета'
-
-  'T600试管架':
-    zh-CN: 'T600试管架'
-    en-US: 'T600 Test Tube Rack'
-    ru-RU: 'T600 Штатив для пробирок'
-
-  'T600可变角度样品架':
-    zh-CN: 'T600可变角度样品架'
-    en-US: 'T600 Variable Angle Sample Holder'
-    ru-RU: 'T600 Держатель образца с переменным углом'
-
-  'T600超微量样品池':
-    zh-CN: 'T600超微量样品池'
-    en-US: 'T600 Ultra-Micro Sample Cell'
-    ru-RU: 'T600 Ультрамикрокювета'
-
-  'T600积分椭球':
-    zh-CN: 'T600积分椭球'
-    en-US: 'T600 Integrating Sphere'
-    ru-RU: 'T600 Интегрирующая сфера'
-
-  'T600镜面反射附件':
-    zh-CN: 'T600镜面反射附件'
-    en-US: 'T600 Specular Reflectance Accessory'
-    ru-RU: 'T600 Зеркальный отражательный аксессуар'
+#  'T700固体样品池':
+#    zh-CN: 'T700固体样品池'
+#    en-US: 'T700 Solid Sample Cell'
+#    ru-RU: 'T700 Твёрдая кювета'
+#
+#  'T700镜面反射附件':
+#    zh-CN: 'T700镜面反射附件'
+#    en-US: 'T700 Specular Reflectance Accessory'
+#    ru-RU: 'T700 Зеркальный отражательный аксессуар'
+#
+#  'T700固定100mm长样池':
+#    zh-CN: 'T700固定100mm长样池'
+#    en-US: 'T700 Fixed 100mm Long Path Cell'
+#    ru-RU: 'T700 Фиксированная кювета 100 мм'
+#
+#  'T700标准及微量样品池':
+#    zh-CN: 'T700标准及微量样品池'
+#    en-US: 'T700 Standard & Micro Sample Cell'
+#    ru-RU: 'T700 Стандартная и микрокювета'
+#
+#  'T700五联恒温池':
+#    zh-CN: 'T700五联恒温池'
+#    en-US: 'T700 5-Position Thermostatic Cell'
+#    ru-RU: 'T700 5-позиционная термокювета'
+#
+#  'T700五联100mm长样池':
+#    zh-CN: 'T700五联100mm长样池'
+#    en-US: 'T700 5-Position 100mm Long Path Cell'
+#    ru-RU: 'T700 5-позиционная кювета 100 мм'
+#
+#  'T700可变角度样品架':
+#    zh-CN: 'T700可变角度样品架'
+#    en-US: 'T700 Variable Angle Sample Holder'
+#    ru-RU: 'T700 Держатель образца с переменным углом'
+#
+#  'T700超微量样品池':
+#    zh-CN: 'T700超微量样品池'
+#    en-US: 'T700 Ultra-Micro Sample Cell'
+#    ru-RU: 'T700 Ультрамикрокювета'
+#
+#  'T700八联池':
+#    zh-CN: 'T700八联池'
+#    en-US: 'T700 8-Position Cell'
+#    ru-RU: 'T700 8-позиционная кювета'
+#
+#  'T700试管架':
+#    zh-CN: 'T700试管架'
+#    en-US: 'T700 Test Tube Rack'
+#    ru-RU: 'T700 Штатив для пробирок'
+#
+#  'T700固定恒温池':
+#    zh-CN: 'T700固定恒温池'
+#    en-US: 'T700 Fixed Thermostatic Cell'
+#    ru-RU: 'T700 Фиксированная термокювета'
+#
+#  'T700积分椭球':
+#    zh-CN: 'T700积分椭球'
+#    en-US: 'T700 Integrating Sphere'
+#    ru-RU: 'T700 Интегрирующая сфера'
+#
+#  'T600标准及微量样品池':
+#    zh-CN: 'T600标准及微量样品池'
+#    en-US: 'T600 Standard & Micro Sample Cell'
+#    ru-RU: 'T600 Стандартная и микрокювета'
+#
+#  'T600固定100mm长样池':
+#    zh-CN: 'T600固定100mm长样池'
+#    en-US: 'T600 Fixed 100mm Long Path Cell'
+#    ru-RU: 'T600 Фиксированная кювета 100 мм'
+#
+#  'T600固定恒温池':
+#    zh-CN: 'T600固定恒温池'
+#    en-US: 'T600 Fixed Thermostatic Cell'
+#    ru-RU: 'T600 Фиксированная термокювета'
+#
+#  'T600五联恒温池':
+#    zh-CN: 'T600五联恒温池'
+#    en-US: 'T600 5-Position Thermostatic Cell'
+#    ru-RU: 'T600 5-позиционная термокювета'
+#
+#  'T600固体样品池':
+#    zh-CN: 'T600固体样品池'
+#    en-US: 'T600 Solid Sample Cell'
+#    ru-RU: 'T600 Твёрдая кювета'
+#
+#  'T600试管架':
+#    zh-CN: 'T600试管架'
+#    en-US: 'T600 Test Tube Rack'
+#    ru-RU: 'T600 Штатив для пробирок'
+#
+#  'T600可变角度样品架':
+#    zh-CN: 'T600可变角度样品架'
+#    en-US: 'T600 Variable Angle Sample Holder'
+#    ru-RU: 'T600 Держатель образца с переменным углом'
+#
+#  'T600超微量样品池':
+#    zh-CN: 'T600超微量样品池'
+#    en-US: 'T600 Ultra-Micro Sample Cell'
+#    ru-RU: 'T600 Ультрамикрокювета'
+#
+#  'T600积分椭球':
+#    zh-CN: 'T600积分椭球'
+#    en-US: 'T600 Integrating Sphere'
+#    ru-RU: 'T600 Интегрирующая сфера'
+#
+#  'T600镜面反射附件':
+#    zh-CN: 'T600镜面反射附件'
+#    en-US: 'T600 Specular Reflectance Accessory'
+#    ru-RU: 'T600 Зеркальный отражательный аксессуар'
 
   # ========== 附件名称 (queryDeviceInfo attachmentName，无型号前缀) ==========
   '固体样品池':
@@ -4236,23 +4256,23 @@ messages:
     ru-RU: 'Длина волны переключения лампы'
   '自动进样器':
     zh-CN: '自动进样器'
-    en-US: 'Auto sampler'
+    en-US: 'Auto Sampler'
     ru-RU: 'Автосамплер'
   '样品仓':
     zh-CN: '样品仓'
-    en-US: 'sample cell holder'
+    en-US: 'Sample Cell Holder'
     ru-RU: 'Держатель кюветы'
   '控制终端':
     zh-CN: '控制终端'
-    en-US: 'Terminal control'
+    en-US: 'Terminal Control'
     ru-RU: 'Управление терминалом'
   '附件类型':
     zh-CN: '附件类型'
-    en-US: 'Accessory model'
+    en-US: 'Accessory Model'
     ru-RU: 'Тип аксессуара'
   '灯位置':
     zh-CN: '灯位置'
-    en-US: 'Lamp mirror position'
+    en-US: 'Lamp Mirror Position'
     ru-RU: 'Положение лампы'
   'PC电脑':
     zh-CN: 'PC电脑'
@@ -4270,7 +4290,7 @@ messages:
 
   '推荐标样浓度':
     zh-CN: '推荐标样浓度'
-    en-US: 'Recommended Standard Concentration'
+    en-US: 'Recommended Std Conc.'
     ru-RU: 'Рекомендуемая концентрация стандарта'
 
   '推荐单位':
@@ -4578,7 +4598,7 @@ messages:
 
   '采集时间':
     zh-CN: '采集时间'
-    en-US: 'Collection Time'
+    en-US: 'Acquisition Time'
     ru-RU: 'Время сбора'
 
   '注释':
@@ -4630,7 +4650,7 @@ messages:
 #
 #  '时间扫描':
 #    zh-CN: '时间扫描'
-#    en-US: 'Time Scan'
+#    en-US: 'Kinetics'
 #    ru-RU: 'Временное сканирование'
 #
 #  '经典模式':
@@ -4648,8 +4668,8 @@ messages:
 #    en-US: 'Factory Inspection'
 #    ru-RU: 'Заводской контроль'
 #
-#  '开箱检验':
-#    zh-CN: '开箱检验'
+#  '安装检验':
+#    zh-CN: '安装检验'
 #    en-US: 'Unboxing Inspection'
 #    ru-RU: 'Распаковочный контроль'
 #
@@ -5748,25 +5768,25 @@ messages:
     en-US: 'Notification - Delete'
     ru-RU: 'Notification - Delete'
 
-  # ========== 开箱检验 操作权限 ==========
-  '开箱检验-创建任务':
-    zh-CN: '开箱检验-创建任务'
+  # ========== 安装检验 操作权限 ==========
+  '安装检验-创建任务':
+    zh-CN: '安装检验-创建任务'
     en-US: 'Unboxing - Create Task'
     ru-RU: 'Unboxing - Create Task'
-  '开箱检验-查看历史任务':
-    zh-CN: '开箱检验-查看历史任务'
+  '安装检验-查看历史任务':
+    zh-CN: '安装检验-查看历史任务'
     en-US: 'Unboxing - View History'
     ru-RU: 'Unboxing - View History'
-  '开箱检验-单项测量':
-    zh-CN: '开箱检验-单项测量'
+  '安装检验-单项测量':
+    zh-CN: '安装检验-单项测量'
     en-US: 'Unboxing - Single Measure'
     ru-RU: 'Unboxing - Single Measure'
-  '开箱检验-自动测量':
-    zh-CN: '开箱检验-自动测量'
+  '安装检验-自动测量':
+    zh-CN: '安装检验-自动测量'
     en-US: 'Unboxing - Auto Measure'
     ru-RU: 'Unboxing - Auto Measure'
-  '开箱检验-停止测量':
-    zh-CN: '开箱检验-停止测量'
+  '安装检验-停止测量':
+    zh-CN: '安装检验-停止测量'
     en-US: 'Unboxing - Stop Measure'
     ru-RU: 'Unboxing - Stop Measure'
 
@@ -6083,11 +6103,11 @@ messages:
 #    ru-RU: 'Образец'
   '修改样品信息':
     zh-CN: '修改样品信息'
-    en-US: 'Edit sample info'
+    en-US: 'Edit Sample Info'
     ru-RU: 'Изменение информации об образце'
   '修改附件参数':
     zh-CN: '修改附件参数'
-    en-US: 'Edit attachment params'
+    en-US: 'Edit Attachment Params'
     ru-RU: 'Изменение параметров аксессуара'
 
   # ========== 消息类型 (MessageTypeEnum) ==========
@@ -6133,7 +6153,7 @@ messages:
     ru-RU: 'Прибор не отвечает'
   '系统消息':
     zh-CN: '系统消息'
-    en-US: 'System message'
+    en-US: 'System Message'
     ru-RU: 'Системное сообщение'
 #  '期间核查提醒':
 #    zh-CN: '期间核查提醒'
@@ -6147,11 +6167,11 @@ messages:
   # ========== 消息内容固定片段（标准物质效期提醒等） ==========
   '已过期的标准物质':
     zh-CN: '已过期的标准物质'
-    en-US: 'Expired reference materials'
+    en-US: 'Expired Reference Materials'
     ru-RU: 'Просроченные эталонные материалы'
   '标准物质效期提醒':
     zh-CN: '标准物质效期提醒'
-    en-US: 'Reference material expiry reminder'
+    en-US: 'Reference Material Expiry Reminder'
     ru-RU: 'Напоминание о сроке эталонных материалов'
   '已过期':
     zh-CN: '已过期'

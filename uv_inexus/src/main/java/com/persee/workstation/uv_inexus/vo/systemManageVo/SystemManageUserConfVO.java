@@ -18,8 +18,8 @@ public class SystemManageUserConfVO {
     @ApiModelProperty("全局端口")
     private String globalPort;
 
-    @ApiModelProperty("默认进入经典模式")
-    private Boolean defaultEnterClassic;
+//    @ApiModelProperty("默认进入经典模式")
+//    private Boolean defaultEnterClassic;
 
     @ApiModelProperty("主数据库ip")
     private String mainDatabaseIp;

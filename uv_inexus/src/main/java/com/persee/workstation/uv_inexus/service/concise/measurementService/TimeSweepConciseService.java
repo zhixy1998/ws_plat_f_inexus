@@ -57,10 +57,14 @@ public interface TimeSweepConciseService {
     Result saveDraftButton(String taskId, String taskName);
 
     // 查询样品数据列表
-    Result querySampleDataList(String taskId, String type, Integer digit,String deviceSerialNumber);
+    Result querySampleDataList(String taskId, String type, Integer digit,String deviceSerialNumber,
+                               Boolean showPeak, Boolean showValley, Boolean showMarkPoint);
 
     // 删除样品列表接口
     Result deleteSampleListPort(String taskId, String sampleId, String analysisId);
+
+    // 更新样品选中状态(已测:传analysisId;未测:传taskId+sampleId;全选/全取消:传taskId+allSelectType,1-所有样品 2-所有分析样品)
+    Result updateSampleSelected(String analysisId, String isSelected, String taskId, String allSelectType, String sampleId);
 
     // 查询变换列表接口
     Result queryAnalysisDataList(String taskId, String type, Integer digit);
@@ -125,10 +129,10 @@ public interface TimeSweepConciseService {
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit ,String deviceSerialNumber);
 
     // 表格头接口
-    Result<List<FHeadVO>> tableHead(String taskId, String methodId, List<String> analysisIdList);
+    Result<List<FHeadVO>> tableHead(String taskId, String methodId, List<String> analysisIdList, Boolean isOneSample);
 
     // 查询表格数据接口
-    List<Map<String, Object>> queryTableData(String taskId, List<String> analysisIdList,Integer decimalDigits);
+    List<Map<String, Object>> queryTableData(String taskId, List<String> analysisIdList,Integer decimalDigits, Boolean isOneSample);
 
     // 上传图片接口
     Result uploadImage(SpectrumImageUpload upload);

@@ -5,11 +5,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dto.concise.common.Box;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
-import com.persee.workstation.uv_inexus.i18n.I18nMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
@@ -208,6 +206,8 @@ public class ManageDataServiceImpl implements ManageDataService {
             }
 
             List<TaskSpecimen> specimen = JSON.parseArray(record.getSampleKey(), TaskSpecimen.class);
+            // 保存状态不再依据任务表的 is_save 字段,改为依据任务下的数据是否全部保存
+            String saveStatus = resolveSaveStatus(record.getId());
             TaskManagementDto dto = TaskManagementDto.builder()
                     .id(record.getId())
                     .taskName(record.getTaskName())
@@ -216,7 +216,7 @@ public class ManageDataServiceImpl implements ManageDataService {
                     .methodId(record.getMethodKey())
                     .methodName(methodName)
                     .measureType(record.getMeasureType())
-                    .taskStatus(record.getIsSave()==(null)?"未保存":record.getIsSave().equals(Constants.PARAM_ZERO)?"未保存":"已保存")
+                    .taskStatus(saveStatus)
                     .build();
             dtoList.add(dto);
         }
@@ -228,6 +228,27 @@ public class ManageDataServiceImpl implements ManageDataService {
         resultMap.put("pages", result.getPages());         // 总页数
         resultMap.put("result", dtoList);                 // 数据列表
         return Result.ok(resultMap);
+    }
+
+    /**
+     * 判定任务的保存状态
+     * 依据任务下的测量数据与分析数据是否全部保存(is_save: 0 已保存, 1 未保存),
+     * 只要存在任意一条未保存的数据即为"未保存",全部已保存才为"已保存"
+     *
+     * @param taskId 任务id
+     * @return 已保存 / 未保存
+     */
+    private String resolveSaveStatus(String taskId) {
+        long unSavedDataCount = dataService.count(new LambdaQueryWrapper<FMeasureData>()
+                .eq(FMeasureData::getTaskId, taskId)
+                .eq(FMeasureData::getIsSave, "1"));
+        if (unSavedDataCount > 0) {
+            return "未保存";
+        }
+        long unSavedAnalysisCount = analysisDataService.count(new LambdaQueryWrapper<FMeasureAnalysisData>()
+                .eq(FMeasureAnalysisData::getTaskId, taskId)
+                .eq(FMeasureAnalysisData::getIsSave, "1"));
+        return unSavedAnalysisCount > 0 ? "未保存" : "已保存";
     }
 
     /**
