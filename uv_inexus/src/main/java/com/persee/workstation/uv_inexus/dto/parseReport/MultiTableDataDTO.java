@@ -34,6 +34,9 @@ public class MultiTableDataDTO {
     @ApiModelProperty("曲线参数（推荐单位、推荐标样浓度、拟合公式）")
     private Map<String, String> curveParameter; // 新增字段
 
+    @ApiModelProperty("检测参数（键值对形式，来自光度测量-检测参数表的检测参数列）")
+    private Map<String, String> detectionParametersKV;
+
     @ApiModelProperty("待计算结果列表（计算公式表）")
     private List<CalculationResultDTO> calculationResults;
 
