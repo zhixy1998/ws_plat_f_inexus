@@ -77,6 +77,9 @@ public class StandardDetectionUVVISCurveExcelModel {
     @ExcelProperty("重复时间间隔(s)")
     private String repeatInterval;
 
+    @ExcelProperty("检测参数（不填）") // 可选列，不填则不参与导入
+    private String detectionParameter;
+
     // Getters and Setters
     public String getDetectionId() {
         return detectionId;
@@ -84,6 +87,14 @@ public class StandardDetectionUVVISCurveExcelModel {
 
     public void setDetectionId(String detectionId) {
         this.detectionId = detectionId;
+    }
+
+    public String getDetectionParameter() {
+        return detectionParameter;
+    }
+
+    public void setDetectionParameter(String detectionParameter) {
+        this.detectionParameter = detectionParameter;
     }
 
     public String getWavelength1() {

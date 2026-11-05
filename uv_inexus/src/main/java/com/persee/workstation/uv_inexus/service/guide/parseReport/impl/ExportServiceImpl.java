@@ -497,6 +497,7 @@ public class ExportServiceImpl implements ExportService {
                     model.setIsRepeat(params.getString("是否重复"));
                     model.setRepeatCount(params.getString("重复次数"));
                     model.setRepeatInterval(params.getString("重复时间间隔(s)"));
+                    model.setDetectionParameter(params.getString("检测参数"));
                     result.add(model);
                 }
             } catch (Exception e) {
