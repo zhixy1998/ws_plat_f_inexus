@@ -1578,7 +1578,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             wrapper.eq(DeviceModelInfoPO::getDevModel, deviceModel);
             DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
 
-            String devModelName = modelInfoPO.getDevModelName() + modelInfoPO.getDevName();
+//            String devModelName = modelInfoPO.getDevModelName() + modelInfoPO.getDevName();
+            //新需求，不显示仪器型号名
+            String devModelName = modelInfoPO.getDevName();
             String modelName = modelInfoPO.getDevModelName();
 
             vo.setDeviceModelName(modelName);

@@ -3547,10 +3547,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
             }
             String name = deviceInfoService.queryDeviceName(task.getDeviceSerialNumber());
-            String modelName = deviceInfoService.queryDeviceModelName(task.getDeviceSerialNumber());
+//            String modelName = deviceInfoService.queryDeviceModelName(task.getDeviceSerialNumber());
+            String modelName = name;
 
             vo.setInstrumentName("紫外可见分光光度计");
-            vo.setInstrumentModel("T600");
+//            vo.setInstrumentModel("T600");
+            vo.setInstrumentModel("紫外可见分光光度计");
 
             if (StringUtils.hasText(name)) {
                 vo.setInstrumentName(name);

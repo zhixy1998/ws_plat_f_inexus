@@ -26,14 +26,16 @@
         where device_serial_number = #{device_serial_number}
     </select>
     <select id="getAttachmentType" resultType="java.lang.String">
-        select CONCAT(c.dev_model_name , b.attachment_name)
+<!--        select CONCAT(c.dev_model_name , b.attachment_name)-->
+        select b.attachment_name
         from t800_uv_inexus.t_ins_info_temp a inner join t800_uv_inexus.t_measure_pool b on a.attachment_type =
         b.attachment_num
         inner join t800_uv_inexus.t_device_init_entry c on a.device_model = c.dev_model and c.dev_type_id = b.dev_type
         where a.device_serial_number = #{device_serial_number}
     </select>
     <select id="getAttachmentInfo" resultType="com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO">
-        select CONCAT(c.dev_model_name , b.attachment_name) as attachmentName,
+<!--        select CONCAT(c.dev_model_name , b.attachment_name) as attachmentName,-->
+        select b.attachment_name as attachmentName,
         b.attachment_num as attachmentNum,
         a.device_serial_number as deviceSerialNumber,
         b.sample_pool_num as samplePoolNum,
@@ -51,7 +53,8 @@
     </select>
     <select id="getAttachmentInfoByAttachmentNum"
             resultType="com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO">
-        select CONCAT(c.dev_model_name , b.attachment_name) as attachmentName,
+<!--        select CONCAT(c.dev_model_name , b.attachment_name) as attachmentName,-->
+        select b.attachment_name as attachmentName,
         b.attachment_num as attachmentNum,
         b.sample_pool_num as samplePoolNum,
         b.attachment_type as attachmentKind
