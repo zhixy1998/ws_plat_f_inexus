@@ -73,7 +73,8 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         if (modelInfo == null) {
             return null;
         }
-        return modelInfo.getDevName() + modelInfo.getDevModelName();
+//        return modelInfo.getDevName() + modelInfo.getDevModelName();
+        return modelInfo.getDevName();
     }
 
     @Override
