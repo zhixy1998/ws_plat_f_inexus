@@ -270,20 +270,43 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 // ... existing code ...
 
     // 在类中添加暂停控制类
-    @Data
     public static class TaskPauseControl {
-        //初始许可证是0，也就是一调用就会停止
-        private final Semaphore semaphore = new Semaphore(0);
-        /*
-          标识任务是否处于暂停状态
-          true: 任务当前处于暂停状态
-          false: 任务正常运行
-        * */
-        private volatile boolean paused = false;
+        private CountDownLatch pendingPause;
+        private boolean paused;
 
-        // 添加线程安全的状态更新方法
-        public synchronized void setPaused(boolean paused) {
-            this.paused = paused;
+        public synchronized CountDownLatch beginPause() {
+            if (pendingPause != null) {
+                throw new IllegalStateException("Task is already waiting for confirmation");
+            }
+            pendingPause = new CountDownLatch(1);
+            paused = true;
+            return pendingPause;
+        }
+
+        public synchronized CountDownLatch getPendingPause() {
+            return paused ? pendingPause : null;
+        }
+
+        public synchronized boolean claimResume(CountDownLatch expectedPause) {
+            if (!paused || expectedPause == null || pendingPause != expectedPause) {
+                return false;
+            }
+            paused = false;
+            return true;
+        }
+
+        public synchronized void finishPause(CountDownLatch expectedPause) {
+            if (pendingPause == expectedPause) {
+                paused = false;
+                pendingPause = null;
+            }
+        }
+
+        public synchronized void cancelPause() {
+            paused = false;
+            if (pendingPause != null) {
+                pendingPause.countDown();
+            }
         }
 
         public synchronized boolean isPaused() {
@@ -548,9 +571,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * （其 finally 会 release 设备）确认暗电流真正结束。
      * 若设备不支持实时下发（阻塞式返回了数据），直接返回，避免空等超时。
      */
-    private void pollDarkPoints(String taskId, String deviceSerialNumber, R<?> operationDark) {
-        if (operationDark != null && operationDark.getData() != null) {
-            return;
+    private R<OperationResultEntity> pollDarkPoints(String taskId, String deviceSerialNumber,
+                                                   R<OperationResultEntity> operationDark) {
+        if (operationDark == null || operationDark.getSuccess() == null) {
+            return R.fail("00208003");
+        }
+        if (!operationDark.getSuccess()) {
+            return operationDark;
+        }
+        if (operationDark.getData() != null) {
+            return isHalted(taskId) ? R.fail("00208003") : operationDark;
         }
         String darkCmdId = DeviceCalibrationInfoEnum.getComId(DeviceCalibrationInfoEnum.Dark.getType());
         long deadline = System.currentTimeMillis() + DARK_CURRENT_TIMEOUT;
@@ -561,33 +591,47 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     SpectrumPoint point = (SpectrumPoint) o;
                     // 暗电流实时回显统一走 realTimeEcho(liveEcho) 文本通道，只更新页头波长，
                     // 不推 payload.data 点，与基线/光谱扫描回显方式保持一致
-                    realTimeEcho(taskId, "光谱-暗电流: " + point.getWavelength() + "nm");
+                    try {
+                        realTimeEcho(taskId, "光谱-暗电流: " + point.getWavelength() + "nm");
+                    } catch (Exception e) {
+                        log.debug("暗电流实时回显失败, taskId={}", taskId, e);
+                    }
                 } else if (o instanceof EndMarker) {
                     EndMarker marker = (EndMarker) o;
                     EndMarker.Reason reason = marker.getReason();
                     if (reason == EndMarker.Reason.NORMAL || reason == EndMarker.Reason.NORMAL_STOP) {
+                        if (isHalted(taskId)) {
+                            return R.fail("00208003");
+                        }
                         log.info("[检定光谱] 暗电流校准正常结束: taskId={}, device={}, reason={}", taskId, deviceSerialNumber, reason);
+                        return operationDark;
                     } else {
                         // 异常结束：超时/中断(UN_NORMAL/TIMEOUT)、过压保护(NORMAL_OVERPOWER)。
-                        // 异步下发后 operation 恒返回成功，失败只能在此感知并回显，避免静默吞掉。
+                        // 异步返回只代表提交成功，必须把实际校准失败返回给测量流程。
                         log.warn("[检定光谱] 暗电流校准异常结束: taskId={}, device={}, reason={}", taskId, deviceSerialNumber, reason);
                         try {
                             realTimeEcho(taskId, "光谱-暗电流校准异常结束(" + reason + ")");
                         } catch (BusinessException e) {
                             log.debug("暗电流异常结束回显失败, taskId={}", taskId, e);
                         }
+                        return R.fail("00208003");
                     }
-                    break;
                 }
-                // 队列为空时 pollMessage 阻塞至超时，无需额外休眠
+                // 首个报文到达前队列可能尚未创建，避免此时空转。
+                if (o == null && !queue.hasQueue(deviceSerialNumber, darkCmdId)) {
+                    Thread.sleep(20);
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                return;
+                log.warn("等待暗电流校准被中断, taskId={}, device={}", taskId, deviceSerialNumber);
+                return R.fail("00208003");
             } catch (Exception e) {
-                log.debug("消费暗电流数据点失败, taskId={}", taskId, e);
-                return;
+                log.error("消费暗电流数据点失败, taskId={}", taskId, e);
+                return R.fail("00208003");
             }
         }
+        log.warn("等待暗电流校准结束超时, taskId={}, device={}", taskId, deviceSerialNumber);
+        return R.fail("00208003");
     }
 
     /**
@@ -633,9 +677,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 darkParam.setCalibrationData(darkCalibrationData);
             }
 
+            // 仅清理本设备的旧 Dark 数据；必须在下发前执行，避免清掉本次响应。
+            String darkCmdId = DeviceCalibrationInfoEnum.getComId(DeviceCalibrationInfoEnum.Dark.getType());
+            queue.clearCommand(deviceSerialNumber, darkCmdId);
             R<OperationResultEntity> operationDark = devOperationUtilService.operation(darkParam);
-            pollDarkPoints(taskId, deviceSerialNumber, operationDark);
-            return operationDark;
+            return pollDarkPoints(taskId, deviceSerialNumber, operationDark);
         } else {
             // === T600/T700 旧框架：通过 operation 同步阻塞下发 ===
             // 不能走 devMessageUtil.deviceCalibration()，它内部调用 MessageUtil.getSocket()
@@ -1220,6 +1266,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         String type = root.get("type").asText();
         String updateBy = root.get("updateBy").asText();
         String taskId = root.get("taskId").asText();
+        TaskPauseControl resumeControl = RESUME.getCode().equals(type) ? pauseControls.get(taskId) : null;
+        CountDownLatch resumePause = resumeControl == null ? null : resumeControl.getPendingPause();
 
         //得到当前任务的仪器类型，方便对之后的操作做界定
         if (StringUtils.isBlank(String.valueOf(taskAndVersionMap.get(taskId)))) {
@@ -1730,11 +1778,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 return;
             }
 
-            resumeTask(taskId);
-            JSONObject response = new JSONObject();
-            response.put("resumed", true);
-//            session.sendMessage(new TextMessage(response.toJSONString()));
-            sendToActiveSession(null, taskId, response);
+            resumeTask(taskId, resumeControl, resumePause, true);
             return;
         }
         super.handleTextMessage(session, message);
@@ -2043,27 +2087,39 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      * 暂停任务
      */
     public void pauseTask(String taskId) throws BusinessException {
-        // 即使连接已断开（用户切页/刷新，afterConnectionClosed 已清掉连接级资源），
-        // 也必须保证暂停生效：原来用 get 且 control==null 时直接返回，会导致测量线程在
-        // "请保持样品池为空/放入样品"提示处跳过等待，未经用户确认就开始测量。
-        // computeIfAbsent 保证 control 一定存在，再阻塞等待确认。
+        pauseTask(taskId, null);
+    }
+
+    private void pauseTask(String taskId, JSONObject noticeMsg) throws BusinessException {
         TaskPauseControl control = pauseControls.computeIfAbsent(taskId, k -> new TaskPauseControl());
-        control.setPaused(true);
-        // 先记录"已进入暂停等待"，再阻塞等待；
-        // 原来把日志放在 tryAcquire 之后，导致暂停实际结束（用户点击继续）时才打印"已标记为暂停"，
-        // 与 resumeTask 的"已恢复"同一毫秒输出，日志看起来自相矛盾
-        log.info("任务 {} 已标记为暂停，等待用户确认", taskId);
+        CountDownLatch pendingPause = null;
         try {
-            // 带超时等待用户确认（放入物质后点击继续），防止用户离开或前端无响应时
-            // 测量线程与设备永久卡死；超时后抛出业务异常，由上层统一报错并释放设备
-            if (!control.semaphore.tryAcquire(PAUSE_CONFIRM_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
+            pendingPause = control.beginPause();
+            if (isHalted(taskId)) {
+                control.cancelPause();
+                return;
+            }
+            log.info("任务 {} 已标记为暂停，等待用户确认", taskId);
+            if (noticeMsg != null) {
+                sendToActiveSession(null, taskId, noticeMsg);
+            }
+            if (!pendingPause.await(PAUSE_CONFIRM_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
                 throw BusinessException.withCode("0061303F");
             }
-            log.info("任务 {} 暂停等待结束，继续执行", taskId);
+            if (!isHalted(taskId)) {
+                log.info("任务 {} 暂停等待结束，继续执行", taskId);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw BusinessException.withCode("00613006");
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
             throw BusinessException.withCode("00613006");
+        } finally {
+            if (pendingPause != null) {
+                control.finishPause(pendingPause);
+            }
         }
     }
 
@@ -2072,13 +2128,30 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
      */
     public void resumeTask(String taskId) {
         TaskPauseControl control = pauseControls.get(taskId);
-        // 仅在实际暂停时才释放信号量：避免重复RESUME累积无人消费的许可，
-        // 导致后续"请放物质"确认被跳过、直接测量
-        if (control != null && control.isPaused()) {
-            control.setPaused(false);
-            // 释放一个信号量，让任务继续执行
-            control.semaphore.release();
-            log.info("任务 {} 已恢复", taskId);
+        CountDownLatch pendingPause = control == null ? null : control.getPendingPause();
+        resumeTask(taskId, control, pendingPause, false);
+    }
+
+    private boolean resumeTask(String taskId, TaskPauseControl control,
+                               CountDownLatch expectedPause, boolean notifyClient) {
+        boolean resumed = control != null && pauseControls.get(taskId) == control
+                && !isHalted(taskId) && control.claimResume(expectedPause);
+        try {
+            if (notifyClient && resumed) {
+                JSONObject response = new JSONObject();
+                response.put("resumed", true);
+                sendToActiveSession(null, taskId, response);
+            }
+            if (resumed) {
+                log.info("任务 {} 已恢复", taskId);
+            } else {
+                log.debug("忽略重复或过期的恢复指令，任务ID: {}", taskId);
+            }
+            return resumed;
+        } finally {
+            if (resumed) {
+                expectedPause.countDown();
+            }
         }
     }
 
@@ -2260,9 +2333,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                                 log.info("开始进行样品池的检测");
                                 JSONObject jsonObject = new JSONObject();
                                 jsonObject.put("notice", "单样品池，后续请根据提示放入相应物质!!! [设备: " + string + "]");
-                                sendToActiveSession(null, taskId, jsonObject);
-                                // 设置等待状态
-                                pauseTask(taskId);
+                                pauseTask(taskId, jsonObject);
                             }
 
                             log.info("样品池检测完成");
@@ -3336,12 +3407,17 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     DevOperationInputParam devType = new DevOperationInputParam();
                     devType.setDeviceSerialNumber(deviceSerialNumber);
                     SetParam devSetParam = new SetParam();
+                    String code = WaveLengthEnum.getCode(luminosityMode);
+                    devSetParam.setPhotoMode(Integer.valueOf(Objects.requireNonNull(code)));
+                    //光谱带宽
+                    devSetParam.setSlit1(narrow);
                     //设置起始波长
                     devSetParam.setStartWl(startWavelength);
                     //设置终止波长
                     devSetParam.setEndWl(endWavelength);
                     //设置扫描间隔
                     devSetParam.setScanWlInterval(1.0);
+
                     devType.setParam(devSetParam);
                     devType.setOperationType(OperationTypeEnums.SetParam.getType());
                     R<OperationResultEntity> opera =
@@ -4217,9 +4293,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         } else {
             noticeMsg.put("notice", prefix + "请放入 " + stdMaterialName);
         }
-        sendToActiveSession(null, taskId, noticeMsg);
-        // 设置等待状态
-        pauseTask(taskId);
+        pauseTask(taskId, noticeMsg);
     }
 
     //根据不同的光度模式得到点
@@ -5006,6 +5080,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             setParam.setEndWl(startWavelength);
                             //设置扫描间隔
                             setParam.setScanWlInterval(1.0);
+                            String code = WaveLengthEnum.getCode(luminosityMode);
+                            setParam.setPhotoMode(Integer.valueOf(Objects.requireNonNull(code)));
+                            //光谱带宽
+                            setParam.setSlit1(narrow);
                             devType.setParam(setParam);
                             devType.setOperationType(OperationTypeEnums.SetParam.getType());
                             R<OperationResultEntity> opera =
@@ -5712,6 +5790,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         setParam.setEndWl(startWavelength);
                         //设置扫描间隔
                         setParam.setScanWlInterval(1.0);
+                        String code = WaveLengthEnum.getCode(luminosityMode);
+                        setParam.setPhotoMode(Integer.valueOf(Objects.requireNonNull(code)));
+                        //光谱带宽
+                        setParam.setSlit1(narrow);
                         devType.setParam(setParam);
                         devType.setOperationType(OperationTypeEnums.SetParam.getType());
                         R<OperationResultEntity> opera =
@@ -6577,11 +6659,9 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
             //是否停止设置为true
             this.halt.put(taskId, true);
             //如果是单样品池-单项测量  会唤醒暂停的任务，唤醒后检测到停止为true后跳出
-            // 仅在实际暂停时释放，避免重复停止累积许可导致后续暂停校验被跳过
             TaskPauseControl control = pauseControls.get(taskId);
-            if (control != null && control.isPaused()) {
-                control.setPaused(false);
-                control.semaphore.release();
+            if (control != null) {
+                control.cancelPause();
             }
             // 取消任务执行
 //            Future<?> future = taskFutures.get(taskId);
