@@ -43,7 +43,7 @@ public class StandardDetectionExcelModel {
     @ExcelProperty("备注")
     private String remark;
 
-    @ExcelProperty("检测参数")
+    @ExcelProperty("检测参数（不用填)")
     private String detectionParameters;
 
     @ExcelProperty("发布时间")

@@ -146,6 +146,7 @@ public class ImportService {
                     jsonObject.put("是否重复", model.getIsRepeat());
                     jsonObject.put("重复次数", model.getRepeatCount());
                     jsonObject.put("重复时间间隔(s)", model.getRepeatInterval());
+                    jsonObject.put("检测参数", model.getDetectionParameter());
                     detectionParametersMap.put(model.getDetectionId(), jsonObject);
                 }
             }
@@ -163,6 +164,7 @@ public class ImportService {
                         jsonObject.put("是否重复", model.getIsRepeat());
                         jsonObject.put("重复次数", model.getRepeatCount());
                         jsonObject.put("重复时间间隔(s)", model.getRepeatInterval());
+                        jsonObject.put("检测参数", model.getDetectionParameter());
                     } else {
                         JSONObject jsonObject = new JSONObject();
                         jsonObject.put("波长1", model.getWavelength1());
@@ -174,6 +176,7 @@ public class ImportService {
                         jsonObject.put("是否重复", model.getIsRepeat());
                         jsonObject.put("重复次数", model.getRepeatCount());
                         jsonObject.put("重复时间间隔(s)", model.getRepeatInterval());
+                        jsonObject.put("检测参数", model.getDetectionParameter());
                         detectionParametersMap.put(model.getDetectionId(), jsonObject);
                     }
                 }
@@ -190,6 +193,7 @@ public class ImportService {
                         jsonObject.put("是否重复", model.getIsRepeat());
                         jsonObject.put("重复次数", model.getRepeatCount());
                         jsonObject.put("重复时间间隔(s)", model.getRepeatInterval());
+                        jsonObject.put("检测参数", model.getDetectionParameter());
                     } else {
                         JSONObject jsonObject = new JSONObject();
                         jsonObject.put("起始波长", model.getStartWavelength());
@@ -199,6 +203,7 @@ public class ImportService {
                         jsonObject.put("是否重复", model.getIsRepeat());
                         jsonObject.put("重复次数", model.getRepeatCount());
                         jsonObject.put("重复时间间隔(s)", model.getRepeatInterval());
+                        jsonObject.put("检测参数", model.getDetectionParameter());
                         detectionParametersMap.put(model.getDetectionId(), jsonObject);
                     }
                 }

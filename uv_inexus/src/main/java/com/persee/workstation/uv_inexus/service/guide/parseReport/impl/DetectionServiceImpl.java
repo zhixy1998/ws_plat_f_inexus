@@ -13,12 +13,12 @@ import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Comparator;
-import java.util.Iterator;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -420,6 +420,7 @@ public class DetectionServiceImpl implements DetectionService {
         List<String> detectionParameters = new ArrayList<>(); // 波长1、2、3列表
         List<String> wavelengthParamList = new ArrayList<>(); // 波长参数1、2列表
         Map<String, String> curveParameter = new HashMap<>(); // 曲线参数（推荐单位、推荐标样浓度、拟合公式）
+        Map<String, String> detectionParametersKV = new HashMap<>(); // 检测参数（键值对）
         try {
             JsonNode jsonNode = objectMapper.readTree(jsonStr);
 
@@ -455,12 +456,18 @@ public class DetectionServiceImpl implements DetectionService {
             if (jsonNode.has("推荐单位")) curveParameter.put("recommended_unit", jsonNode.get("推荐单位").asText());
             if (jsonNode.has("推荐标样浓度")) curveParameter.put("recommended_standard_concentration", jsonNode.get("推荐标样浓度").asText());
             if (jsonNode.has("拟合公式")) curveParameter.put("fitting_formula", jsonNode.get("拟合公式").asText());
+
+            // 提取检测参数（光度测量-检测参数表新增列，键值对形式）
+            if (jsonNode.has("检测参数")) {
+                detectionParametersKV.put("detection_parameter", jsonNode.get("检测参数").asText());
+            }
         } catch (Exception e) {
             log.error("解析波长JSON失败: {}", e.getMessage());
             // 解析失败时返回空列表（避免null）
             detectionParameters = new ArrayList<>();
             wavelengthParamList = new ArrayList<>();
             curveParameter = new HashMap<>();
+            detectionParametersKV = new HashMap<>();
         }
 
         // 3. 查询计算公式表数据（待计算结果）
@@ -675,6 +682,7 @@ public class DetectionServiceImpl implements DetectionService {
         result.setDetectionParameters(detectionParameters); // 波长列表
         result.setWavelengthParamList(wavelengthParamList); // 波长参数列表
         result.setCurveParameter(curveParameter); // 曲线参数（推荐单位、推荐标样浓度、拟合公式）
+        result.setDetectionParametersKV(detectionParametersKV); // 检测参数（键值对）
         result.setCalculationResults(calculationResults); // 待计算结果
         result.setRoundingSettings(roundingSettings); // 修约设置
         result.setInputParams(inputParams); // 输入参数
