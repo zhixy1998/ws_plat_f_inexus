@@ -2498,7 +2498,7 @@ messages:
 
   '向导模式':
     zh-CN: '向导模式'
-    en-US: 'Guide Mode'
+    en-US: 'Wizard Mode'
     ru-RU: 'Режим мастера'
 
   # ========== RuntimeException 异常消息（经全局异常处理器返回前端） ==========
